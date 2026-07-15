@@ -1,8 +1,8 @@
 {
   "schema_version": "knowledge-base-content-supply-progress/v1",
-  "generated_at": "2026-07-12T18:43:38.852Z",
+  "generated_at": "2026-07-14T15:58:26Z",
   "timezone": "Asia/Shanghai",
-  "phase": "Phase 0 complete / M1 batch 1 complete",
+  "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3E machine validation complete / human review pending",
   "progress_scope": "content_supply_only",
   "governance_progress_excluded": true,
   "baseline": {
@@ -23,43 +23,73 @@
     "hunan_share_percent": 73.37
   },
   "current": {
-    "audit_generated_at": "2026-07-12T18:43:38.852Z",
+    "audit_generated_at": "2026-07-14T15:55:56.580Z",
     "province_files": 34,
-    "formal_entries": 174,
-    "sources": 612,
+    "formal_entries": 247,
+    "sources": 902,
     "regions_with_entries": 34,
-    "regions_at_least_two_entries": 16,
-    "regions_at_least_five_entries": 1,
+    "regions_at_least_two_entries": 34,
+    "regions_at_least_five_entries": 12,
     "zero_entry_regions": [],
-    "one_entry_region_count": 18,
+    "one_entry_region_count": 0,
     "hunan_entries": 124,
-    "hunan_share_percent": 71.26,
+    "hunan_share_percent": 50.2,
     "entries_missing_sources": 0,
     "entries_missing_related_locations": 0,
     "entries_missing_verification_method": 0,
-    "entries_with_machine_metadata": 174,
-    "entries_with_asset_split": 174
+    "entries_with_machine_metadata": 247,
+    "entries_with_asset_split": 247
   },
   "m1": {
     "target_formal_entries": 192,
     "planned_new_entries": 23,
-    "formal_entries_added": 5,
-    "formal_entries_remaining": 18,
-    "batch_progress_percent": 21.74,
+    "formal_entries_added": 23,
+    "formal_entries_remaining": 0,
+    "completion_status": "machine_validated_pending_human_source_and_cultural_review",
+    "m1_formal_acceptance_complete": false,
+    "machine_validated_entry_count": 23,
+    "human_reviewed_entry_count": 0,
+    "human_review_pending_entry_count": 23,
+    "batch_progress_percent": 100,
+    "batch_progress_scope": "research_write_lint_audit_and_fixed_retrieval_only",
     "candidate_plan_count": 23,
     "candidate_plan_counts_as_formal": false,
-    "source_qualified_new_entries": 5,
-    "production_card_score_gte_90": 5,
-    "production_card_score_100": 5,
-    "fixed_retrieval_queries_passed": 5,
-    "fixed_retrieval_queries_total": 5,
-    "next_batch": [
-      "歌仔戏",
-      "川江号子",
-      "泉州提线木偶戏",
-      "壮族织锦技艺",
-      "黎族传统纺染织绣技艺"
-    ]
+    "source_qualified_new_entries": 23,
+    "production_card_score_gte_90": 23,
+    "production_card_score_100": 23,
+    "fixed_retrieval_queries_passed": 23,
+    "fixed_retrieval_queries_total": 23,
+    "next_batch": []
+  },
+  "m1_quality_tail": {
+    "scope": "machine_detected_basic_production_field_coverage_only",
+    "old_entries_repaired": 25,
+    "production_card_score_below_80_before": 25,
+    "production_card_score_below_80_after": 0,
+    "production_card_score_100_before": 45,
+    "production_card_score_100_after_m1_tail": 70,
+    "basic_production_field_gaps_before": 259,
+    "basic_production_field_gaps_after": 184,
+    "counts_as_human_review": false
+  },
+  "m2": {
+    "target_formal_entries": 289,
+    "target_new_entries": 97,
+    "machine_researched_written_and_validated": 55,
+    "machine_remaining": 42,
+    "machine_progress_percent": 56.7,
+    "current_batch": "M2-1A, M2-1B, M2-2A, M2-2B, M2-2C, M2-2D, M2-3A, M2-3B, M2-3C, M2-3D and M2-3E",
+    "current_batch_machine_validated": 55,
+    "current_batch_target": 55,
+    "human_source_and_cultural_reviewed": 0,
+    "human_source_and_cultural_review_pending": 55,
+    "formal_human_acceptance_complete": false,
+    "source_qualified_new_entries": 55,
+    "production_card_score_100": 55,
+    "fixed_retrieval_queries_passed": 55,
+    "fixed_retrieval_queries_total": 55,
+    "next_batch": [],
+    "credit_boundary": "written and machine-validated only; not a golden card, human approval, real production artifact or professional pass"
   },
   "batch_1_entries": [
     {
@@ -98,6 +128,547 @@
       "credibility": "基本可靠"
     }
   ],
+  "batch_2_entries": [
+    {
+      "province": "台湾",
+      "name": "歌仔戏——从本地歌仔到多媒介舞台",
+      "source_count": 5,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "重庆",
+      "name": "川江号子——船工协作的劳动声音",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "福建",
+      "name": "泉州提线木偶戏——丝线操偶与傀儡调",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广西",
+      "name": "壮族织锦技艺——经纬中的靖西壮锦",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "海南",
+      "name": "黎族传统纺染织绣技艺——从天然纤维到黎锦",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "batch_3_entries": [
+    {
+      "province": "河南",
+      "name": "钧瓷烧制技艺——泥、釉、火与窑变",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "黑龙江",
+      "name": "赫哲族伊玛堪——散韵兼行的口头说唱",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "湖北",
+      "name": "汉绣——平金夹绣与分层破色",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "吉林",
+      "name": "中国朝鲜族农乐舞——鼓乐、农事动作与社区节庆",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "内蒙古",
+      "name": "蒙古族长调民歌——诺古拉与草原生活的长声腔",
+      "source_count": 5,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "batch_4_entries": [
+    {
+      "province": "宁夏",
+      "name": "贺兰砚制作技艺——依石取势的宁夏制砚",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "青海",
+      "name": "热贡艺术——隆务河流域的多门类造型艺术传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "上海",
+      "name": "海派旗袍制作技艺——量体裁衣中的城市服饰记忆",
+      "source_count": 5,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "四川",
+      "name": "蜀锦织造技艺——花楼织机上的经纬协作",
+      "source_count": 5,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "天津",
+      "name": "杨柳青木版年画——套印与手绘相接的年画技艺",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "batch_5_entries": [
+    {
+      "province": "西藏",
+      "name": "藏戏——面具、唱叙与广场表演的多流派传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "新疆",
+      "name": "新疆维吾尔木卡姆艺术——歌舞乐合一的多地域套曲传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "浙江",
+      "name": "龙泉青瓷传统烧制技艺——泥、釉与窑火的协同控制",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_1a_entries": [
+    {
+      "province": "北京",
+      "name": "景泰蓝制作技艺——铜胎、掐丝与珐琅釉的多工序协作",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "上海",
+      "name": "江南丝竹——上海社区中的丝弦与竹管合奏",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "香港",
+      "name": "粤剧——香港戏棚、剧场与馆藏中的活态传承",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "澳门",
+      "name": "土生土语话剧——澳门土生葡人社群的语言舞台",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "台湾",
+      "name": "大甲妈祖遶境进香——跨县市步行与宫庙协作的年度民俗",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    }
+  ],
+  "m2_batch_1b_entries": [
+    {
+      "province": "重庆",
+      "name": "荣昌陶器制作技艺——安富陶泥、制坯与窑火的工序链",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "福建",
+      "name": "武夷岩茶制作技艺——看青做青与复焙的手工判断",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广西",
+      "name": "刘三姐歌谣——宜州口头传统、对歌与多版本记忆",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "海南",
+      "name": "琼剧——海南话声腔、五大行当与城乡舞台",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "河南",
+      "name": "少林功夫——嵩山寺院文化空间中的武术传习",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    }
+  ],
+  "m2_batch_2a_entries": [
+    {
+      "province": "安徽",
+      "name": "徽州三雕——砖、石、木与徽州建筑装饰",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "甘肃",
+      "name": "花儿（莲花山花儿会）——山野对唱与即兴口头传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广东",
+      "name": "粤绣（广绣）——丝线、金银线与广州刺绣传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "贵州",
+      "name": "侗族大歌——侗语多声部合唱与社区传习",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "河北",
+      "name": "蔚县剪纸——刀刻、点染与多色窗花传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_2b_entries": [
+    {
+      "province": "黑龙江",
+      "name": "赫哲族鱼皮制作技艺——冷水鱼皮的熟软、拼接与当代传承",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "湖北",
+      "name": "楚式漆器髹饰技艺——木胎、髹漆与荆州当代传承",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "吉林",
+      "name": "满族说部——乌勒本的长篇口传与多版本整理",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "内蒙古",
+      "name": "蒙古族呼麦——持续低音与泛音旋律的歌唱艺术",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "宁夏",
+      "name": "花儿（宁夏回族山花儿）——六盘山区域的即兴山歌传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_2c_entries": [
+    {
+      "province": "青海",
+      "name": "塔尔寺酥油花——低温塑形、宗教供奉与花院协作",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "四川",
+      "name": "川剧——五种声腔、行当与川渝舞台传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "西藏",
+      "name": "格萨（斯）尔——西藏说唱传统中的多版本英雄史诗",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "新疆",
+      "name": "玛纳斯——玛纳斯奇口传的柯尔克孜族英雄史诗",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "浙江",
+      "name": "绿茶制作技艺（西湖龙井）——鲜叶、手工炒制与产地边界",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_2d_entries": [
+    {
+      "province": "云南",
+      "name": "白族扎染技艺——扎结防染、蓝白纹样与大理社区传承",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "陕西",
+      "name": "西安鼓乐——行乐、坐乐与民间乐社的鼓吹合奏传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山东",
+      "name": "风筝制作技艺（潍坊风筝）——扎、糊、绘与安全放飞",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "江苏",
+      "name": "苏州缂丝织造技艺——通经断纬与逐色缂织",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "江西",
+      "name": "景德镇手工制瓷技艺——多工种协作、装饰与窑火控制",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3a_entries": [
+    {
+      "province": "辽宁",
+      "name": "医巫闾山满族剪纸——辽西山地的纸上民俗记忆",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山西",
+      "name": "平遥推光漆器髹饰技艺——大漆髹涂与逐层推光",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "天津",
+      "name": "泥人张彩塑——塑形与设色相接的天津民间美术",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "北京",
+      "name": "京剧——唱念做打与舞台程式的综合表演艺术",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "上海",
+      "name": "顾绣——以针线转译书画的松江“画绣”",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3b_entries": [
+    {
+      "province": "辽宁",
+      "name": "复州皮影戏——灯幕、影人与辽南声腔的协作舞台",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山西",
+      "name": "晋剧——晋中梆子声腔与文武场的山西舞台",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "天津",
+      "name": "天津时调——天津方言节奏中的时调小曲",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "北京",
+      "name": "雕漆技艺——层层髹漆后的刀下成纹",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "上海",
+      "name": "沪剧——上海方言、滩簧演变与都市生活舞台",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3c_entries": [
+    {
+      "province": "安徽",
+      "name": "徽墨制作技艺——烟、胶、杵与墨模之间的黑色工艺",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "甘肃",
+      "name": "兰州太平鼓——皋兰社火中的震天鼓点与集体身法",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广东",
+      "name": "广东醒狮——南狮身法、锣鼓节奏与节庆中的吉祥表演",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "贵州",
+      "name": "苗绣——针线里的服饰记忆、图纹体系与地域分支",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "河北",
+      "name": "吴桥杂技——江湖行当、地方班社与杂技之乡的活态传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3d_entries": [
+    {
+      "province": "辽宁",
+      "name": "海城高跷——木跷之上的大场、小场与辽南秧歌",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山西",
+      "name": "琉璃烧制技艺——建筑陶件的塑形、素烧与施釉彩烧",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "天津",
+      "name": "天津风筝魏制作技艺——可拆折软翅风筝的扎、绘、糊与试飞",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "安徽",
+      "name": "宣纸传统制作技艺——青檀皮、沙田稻草与百道手工工序",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "河北",
+      "name": "定瓷烧制技艺——曲阳白瓷的制坯、刻花、施釉与窑火",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3e_entries": [
+    {
+      "province": "甘肃",
+      "name": "敦煌彩塑制作技艺——木骨泥胎与塑绘一体的石窟彩塑传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广东",
+      "name": "潮州木雕——樟木、多层镂通与金漆装饰",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "贵州",
+      "name": "苗族蜡染技艺——蜡刀、蓝靛与点蜡浸染的丹寨传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "黑龙江",
+      "name": "桦树皮制作技艺——剥取、软化、缝合与刻压装饰",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "湖北",
+      "name": "汉剧——西皮二黄、十大行当与武汉戏码头",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
   "excluded_from_completion": {
     "fixtures": 0,
     "simulations": 0,
@@ -109,13 +680,14 @@
     "generated_stories_written_back": 0
   },
   "verification": {
-    "kb_lint": "passed: 34 files, 174 entries, 174 enriched entries",
-    "production_audit": "passed: 174 entries, 0 missing verification method, 174 asset splits",
+    "kb_lint": "passed: 34 files, 247 entries, 247 enriched entries",
+    "tests": "passed: 79 files, 345 tests; three local HTTP bridge tests required unrestricted loopback after sandbox listen EPERM",
+    "production_audit": "passed: 247 entries, 902 sources, 0 missing verification method, 247 asset splits; 0 entries below production-card score 80",
     "credibility_normalization": "dry-run: 34 files scanned, 0 files changed, 0 entries changed",
     "machine_metadata_enrichment": "dry-run: 34 files scanned, 0 files changed, 0 fields added",
-    "asset_split_suggestions": "174 entries scanned, 0 entries without asset split, 0 suggestions",
-    "production_upgrade_plan": "generated: 13 batches, 398 actions; advisory only",
-    "fixed_retrieval": "5/5 new-entry queries returned the intended entry at top 1",
+    "asset_split_suggestions": "247 entries scanned, 0 entries without asset split, 0 suggestions",
+    "production_upgrade_plan": "generated: 13 batches, 399 actions; advisory only",
+    "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5 and batch 3E: 5/5 new-entry queries returned the intended entry at top 1",
     "git_diff_check": "passed"
   }
 }

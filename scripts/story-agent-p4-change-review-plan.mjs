@@ -17,7 +17,8 @@ const BATCHES = {
     title: "共享合同、Story Agent 核心服务与测试",
     validation_commands: [
       "cd web && npm run check",
-      "cd web/server && npx vitest run src/__tests__/creation-contract-service.test.ts src/__tests__/dramatic-story-quality.test.ts src/__tests__/outline-service.test.ts src/__tests__/project-service.test.ts src/__tests__/quality-workflow-service.test.ts src/__tests__/story-blueprint-genre-quality.test.ts src/__tests__/professional-text-package-contract.test.ts src/__tests__/video-type-generation-matrix.test.ts",
+      "cd web/server && npx vitest run src/__tests__/api.test.ts src/__tests__/callback-auth.test.ts src/__tests__/product-access-control.test.ts src/__tests__/product-navigation.test.ts src/__tests__/project-workflow.test.ts src/__tests__/creation-contract-service.test.ts src/__tests__/dramatic-story-quality.test.ts src/__tests__/outline-service.test.ts src/__tests__/project-service.test.ts src/__tests__/quality-workflow-service.test.ts src/__tests__/story-blueprint-genre-quality.test.ts src/__tests__/professional-text-package-contract.test.ts src/__tests__/video-type-generation-matrix.test.ts",
+      "cd web && npm run e2e:track-a",
     ],
   },
   professional_formats: {
@@ -41,7 +42,7 @@ const BATCHES = {
   },
   production_docs: {
     order: 4,
-    title: "生产卡、实现文档与长期蓝图",
+    title: "知识条目、生产卡、实现文档与长期蓝图",
     validation_commands: [
       "npm run kb:lint",
       "cd web && npm run build",
@@ -172,6 +173,25 @@ function classify(path) {
 
   if (
     lower.startsWith("web/shared/") ||
+    lower.startsWith("web/client/") ||
+    lower.startsWith("web/e2e/") ||
+    lower.startsWith("web/server/src/routes/") ||
+    lower.startsWith("web/server/src/repositories/") ||
+    lower.startsWith("web/server/src/platform/") ||
+    lower.startsWith("web/server/src/domains/") ||
+    lower.startsWith("web/server/src/__tests__/") ||
+    lower.includes("web/server/src/services/product-access") ||
+    lower.includes("web/server/src/services/product-resource-access") ||
+    lower === "web/server/src/services/gears-webhook-service.ts" ||
+    lower === "web/server/src/services/gears-execution-service.ts" ||
+    lower === "web/server/src/services/story-agent-mvp-status-service.ts" ||
+    lower === "web/server/src/services/entry-service.ts" ||
+    lower === "web/server/src/services/mcp-proxy.ts" ||
+    lower === "web/server/src/services/story-service.ts" ||
+    lower === "web/server/src/services/ai-comic-series-service.ts" ||
+    lower === "web/package.json" ||
+    lower === "web/package-lock.json" ||
+    lower === "web/playwright.config.ts" ||
     lower === "web/server/src/__tests__/api.test.ts" ||
     lower.includes("mao-growth-story-e2e") ||
     lower === "web/server/src/index.ts" ||
@@ -195,12 +215,13 @@ function classify(path) {
   }
 
   if (
+    lower.startsWith("data/provinces/") ||
     lower.startsWith("data/production-cards/") ||
     lower.startsWith("docs/production-cards/") ||
     lower.startsWith("docs/") ||
     lower.startsWith("output/")
   ) {
-    return { batch: "production_docs", reason: "Production card, implementation document, blueprint, or review capture" };
+    return { batch: "production_docs", reason: "Knowledge entry, production card, implementation document, blueprint, or review capture" };
   }
 
   if (

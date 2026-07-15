@@ -1,0 +1,165 @@
+{
+  "schema_version": "story-agent-three-real-sample-project-preparation/v1",
+  "generated_at": "2026-07-13T04:55:26Z",
+  "scope": "Phase 1 three real end-to-end sample candidates",
+  "status": "candidate_scope_frozen_external_inputs_blocked",
+  "credit_policy": {
+    "candidate_selection_counts_as_real_project": false,
+    "creative_brief_draft_counts_as_real_input": false,
+    "existing_fallback_or_local_project_counts_as_real_run": false,
+    "placeholder_asset_counts_as_authorized_asset": false,
+    "local_acceptance_counts_as_external_artifact": false,
+    "machine_validation_counts_as_human_review": false,
+    "memory_handoff_counts_as_execution": false
+  },
+  "summary": {
+    "candidate_count": 3,
+    "creative_brief_draft_count": 3,
+    "fact_boundary_draft_count": 3,
+    "delivery_acceptance_draft_count": 3,
+    "externally_authorized_project_count": 0,
+    "frozen_budget_count": 0,
+    "authorized_model_count": 0,
+    "assigned_three_role_review_team_count": 0,
+    "real_project_created_count": 0,
+    "real_model_run_count": 0,
+    "verified_real_revision_round_count": 0,
+    "real_external_artifact_project_count": 0,
+    "human_blind_review_pass_count": 0,
+    "professional_pass_count": 0
+  },
+  "samples": [
+    {
+      "sample_id": "real-sample-ai-comic-zhou-dunyi-fenning",
+      "format_label": "AI 漫剧",
+      "video_type": "ai_comic_drama",
+      "working_title": "周敦颐分宁断案：重查",
+      "candidate_status": "selected_for_external_confirmation",
+      "source_entry": "data/provinces/湖南.md#周敦颐——理学开山鼻祖",
+      "non_credit_reference_project": "web/generated/projects/20260702-story-5zhd4151f8c7--ai_comic_drama/project.json",
+      "proposed_business_goal": "用一个可见选择和后果验证历史人物 AI 漫剧的事实边界、角色连续性、两轮真人修订和五镜真实回片闭环。",
+      "proposed_delivery": {
+        "orientation": "vertical",
+        "master_duration_seconds": 75,
+        "shot_count": 5,
+        "shot_duration_seconds": 15,
+        "required_real_artifacts": [
+          "5 个公共可达视频镜头",
+          "1 个 75 秒装配版",
+          "角色、县衙、案卷、判词和文书的已授权资产清单",
+          "字幕、配音、音乐与媒体技术检查报告"
+        ]
+      },
+      "fact_boundary": {
+        "verified_anchor": "周敦颐生平、任官经历和思想史位置只能使用知识条目及后续人审确认的来源。",
+        "plausible_dramatization": "县衙空间、重查动作和选择压力可以影视化，但不能冒充原始案卷记录。",
+        "explicit_fiction": "具体案件、上官、证人、对白、判词和追查过程如无独立史料，一律标为虚构。",
+        "forbidden_claims": "不得把旧项目中的具体案情、对白、死刑文书或时间线写成已核史实。"
+      },
+      "known_non_credit_baseline": [
+        "旧项目使用 placeholder SVG 资产。",
+        "旧镜头 URL 为 local.story-agent.invalid，本地验收不计真实回片。",
+        "旧 Production Board 的部分场景密度和 36 秒脚本文本与 15 秒 Seedance 单元不匹配。",
+        "旧输出没有真实模型、两轮真人修订或专业通过信用。"
+      ],
+      "external_blockers": [
+        "真实业务 owner 和发布渠道未确认",
+        "历史事实审稿范围与引用基准未签署",
+        "provider、model、凭据、预算上限和成本承担方未授权",
+        "编剧/剧本编辑、漫剧导演/制片、事实/文化三类评审者未指定",
+        "角色与场景参考资产、配音、音乐和公开回片 URL 权利未确认"
+      ],
+      "real_credit": {
+        "real_project_created": false,
+        "real_model_run": false,
+        "verified_revision_rounds": 0,
+        "real_external_artifact": false,
+        "human_review_passed": false,
+        "professional_passed": false
+      }
+    },
+    {
+      "sample_id": "real-sample-documentary-wuchang-red-building",
+      "format_label": "微纪录片",
+      "video_type": "documentary_short",
+      "working_title": "红楼之后：首义空间如何保存 1911",
+      "candidate_status": "selected_for_external_confirmation",
+      "source_entry": "data/provinces/湖北.md#武昌起义——辛亥革命的第一声枪响",
+      "non_credit_reference_card": "data/production-cards/documentary-short-golden-cards.json#documentary-golden-wuchang-uprising-red-building",
+      "proposed_business_goal": "验证现实场地、档案证据、观察者视点、克制旁白与有限再现边界能否形成可核验的微纪录片生产链。",
+      "proposed_delivery": {
+        "orientation": "horizontal",
+        "master_duration_seconds": 180,
+        "required_real_artifacts": [
+          "红楼、首义广场和获准展陈的真实拍摄素材",
+          "至少 1 位实名且授权的讲解员或研究者采访",
+          "档案、地图和历史图片的权利清单",
+          "3 分钟装配版、字幕、混音和媒体技术检查报告"
+        ]
+      },
+      "fact_boundary": {
+        "verified_anchor": "1911 年 10 月的事件链、红楼与首义空间只使用纪念馆、档案和权威研究确认的口径。",
+        "plausible_dramatization": "地图、空镜和声音设计可以辅助理解，但必须标明为解释性视听。",
+        "explicit_fiction": "不设置冒充历史见证者的虚构采访，不伪造档案或当事人原话。",
+        "forbidden_claims": "不得用复拍画面替代历史影像，不把多版本细节写成唯一事实。"
+      },
+      "external_blockers": [
+        "纪念馆、红楼、广场和馆藏拍摄许可未提供",
+        "采访对象、肖像、声音和引语授权未提供",
+        "档案图片与地图的公开传播许可未确认",
+        "真实业务 owner、发布渠道、provider/model 和预算未确认",
+        "纪录片编辑/导演、近代史研究、事实/文化三类评审者未指定"
+      ],
+      "real_credit": {
+        "real_project_created": false,
+        "real_model_run": false,
+        "verified_revision_rounds": 0,
+        "real_external_artifact": false,
+        "human_review_passed": false,
+        "professional_passed": false
+      }
+    },
+    {
+      "sample_id": "real-sample-heritage-changde-sixian",
+      "format_label": "非遗宣传片",
+      "video_type": "heritage_promo",
+      "working_title": "一根弦里的水乡节拍：常德丝弦",
+      "candidate_status": "selected_for_external_confirmation",
+      "source_entry": "data/provinces/湖南.md#常德丝弦——湘北水乡的扬琴说唱",
+      "non_credit_reference_card": "data/production-cards/heritage-promo-golden-cards.json#heritage-promo-golden-changde-sixian-yangqin",
+      "proposed_business_goal": "验证真实传承人、手部演奏、乐器资产、地方声音、授权唱段和当代传承压力能否转化为可交付的非遗宣传片。",
+      "proposed_delivery": {
+        "orientation": "vertical_and_horizontal",
+        "master_duration_seconds": 90,
+        "required_real_artifacts": [
+          "获准排练或演出的真实拍摄素材",
+          "传承人/演员实名采访和授权唱段",
+          "扬琴、琵琶、二胡、三弦等乐器连续性清单",
+          "90 秒主片、30 秒竖屏版、字幕、混音和媒体技术检查报告"
+        ]
+      },
+      "fact_boundary": {
+        "verified_anchor": "项目身份、声腔、乐器、传承单位和历史沿革须由国家/地方非遗资料及传承机构复核。",
+        "plausible_dramatization": "排练压力、师徒交流和一次唱段准备可用于结构，但不能替代真实口述。",
+        "explicit_fiction": "未经真人确认的师承、曲牌来源、个人经历和对白必须标为虚构或删除。",
+        "forbidden_claims": "不得无授权使用完整唱段、歌词、演出录像或传承人形象；不得把其他曲艺的声腔和服饰混入。"
+      },
+      "external_blockers": [
+        "传承机构、演员、场地、曲牌、歌词、录音和演出权授权未提供",
+        "真实采访与排练档期未确认",
+        "真实业务 owner、传播渠道、provider/model 和预算未确认",
+        "非遗类型编辑/导演、音乐/表演权利、事实/文化三类评审者未指定",
+        "真实 GEARS/Seedance endpoint、callback 和公共 artifact URL 未提供"
+      ],
+      "real_credit": {
+        "real_project_created": false,
+        "real_model_run": false,
+        "verified_revision_rounds": 0,
+        "real_external_artifact": false,
+        "human_review_passed": false,
+        "professional_passed": false
+      }
+    }
+  ],
+  "next_external_action": "由用户确认三个真实业务目标与题材，提供权利材料、预算、模型授权、三类评审者和真实交付配置；任一项目可逐项解锁，不要求三项同时到位。"
+}

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Router } from 'express';
 import { success } from '@shared/types.js';
+import { requireProductAccess } from '../middleware/product-access.js';
 import {
   getStage8BlindReviewWorkspace,
   inspectStage8BlindReviewIntake,
@@ -20,46 +21,47 @@ function resolveDefaultRepoRoot(): string {
 
 export function createStage8BlindReviewRouter(repoRoot = resolveDefaultRepoRoot()): Router {
   const router = Router();
-  router.get('/intake', async (_req, res, next) => {
+  const internalTool = { feature_flag: 'internal_story_tools' } as const;
+  router.get('/intake', requireProductAccess('review:blind'), async (_req, res, next) => {
     try {
       res.json(success(await getStage8BlindReviewWorkspace({ repoRoot })));
     } catch (error) {
       next(error);
     }
   });
-  router.post('/intake/validate', async (req, res, next) => {
+  router.post('/intake/validate', requireProductAccess('review:blind'), async (req, res, next) => {
     try {
       res.json(success(await inspectStage8BlindReviewIntake({ repoRoot, request: req.body })));
     } catch (error) {
       next(error);
     }
   });
-  router.get('/evaluator', async (_req, res, next) => {
+  router.get('/evaluator', requireProductAccess('review:blind'), async (_req, res, next) => {
     try {
       res.json(success(await getStage8BlindReviewEvaluatorReadiness({ repoRoot })));
     } catch (error) {
       next(error);
     }
   });
-  router.get('/signature', async (req, res, next) => {
+  router.get('/signature', requireProductAccess('review:sign', internalTool), async (req, res, next) => {
     try { res.json(success(await getStage8BlindReviewSignatureWorkspace({ repoRoot, benchmarkId: req.query.benchmark_id }))); } catch (error) { next(error); }
   });
-  router.post('/signature/validate', async (req, res, next) => {
+  router.post('/signature/validate', requireProductAccess('review:sign', internalTool), async (req, res, next) => {
     try { res.json(success(await inspectStage8BlindReviewSignature({ repoRoot, request: req.body }))); } catch (error) { next(error); }
   });
-  router.get('/finalization', async (req, res, next) => {
+  router.get('/finalization', requireProductAccess('release:operate', internalTool), async (req, res, next) => {
     try { res.json(success(await getStage8FinalizationPreflightWorkspace({ repoRoot, benchmarkId: req.query.benchmark_id }))); } catch (error) { next(error); }
   });
-  router.post('/finalization/validate', async (req, res, next) => {
+  router.post('/finalization/validate', requireProductAccess('release:operate', internalTool), async (req, res, next) => {
     try { res.json(success(await inspectStage8FinalizationPreflight({ repoRoot, request: req.body }))); } catch (error) { next(error); }
   });
-  router.get('/durable-release', async (req, res, next) => {
+  router.get('/durable-release', requireProductAccess('release:operate', internalTool), async (req, res, next) => {
     try { res.json(success(await getStage8DurableReleaseWorkspace({ repoRoot, benchmarkId: req.query.benchmark_id }))); } catch (error) { next(error); }
   });
-  router.post('/durable-release/validate', async (req, res, next) => {
+  router.post('/durable-release/validate', requireProductAccess('release:operate', internalTool), async (req, res, next) => {
     try { res.json(success(await inspectStage8DurableRelease({ repoRoot, request: req.body }))); } catch (error) { next(error); }
   });
-  router.get('/operations', async (_req, res, next) => {
+  router.get('/operations', requireProductAccess('release:operate'), async (_req, res, next) => {
     try { res.json(success(await getStage8Operations({ repoRoot }))); } catch (error) { next(error); }
   });
   return router;

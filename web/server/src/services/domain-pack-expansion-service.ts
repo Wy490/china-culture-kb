@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { FileReviewRepository } from '../repositories/review-repository.js';
 import type {
   DomainPackExpansionNextDevelopmentTask,
   DomainPackExpansionReviewStateBulkUpdateRequest,
@@ -253,12 +254,6 @@ type DomainPackExpansionCandidateReportDraft = Omit<
   | 'pipeline_stage'
 >;
 type DomainPackExpansionReviewItemDraft = Omit<DomainPackExpansionReviewItem, 'candidate_markdown'>;
-
-interface DomainPackExpansionReviewStateFile {
-  schema_version?: string;
-  updated_at?: string;
-  items?: unknown[];
-}
 
 interface DomainPackExpansionResolvedReviewStateItem extends DomainPackExpansionReviewStateItem {
   review_state_source: DomainPackExpansionReviewStateSource;
@@ -1595,7 +1590,8 @@ export function updateDomainPackExpansionReviewState(
   }
 
   const updatedAt = options.updatedAt ?? new Date().toISOString();
-  const currentItems = loadDomainPackExpansionReviewStateItems();
+  const currentSnapshot = loadDomainPackExpansionResolvedReviewStateSnapshot();
+  const currentItems = currentSnapshot.items.map(stripResolvedReviewStateMetadata);
   const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
   const existing = nextItems.get(input.review_item_id);
   const reviewStatus = input.review_status;
@@ -1627,7 +1623,11 @@ export function updateDomainPackExpansionReviewState(
     writeback_updated_at: writebackStatus ? updatedAt : undefined,
   });
 
-  saveDomainPackExpansionReviewStateItems([...nextItems.values()], updatedAt);
+  saveDomainPackExpansionReviewStateItems(
+    [...nextItems.values()],
+    updatedAt,
+    currentSnapshot.runtime_revision,
+  );
 
   return {
     ok: true,
@@ -1673,7 +1673,8 @@ export function updateDomainPackExpansionReviewStateBulk(
   }
 
   const updatedAt = options.updatedAt ?? new Date().toISOString();
-  const currentItems = loadDomainPackExpansionReviewStateItems();
+  const currentSnapshot = loadDomainPackExpansionResolvedReviewStateSnapshot();
+  const currentItems = currentSnapshot.items.map(stripResolvedReviewStateMetadata);
   const nextItems = new Map(currentItems.map(item => [item.review_item_id, item]));
   const reviewNote = input.review_note?.trim() || undefined;
   const reviewerId = input.reviewer_id?.trim() || undefined;
@@ -1706,7 +1707,11 @@ export function updateDomainPackExpansionReviewStateBulk(
     });
   }
 
-  saveDomainPackExpansionReviewStateItems([...nextItems.values()], updatedAt);
+  saveDomainPackExpansionReviewStateItems(
+    [...nextItems.values()],
+    updatedAt,
+    currentSnapshot.runtime_revision,
+  );
   const report = getDomainPackExpansionCandidateReport({
     includeMarkdown: true,
     generatedAt: updatedAt,
@@ -1986,48 +1991,49 @@ function loadDomainPackExpansionReviewStateMap(): Map<string, DomainPackExpansio
   return new Map(loadDomainPackExpansionResolvedReviewStateItems().map(item => [item.review_item_id, item]));
 }
 
-function loadDomainPackExpansionReviewStateItems(): DomainPackExpansionReviewStateItem[] {
-  return loadDomainPackExpansionResolvedReviewStateItems().map(stripResolvedReviewStateMetadata);
+function loadDomainPackExpansionResolvedReviewStateItems(): DomainPackExpansionResolvedReviewStateItem[] {
+  return loadDomainPackExpansionResolvedReviewStateSnapshot().items;
 }
 
-function loadDomainPackExpansionResolvedReviewStateItems(): DomainPackExpansionResolvedReviewStateItem[] {
+function loadDomainPackExpansionResolvedReviewStateSnapshot(): {
+  items: DomainPackExpansionResolvedReviewStateItem[];
+  runtime_revision: string | null;
+} {
   const mergedItems = new Map<string, DomainPackExpansionReviewStateItem>();
   const seedItems = new Map<string, DomainPackExpansionReviewStateItem>();
   const runtimeItems = new Map<string, DomainPackExpansionReviewStateItem>();
-  for (const [source, filePath] of [
-    ['seed', reviewStateSeedFilePath()],
-    ['runtime', reviewStateFilePath()],
+  const runtimeSnapshot = domainPackRuntimeReviewRepository().read();
+  for (const [source, snapshotItems] of [
+    ['seed', domainPackSeedReviewRepository().read().items],
+    ['runtime', runtimeSnapshot.items],
   ] as const) {
-    const file = loadDomainPackExpansionReviewStateFile(filePath);
-    if (!file || file.schema_version !== 'domain-pack-expansion-review-state/v1' || !Array.isArray(file.items)) {
-      continue;
-    }
-    for (const item of file.items) {
-      const normalized = normalizeReviewStateItem(item);
-      if (!normalized) continue;
-      if (source === 'seed') seedItems.set(normalized.review_item_id, normalized);
-      else runtimeItems.set(normalized.review_item_id, normalized);
-      mergedItems.set(normalized.review_item_id, normalized);
+    for (const item of snapshotItems) {
+      if (source === 'seed') seedItems.set(item.review_item_id, item);
+      else runtimeItems.set(item.review_item_id, item);
+      mergedItems.set(item.review_item_id, item);
     }
   }
-  return [...mergedItems.values()].map(item => {
-    const seedItem = seedItems.get(item.review_item_id);
-    const runtimeItem = runtimeItems.get(item.review_item_id);
-    const source: DomainPackExpansionReviewStateSource = runtimeItem
-      ? 'runtime'
-      : seedItem
-        ? 'seed'
-        : 'none';
-    return {
-      ...item,
-      review_state_source: source,
-      review_state_overrides_seed: Boolean(seedItem && runtimeItem),
-      review_state_seed_status: seedItem?.review_status,
-      review_state_seed_writeback_status: seedItem?.writeback_status,
-      review_state_runtime_status: runtimeItem?.review_status,
-      review_state_runtime_writeback_status: runtimeItem?.writeback_status,
-    };
-  });
+  return {
+    runtime_revision: runtimeSnapshot.revision,
+    items: [...mergedItems.values()].map(item => {
+      const seedItem = seedItems.get(item.review_item_id);
+      const runtimeItem = runtimeItems.get(item.review_item_id);
+      const source: DomainPackExpansionReviewStateSource = runtimeItem
+        ? 'runtime'
+        : seedItem
+          ? 'seed'
+          : 'none';
+      return {
+        ...item,
+        review_state_source: source,
+        review_state_overrides_seed: Boolean(seedItem && runtimeItem),
+        review_state_seed_status: seedItem?.review_status,
+        review_state_seed_writeback_status: seedItem?.writeback_status,
+        review_state_runtime_status: runtimeItem?.review_status,
+        review_state_runtime_writeback_status: runtimeItem?.writeback_status,
+      };
+    }),
+  };
 }
 
 function stripResolvedReviewStateMetadata(
@@ -2049,28 +2055,18 @@ function stripResolvedReviewStateMetadata(
   };
 }
 
-function loadDomainPackExpansionReviewStateFile(filePath: string): DomainPackExpansionReviewStateFile | undefined {
-  if (!existsSync(filePath)) return undefined;
-  try {
-    return JSON.parse(readFileSync(filePath, 'utf8')) as DomainPackExpansionReviewStateFile;
-  } catch {
-    return undefined;
-  }
-}
-
 function saveDomainPackExpansionReviewStateItems(
   items: DomainPackExpansionReviewStateItem[],
   updatedAt: string,
+  expectedRevision: string | null,
 ): void {
-  const filePath = reviewStateFilePath();
-  mkdirSync(resolve(filePath, '..'), { recursive: true });
-  const sortedItems = [...items].sort((a, b) => a.review_item_id.localeCompare(b.review_item_id));
-  writeFileSync(filePath, `${JSON.stringify({
-    schema_version: 'domain-pack-expansion-review-state/v1',
+  domainPackRuntimeReviewRepository().replace(items, {
+    expected_revision: expectedRevision,
     updated_at: updatedAt,
-    direct_writeback_to_province_markdown: false,
-    items: sortedItems,
-  }, null, 2)}\n`);
+    static_fields: {
+      direct_writeback_to_province_markdown: false,
+    },
+  });
 }
 
 function normalizeReviewStateItem(value: unknown): DomainPackExpansionReviewStateItem | undefined {
@@ -2249,10 +2245,26 @@ function generatedRoot(): string {
   return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
 }
 
-function reviewStateFilePath(): string {
-  return resolve(generatedRoot(), 'domain-pack-expansion', REVIEW_STATE_FILE_NAME);
+function domainPackRuntimeReviewRepository(): FileReviewRepository<DomainPackExpansionReviewStateItem> {
+  return new FileReviewRepository(
+    resolve(generatedRoot(), 'domain-pack-expansion'),
+    REVIEW_STATE_FILE_NAME,
+    domainPackReviewRepositoryOptions(),
+  );
 }
 
-function reviewStateSeedFilePath(): string {
-  return resolve(kbRoot(), 'domain-packs', REVIEW_STATE_SEED_FILE_NAME);
+function domainPackSeedReviewRepository(): FileReviewRepository<DomainPackExpansionReviewStateItem> {
+  return new FileReviewRepository(
+    resolve(kbRoot(), 'domain-packs'),
+    REVIEW_STATE_SEED_FILE_NAME,
+    domainPackReviewRepositoryOptions(),
+  );
+}
+
+function domainPackReviewRepositoryOptions() {
+  return {
+    schema_version: 'domain-pack-expansion-review-state/v1',
+    normalize_item: normalizeReviewStateItem,
+    item_id: (item: DomainPackExpansionReviewStateItem) => item.review_item_id,
+  } as const;
 }

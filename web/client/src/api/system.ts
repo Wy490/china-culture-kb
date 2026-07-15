@@ -38,6 +38,19 @@ import type {
   StoryAgentMvpStatusReport,
   TypeInfo,
 } from '@shared/types'
+import type { ProductAccessContext, ProductAccessReadiness, ProductLoginHandoff } from '@shared/product-access'
+
+export function getCurrentProductAccessContext() {
+  return apiGet<ProductAccessContext>('/system/access-context')
+}
+
+export function getProductAccessReadiness() {
+  return apiGet<ProductAccessReadiness>('/system/access-readiness')
+}
+
+export function getProductLoginHandoff(returnTo: string) {
+  return apiGet<ProductLoginHandoff>('/system/login-handoff', { return_to: returnTo })
+}
 
 export function getProvinces() {
   return apiGet<ProvinceInfo[]>('/system/provinces')

@@ -2634,7 +2634,7 @@ describe('outline-service', () => {
     const cutAssemblyRes = await assembleAiComicSeriesSeedanceCut(
       saveRes.data!.project.series_project_id,
       { dry_run: false, overwrite: true, episode_no: firstProductionItem.episode_no },
-      { runner: async () => undefined },
+      { runner: async ({ outputPath }) => writeFile(outputPath, 'fake-cut-output') },
     );
     expect(cutAssemblyRes.ok).toBe(true);
     expect(cutAssemblyRes.data?.status).toBe('assembled');
@@ -2694,7 +2694,7 @@ describe('outline-service', () => {
     const thumbnailCaptureRes = await captureAiComicSeriesSeedanceThumbnails(
       saveRes.data!.project.series_project_id,
       { dry_run: false, overwrite: true, limit: 1 },
-      { runner: async () => undefined },
+      { runner: async ({ outputPath }) => writeFile(outputPath, 'fake-thumbnail-output') },
     );
     expect(thumbnailCaptureRes.ok).toBe(true);
     expect(thumbnailCaptureRes.data?.captured_count).toBe(1);
@@ -2793,7 +2793,7 @@ describe('outline-service', () => {
         mode: 'burn_in',
         output_filename: 'episode-01-subtitled.mp4',
       },
-      { runner: async () => undefined },
+      { runner: async ({ outputPath }) => writeFile(outputPath, 'fake-subtitle-output') },
     );
     expect(subtitleBurnInRes.ok).toBe(true);
     expect(subtitleBurnInRes.data?.status).toBe('rendered');
@@ -3015,12 +3015,9 @@ describe('outline-service', () => {
     expect(realAudioMixRes.data?.ffmpeg_command).toContain('[0:a]volume=-6dB');
     expect(runnerCalls).toHaveLength(1);
     expect(runnerCalls[0].inputVideoPath).toBe(resolve(projectDir, mixInputVideoPath));
-    expect(runnerCalls[0].outputPath).toBe(resolve(
-      projectDir,
-      'cuts',
-      saveRes.data!.project.series_project_id,
-      'local-audio-mix.mp4',
-    ));
+    expect(runnerCalls[0].outputPath).toContain('.external.tmp');
+    expect(await readFile(resolve(projectDir, realAudioMixRes.data!.output_path), 'utf8'))
+      .toBe('fake mixed video');
     expect(runnerCalls[0].audioInputs[0].input_path).toBe(resolve(projectDir, localAudioPath));
     expect(runnerCalls[0].includeOriginalAudio).toBe(true);
     expect(runnerCalls[0].originalAudioVolumeDb).toBe(-6);
@@ -3117,7 +3114,9 @@ describe('outline-service', () => {
     });
     expect(titleRenderCalls).toHaveLength(titleCardRenderRealRes.data!.card_count);
     expect(titleRenderCalls[0].fontPath).toBe(titleCardFontPath);
-    expect(titleRenderCalls[0].outputPath).toBe(resolve(projectDir, titleCardRenderRealRes.data!.output_paths[0]));
+    expect(titleRenderCalls[0].outputPath).toContain('.external.tmp');
+    expect(await readFile(resolve(projectDir, titleCardRenderRealRes.data!.output_paths[0]), 'utf8'))
+      .toContain('fake title card');
     expect(titleRenderCalls[0].cardId).toBeTruthy();
 
     let missingOutputFinalRunnerCalled = false;
@@ -3197,7 +3196,9 @@ describe('outline-service', () => {
       'local-final-delivery.concat.txt',
     ));
     expect(finalRunnerCalls[0].inputVideoPath).toBe(resolve(projectDir, realAudioMixRes.data!.output_path));
-    expect(finalRunnerCalls[0].outputPath).toBe(resolve(projectDir, finalRealRes.data!.output_path));
+    expect(finalRunnerCalls[0].outputPath).toContain('.external.tmp');
+    expect(await readFile(resolve(projectDir, finalRealRes.data!.output_path), 'utf8'))
+      .toBe('fake final delivery');
 
     const titleCardRenderDryRunRes = await renderAiComicSeriesSeedanceTitleCards(
       saveRes.data!.project.series_project_id,

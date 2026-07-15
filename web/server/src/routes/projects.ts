@@ -1,7 +1,8 @@
-import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
-import type { NextFunction, Request, Response } from 'express';
+import type { Request } from 'express';
 import { validateBody, validateParams } from '../middleware/validate.js';
+import { requireCallbackSecret } from '../middleware/callback-auth.js';
+import { requireProductAccess } from '../middleware/product-access.js';
 import { fail, ErrorCodes } from '@shared/types.js';
 import type {
   KnowledgeSupplementTaskSource,
@@ -97,8 +98,77 @@ import {
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
+import { filterProductResourcesForRequest } from '../services/product-resource-access-service.js';
 
 export const projectsRouter = Router();
+
+const STORY_PROJECT_PATH_PATTERN = /^\/(\d{8}-story-[0-9a-z]+--[a-z_]+)(?:\/|$)/;
+
+function projectResourceIdsFromRequest(req: Request): string[] {
+  const ids: string[] = [];
+  const pathProjectId = STORY_PROJECT_PATH_PATTERN.exec(req.path)?.[1];
+  if (pathProjectId) ids.push(pathProjectId);
+  if (typeof req.query.project_id === 'string' && req.query.project_id.trim()) {
+    ids.push(req.query.project_id.trim());
+  }
+  if (Array.isArray(req.body?.project_ids)) {
+    ids.push(...req.body.project_ids.filter((item: unknown): item is string => typeof item === 'string'));
+  }
+  return [...new Set(ids)];
+}
+
+const storyProjectResource = {
+  type: 'story_project' as const,
+  ids: projectResourceIdsFromRequest,
+};
+const requireProjectRead = requireProductAccess('project:read', { resource: storyProjectResource });
+const requireProjectWrite = requireProductAccess('project:write', { resource: storyProjectResource });
+const requireProjectProductionWrite = requireProductAccess('production:write', { resource: storyProjectResource });
+const requireMaterialReview = requireProductAccess('material:review', { resource: storyProjectResource });
+const requireScopedMaterialReview = requireProductAccess('material:review', {
+  resource: { ...storyProjectResource, required: true },
+});
+const requireGlobalProjectMaintenance = requireProductAccess('system:operate', {
+  feature_flag: 'internal_story_tools',
+});
+const validateSeedanceProviderCallbackSecret = requireCallbackSecret({
+  envName: 'SEEDANCE_CALLBACK_SECRET',
+  explicitHeaders: ['x-seedance-callback-secret', 'x-seedance-provider-secret'],
+  label: 'Seedance provider callback',
+});
+const validateGearsCallbackSecret = requireCallbackSecret({
+  envName: 'GEARS_CALLBACK_SECRET',
+  explicitHeaders: ['x-gears-callback-secret'],
+  label: 'GEARS callback',
+});
+
+projectsRouter.use((req, res, next) => {
+  if (req.path.endsWith('/gears-callback') || req.path.endsWith('/provider-callback')) {
+    next();
+    return;
+  }
+  if (req.path === '/retain-recent') {
+    requireGlobalProjectMaintenance(req, res, next);
+    return;
+  }
+  if (req.path.startsWith('/supplement-tasks')) {
+    (req.path.includes('/candidate-package/export') ? requireScopedMaterialReview : requireMaterialReview)(req, res, next);
+    return;
+  }
+  if (req.path === '/knowledge-candidates/writeback-patch/export') {
+    requireScopedMaterialReview(req, res, next);
+    return;
+  }
+  if (req.method === 'GET') {
+    requireProjectRead(req, res, next);
+    return;
+  }
+  const productionWrite = req.path.includes('/production-readiness')
+    || req.path.includes('/production-board')
+    || req.path.includes('/gears')
+    || req.path.includes('/seedance');
+  (productionWrite ? requireProjectProductionWrite : requireProjectWrite)(req, res, next);
+});
 
 const SEEDANCE_ASSET_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 const SUPPLEMENT_TASK_STAGES: MaterialSufficiencyStage[] = ['minimum_viable_story', 'script_ready', 'production_ready'];
@@ -122,20 +192,6 @@ type MultipartFile = {
   mime_type: string;
   buffer: Buffer;
 };
-
-function seedanceCallbackSecretFromRequest(req: Request): string | undefined {
-  const explicit = req.header('x-seedance-callback-secret')?.trim();
-  if (explicit) return explicit;
-  const authorization = req.header('authorization')?.trim();
-  const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim();
-}
-
-function safeEqualText(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
 
 function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
   return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
@@ -185,48 +241,6 @@ function supplementTaskFiltersFromRequest(req: Request): ProjectSupplementTaskLi
     task_keys: queryStringList(req.query.task_keys),
     search_query: searchQuery,
   };
-}
-
-function validateSeedanceProviderCallbackSecret(req: Request, res: Response, next: NextFunction): void {
-  const expectedSecret = process.env.SEEDANCE_CALLBACK_SECRET?.trim();
-  if (!expectedSecret) {
-    next();
-    return;
-  }
-  const providedSecret = seedanceCallbackSecretFromRequest(req);
-  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
-    next();
-    return;
-  }
-  res.status(401).json(fail(
-    ErrorCodes.VALIDATION_ERROR,
-    'Seedance provider callback secret is missing or invalid',
-  ));
-}
-
-function gearsCallbackSecretFromRequest(req: Request): string | undefined {
-  const explicit = req.header('x-gears-callback-secret')?.trim();
-  if (explicit) return explicit;
-  const authorization = req.header('authorization')?.trim();
-  const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim();
-}
-
-function validateGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
-  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
-  if (!expectedSecret) {
-    next();
-    return;
-  }
-  const providedSecret = gearsCallbackSecretFromRequest(req);
-  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
-    next();
-    return;
-  }
-  res.status(401).json(fail(
-    ErrorCodes.VALIDATION_ERROR,
-    'GEARS callback secret is missing or invalid',
-  ));
 }
 
 async function readRequestBody(req: Request, maxBytes: number): Promise<Buffer> {
@@ -298,10 +312,13 @@ async function parseSeedanceAssetUpload(req: Request): Promise<{ fields: Record<
   return { fields, file };
 }
 
-projectsRouter.get('/', async (_req, res, next) => {
+projectsRouter.get('/', async (req, res, next) => {
   try {
     const result = await listProjects();
-    res.json(result);
+    const data = result.data
+      ? await filterProductResourcesForRequest(req, 'story_project', result.data, item => item.project_id)
+      : result.data;
+    res.json({ ...result, data });
   } catch (err) {
     next(err);
   }
@@ -310,7 +327,10 @@ projectsRouter.get('/', async (_req, res, next) => {
 projectsRouter.get('/supplement-tasks', async (req, res, next) => {
   try {
     const result = await listProjectSupplementTasks(supplementTaskFiltersFromRequest(req));
-    res.json(result);
+    const data = result.data
+      ? await filterProductResourcesForRequest(req, 'story_project', result.data, item => item.project_id)
+      : result.data;
+    res.json({ ...result, data });
   } catch (err) {
     next(err);
   }

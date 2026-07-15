@@ -1,6 +1,7 @@
-import { appendFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 import type { StoryGenerateResult } from '@shared/types.js';
+import { FileJobRepository } from '../repositories/job-repository.js';
 
 export interface GearsStoryReadyWebhookPayload {
   event: 'story_ready';
@@ -32,6 +33,20 @@ interface NotifyOptions {
   retryDelaysMs?: number[];
   timeoutMs?: number;
   now?: Date;
+  generatedRoot?: string;
+}
+
+export interface GearsWebhookFailureJobEvent {
+  schema_version: 'story-agent-gears-webhook-failure-job/v1';
+  failure_id: string;
+  timestamp: string;
+  attempted_at: string;
+  webhook_url: string;
+  storyId: string;
+  project_id?: string;
+  event: 'story_ready';
+  error: string;
+  payload: GearsStoryReadyWebhookPayload;
 }
 
 const DEFAULT_RETRY_DELAYS_MS = [0, 5000, 15000];
@@ -43,10 +58,6 @@ function kbRoot(): string {
 
 function generatedRoot(): string {
   return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
-}
-
-function webhookFailuresPath(): string {
-  return resolve(generatedRoot(), 'webhook_failures.log');
 }
 
 function publicApiUrl(path: string): string {
@@ -119,7 +130,7 @@ export async function notifyGearsStoryReady(
     error: lastError || 'unknown webhook error',
     attemptedAt,
   };
-  await appendWebhookFailure(webhookUrl, payload, result.error);
+  await appendWebhookFailure(webhookUrl, payload, result.error, attemptedAt, options.generatedRoot);
   return result;
 }
 
@@ -149,22 +160,97 @@ async function appendWebhookFailure(
   webhookUrl: string,
   payload: GearsStoryReadyWebhookPayload,
   error: string,
+  attemptedAt: string,
+  generatedRootOverride?: string,
 ) {
-  const logPath = webhookFailuresPath();
-  await mkdir(dirname(logPath), { recursive: true });
-  await appendFile(
-    logPath,
-    `${JSON.stringify({
-      timestamp: new Date().toISOString(),
-      webhook_url: webhookUrl,
-      storyId: payload.storyId,
-      project_id: payload.project_id,
-      event: payload.event,
-      error,
-      payload,
-    })}\n`,
-    'utf-8',
+  const failureId = gearsWebhookFailureId(webhookUrl, payload, attemptedAt);
+  await webhookFailureJobRepository(generatedRootOverride).append({
+    schema_version: 'story-agent-gears-webhook-failure-job/v1',
+    failure_id: failureId,
+    timestamp: attemptedAt,
+    attempted_at: attemptedAt,
+    webhook_url: sanitizeWebhookUrl(webhookUrl),
+    storyId: payload.storyId,
+    project_id: payload.project_id,
+    event: payload.event,
+    error: error.slice(0, 2_000),
+    payload,
+  });
+}
+
+function webhookFailureJobRepository(
+  generatedRootOverride?: string,
+): FileJobRepository<GearsWebhookFailureJobEvent> {
+  return new FileJobRepository(
+    generatedRootOverride ?? generatedRoot(),
+    'webhook_failures.log',
+    {
+      normalize_item: normalizeWebhookFailureJobEvent,
+      item_id: item => item.failure_id,
+    },
   );
+}
+
+function normalizeWebhookFailureJobEvent(value: unknown): GearsWebhookFailureJobEvent | undefined {
+  if (!isRecord(value) || !isRecord(value.payload)) return undefined;
+  const payload = value.payload as unknown as GearsStoryReadyWebhookPayload;
+  if (
+    payload.event !== 'story_ready'
+    || typeof payload.storyId !== 'string'
+    || typeof payload.timestamp !== 'string'
+    || typeof value.webhook_url !== 'string'
+    || typeof value.error !== 'string'
+  ) return undefined;
+  const normalizedPayload = JSON.parse(JSON.stringify(payload)) as GearsStoryReadyWebhookPayload;
+  const attemptedAt = typeof value.attempted_at === 'string'
+    ? value.attempted_at
+    : normalizedPayload.timestamp;
+  const failureId = typeof value.failure_id === 'string' && /^[a-f0-9]{64}$/.test(value.failure_id)
+    ? value.failure_id
+    : gearsWebhookFailureId(value.webhook_url, normalizedPayload, attemptedAt);
+  return {
+    schema_version: 'story-agent-gears-webhook-failure-job/v1',
+    failure_id: failureId,
+    timestamp: attemptedAt,
+    attempted_at: attemptedAt,
+    webhook_url: sanitizeWebhookUrl(value.webhook_url),
+    storyId: normalizedPayload.storyId,
+    project_id: typeof value.project_id === 'string' ? value.project_id : normalizedPayload.project_id,
+    event: 'story_ready',
+    error: value.error.slice(0, 2_000),
+    payload: normalizedPayload,
+  };
+}
+
+function gearsWebhookFailureId(
+  webhookUrl: string,
+  payload: GearsStoryReadyWebhookPayload,
+  attemptedAt: string,
+): string {
+  return createHash('sha256').update(JSON.stringify([
+    payload.event,
+    payload.storyId,
+    payload.project_id ?? null,
+    attemptedAt,
+    webhookUrl,
+  ])).digest('hex');
+}
+
+function sanitizeWebhookUrl(webhookUrl: string): string {
+  try {
+    const parsed = new URL(webhookUrl);
+    parsed.username = '';
+    parsed.password = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return '[invalid-webhook-url]';
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function delay(ms: number) {

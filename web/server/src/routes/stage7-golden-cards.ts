@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Router } from 'express';
 import { success } from '@shared/types.js';
+import { requireProductAccess } from '../middleware/product-access.js';
 import {
   getStage7GoldenCardReviewWorkspace,
   inspectStage7GoldenCardReview,
@@ -28,49 +29,50 @@ function resolveDefaultRepoRoot(): string {
 
 export function createStage7GoldenCardsRouter(repoRoot = resolveDefaultRepoRoot()): Router {
   const router = Router();
-  router.get('/review-intake', async (req, res, next) => {
+  const internalTool = { feature_flag: 'internal_story_tools' } as const;
+  router.get('/review-intake', requireProductAccess('material:review'), async (req, res, next) => {
     try {
       res.json(success(await getStage7GoldenCardReviewWorkspace({ repoRoot, cardId: req.query.card_id })));
     } catch (error) {
       next(error);
     }
   });
-  router.post('/review-intake/validate', async (req, res, next) => {
+  router.post('/review-intake/validate', requireProductAccess('material:review'), async (req, res, next) => {
     try {
       res.json(success(await inspectStage7GoldenCardReview({ repoRoot, request: req.body })));
     } catch (error) {
       next(error);
     }
   });
-  router.get('/candidate-expansion', async (req, res, next) => {
+  router.get('/candidate-expansion', requireProductAccess('material:review', internalTool), async (req, res, next) => {
     try {
       res.json(success(await getStage7GoldenCardCandidateWorkspace({ repoRoot, slotId: req.query.slot_id })));
     } catch (error) {
       next(error);
     }
   });
-  router.post('/candidate-expansion/validate', async (req, res, next) => {
+  router.post('/candidate-expansion/validate', requireProductAccess('material:review', internalTool), async (req, res, next) => {
     try {
       res.json(success(await inspectStage7GoldenCardCandidate({ repoRoot, request: req.body })));
     } catch (error) {
       next(error);
     }
   });
-  router.get('/review-signature', async (req, res, next) => {
+  router.get('/review-signature', requireProductAccess('material:sign', internalTool), async (req, res, next) => {
     try {
       res.json(success(await getStage7GoldenCardReviewSignatureWorkspace({ repoRoot, cardId: req.query.card_id })));
     } catch (error) {
       next(error);
     }
   });
-  router.post('/review-signature/validate', async (req, res, next) => {
+  router.post('/review-signature/validate', requireProductAccess('material:sign', internalTool), async (req, res, next) => {
     try {
       res.json(success(await inspectStage7GoldenCardReviewSignature({ repoRoot, request: req.body })));
     } catch (error) {
       next(error);
     }
   });
-  router.get('/operations', async (_req, res, next) => {
+  router.get('/operations', requireProductAccess('material:operations', internalTool), async (_req, res, next) => {
     try {
       res.json(success(await getStage7MaterialOperations({ repoRoot })));
     } catch (error) {

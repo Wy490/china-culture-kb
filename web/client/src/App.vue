@@ -1,40 +1,94 @@
 <template>
   <div id="app-root">
     <header class="app-header">
-      <h1 class="app-title">AI影视工作台</h1>
-      <nav class="app-nav">
-        <RouterLink to="/">首页</RouterLink>
-        <RouterLink to="/knowledge">素材库</RouterLink>
-        <RouterLink to="/projects">项目指挥</RouterLink>
-        <RouterLink to="/supplement-tasks">素材补充</RouterLink>
-        <RouterLink to="/knowledge-writeback-queue">写回队列</RouterLink>
-        <RouterLink to="/search">素材搜索</RouterLink>
-        <RouterLink to="/story/new">单片短片</RouterLink>
-        <RouterLink to="/story/stage6-revisions">修订工作台</RouterLink>
-        <RouterLink to="/story/stage6-intake">真实输入接入</RouterLink>
-        <RouterLink to="/story/stage6-preflight">批次预检</RouterLink>
-        <RouterLink to="/story/stage6-exit-audit">退出审计</RouterLink>
-        <RouterLink to="/story/stage6-package-inspector">初始包检查</RouterLink>
-        <RouterLink to="/story/stage6-operations">Stage 6 总控</RouterLink>
-        <RouterLink to="/story/stage6-table-read-inspector">桌读证据</RouterLink>
-        <RouterLink to="/story/stage6-exit-review-signature">退出签名</RouterLink>
-        <RouterLink to="/story/stage7-golden-card-review">黄金卡审稿</RouterLink>
-        <RouterLink to="/story/stage7-golden-card-expansion">候选补齐</RouterLink>
-        <RouterLink to="/story/stage7-golden-card-signature">黄金卡签名</RouterLink>
-        <RouterLink to="/story/stage7-operations">Stage 7 总控</RouterLink>
-        <RouterLink to="/story/stage8-blind-review-intake">Stage 8 盲评</RouterLink>
-        <RouterLink to="/story/stage8-blind-review-signature">盲评签名</RouterLink>
-        <RouterLink to="/story/stage8-finalization-preflight">终局预检</RouterLink>
-        <RouterLink to="/story/stage8-durable-release-import">Release 导入</RouterLink>
-        <RouterLink to="/story/stage8-operations">Stage 8 总控</RouterLink>
-        <RouterLink to="/ai-comic-series/new">漫剧系列</RouterLink>
+      <RouterLink class="app-title" to="/">AI影视工作台</RouterLink>
+      <nav class="app-nav" aria-label="一级导航" data-testid="primary-navigation">
+        <RouterLink
+          v-for="item in primaryNavigation"
+          :key="item.id"
+          :to="item.to"
+          :class="{ 'app-nav__link--active': item.id === activeWorkspace }"
+          :aria-current="item.id === activeWorkspace ? 'page' : undefined"
+        >
+          {{ item.label }}
+        </RouterLink>
       </nav>
+      <div class="app-role" data-testid="product-role">
+        <span>{{ productRoleDefinition.label }}</span>
+        <select v-if="productRolePreviewEnabled" :value="productRole" aria-label="角色视图" @change="changeRolePreview">
+          <option v-for="roleOption in productRoles" :key="roleOption.id" :value="roleOption.id">
+            {{ roleOption.label }}
+          </option>
+        </select>
+      </div>
     </header>
+    <nav v-if="secondaryNavigation.length" class="app-subnav" aria-label="二级导航">
+      <span class="app-subnav__label">{{ activeWorkspaceLabel }}</span>
+      <RouterLink v-for="item in standardSecondaryNavigation" :key="item.id" :to="item.to">
+        {{ item.label }}
+      </RouterLink>
+      <details v-if="internalSecondaryNavigation.length" class="app-subnav__internal">
+        <summary>内部工具</summary>
+        <div>
+          <RouterLink v-for="item in internalSecondaryNavigation" :key="item.id" :to="item.to">
+            {{ item.label }}
+          </RouterLink>
+        </div>
+      </details>
+    </nav>
     <main class="app-main">
       <RouterView />
     </main>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import {
+  PRODUCT_ROLES,
+  PRODUCT_WORKSPACE_NAVIGATION,
+  productNavigationForWorkspace,
+  productWorkspaceForPath,
+  type ProductRoleId,
+} from '@shared/product-navigation';
+import {
+  productNavigationAccess,
+  productAccessLifecycleState,
+  productRole,
+  productRoleDefinition,
+  productRolePreviewEnabled,
+  setProductRolePreview,
+} from '@/product-access';
+
+const route = useRoute();
+const router = useRouter();
+const primaryNavigation = PRODUCT_WORKSPACE_NAVIGATION;
+const productRoles = PRODUCT_ROLES;
+const activeWorkspace = computed(() => productWorkspaceForPath(route.path));
+const activeWorkspaceLabel = computed(() => (
+  PRODUCT_WORKSPACE_NAVIGATION.find(item => item.id === activeWorkspace.value)?.label ?? '创作'
+));
+const secondaryNavigation = computed(() => productNavigationForWorkspace(
+  activeWorkspace.value,
+  productNavigationAccess.value,
+));
+const standardSecondaryNavigation = computed(() => secondaryNavigation.value.filter(item => !item.feature_flag));
+const internalSecondaryNavigation = computed(() => secondaryNavigation.value.filter(item => item.feature_flag));
+
+watch(productAccessLifecycleState, (state) => {
+  if (state === 'unauthenticated' && route.name !== 'AccessRequired') {
+    void router.replace({ name: 'AccessRequired', query: { return_to: route.fullPath } });
+  }
+});
+
+async function changeRolePreview(event: Event) {
+  const role = (event.target as HTMLSelectElement).value as ProductRoleId;
+  setProductRolePreview(role);
+  const destination = PRODUCT_ROLES.find(item => item.id === role)?.default_route ?? '/projects';
+  await router.push(destination);
+}
+</script>
 
 <style scoped>
 .app-root {
@@ -56,6 +110,8 @@
   font-size: 22px;
   margin: 0;
   white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
 }
 
 .app-nav {
@@ -75,8 +131,90 @@
 }
 
 .app-nav a:hover,
-.app-nav a.router-link-active {
+.app-nav a.app-nav__link--active {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.app-role {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #c7d7e0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.app-role span {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.app-role select {
+  padding: 5px 7px;
+  border: 1px solid #6d8291;
+  border-radius: 6px;
+  color: #eff6f8;
+  background: #263946;
+}
+
+.app-subnav {
+  min-height: 46px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #d9e1e6;
+  background: #f8fafb;
+}
+
+.app-subnav__label {
+  margin-right: 8px;
+  color: #63717d;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.app-subnav a,
+.app-subnav summary {
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: #344652;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.app-subnav a:hover,
+.app-subnav a.router-link-exact-active {
+  color: #145f5b;
+  background: #e4f0ee;
+}
+
+.app-subnav__internal {
+  position: relative;
+  margin-left: auto;
+}
+
+.app-subnav__internal summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-subnav__internal > div {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 230px;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d2dce1;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(26, 49, 62, 0.18);
 }
 
 .app-main {
@@ -94,6 +232,16 @@
   .app-nav {
     flex-wrap: wrap;
     justify-content: center;
+  }
+  .app-role {
+    margin-left: 0;
+  }
+  .app-subnav {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .app-subnav__internal {
+    margin-left: 0;
   }
   .app-main {
     padding: 16px;

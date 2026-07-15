@@ -399,6 +399,7 @@ export const StoryDetectedCharacterSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const StoryPlanRequestSchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
   entry_name: z.string().min(1, 'entry_name cannot be empty'),
   original_user_query: z.string().optional(),
 });
@@ -408,6 +409,7 @@ export const StoryPlanRequestSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const StoryGenerateRequestSchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
   entry_name: z.string().optional(),
   original_user_query: z.string().optional(),
   generation_type: GenerationTypeSchema.optional(),
@@ -996,6 +998,7 @@ export const Stage6FeedbackDraftCreateRequestSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const EntryDetailQuerySchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
   name: z.string().min(1, 'name cannot be empty'),
 });
 
@@ -1004,10 +1007,15 @@ export const EntryDetailQuerySchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const EntrySearchQuerySchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
   keywords: z.string().optional(),
   type: z.string().optional(),
   province: z.string().optional(),
   region: z.string().optional(),
+});
+
+export const DomainPackQuerySchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -1015,6 +1023,7 @@ export const EntrySearchQuerySchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const EntryMatchRequestSchema = z.object({
+  domain: z.string().trim().regex(/^[a-z][a-z0-9_]{1,63}$/, 'domain must be a lowercase domain identifier').optional(),
   query: z.string().min(1, 'query cannot be empty'),
   limit: z.number().int().min(1).max(20).optional().default(5),
   preferred_province: z.string().optional(),
@@ -2486,3 +2495,40 @@ export const AiComicEpisodeGenerateRequestSchema = z.object({
   data => data.episode_no <= data.series_plan.episode_count,
   { message: 'episode_no cannot exceed series_plan.episode_count', path: ['episode_no'] },
 );
+
+// ---------------------------------------------------------------------------
+// Product resource ownership migration — explicit review + optimistic lock
+// ---------------------------------------------------------------------------
+
+const ProductResourceOwnershipMigrationOwnershipSchema = z.object({
+  schema_version: z.literal('story-agent-product-resource-ownership/v1'),
+  organization_id: z.string().trim().min(1).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  owner_actor_id: z.string().trim().min(1).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  member_actor_ids: z.array(z.string().trim().min(1).max(160).regex(/^[a-zA-Z0-9._:-]+$/)).max(200),
+}).strict().superRefine((ownership, context) => {
+  if (new Set(ownership.member_actor_ids).size !== ownership.member_actor_ids.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['member_actor_ids'], message: 'member_actor_ids must be unique' });
+  }
+  if (ownership.member_actor_ids.includes(ownership.owner_actor_id)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['member_actor_ids'], message: 'owner must not be duplicated as a member' });
+  }
+});
+
+export const ProductResourceOwnershipMigrationRequestSchema = z.object({
+  schema_version: z.literal('story-agent-product-resource-ownership-migration-request/v1'),
+  migration_id: z.string().trim().min(8).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  resource_type: z.enum(['story_project', 'series_project']),
+  resource_id: z.string().trim().min(1).max(180),
+  expected_metadata_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  ownership: ProductResourceOwnershipMigrationOwnershipSchema,
+  review_reference: z.string().trim().min(8).max(300),
+  operator_confirmation: z.literal('ownership_reviewed'),
+  dry_run: z.boolean().optional().default(true),
+}).strict().superRefine((request, context) => {
+  const valid = request.resource_type === 'story_project'
+    ? /^\d{8}-story-[0-9a-z]+--[a-z_]+$/.test(request.resource_id)
+    : /^\d{8}-series-[0-9a-z]+$/.test(request.resource_id);
+  if (!valid) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['resource_id'], message: 'resource_id does not match resource_type' });
+  }
+});

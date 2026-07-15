@@ -28,7 +28,7 @@
 
 ## 3. M1 去重候选、内容组与片型映射
 
-状态枚举：`batch_1_complete` 表示本轮已完成联网核验、正式写入和机器检查；`planned` 只表示确定性候选，不计正式内容。`batch_1_complete` 不等于黄金卡或真实人工审稿通过。
+状态枚举：`batch_1_complete`、`batch_2_complete`、`batch_3_complete`、`batch_4_complete`、`batch_5_complete` 只表示对应批次已完成来源研究、写入、lint/audit 和固定检索，不表示真人来源/文化审稿完成；`planned` 只表示确定性候选，不计正式内容。当前 23 条真人审稿为 0/23，因此 M1 正式验收仍未完成。
 
 | 顺序 | 地区 | 原子候选 | 内容组 | 推荐 VideoType | 去重/边界提示 | 状态 |
 |---:|---|---|---|---|---|---|
@@ -37,24 +37,24 @@
 | 3 | 澳门 | 鱼行醉龙节 | 民俗、节庆与地方生活 | `heritage_promo`、`documentary_short`、`social_short` | 限澳门鲜鱼行传统；源流与神异故事分层 | batch_1_complete |
 | 4 | 澳门 | 土生葡人美食烹饪技艺 | 饮食、器物与日常技艺 | `explainer_video`、`documentary_short`、`education_training` | 写技艺系统，不把单一菜谱当唯一标准 | batch_1_complete |
 | 5 | 台湾 | 大溪木艺 | 非遗、工艺、地方产业 | `heritage_promo`、`documentary_short`、`education_training` | 限大溪木器产业链，不等同全台湾木雕 | batch_1_complete |
-| 6 | 台湾 | 歌仔戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 区分历史形成、剧种规范和当代表演 | planned |
-| 7 | 重庆 | 川江号子 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 限川江船工劳动号子，不泛化全部号子 | planned |
-| 8 | 福建 | 泉州提线木偶戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 单独写提线木偶，不并入全部木偶戏 | planned |
-| 9 | 广西 | 壮族织锦技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 区分区域纹样和传承人口述 | planned |
-| 10 | 海南 | 黎族传统纺染织绣技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`documentary_short`、`education_training` | 社区、纹样、传承人和作品使用需授权 | planned |
-| 11 | 河南 | 钧瓷烧制技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 限钧瓷工艺；窑变不作神秘化断言 | planned |
-| 12 | 黑龙江 | 赫哲族伊玛堪 | 传说、文学与民间故事；地域声音 | `documentary_short`、`children_story`、`ai_comic_drama` | 口头传统不等同历史实录；社区授权优先 | planned |
-| 13 | 湖北 | 汉绣 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 纹样寓意逐项找出处，不机器推断 | planned |
-| 14 | 吉林 | 朝鲜族农乐舞 | 非遗、工艺、节庆生活 | `heritage_promo`、`documentary_short`、`social_short` | 限中国朝鲜族传承语境；表演拍摄需授权 | planned |
-| 15 | 内蒙古 | 蒙古族长调民歌 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 跨地域传统需标版本；歌词和录音有版权 | planned |
-| 16 | 宁夏 | 贺兰砚制作技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 区分石材地质事实、工艺和市场称谓 | planned |
-| 17 | 青海 | 热贡艺术 | 非遗、工艺、公共文化 | `heritage_promo`、`documentary_short`、`explainer_video` | 原子写艺术传统；宗教图像与仪式需授权 | planned |
-| 18 | 上海 | 海派旗袍制作技艺 | 非遗、工艺、城市生活 | `heritage_promo`、`documentary_short`、`education_training` | 不把“海派”写成单一起源或固定样式 | planned |
-| 19 | 四川 | 蜀锦织造技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 区分蜀锦、蜀绣和现代文创 | planned |
-| 20 | 天津 | 杨柳青木版年画 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`children_story` | 区分传统套印、彩绘和现代复制品 | planned |
-| 21 | 西藏 | 藏戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 仪式、流派、唱腔和面具寓意逐项核验 | planned |
-| 22 | 新疆 | 维吾尔木卡姆艺术 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 区分十二木卡姆与各地木卡姆版本 | planned |
-| 23 | 浙江 | 龙泉青瓷传统烧制技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 区分历史窑址、现代技艺和商业产品 | planned |
+| 6 | 台湾 | 歌仔戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 区分历史形成、剧种规范和当代表演 | batch_2_complete |
+| 7 | 重庆 | 川江号子 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 限川江船工劳动号子，不泛化全部号子 | batch_2_complete |
+| 8 | 福建 | 泉州提线木偶戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 单独写提线木偶，不并入全部木偶戏 | batch_2_complete |
+| 9 | 广西 | 壮族织锦技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 区分区域纹样和传承人口述 | batch_2_complete |
+| 10 | 海南 | 黎族传统纺染织绣技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`documentary_short`、`education_training` | 社区、纹样、传承人和作品使用需授权 | batch_2_complete |
+| 11 | 河南 | 钧瓷烧制技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 限钧瓷工艺；窑变不作神秘化断言 | batch_3_complete |
+| 12 | 黑龙江 | 赫哲族伊玛堪 | 传说、文学与民间故事；地域声音 | `documentary_short`、`children_story`、`ai_comic_drama` | 口头传统不等同历史实录；社区授权优先 | batch_3_complete |
+| 13 | 湖北 | 汉绣 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 纹样寓意逐项找出处，不机器推断 | batch_3_complete |
+| 14 | 吉林 | 朝鲜族农乐舞 | 非遗、工艺、节庆生活 | `heritage_promo`、`documentary_short`、`social_short` | 限中国朝鲜族传承语境；表演拍摄需授权 | batch_3_complete |
+| 15 | 内蒙古 | 蒙古族长调民歌 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 跨地域传统需标版本；歌词和录音有版权 | batch_3_complete |
+| 16 | 宁夏 | 贺兰砚制作技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 区分石材地质事实、工艺和市场称谓 | batch_4_complete |
+| 17 | 青海 | 热贡艺术 | 非遗、工艺、公共文化 | `heritage_promo`、`documentary_short`、`explainer_video` | 原子写艺术传统；宗教图像与仪式需授权 | batch_4_complete |
+| 18 | 上海 | 海派旗袍制作技艺 | 非遗、工艺、城市生活 | `heritage_promo`、`documentary_short`、`education_training` | 不把“海派”写成单一起源或固定样式 | batch_4_complete |
+| 19 | 四川 | 蜀锦织造技艺 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`education_training` | 区分蜀锦、蜀绣和现代文创 | batch_4_complete |
+| 20 | 天津 | 杨柳青木版年画 | 非遗、工艺、地方生活 | `heritage_promo`、`explainer_video`、`children_story` | 区分传统套印、彩绘和现代复制品 | batch_4_complete |
+| 21 | 西藏 | 藏戏 | 非遗、工艺、地方戏曲 | `heritage_promo`、`documentary_short`、`ai_comic_drama` | 仪式、流派、唱腔和面具寓意逐项核验 | batch_5_complete |
+| 22 | 新疆 | 维吾尔木卡姆艺术 | 非遗、工艺、地域声音 | `heritage_promo`、`documentary_short`、`education_training` | 区分十二木卡姆与各地木卡姆版本 | batch_5_complete |
+| 23 | 浙江 | 龙泉青瓷传统烧制技艺 | 非遗、工艺、器物 | `heritage_promo`、`explainer_video`、`education_training` | 区分历史窑址、现代技艺和商业产品 | batch_5_complete |
 
 候选结构检查：23 条中 22 条属于民俗、饮食、工艺、戏曲、文学口传、地域声音或当代传承；23 条均有现实地点、流程或可见动作方向，满足 M1 对结构性缺口的优先要求。
 
@@ -86,19 +86,57 @@
 - 民族、宗教与社区内容：把社区授权、仪式禁拍、现实传承人肖像和声音权列为强制待核项。
 - 饮食：区分历史演变、家庭/店家版本和可公开工序，不写唯一正宗配方。
 
+### 4.4 第二批 5 条已核验来源主体
+
+| 条目 | B 级或以上来源 | 独立交叉来源 | 主要保留边界 |
+|---|---|---|---|
+| 歌仔戏 | 台湾传统艺术中心、文化资产局、台湾历史博物馆 | 国立成功大学学术研究 | 单一起源、戏班谱系、曲调版本、剧本与影音权利 |
+| 川江号子 | 中国非遗数字博物馆、重庆市文化和旅游发展委员会 | 四川大学艺术学院 | 航段版本、歌词曲调、船工口述、声音权与水上安全 |
+| 泉州提线木偶戏 | 中国非遗数字博物馆、泉州市提线木偶戏传承保护中心、UNESCO | 三个独立公共文化主体交叉 | 古代源流、线规细节、傀儡调版本、木偶与演出版权 |
+| 壮族织锦技艺 | 中国非遗数字博物馆、广西文旅厅、文化和旅游部专题 | 百色地方公共机构现实工坊资料 | 早期源流、分类统计、地区纹样、社区知识与作品权利 |
+| 黎族传统纺染织绣技艺 | UNESCO、中国非遗数字博物馆 | 《中国非物质文化遗产》学术论文 | 方言群体差异、纹样/染方、社区授权；2009与2024名录状态分层 |
+
+### 4.5 第三批 5 条已核验来源主体
+
+| 条目 | B 级或以上来源 | 独立交叉来源 | 主要保留边界 |
+|---|---|---|---|
+| 钧瓷烧制技艺 | 中国非遗数字博物馆、钧官窑址博物馆/许昌市政府、河南省政府 | 遗址博物馆与省级公共资料交叉 | 官窑源流、固定工序数、釉方、窑变结果和鉴定权 |
+| 赫哲族伊玛堪 | UNESCO、中国非遗数字博物馆、黑龙江文旅厅/省政府 | 社区保护与地方项目资料 | 2025转名录后仍保留风险；故事不作史实，赫哲语与社区知识优先授权 |
+| 汉绣 | 中国非遗数字博物馆、湖北省非遗网、武汉市政府保护文件 | 武汉纺织大学研究与传习资料 | 早期源流、针法数量、性别分工口述、纹样与底稿版权 |
+| 中国朝鲜族农乐舞 | UNESCO、中国非遗数字博物馆、吉林省政府 | 汪清保护单位、展示馆和培训实践 | 不以象帽舞代替全部农乐舞；跨国家/跨地区版本不合并 |
+| 蒙古族长调民歌 | UNESCO、中国非遗数字博物馆、中国文化网 | 内蒙古大学蒙古学研究中心 | 中蒙联合申报与地方版本并列；歌词、礼序、声线和录音权利 |
+
+### 4.6 第四批 5 条已核验来源主体
+
+| 条目 | B 级或以上来源 | 独立交叉来源 | 主要保留边界 |
+|---|---|---|---|
+| 贺兰砚制作技艺 | 中国非遗数字博物馆、宁夏回族自治区文化和旅游厅 | 宁夏回族自治区政协公开资料 | 地方志原文、合法石材来源、矿点、师承谱系和性能评价 |
+| 热贡艺术 | UNESCO、中国非遗数字博物馆、青海省人民政府 | 国际名录、国家平台与地方政府三方交叉 | 村落/寺院版本、宗教图像、仪轨、材料配方和社区许可 |
+| 海派旗袍制作技艺 | 上海市文化和旅游局、市文旅推广网 | 上海大学博物馆、东华大学 | 与龙凤旗袍国家级项目分列；版型、身体数据、衣件口述与权利 |
+| 蜀锦织造技艺 | 中国非遗数字博物馆、四川省人民政府名录、四川省经信厅 | 成都博物馆、成都纺织高等专科学校古丝绸研究院 | 蜀锦/蜀绣分列；花楼织机版本、历史纹样、复织和现代产品 |
+| 杨柳青木版年画 | 中国非遗数字博物馆、天津市人民政府、天津市文化和旅游局 | 国家与地方公共机构交叉 | 古版/复刻/新印/新作分层；逐画题名寓意、高清版数据与版权 |
+
+### 4.7 第五批 3 条已核验来源主体
+
+| 条目 | B 级或以上来源 | 独立交叉来源 | 主要保留边界 |
+|---|---|---|---|
+| 藏戏 | UNESCO、中国非遗数字博物馆 | 西藏自治区人民政府 | 多流派分列；起源传说、面具寓意、唱腔、仪式和戏班授权 |
+| 新疆维吾尔木卡姆艺术 | UNESCO、中国非遗数字博物馆 | 新疆自治区教育厅、自治区人民政府公报 | 十二/刀郎/吐鲁番/哈密分列；唱词、声线、即兴和社区权利 |
+| 龙泉青瓷传统烧制技艺 | 中国非遗数字博物馆、浙江省文化广电和旅游厅 | 龙泉市人民政府规划资料 | 古窑址/当代技艺/商业产品分层；釉方、窑温、鉴定与高温安全 |
+
 ## 5. 批次顺序与退出门槛
 
 | 批次 | 条目 | 批次目的 | 退出门槛 |
 |---|---|---|---|
-| 1（5 条） | 香港 2、澳门 2、台湾 1 | 启动全部零条目地区 | 5 条均 ≥3 来源、≥1 A/B、≥2 主体；lint、audit、去重复核通过 |
-| 2（5 条） | 台湾 1、重庆、福建、广西、海南 | 使台湾达到 2 条并启动 4 个单条地区 | 同上；民族/社区授权边界单列 |
-| 3（5 条） | 河南、黑龙江、湖北、吉林、内蒙古 | 补工艺、口传、地域声音 | 同上；传说/口述不得史实化 |
-| 4（5 条） | 宁夏、青海、上海、四川、天津 | 补工艺、器物、城市生活 | 同上；宗教图像与作品权利单列 |
-| 5（3 条） | 西藏、新疆、浙江 | 完成 M1 34/34 地区至少 2 条 | 全量 audit、固定检索、StoryBlueprint 边界回归；不写回生成故事 |
+| 1（5 条） | 香港 2、澳门 2、台湾 1 | 启动全部零条目地区 | 机器完成：5 条均 ≥3 来源、≥1 A/B、≥2 主体；lint、audit、去重复核通过；真人审稿待处理 |
+| 2（5 条） | 台湾 1、重庆、福建、广西、海南 | 使台湾及 4 个单条地区达到 2 条 | 机器完成：5 条均 ≥3 来源、≥1 A/B、≥2 主体；民族/社区授权边界已单列；真人审稿待处理 |
+| 3（5 条） | 河南、黑龙江、湖北、吉林、内蒙古 | 补工艺、口传、地域声音，并使五地达到 2 条 | 机器完成：5 条均 ≥3 来源、≥1 A/B、≥2 主体；传说/口述与事实分层；真人审稿待处理 |
+| 4（5 条） | 宁夏、青海、上海、四川、天津 | 补工艺、器物、城市生活，并使五地达到 2 条 | 机器完成：5 条均 ≥3 来源、≥1 A/B、≥2 主体；权利边界已单列；真人审稿待处理 |
+| 5（3 条） | 西藏、新疆、浙江 | 机器口径达到 34/34 地区至少 2 条 | 机器完成：3 条均 4 来源、含 A/B 级且 ≥2 主体；全量 audit 与固定检索通过；真人审稿待处理 |
 
 ## 6. 本轮不计入项
 
 - 本文 23 个候选不计正式条目。
-- 后四批的来源路由不等于来源已核验。
+- 23 条候选均已完成来源研究、写入和机器验证；真人来源/文化审稿仍为 0/23，M1 正式验收不得标记完成。
 - 生产评分和片型 readiness 只用于检查缺口，不等于人工审稿或黄金卡。
 - 首批条目不会被标记为黄金卡、真实人工审稿通过或生产素材卡通过。

@@ -1,9 +1,10 @@
 // web/server/src/routes/outline.ts — Story outline analysis route
 
-import { timingSafeEqual } from 'node:crypto';
-import type { Request, Response, NextFunction } from 'express';
-import { Router } from 'express';
-import { ErrorCodes, fail } from '@shared/types.js';
+import { Router, type Request } from 'express';
+import { requireCallbackSecret } from '../middleware/callback-auth.js';
+import { requireProductAccess } from '../middleware/product-access.js';
+import { ErrorCodes } from '@shared/types.js';
+import type { ProductAccessContext } from '@shared/product-access.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import {
   AiComicEpisodeContextPreviewRequestSchema,
@@ -89,8 +90,62 @@ import {
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
+import {
+  filterProductResourcesForRequest,
+  productResourceOwnershipForActor,
+} from '../services/product-resource-access-service.js';
 
 export const outlineRouter = Router();
+
+const SERIES_PROJECT_PATH_PATTERN = /^\/ai-comic-series-projects\/(\d{8}-series-[0-9a-z]+)(?:\/|$)/;
+
+function seriesProjectResourceIdsFromRequest(req: Request): string[] {
+  const ids: string[] = [];
+  const pathProjectId = SERIES_PROJECT_PATH_PATTERN.exec(req.path)?.[1];
+  if (pathProjectId) ids.push(pathProjectId);
+  for (const value of [req.body?.series_project_id, req.body?.seriesProjectId]) {
+    if (typeof value === 'string' && value.trim()) ids.push(value.trim());
+  }
+  return [...new Set(ids)];
+}
+
+const validateSeedanceCallbackSecret = requireCallbackSecret({
+  envName: 'SEEDANCE_CALLBACK_SECRET',
+  explicitHeaders: ['x-seedance-callback-secret'],
+  label: 'Seedance callback',
+});
+const validateGearsCallbackSecret = requireCallbackSecret({
+  envName: 'GEARS_CALLBACK_SECRET',
+  explicitHeaders: ['x-gears-callback-secret'],
+  label: 'GEARS callback',
+});
+
+const seriesProjectResource = {
+  type: 'series_project' as const,
+  ids: seriesProjectResourceIdsFromRequest,
+};
+const requireSeriesRead = requireProductAccess('project:read', { resource: seriesProjectResource });
+const requireStoryCreate = requireProductAccess('story:create', { resource: seriesProjectResource });
+const requireSeriesProductionWrite = requireProductAccess('production:write', { resource: seriesProjectResource });
+
+outlineRouter.use((req, res, next) => {
+  if (req.path.endsWith('/gears-callback') || req.path.endsWith('/seedance-production-callback')) {
+    next();
+    return;
+  }
+  if (req.method === 'GET') {
+    if (req.path.startsWith('/ai-comic-series-projects')) {
+      requireSeriesRead(req, res, next);
+      return;
+    }
+    next();
+    return;
+  }
+  const productionWrite = req.path.includes('/production-readiness')
+    || req.path.includes('/gears-jobs')
+    || req.path.includes('/seedance');
+  (productionWrite ? requireSeriesProductionWrite : requireStoryCreate)(req, res, next);
+});
 
 // POST /api/story-outline/analyze — analyze story outline for subject extraction
 outlineRouter.post('/analyze', validateBody(StoryOutlineAnalyzeRequestSchema), async (req, res, next) => {
@@ -118,7 +173,10 @@ outlineRouter.get('/ai-comic-series-projects', async (req, res, next) => {
     const result = await listAiComicSeriesProjects({
       includeArchived: req.query.include_archived === '1' || req.query.include_archived === 'true',
     });
-    res.json(result);
+    const data = result.data
+      ? await filterProductResourcesForRequest(req, 'series_project', result.data, item => item.series_project_id)
+      : result.data;
+    res.json({ ...result, data });
   } catch (err) {
     next(err);
   }
@@ -127,7 +185,11 @@ outlineRouter.get('/ai-comic-series-projects', async (req, res, next) => {
 // POST /api/story-outline/ai-comic-series-projects — save an AI comic series plan
 outlineRouter.post('/ai-comic-series-projects', validateBody(AiComicSeriesProjectSaveRequestSchema), async (req, res, next) => {
   try {
-    const result = await saveAiComicSeriesProject(req.body);
+    const access = res.locals.productAccess as ProductAccessContext | undefined;
+    const accessControl = access?.mode === 'required' && access.actor
+      ? productResourceOwnershipForActor(access.actor)
+      : undefined;
+    const result = await saveAiComicSeriesProject(req.body, { access_control: accessControl });
     res.json(result);
   } catch (err) {
     next(err);
@@ -142,7 +204,11 @@ outlineRouter.post(
   async (req, res, next) => {
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
-      const result = await copyAiComicSeriesProject(seriesProjectId, req.body);
+      const access = res.locals.productAccess as ProductAccessContext | undefined;
+      const accessControl = access?.mode === 'required' && access.actor
+        ? productResourceOwnershipForActor(access.actor)
+        : undefined;
+      const result = await copyAiComicSeriesProject(seriesProjectId, req.body, { access_control: accessControl });
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
@@ -741,62 +807,6 @@ outlineRouter.post(
     }
   },
 );
-
-function validateSeedanceCallbackSecret(req: Request, res: Response, next: NextFunction): void {
-  const expectedSecret = process.env.SEEDANCE_CALLBACK_SECRET?.trim();
-  if (!expectedSecret) {
-    next();
-    return;
-  }
-  const providedSecret = seedanceCallbackSecretFromRequest(req);
-  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
-    next();
-    return;
-  }
-  res.status(401).json(fail(
-    ErrorCodes.VALIDATION_ERROR,
-    'Seedance callback secret is missing or invalid',
-  ));
-}
-
-function validateGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
-  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
-  if (!expectedSecret) {
-    next();
-    return;
-  }
-  const providedSecret = gearsCallbackSecretFromRequest(req);
-  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
-    next();
-    return;
-  }
-  res.status(401).json(fail(
-    ErrorCodes.VALIDATION_ERROR,
-    'GEARS callback secret is missing or invalid',
-  ));
-}
-
-function seedanceCallbackSecretFromRequest(req: Request): string | undefined {
-  const explicit = req.header('x-seedance-callback-secret')?.trim();
-  if (explicit) return explicit;
-  const authorization = req.header('authorization')?.trim();
-  const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim();
-}
-
-function gearsCallbackSecretFromRequest(req: Request): string | undefined {
-  const explicit = req.header('x-gears-callback-secret')?.trim();
-  if (explicit) return explicit;
-  const authorization = req.header('authorization')?.trim();
-  const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim();
-}
-
-function safeEqualText(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
 
 // POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-provider/recover-timeouts — dry-run or mark timed out provider tasks failed
 outlineRouter.post(

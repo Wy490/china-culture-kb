@@ -71,7 +71,7 @@ import {
 } from './generated-health-service.js';
 import { getStoryAgentMvpStatus } from './story-agent-mvp-status-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
-import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
+import { getChinaCultureDomainPackProductionHealthReport } from '../domains/china-culture/domain-pack-production-service.js';
 
 export const GEARS_EXECUTION_JOB_TYPES: GearsExecutionJobType[] = [
   'storyboard_image',
@@ -6560,7 +6560,7 @@ export async function getGearsExecutionWorkerEvidenceBundle(): Promise<GearsExec
   const backlogHandoff = await getStoryAgentBacklogHandoffPackage({ limit: 50 });
   const mvpStatus = await getStoryAgentMvpStatus({ generatedLimit: 50, portfolioLimit: 50 });
   const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
-  const domainPackHealth = getDomainPackProductionHealthReport();
+  const domainPackHealth = getChinaCultureDomainPackProductionHealthReport();
   const documents = [
     workerEvidenceDocument(
       'acceptance_report',

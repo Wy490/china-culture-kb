@@ -17,7 +17,7 @@ import type {
   StoryAgentMvpStatusReport,
 } from '@shared/types.js';
 import { getDomainPackExpansionCandidateReport } from './domain-pack-expansion-service.js';
-import { getDomainPackProductionHealthReport } from './domain-pack-service.js';
+import { getChinaCultureDomainPackProductionHealthReport } from '../domains/china-culture/domain-pack-production-service.js';
 import { getStoryAgentGeneratedGovernancePlan } from './generated-governance-service.js';
 import {
   getStoryAgentBacklogHandoffPackage,
@@ -1629,7 +1629,7 @@ export async function getStoryAgentMvpStatus(
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
     getStoryAgentBacklogHandoffPackage({ limit: options.generatedLimit ?? 50 }),
     getProductionMaterialPackHealthReport(),
-    getDomainPackProductionHealthReport(),
+    getChinaCultureDomainPackProductionHealthReport(),
     getDomainPackExpansionCandidateReport({ includeMarkdown: false }),
     getKnowledgeWritebackQueueMetrics(),
     getProductionReadinessPortfolio({

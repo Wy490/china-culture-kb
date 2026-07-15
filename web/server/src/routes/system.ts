@@ -1,28 +1,33 @@
 // web/server/src/routes/system.ts — System info routes (provinces, types)
 
-import { Router, type NextFunction, type Request, type Response } from 'express';
-import { timingSafeEqual } from 'node:crypto';
-import { mcpReadAllProvinceFiles, mcpParseEntries } from '../services/mcp-proxy.js';
+import { Router } from 'express';
+import {
+  parseChinaCultureEntries as mcpParseEntries,
+  readAllChinaCultureProvinceFiles as mcpReadAllProvinceFiles,
+} from '../domains/china-culture/knowledge-source-adapter.js';
 import { ErrorCodes, fail, success, VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
   DomainPackExpansionReviewStateBulkUpdateRequestSchema,
   DomainPackExpansionReviewStateUpdateRequestSchema,
+  DomainPackQuerySchema,
   GearsJobCallbackRequestSchema,
   GearsExecutionLiveSmokeRunRequestSchema,
   ProductionReadinessPortfolioRunRequestSchema,
+  ProductResourceOwnershipMigrationRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
 } from '@shared/schemas.js';
-import { validateBody } from '../middleware/validate.js';
+import { validateBody, validateQuery } from '../middleware/validate.js';
+import { requireCallbackSecret } from '../middleware/callback-auth.js';
+import { requireProductAccess } from '../middleware/product-access.js';
 import type {
   AIModelProfile,
   KnowledgeWritebackStatus,
   ProvinceInfo,
   SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
-  TypeInfo,
   VideoType,
-  PresentationStyle,
 } from '@shared/types.js';
+import type { ProductResourceOwnershipMigrationRequest } from '@shared/product-access.js';
 import { listModelProfiles } from '../services/model-catalog.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 import {
@@ -52,7 +57,7 @@ import {
   updateDomainPackExpansionReviewState,
   updateDomainPackExpansionReviewStateBulk,
 } from '../services/domain-pack-expansion-service.js';
-import { getDomainPackProductionHealthReport } from '../services/domain-pack-service.js';
+import { getChinaCultureDomainPackProductionHealthReport } from '../domains/china-culture/domain-pack-production-service.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
@@ -63,8 +68,112 @@ import {
 } from '../services/generated-health-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from '../services/knowledge-writeback-queue-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
+import {
+  getProductAccessContext,
+  getProductAccessReadiness,
+  getProductLoginHandoff,
+  listProductAccessAuditEvents,
+} from '../services/product-access-service.js';
+import {
+  getProductResourceOwnershipAuditReport,
+  migrateProductResourceOwnership,
+} from '../services/product-resource-access-service.js';
+import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 
 export const systemRouter = Router();
+
+const validateSystemGearsCallbackSecret = requireCallbackSecret({
+  envName: 'GEARS_CALLBACK_SECRET',
+  explicitHeaders: ['x-gears-callback-secret'],
+  label: 'GEARS callback',
+});
+
+systemRouter.get('/access-readiness', (_req, res) => {
+  res.json(success(getProductAccessReadiness()));
+});
+
+systemRouter.get('/login-handoff', (req, res) => {
+  res.json(success(getProductLoginHandoff(req.query.return_to)));
+});
+
+systemRouter.get('/access-context', requireProductAccess('project:read'), (req, res) => {
+  res.json(success(getProductAccessContext(req)));
+});
+
+systemRouter.get(
+  '/access-audit',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  (req, res) => {
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : 100;
+    res.json(success(listProductAccessAuditEvents(Number.isFinite(limit) ? limit : 100)));
+  },
+);
+
+systemRouter.post(
+  '/resource-access-migrations',
+  requireProductAccess('system:operate', { feature_flag: 'internal_story_tools' }),
+  validateBody(ProductResourceOwnershipMigrationRequestSchema),
+  async (req, res, next) => {
+    try {
+      const actor = getProductAccessContext(req).actor;
+      if (!actor) {
+        res.status(401).json(fail(ErrorCodes.ACCESS_UNAUTHENTICATED, 'Authenticated migration operator is required'));
+        return;
+      }
+      const result = await migrateProductResourceOwnership({
+        request: req.body as ProductResourceOwnershipMigrationRequest,
+        actor,
+      });
+      if (!result.dry_run && result.blockers.length > 0) {
+        res.status(409).json(fail(
+          ErrorCodes.ACCESS_RESOURCE_MIGRATION_BLOCKED,
+          'Resource ownership migration was not completed safely',
+          result,
+        ));
+        return;
+      }
+      res.json(success(result));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+systemRouter.get(
+  '/resource-access-readiness',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  async (_req, res, next) => {
+    try {
+      res.json(success(await getProductResourceOwnershipAuditReport()));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+const requireSystemOperation = requireProductAccess('system:operate', { feature_flag: 'internal_story_tools' });
+const requireSystemProductionOperation = requireProductAccess('production:operate', { feature_flag: 'internal_story_tools' });
+const requireSystemMaterialReview = requireProductAccess('material:review');
+
+systemRouter.use((req, res, next) => {
+  if (req.method === 'GET') {
+    next();
+    return;
+  }
+  if (req.path.includes('/domain-pack-expansion-candidates/')) {
+    requireSystemMaterialReview(req, res, next);
+    return;
+  }
+  if (
+    req.path.includes('/production-readiness')
+    || req.path.includes('/gears-')
+    || req.path.includes('/seedance-')
+  ) {
+    requireSystemProductionOperation(req, res, next);
+    return;
+  }
+  requireSystemOperation(req, res, next);
+});
 
 const SYSTEM_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'draft_ready',
@@ -84,37 +193,6 @@ function queryListValue(...values: unknown[]): string[] | undefined {
 
 function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
   return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
-}
-
-function gearsCallbackSecretFromRequest(req: Request): string | undefined {
-  const explicit = req.header('x-gears-callback-secret')?.trim();
-  if (explicit) return explicit;
-  const authorization = req.header('authorization')?.trim();
-  const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim();
-}
-
-function safeEqualText(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function validateSystemGearsCallbackSecret(req: Request, res: Response, next: NextFunction): void {
-  const expectedSecret = process.env.GEARS_CALLBACK_SECRET?.trim();
-  if (!expectedSecret) {
-    next();
-    return;
-  }
-  const providedSecret = gearsCallbackSecretFromRequest(req);
-  if (providedSecret && safeEqualText(providedSecret, expectedSecret)) {
-    next();
-    return;
-  }
-  res.status(401).json(fail(
-    ErrorCodes.VALIDATION_ERROR,
-    'GEARS callback secret is missing or invalid',
-  ));
 }
 
 // ---------------------------------------------------------------------------
@@ -144,23 +222,26 @@ systemRouter.get('/provinces', async (_req, res, next) => {
 // GET /api/system/types — entry type → video type mapping table
 // ---------------------------------------------------------------------------
 
-const TYPE_GENERATION_MAP: TypeInfo[] = [
-  { name: '历史人物', recommended_generation_types: ['character_story'], recommended_video_types: ['character_story', 'historical_drama', 'ai_comic_drama', 'documentary_short', 'lecture_video'] as VideoType[], recommended_presentation_styles: ['cinematic', 'ink_style', 'ai_comic', 'documentary', 'host_narration'] as PresentationStyle[], description: '适合人物故事、历史剧情、AI漫剧、纪录片等' },
-  { name: '神话传说', recommended_generation_types: ['character_story', 'scene_short'], recommended_video_types: ['legend_story', 'ai_comic_drama', 'scene_short', 'culture_promo', 'children_story'] as VideoType[], recommended_presentation_styles: ['ink_style', 'ai_comic', 'cinematic', 'voiceover_montage', 'children_animation'] as PresentationStyle[], description: '适合传说故事、AI漫剧、场景短片等' },
-  { name: '民间故事', recommended_generation_types: ['character_story'], recommended_video_types: ['character_story', 'legend_story', 'ai_comic_drama', 'children_story'] as VideoType[], recommended_presentation_styles: ['cinematic', 'ink_style', 'ai_comic', 'children_animation'] as PresentationStyle[], description: '适合人物故事、传说、AI漫剧等' },
-  { name: '非遗', recommended_generation_types: ['culture_promo'], recommended_video_types: ['heritage_promo', 'culture_promo', 'explainer_video', 'ai_comic_drama', 'social_short'] as VideoType[], recommended_presentation_styles: ['documentary', 'voiceover_montage', 'host_narration', 'ai_comic', 'social_media_fastcut'] as PresentationStyle[], description: '适合非遗宣传片、知识讲解、AI漫剧等' },
-  { name: '地方戏曲', recommended_generation_types: ['culture_promo'], recommended_video_types: ['culture_promo', 'ai_comic_drama', 'heritage_promo'] as VideoType[], recommended_presentation_styles: ['voiceover_montage', 'ai_comic', 'documentary'] as PresentationStyle[], description: '适合文化宣传片、AI漫剧、非遗宣传片等' },
-  { name: '节庆习俗', recommended_generation_types: ['culture_promo'], recommended_video_types: ['culture_promo', 'scene_short', 'social_short', 'children_story'] as VideoType[], recommended_presentation_styles: ['voiceover_montage', 'cinematic', 'social_media_fastcut', 'children_animation'] as PresentationStyle[], description: '适合文化宣传片、场景短片、短视频等' },
-  { name: '饮食文化', recommended_generation_types: ['culture_promo'], recommended_video_types: ['culture_promo', 'explainer_video', 'social_short', 'documentary_short'] as VideoType[], recommended_presentation_styles: ['voiceover_montage', 'host_narration', 'social_media_fastcut', 'documentary'] as PresentationStyle[], description: '适合文化宣传片、知识讲解、短视频等' },
-  { name: '传统工艺', recommended_generation_types: ['culture_promo'], recommended_video_types: ['heritage_promo', 'culture_promo', 'explainer_video', 'documentary_short'] as VideoType[], recommended_presentation_styles: ['documentary', 'voiceover_montage', 'host_narration', 'documentary'] as PresentationStyle[], description: '适合非遗宣传片、文化宣传片、知识讲解等' },
-  { name: '名胜古迹', recommended_generation_types: ['scene_short', 'culture_promo'], recommended_video_types: ['scene_short', 'landscape_mood', 'culture_promo', 'city_brand_promo', 'documentary_short'] as VideoType[], recommended_presentation_styles: ['cinematic', 'ink_style', 'voiceover_montage', 'voiceover_montage', 'documentary'] as PresentationStyle[], description: '适合场景短片、山水意境片、文旅宣传片等' },
-  { name: '地方掌故', recommended_generation_types: ['character_story', 'scene_short'], recommended_video_types: ['character_story', 'scene_short', 'lecture_video', 'documentary_short'] as VideoType[], recommended_presentation_styles: ['cinematic', 'cinematic', 'host_narration', 'documentary'] as PresentationStyle[], description: '适合人物故事、场景短片、宣讲片等' },
-  { name: '宗教信仰', recommended_generation_types: ['scene_short', 'culture_promo'], recommended_video_types: ['scene_short', 'culture_promo', 'explainer_video'] as VideoType[], recommended_presentation_styles: ['cinematic', 'voiceover_montage', 'host_narration'] as PresentationStyle[], description: '适合场景短片、文化宣传片、知识讲解等' },
-  { name: '民俗活动', recommended_generation_types: ['culture_promo'], recommended_video_types: ['culture_promo', 'social_short', 'children_story'] as VideoType[], recommended_presentation_styles: ['voiceover_montage', 'social_media_fastcut', 'children_animation'] as PresentationStyle[], description: '适合文化宣传片、短视频、儿童故事等' },
-];
+systemRouter.get('/domain-packs', (_req, res) => {
+  res.json(success(storyAgentDomainRegistry.describe()));
+});
 
-systemRouter.get('/types', (_req, res) => {
-  res.json(success(TYPE_GENERATION_MAP));
+systemRouter.get('/types', validateQuery(DomainPackQuerySchema), (req, res, next) => {
+  try {
+    const domain = (req.query as { domain?: string }).domain ?? 'china_culture';
+    res.json(success(storyAgentDomainRegistry.require(domain).entryTypes));
+  } catch (error) {
+    next(error);
+  }
+});
+
+systemRouter.get('/generation-types', validateQuery(DomainPackQuerySchema), (req, res, next) => {
+  try {
+    const domain = (req.query as { domain?: string }).domain ?? 'china_culture';
+    res.json(success(storyAgentDomainRegistry.require(domain).generationTypes));
+  } catch (error) {
+    next(error);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -193,7 +274,7 @@ systemRouter.get('/production-material-pack-health', (_req, res) => {
 // ---------------------------------------------------------------------------
 
 systemRouter.get('/domain-pack-production-health', (_req, res) => {
-  res.json(success(getDomainPackProductionHealthReport()));
+  res.json(success(getChinaCultureDomainPackProductionHealthReport()));
 });
 
 // ---------------------------------------------------------------------------

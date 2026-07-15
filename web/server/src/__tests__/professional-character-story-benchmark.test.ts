@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { EntryDetail } from '@shared/types.js';
 import { getFullEntryDetail } from '../../../../mcp-server/src/lib/markdown.js';
-import { convertFullEntryDetail } from '../services/mcp-proxy.js';
+import { convertChinaCultureFullEntryDetail as convertFullEntryDetail } from '../domains/china-culture/knowledge-source-adapter.js';
 import {
   buildCharacterStoryBenchmarkExecutionManifest,
   validateRealModelBenchmarkRunEvidence,

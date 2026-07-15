@@ -1,12 +1,20 @@
 import { Router } from 'express';
+import { requireCallbackSecret } from '../middleware/callback-auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { GearsVideoReadyCallbackRequestSchema } from '@shared/schemas.js';
 import { updateGearsVideoReady } from '../services/story-service.js';
 
 export const gearsCallbackRouter = Router();
 
+const validateGearsCallbackSecret = requireCallbackSecret({
+  envName: 'GEARS_CALLBACK_SECRET',
+  explicitHeaders: ['x-gears-callback-secret'],
+  label: 'GEARS video-ready callback',
+});
+
 gearsCallbackRouter.post(
   '/video-ready',
+  validateGearsCallbackSecret,
   validateBody(GearsVideoReadyCallbackRequestSchema),
   async (req, res, next) => {
     try {

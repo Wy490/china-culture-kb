@@ -17,7 +17,8 @@
     "lint": "npm run lint --workspaces",
     "audit:copy": "npm run audit:copy -w client",
     "audit:writeback-acceptance": "npm run audit:writeback-acceptance -w client",
-    "check": "npm run audit:copy && npm run lint"
+    "check": "npm run audit:copy && npm run lint",
+    "e2e:track-a": "playwright test --config playwright.config.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

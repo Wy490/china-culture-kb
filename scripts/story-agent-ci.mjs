@@ -29,11 +29,14 @@ delete commandEnvironment.STORY_GEN_COMMAND_ARGS;
 delete commandEnvironment.STORY_GEN_PROVIDER;
 commandEnvironment.STORY_GEN_LOCAL_ONLY = '1';
 commandEnvironment.STORY_AGENT_CI = '1';
+commandEnvironment.STORY_AGENT_E2E_CLIENT_PORT ??= '15173';
+commandEnvironment.STORY_AGENT_E2E_SERVER_PORT ??= '13000';
 
 const steps = [
   { id: 'web_contract_check', command: 'npm', args: ['run', 'check'], cwd: 'web' },
   { id: 'web_server_tests', command: 'npm', args: ['test'], cwd: 'web/server' },
   { id: 'web_build', command: 'npm', args: ['run', 'build'], cwd: 'web' },
+  { id: 'track_a_browser_e2e', command: 'npm', args: ['run', 'e2e:track-a'], cwd: 'web' },
   { id: 'mcp_tests', command: 'npm', args: ['test'], cwd: 'mcp-server' },
   { id: 'mcp_build', command: 'npm', args: ['run', 'build'], cwd: 'mcp-server' },
   { id: 'knowledge_base_lint', command: 'npm', args: ['run', 'kb:lint'], cwd: 'mcp-server' },

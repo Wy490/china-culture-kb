@@ -1,5 +1,23 @@
 // web/shared/types.ts — Web API type definitions (independent, NOT reusing MCP types)
 
+import type {
+  BaseEntry,
+  BaseGearsSegment,
+  BaseStory,
+  BaseStoryScene,
+  DomainEntryTypeDescriptor,
+  DomainGenerationTypeDescriptor,
+} from './platform-types.js';
+
+export type {
+  BaseEntry,
+  BaseGearsSegment,
+  BaseStory,
+  BaseStoryScene,
+  DomainEntryTypeDescriptor,
+  DomainGenerationTypeDescriptor,
+} from './platform-types.js';
+
 // ---------------------------------------------------------------------------
 // Generation type (3 modes) — backward compat, superseded by VideoType
 // ---------------------------------------------------------------------------
@@ -154,7 +172,7 @@ export const GENERATION_TO_VIDEO_TYPE: Record<GenerationType, VideoType> = {
 
 export type VideoTypeGroup = '剧情故事类' | '宣传推广类' | '讲解教育类' | '场景空间类';
 
-export interface VideoTypeMeta {
+export interface VideoTypeMeta extends DomainGenerationTypeDescriptor {
   id: VideoType;
   group: VideoTypeGroup;
   label: string;
@@ -492,6 +510,34 @@ export interface ApiError {
 }
 
 export const ErrorCodes = {
+  ACCESS_UNAUTHENTICATED: 'ACCESS_UNAUTHENTICATED',
+  ACCESS_FORBIDDEN: 'ACCESS_FORBIDDEN',
+  ACCESS_AUDIT_UNAVAILABLE: 'ACCESS_AUDIT_UNAVAILABLE',
+  ACCESS_RESOURCE_UNBOUND: 'ACCESS_RESOURCE_UNBOUND',
+  ACCESS_RESOURCE_FORBIDDEN: 'ACCESS_RESOURCE_FORBIDDEN',
+  ACCESS_RESOURCE_MIGRATION_BLOCKED: 'ACCESS_RESOURCE_MIGRATION_BLOCKED',
+  CALLBACK_UNAUTHENTICATED: 'CALLBACK_UNAUTHENTICATED',
+  CALLBACK_AUTH_UNAVAILABLE: 'CALLBACK_AUTH_UNAVAILABLE',
+  PROJECT_WRITE_CONFLICT: 'PROJECT_WRITE_CONFLICT',
+  PROJECT_REPOSITORY_IDENTIFIER_INVALID: 'PROJECT_REPOSITORY_IDENTIFIER_INVALID',
+  ARTIFACT_WRITE_CONFLICT: 'ARTIFACT_WRITE_CONFLICT',
+  ARTIFACT_PATH_INVALID: 'ARTIFACT_PATH_INVALID',
+  ARTIFACT_STORAGE_UNAVAILABLE: 'ARTIFACT_STORAGE_UNAVAILABLE',
+  REVIEW_WRITE_CONFLICT: 'REVIEW_WRITE_CONFLICT',
+  REVIEW_REPOSITORY_IDENTIFIER_INVALID: 'REVIEW_REPOSITORY_IDENTIFIER_INVALID',
+  REVIEW_STORAGE_UNAVAILABLE: 'REVIEW_STORAGE_UNAVAILABLE',
+  JOB_WRITE_CONFLICT: 'JOB_WRITE_CONFLICT',
+  JOB_REPOSITORY_IDENTIFIER_INVALID: 'JOB_REPOSITORY_IDENTIFIER_INVALID',
+  JOB_STORAGE_UNAVAILABLE: 'JOB_STORAGE_UNAVAILABLE',
+  SERIES_PROJECT_WRITE_CONFLICT: 'SERIES_PROJECT_WRITE_CONFLICT',
+  SERIES_PROJECT_IDENTIFIER_INVALID: 'SERIES_PROJECT_IDENTIFIER_INVALID',
+  SERIES_PROJECT_STORAGE_UNAVAILABLE: 'SERIES_PROJECT_STORAGE_UNAVAILABLE',
+  STORY_WRITE_CONFLICT: 'STORY_WRITE_CONFLICT',
+  STORY_REPOSITORY_IDENTIFIER_INVALID: 'STORY_REPOSITORY_IDENTIFIER_INVALID',
+  STORY_STORAGE_UNAVAILABLE: 'STORY_STORAGE_UNAVAILABLE',
+  DOMAIN_PACK_NOT_FOUND: 'DOMAIN_PACK_NOT_FOUND',
+  DOMAIN_PACK_REGISTRY_INVALID: 'DOMAIN_PACK_REGISTRY_INVALID',
+  DOMAIN_SAFETY_VALIDATION_FAILED: 'DOMAIN_SAFETY_VALIDATION_FAILED',
   ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
   INVALID_GENERATION_TYPE: 'INVALID_GENERATION_TYPE',
   INVALID_VIDEO_TYPE: 'INVALID_VIDEO_TYPE',
@@ -680,7 +726,7 @@ export interface ProtagonistArc {
   resolution: string;
 }
 
-export interface StoryScene {
+export interface StoryScene extends BaseStoryScene {
   scene_id: number;
   title: string;
   duration_sec: number;
@@ -785,6 +831,7 @@ export interface StoryProjectListItem {
   gears_video_status?: GearsVideoStatus;
   gears_video_url?: string;
   gears_video_thumbnail_url?: string;
+  access_control?: import('./product-access.js').ProductResourceOwnership;
 }
 
 export type StoryProjectVersionChangeType =
@@ -1104,7 +1151,7 @@ export interface StorySceneRegenerateRequest {
 // GEARS segment
 // ---------------------------------------------------------------------------
 
-export interface GearsSegment {
+export interface GearsSegment extends BaseGearsSegment {
   segment_id: number;
   source_scene_id: number;
   duration_sec: number;
@@ -1119,12 +1166,21 @@ export interface GearsSegment {
   source_entries?: string[];
 }
 
+export interface GearsV2Segment extends GearsSegment {
+  /**
+   * Domain-neutral GEARS v2 constraint field. `cultural_constraints` remains
+   * present during the v1 compatibility window and must contain the same data.
+   */
+  constraint_note: string[];
+}
+
 export interface GearsSegmentsResponse {
-  schema_version: string;
+  schema_version: 'gears-segments/v2';
   storyId: string;
   title: string;
+  sourceDomain: string;
   total_duration_sec: number;
-  segments: GearsSegment[];
+  segments: GearsV2Segment[];
 }
 
 export type GearsCharacterRolePosition = '主角' | '反派' | '配角' | '路人' | '群演';
@@ -1382,6 +1438,38 @@ export interface ProductionReadinessNextAction {
   disabled_reason?: string;
 }
 
+export type StoryProjectWorkflowState =
+  | 'material_intake'
+  | 'story_revision'
+  | 'production_preparation'
+  | 'shot_production'
+  | 'external_delivery'
+  | 'human_review'
+  | 'release_governance';
+
+export interface StoryProjectWorkflowNextAction {
+  action_key: string;
+  label: string;
+  detail: string;
+  route: string;
+  anchor?: string;
+  external_input_required: boolean;
+  counts_as_real_completion: false;
+}
+
+export interface StoryProjectWorkflowSnapshot {
+  schema_version: 'story-project-workflow/v1';
+  state: StoryProjectWorkflowState;
+  state_label: string;
+  readiness_status: ProductionReadinessStatus;
+  blocker_reason?: string;
+  primary_next_action: StoryProjectWorkflowNextAction;
+  source_next_action_count: number;
+  secondary_action_count: number;
+  primary_next_action_count: 1;
+  credit_boundary: 'navigation_only_no_real_completion_credit';
+}
+
 export type ProductionReadinessAutomationRunner =
   | 'story_agent_api'
   | 'mcp_tool'
@@ -1520,6 +1608,7 @@ export interface StoryProjectProductionReadinessReport {
   lanes: ProductionReadinessLane[];
   issues: ProductionReadinessIssue[];
   next_actions: ProductionReadinessNextAction[];
+  workflow: StoryProjectWorkflowSnapshot;
   automation_plan: ProductionReadinessAutomationPlan;
   automation_ledger?: ProductionReadinessAutomationRunLedger;
   latest_automation_run?: ProductionReadinessAutomationRunLedgerItem;
@@ -7466,6 +7555,7 @@ export interface AiComicSeriesProjectMeta {
   next_attention_episode_no?: number;
   next_regeneration_episode_no?: number;
   generated_episode_content_issue_count?: number;
+  access_control?: import('./product-access.js').ProductResourceOwnership;
 }
 
 export interface AiComicContinuityLedgerEpisode {
@@ -10318,6 +10408,29 @@ export interface StoryRepairTrace {
   actions: string[];
 }
 
+export interface StoryDomainSafetyFinding {
+  rule_id: string;
+  severity: 'blocker' | 'warning';
+  message: string;
+}
+
+export interface StoryDomainSafetyReport {
+  schema_version: 'story-domain-safety/v1';
+  domain: string;
+  passed: boolean;
+  evaluated_rule_ids: string[];
+  blockers: StoryDomainSafetyFinding[];
+  warnings: StoryDomainSafetyFinding[];
+  machine_validation_only: true;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
+export interface StoryDomainSafetyValidationInput {
+  story: StoryGenerateResult;
+  source_entry: EntryDetail;
+}
+
 // ---------------------------------------------------------------------------
 // Creative reference trace — provenance for style pack influence
 // ---------------------------------------------------------------------------
@@ -10332,8 +10445,10 @@ export interface ReferenceTrace {
 // Story generate result (full output)
 // ---------------------------------------------------------------------------
 
-export interface StoryGenerateResult {
+export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment> {
   storyId: string;
+  /** Domain Pack that produced this story. Optional only for legacy snapshots. */
+  sourceDomain?: string;
   project_id?: string;
   current_version_id?: string;
   model_profile_id?: string;
@@ -10355,6 +10470,7 @@ export interface StoryGenerateResult {
   gears_delivery?: GearsDeliveryPackage;
   cultural_constraints: string[];
   credibility_note: string;
+  domain_safety?: StoryDomainSafetyReport;
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
   material_pack?: MaterialPack;
@@ -10412,7 +10528,7 @@ export interface StoryGenerateResult {
 // Entry search & detail
 // ---------------------------------------------------------------------------
 
-export interface EntrySearchResult {
+export interface EntrySearchResult extends BaseEntry {
   name: string;
   province: string;
   region: string;
@@ -10449,7 +10565,7 @@ export interface EntryMatchResult {
   fallback_message: string | null;
 }
 
-export interface EntryDetail {
+export interface EntryDetail extends BaseEntry {
   name: string;
   province: string;
   region: string;
@@ -10635,7 +10751,7 @@ export interface SeedanceProviderAdapterContractInfo {
   generated_at: string;
 }
 
-export interface TypeInfo {
+export interface TypeInfo extends DomainEntryTypeDescriptor {
   name: string;
   recommended_generation_types: GenerationType[];
   recommended_video_types: VideoType[];

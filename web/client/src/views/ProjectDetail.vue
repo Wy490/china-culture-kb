@@ -17,28 +17,25 @@
           </p>
         </div>
         <div class="project-detail-page__header-actions">
-          <button class="project-detail-page__action-btn project-detail-page__action-btn--primary" @click="exportCurrentStoryMarkdown">
-            导出 Markdown
-          </button>
-          <button class="project-detail-page__action-btn" @click="exportCurrentStoryJson">
-            导出 JSON
-          </button>
-          <button
-            class="project-detail-page__action-btn"
-            :disabled="loadingProductionBoard"
-            @click="loadProductionBoard"
-          >
-            {{ loadingProductionBoard ? '生成中…' : 'Production Board' }}
-          </button>
-          <button
-            class="project-detail-page__action-btn project-detail-page__action-btn--danger"
-            :disabled="deleting"
-            @click="deleteCurrentProject"
-          >
-            {{ deleting ? '删除中…' : '删除项目' }}
-          </button>
           <RouterLink class="project-detail-page__action-btn" to="/projects">返回项目列表</RouterLink>
-          <RouterLink class="project-detail-page__action-btn" to="/story/new">继续创作</RouterLink>
+          <details class="project-detail-page__more-actions">
+            <summary class="project-detail-page__action-btn">更多操作</summary>
+            <div>
+              <button class="project-detail-page__action-btn" @click="exportCurrentStoryMarkdown">导出 Markdown</button>
+              <button class="project-detail-page__action-btn" @click="exportCurrentStoryJson">导出 JSON</button>
+              <button class="project-detail-page__action-btn" :disabled="loadingProductionBoard" @click="loadProductionBoard">
+                {{ loadingProductionBoard ? '生成中…' : 'Production Board' }}
+              </button>
+              <RouterLink class="project-detail-page__action-btn" to="/story/new">继续创作</RouterLink>
+              <button
+                class="project-detail-page__action-btn project-detail-page__action-btn--danger"
+                :disabled="deleting"
+                @click="deleteCurrentProject"
+              >
+                {{ deleting ? '删除中…' : '删除项目' }}
+              </button>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -46,6 +43,34 @@
         <div v-if="error" class="project-detail-page__error">{{ error }}</div>
         <div v-if="successMessage" class="project-detail-page__success project-detail-page__success--inline">{{ successMessage }}</div>
       </div>
+
+      <section
+        v-if="projectWorkflow"
+        class="project-detail-page__workflow"
+        :data-state="projectWorkflow.state"
+        data-testid="project-workflow"
+      >
+        <div>
+          <span>{{ projectWorkflow.state_label }}</span>
+          <h2>NEXT · {{ projectWorkflow.primary_next_action.label }}</h2>
+          <p>{{ projectWorkflow.primary_next_action.detail }}</p>
+          <small v-if="projectWorkflow.blocker_reason">阻塞：{{ projectWorkflow.blocker_reason }}</small>
+          <small>当前状态只保留一个主动作；机器 readiness 不授予真人通过或正式发布信用。</small>
+        </div>
+        <div class="project-detail-page__workflow-action">
+          <button
+            class="project-detail-page__action-btn project-detail-page__action-btn--primary"
+            data-testid="project-primary-next"
+            @click="followProjectPrimaryNext"
+          >
+            {{ projectWorkflow.primary_next_action.label }}
+          </button>
+          <small>
+            1 个主 NEXT
+            <template v-if="projectWorkflow.secondary_action_count">· {{ projectWorkflow.secondary_action_count }} 个次要待办</template>
+          </small>
+        </div>
+      </section>
 
       <section class="project-detail-page__summary">
         <div class="project-detail-page__summary-card">
@@ -66,7 +91,7 @@
         </div>
       </section>
 
-      <section v-if="productionReadiness" class="project-detail-page__readiness">
+      <section v-if="productionReadiness" id="production-readiness" class="project-detail-page__readiness">
         <div class="project-detail-page__readiness-head">
           <div>
             <h2 class="project-detail-page__section-title">制作 readiness</h2>
@@ -134,12 +159,12 @@
             </button>
           </div>
         </div>
-        <div v-if="productionReadiness.next_actions.length" class="project-detail-page__readiness-list">
-          <strong>下一步</strong>
-          <p v-for="action in productionReadiness.next_actions.slice(0, 3)" :key="action.action_key">
+        <details v-if="productionReadiness.next_actions.length > 1" class="project-detail-page__readiness-list">
+          <summary>其他待办（{{ productionReadiness.next_actions.length - 1 }}）</summary>
+          <p v-for="action in productionReadiness.next_actions.slice(1, 4)" :key="action.action_key">
             {{ action.label }}：{{ action.detail }}
           </p>
-        </div>
+        </details>
         <div v-if="productionReadiness.automation_plan.steps.length" class="project-detail-page__readiness-list">
           <strong>
             自动化步骤
@@ -173,7 +198,7 @@
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
-      <section v-if="productionBoard" class="project-detail-page__production">
+      <section v-if="productionBoard" id="production-board" class="project-detail-page__production">
         <div class="project-detail-page__production-head">
           <div>
             <h2 class="project-detail-page__section-title">Production Board</h2>
@@ -1271,7 +1296,7 @@
         </div>
       </section>
 
-      <section v-if="productionMaterialPanel" class="project-detail-page__production-material">
+      <section v-if="productionMaterialPanel" id="production-material" class="project-detail-page__production-material">
         <div class="project-detail-page__production-material-head">
           <div>
             <h2 class="project-detail-page__section-title">生产素材模板</h2>
@@ -1473,7 +1498,7 @@
         </div>
       </section>
 
-      <section v-if="currentQuality" class="project-detail-page__quality-tools">
+      <section v-if="currentQuality" id="story-quality" class="project-detail-page__quality-tools">
         <div class="project-detail-page__quality-main">
           <div>
             <h2 class="project-detail-page__section-title">当前版本质量</h2>
@@ -2021,6 +2046,7 @@
       </section>
 
       <StoryResult
+        id="project-story"
         :result="detail.current_story"
         :editable-project="true"
         :show-gears-webhook-status="false"
@@ -2036,7 +2062,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   acceptProjectLocalGearsArtifacts,
@@ -2441,6 +2467,7 @@ const productionRepairResult = ref<StoryProductionBoardRepairResult | null>(null
 const productionRepairTrace = ref<StoryProductionBoardRepairTrace | null>(null)
 const loadingProductionBoard = ref(false)
 const productionReadiness = ref<StoryProjectProductionReadinessReport | null>(null)
+const projectWorkflow = computed(() => productionReadiness.value?.workflow ?? null)
 const loadingProductionReadiness = ref(false)
 const runningProductionAutomation = ref(false)
 const draftingProductionMaterialFields = ref(false)
@@ -3037,6 +3064,20 @@ function productionReadinessRunStepStatusLabel(status: NonNullable<StoryProjectP
   if (status === 'planned') return '已演练'
   if (status === 'skipped') return '已跳过'
   return '失败'
+}
+
+async function followProjectPrimaryNext() {
+  const action = projectWorkflow.value?.primary_next_action
+  if (!action) return
+
+  if (action.anchor === 'production-board' && !productionBoard.value) {
+    await loadProductionBoard()
+  }
+  await router.push(action.route)
+  if (action.anchor) {
+    await nextTick()
+    document.getElementById(action.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 }
 
 function typeLabel(type: string): string {
@@ -5297,6 +5338,29 @@ watch(selectedModelProfileId, (value) => {
   gap: 10px;
 }
 
+.project-detail-page__more-actions {
+  position: relative;
+}
+
+.project-detail-page__more-actions > summary {
+  list-style: none;
+}
+
+.project-detail-page__more-actions > div {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 190px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d7dee5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 30px rgba(35, 55, 70, 0.18);
+}
+
 .project-detail-page__action-btn {
   display: inline-flex;
   align-items: center;
@@ -5325,6 +5389,55 @@ watch(selectedModelProfileId, (value) => {
 .project-detail-page__action-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.project-detail-page__workflow {
+  margin-bottom: 18px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  border: 1px solid #a9d1cb;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f1fbf8, #f7fafc);
+}
+
+.project-detail-page__workflow > div:first-child > span {
+  color: #19736c;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.project-detail-page__workflow h2 {
+  margin: 6px 0 8px;
+  color: #173d4c;
+  font-size: 21px;
+}
+
+.project-detail-page__workflow p {
+  margin: 0 0 8px;
+  color: #536b76;
+  line-height: 1.55;
+}
+
+.project-detail-page__workflow small {
+  display: block;
+  color: #7b6660;
+}
+
+.project-detail-page__workflow-action {
+  min-width: 180px;
+  display: grid;
+  gap: 7px;
+  justify-items: stretch;
+  text-align: center;
+}
+
+.project-detail-page__workflow-action small {
+  color: #60737c;
+  font-size: 11px;
 }
 
 .project-detail-page__summary {
@@ -5420,8 +5533,14 @@ watch(selectedModelProfileId, (value) => {
 }
 
 .project-detail-page__readiness-list strong,
+.project-detail-page__readiness-list summary,
 .project-detail-page__readiness-list p {
   margin: 0;
+}
+
+.project-detail-page__readiness-list summary {
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .project-detail-page__readiness-list p {
@@ -7623,6 +7742,16 @@ watch(selectedModelProfileId, (value) => {
 
   .project-detail-page__header-actions {
     justify-content: flex-start;
+  }
+
+  .project-detail-page__workflow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-detail-page__more-actions > div {
+    right: auto;
+    left: 0;
   }
 
   .project-detail-page__quality-tools {

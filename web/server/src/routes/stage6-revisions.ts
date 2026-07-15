@@ -7,6 +7,7 @@ import {
   Stage6FeedbackReviewUpdateRequestSchema,
 } from '@shared/schemas.js';
 import { validateBody } from '../middleware/validate.js';
+import { requireProductAccess } from '../middleware/product-access.js';
 import {
   getStage6RevisionWorkspaceDetail,
   getStage6RevisionWorkspacePortfolio,
@@ -55,8 +56,9 @@ function paramString(value: string | string[]): string {
 
 export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot()): Router {
   const router = Router();
+  const internalTool = { feature_flag: 'internal_story_tools' } as const;
 
-  router.get('/', async (_req, res, next) => {
+  router.get('/', requireProductAccess('production:read'), async (_req, res, next) => {
     try {
       res.json(success(await getStage6RevisionWorkspacePortfolio({ repoRoot })));
     } catch (error) {
@@ -64,7 +66,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/exit-audit', async (_req, res, next) => {
+  router.get('/exit-audit', requireProductAccess('production:operate', internalTool), async (_req, res, next) => {
     try {
       res.json(success(await buildStage6RealRevisionExitAudit({ repoRoot })));
     } catch (error) {
@@ -72,7 +74,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/intake', async (_req, res, next) => {
+  router.get('/intake', requireProductAccess('production:operate', internalTool), async (_req, res, next) => {
     try {
       res.json(success(await getStage6OperatorIntakeWorkspace({ repoRoot })));
     } catch (error) {
@@ -80,7 +82,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.post('/intake/validate', async (req, res, next) => {
+  router.post('/intake/validate', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await validateStage6OperatorIntake({ repoRoot, intake: req.body })));
     } catch (error) {
@@ -88,7 +90,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/preflight', async (_req, res, next) => {
+  router.get('/preflight', requireProductAccess('production:operate', internalTool), async (_req, res, next) => {
     try {
       res.json(success(await getStage6OperatorRevisionPreflightWorkspace({ repoRoot })));
     } catch (error) {
@@ -96,7 +98,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.post('/preflight/validate', async (req, res, next) => {
+  router.post('/preflight/validate', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await preflightStage6OperatorRevision({ repoRoot, command: req.body })));
     } catch (error) {
@@ -104,7 +106,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/package-inspector', async (req, res, next) => {
+  router.get('/package-inspector', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(getStage6ProfessionalPackageInspectorWorkspace({
         videoType: req.query.video_type,
@@ -114,7 +116,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.post('/package-inspector/validate', async (req, res, next) => {
+  router.post('/package-inspector/validate', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(inspectStage6ProfessionalPackage({ request: req.body })));
     } catch (error) {
@@ -122,7 +124,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/operations', async (_req, res, next) => {
+  router.get('/operations', requireProductAccess('production:operate', internalTool), async (_req, res, next) => {
     try {
       res.json(success(await getStage6OperatorControlTower({ repoRoot })));
     } catch (error) {
@@ -130,7 +132,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/table-read-inspector', async (req, res, next) => {
+  router.get('/table-read-inspector', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await getStage6TableReadEvidenceInspectorWorkspace({
         repoRoot,
@@ -142,7 +144,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.post('/table-read-inspector/validate', async (req, res, next) => {
+  router.post('/table-read-inspector/validate', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await inspectStage6TableReadEvidence({ repoRoot, request: req.body })));
     } catch (error) {
@@ -150,7 +152,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/exit-review-signature', async (req, res, next) => {
+  router.get('/exit-review-signature', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await getStage6ExitReviewSignatureInspectorWorkspace({
         repoRoot,
@@ -161,7 +163,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.post('/exit-review-signature/validate', async (req, res, next) => {
+  router.post('/exit-review-signature/validate', requireProductAccess('production:operate', internalTool), async (req, res, next) => {
     try {
       res.json(success(await inspectStage6ExitReviewSignature({ repoRoot, request: req.body })));
     } catch (error) {
@@ -169,7 +171,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
     }
   });
 
-  router.get('/:benchmarkId', async (req, res, next) => {
+  router.get('/:benchmarkId', requireProductAccess('production:read'), async (req, res, next) => {
     try {
       res.json(success(await getStage6RevisionWorkspaceDetail({
         repoRoot,
@@ -186,6 +188,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
 
   router.patch(
     '/:benchmarkId/rounds/:roundNumber/feedback/:feedbackId',
+    requireProductAccess('production:write'),
     validateBody(Stage6FeedbackReviewUpdateRequestSchema),
     async (req, res, next) => {
       const roundNumber = Number(paramString(req.params.roundNumber));
@@ -222,6 +225,7 @@ export function createStage6RevisionsRouter(repoRoot = resolveDefaultRepoRoot())
 
   router.post(
     '/:benchmarkId/feedback-drafts',
+    requireProductAccess('production:write'),
     validateBody(Stage6FeedbackDraftCreateRequestSchema),
     async (req, res, next) => {
       try {

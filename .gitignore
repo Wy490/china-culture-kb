@@ -21,6 +21,7 @@ Thumbs.db
 *.tmp
 *.swp
 .playwright-cli/
+/output/playwright/
 
 # Environment
 .env

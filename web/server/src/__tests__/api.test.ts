@@ -2348,6 +2348,61 @@ describe('System API', () => {
         else process.env.APP_BASE_URL = previous.appBaseUrl;
       }
     });
+
+    it('preserves the legacy type catalog through explicit china_culture routing', async () => {
+      const legacyRes = await request.get('/api/system/types');
+      const domainRes = await request.get('/api/system/types?domain=china_culture');
+
+      expect(domainRes.status).toBe(200);
+      expect(domainRes.body).toEqual(legacyRes.body);
+    });
+
+    it('fails closed for an unregistered type-catalog domain', async () => {
+      const res = await request.get('/api/system/types?domain=unregistered_domain');
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+  });
+
+  describe('GET /api/system/domain-packs', () => {
+    it('returns a secret-free self-description of registered packs', async () => {
+      const res = await request.get('/api/system/domain-packs');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toEqual([expect.objectContaining({
+        meta: expect.objectContaining({
+          domain_id: 'china_culture',
+          capabilities: expect.arrayContaining(['entry_search', 'story_generate', 'type_catalog']),
+        }),
+        entry_type_count: 12,
+        generation_type_count: 15,
+      })]);
+      expect(JSON.stringify(res.body)).not.toContain('searchEntries');
+    });
+  });
+
+  describe('GET /api/system/generation-types', () => {
+    it('returns the china_culture generation catalog', async () => {
+      const res = await request.get('/api/system/generation-types?domain=china_culture');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toHaveLength(15);
+      expect(res.body.data.map((type: { id: string }) => type.id)).toEqual(expect.arrayContaining([
+        'character_story',
+        'ai_comic_drama',
+        'documentary_short',
+      ]));
+    });
+
+    it('rejects an invalid generation-catalog domain identifier', async () => {
+      const res = await request.get('/api/system/generation-types?domain=../unsafe');
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
   });
 
   describe('GET /api/system/gears-execution-config', () => {
@@ -7359,7 +7414,7 @@ describe('Projects API', () => {
           .post('/api/system/gears-external-callbacks/preflight')
           .send(handoffRes.body.data.callback_batch_sample);
         expect(unauthorizedRes.status).toBe(401);
-        expectFailure(unauthorizedRes.body, 'VALIDATION_ERROR');
+        expectFailure(unauthorizedRes.body, 'CALLBACK_UNAUTHENTICATED');
 
         const blockedPreflightRes = await request
           .post('/api/system/gears-external-callbacks/preflight')
@@ -7440,7 +7495,7 @@ describe('Projects API', () => {
             videoUrl: 'https://example.com/api/provider-callback-secret-shot.mp4',
           });
         expect(res.status).toBe(401);
-        expectFailure(res.body, 'VALIDATION_ERROR');
+        expectFailure(res.body, 'CALLBACK_UNAUTHENTICATED');
       } finally {
         if (previousCallbackSecret === undefined) delete process.env.SEEDANCE_CALLBACK_SECRET;
         else process.env.SEEDANCE_CALLBACK_SECRET = previousCallbackSecret;
@@ -7943,7 +7998,7 @@ describe('GEARS Callback API', () => {
           outputUrl: 'https://gears.example/videos/single-secret.mp4',
         });
       expect(res.status).toBe(401);
-      expectFailure(res.body, 'VALIDATION_ERROR');
+      expectFailure(res.body, 'CALLBACK_UNAUTHENTICATED');
     } finally {
       if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
       else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
@@ -7986,7 +8041,7 @@ describe('GEARS Callback API', () => {
           outputUrl: 'https://gears.example/videos/series-secret.mp4',
         });
       expect(res.status).toBe(401);
-      expectFailure(res.body, 'VALIDATION_ERROR');
+      expectFailure(res.body, 'CALLBACK_UNAUTHENTICATED');
     } finally {
       if (previousCallbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
       else process.env.GEARS_CALLBACK_SECRET = previousCallbackSecret;
@@ -8255,7 +8310,7 @@ describe('Seedance Production Callback API', () => {
         videoUrl: 'https://seedance.example/shot.mp4',
       });
     expect(res.status).toBe(401);
-    expectFailure(res.body, 'VALIDATION_ERROR');
+    expectFailure(res.body, 'CALLBACK_UNAUTHENTICATED');
     delete process.env.SEEDANCE_CALLBACK_SECRET;
   });
 
@@ -8822,6 +8877,27 @@ describe('Entries API', () => {
       }
     });
 
+    it('routes an explicit china_culture match through its Domain Pack', async () => {
+      const legacyRes = await request.post('/api/entries/match').send({ query: '周敦颐' });
+      const domainRes = await request.post('/api/entries/match').send({
+        domain: 'china_culture',
+        query: '周敦颐',
+      });
+
+      expect(domainRes.status).toBe(200);
+      expect(domainRes.body).toEqual(legacyRes.body);
+    });
+
+    it('fails closed when matching through an unregistered domain', async () => {
+      const res = await request.post('/api/entries/match').send({
+        domain: 'unregistered_domain',
+        query: '周敦颐',
+      });
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
     it('returns province-weighted results for province queries', async () => {
       const res = await request.post('/api/entries/match').send({
         query: '湖南非遗宣传片',
@@ -8878,6 +8954,29 @@ describe('Entries API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('routes an explicit china_culture domain through its Domain Pack', async () => {
+      const legacyRes = await request.get('/api/entries/search?keywords=周敦颐');
+      const domainRes = await request.get('/api/entries/search?domain=china_culture&keywords=周敦颐');
+
+      expect(domainRes.status).toBe(200);
+      expectSuccess(domainRes.body);
+      expect(domainRes.body.data).toEqual(legacyRes.body.data);
+    });
+
+    it('fails closed for an unregistered domain', async () => {
+      const res = await request.get('/api/entries/search?domain=unregistered_domain&keywords=周敦颐');
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
+    it('rejects an invalid domain identifier', async () => {
+      const res = await request.get('/api/entries/search?domain=../unsafe&keywords=周敦颐');
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
     });
 
     it('searches full story content beyond summary and keywords', async () => {
@@ -8983,6 +9082,21 @@ describe('Entries API', () => {
       expectFailure(res.body, 'ENTRY_NOT_FOUND');
     });
 
+    it('routes an explicit china_culture detail lookup through its Domain Pack', async () => {
+      const legacyRes = await request.get('/api/entries/detail?name=周敦颐——理学开山鼻祖');
+      const domainRes = await request.get('/api/entries/detail?domain=china_culture&name=周敦颐——理学开山鼻祖');
+
+      expect(domainRes.status).toBe(200);
+      expect(domainRes.body).toEqual(legacyRes.body);
+    });
+
+    it('fails closed when reading detail through an unregistered domain', async () => {
+      const res = await request.get('/api/entries/detail?domain=unregistered_domain&name=周敦颐');
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
     it('returns entry detail for valid entry name', async () => {
       // Try a real entry from the knowledge base
       const res = await request.get('/api/entries/detail?name=周敦颐——理学开山鼻祖');
@@ -9073,6 +9187,31 @@ describe('Stories API', () => {
       }
     });
 
+    it('routes an explicit china_culture plan through its Domain Pack', async () => {
+      const legacyRes = await request.post('/api/stories/plan').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        original_user_query: '人物成长与抉择',
+      });
+      const domainRes = await request.post('/api/stories/plan').send({
+        domain: 'china_culture',
+        entry_name: '周敦颐——理学开山鼻祖',
+        original_user_query: '人物成长与抉择',
+      });
+
+      expect(domainRes.status).toBe(200);
+      expect(domainRes.body).toEqual(legacyRes.body);
+    });
+
+    it('fails closed when planning through an unregistered domain', async () => {
+      const res = await request.post('/api/stories/plan').send({
+        domain: 'unregistered_domain',
+        entry_name: '周敦颐——理学开山鼻祖',
+      });
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
     it('uses user query signals to recommend AI comic subgenre patterns', async () => {
       const res = await request.post('/api/stories/plan').send({
         entry_name: '周敦颐——理学开山鼻祖',
@@ -9110,6 +9249,28 @@ describe('Stories API', () => {
       expectFailure(res.body, 'VALIDATION_ERROR');
     });
 
+    it('accepts an explicit china_culture generation domain', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        domain: 'china_culture',
+        entry_name: '不存在条目XXX',
+        generation_type: 'character_story',
+      });
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'ENTRY_NOT_FOUND');
+    });
+
+    it('fails closed before generation for an unregistered domain', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        domain: 'unregistered_domain',
+        entry_name: '周敦颐——理学开山鼻祖',
+        generation_type: 'character_story',
+      });
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
     it('generates original AI comic from outline-only material', async () => {
       const res = await request.post('/api/stories/generate').send({
         outline: '一个年轻修复师回到古城，发现祖父留下的旧戏台图纸，决定用一场原创漫剧唤回街坊对非遗戏曲的记忆。',
@@ -9132,6 +9293,31 @@ describe('Stories API', () => {
       expect(story.adaptation_analysis).toBeUndefined();
     });
 
+    it('fails closed without creating a project when memory mosaic has no source witness', async () => {
+      const before = await request.get('/api/projects');
+      expect(before.status).toBe(200);
+      expectSuccess(before.body);
+
+      const res = await request.post('/api/stories/generate').send({
+        outline: '旧木盒留在空屋，纸页只记录天气与方位，没有人物关系。',
+        original_user_query: '从旧物理解一段无名往事',
+        video_type: 'character_story',
+        story_structure: 'memory_mosaic_biography',
+        creation_use_case: 'original_ai_comic',
+        truth_mode: 'fictional_original',
+        target_video_duration: '3分钟',
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('至少一位可从资料中识别的见证人物');
+
+      const after = await request.get('/api/projects');
+      expect(after.status).toBe(200);
+      expectSuccess(after.body);
+      expect(after.body.data).toHaveLength(before.body.data.length);
+    });
+
     it('returns 404 for nonexistent entry', async () => {
       const res = await request.post('/api/stories/generate').send({
         entry_name: '不存在条目XXX',
@@ -9151,6 +9337,7 @@ describe('Stories API', () => {
         expectSuccess(res.body);
         const story = res.body.data;
         expect(story).toHaveProperty('storyId');
+        expect(story.sourceDomain).toBe('china_culture');
         expect(story).toHaveProperty('title');
         expect(story).toHaveProperty('generation_type');
         expect(story).toHaveProperty('video_type');
@@ -9159,6 +9346,14 @@ describe('Stories API', () => {
         expect(story).toHaveProperty('gears_segments_url');
         expect(story).toHaveProperty('cultural_constraints');
         expect(story).toHaveProperty('credibility_note');
+        expect(story.domain_safety).toMatchObject({
+          schema_version: 'story-domain-safety/v1',
+          domain: 'china_culture',
+          passed: true,
+          machine_validation_only: true,
+          human_review_complete: false,
+          real_credit_granted: false,
+        });
         // storyId format check: YYYYMMDD-story-{hash36}
         expect(story.storyId).toMatch(/^\d{8}-story-[0-9a-z]+$/);
         // gears_segments_url format check
@@ -9392,6 +9587,7 @@ describe('Stories API', () => {
         ...makeApiStory(),
         storyId,
         title: '当前项目版本故事',
+        cultural_constraints: ['项目全局史实边界'],
         gears_segments_url: `/api/stories/${storyId}/gears-segments`,
         scene_breakdown: makeApiStory().scene_breakdown.map(scene => scene.scene_id === 1
           ? { ...scene, plot: '当前项目版本剧情', key_action: '当前项目版本动作' }
@@ -9399,6 +9595,7 @@ describe('Stories API', () => {
         gears_segments: [{
           ...makeApiStory().gears_segments[0],
           script_text: '当前项目版本分段',
+          cultural_constraints: ['镜头局部虚构边界'],
         }],
       };
       const storyDir = resolve(testWorkspaceRoot, 'web', 'generated', 'stories', 'character_story');
@@ -9409,8 +9606,16 @@ describe('Stories API', () => {
       const segmentsRes = await request.get(`/api/stories/${storyId}/gears-segments`);
       expect(segmentsRes.status).toBe(200);
       expectSuccess(segmentsRes.body);
+      expect(segmentsRes.body.data.schema_version).toBe('gears-segments/v2');
+      expect(segmentsRes.body.data.sourceDomain).toBe('china_culture');
       expect(segmentsRes.body.data.title).toBe('当前项目版本故事');
       expect(segmentsRes.body.data.segments[0].script_text).toBe('当前项目版本分段');
+      expect(segmentsRes.body.data.segments[0].constraint_note).toEqual([
+        '项目全局史实边界',
+        '镜头局部虚构边界',
+      ]);
+      expect(segmentsRes.body.data.segments[0].cultural_constraints)
+        .toEqual(segmentsRes.body.data.segments[0].constraint_note);
 
       const deliveryRes = await request.get(`/api/stories/${storyId}/gears-delivery`);
       expect(deliveryRes.status).toBe(200);
@@ -9418,6 +9623,21 @@ describe('Stories API', () => {
       expect(deliveryRes.body.data.title).toBe('当前项目版本故事');
       expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).toContain('当前项目版本剧情');
       expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).not.toContain('旧快照剧情');
+    });
+
+    it('fails closed when a persisted story names an unregistered Domain Pack', async () => {
+      const storyId = '20260623-story-dom1';
+      await createProjectFromGeneratedStory({
+        ...makeApiStory(),
+        storyId,
+        sourceDomain: 'unregistered_domain',
+        gears_segments_url: `/api/stories/${storyId}/gears-segments`,
+      }, '2026-06-23T10:31:00.000Z');
+
+      const res = await request.get(`/api/stories/${storyId}/gears-segments`);
+
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
     });
   });
 

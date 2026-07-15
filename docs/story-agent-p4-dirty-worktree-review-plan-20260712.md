@@ -107,3 +107,644 @@ git diff --cached --name-only
 ```
 
 `--write` 会重建报告但不暂存文件；`--check` 只比较当前工作区与报告内容。若 `--check` 报 stale，应先审查变化来源，再重写报告，不能为了通过检查而覆盖不理解的改动。
+
+## 8. 2026-07-13 当前分支最终复核
+
+### 8.1 旧 P4 快照与当前 HEAD 的关系
+
+当前分支为 `codex-ai-comic-series-longform`，`HEAD` 与上游均为 `25fce2bf38c86b9c6b46a35f8aae69f9822b8c74`，ahead/behind 为 `0/0`。该提交由用户现有版本历史提供，本轮没有执行暂存、commit 或 push。
+
+旧报告的 441 文件已经不再是当前 dirty worktree：
+
+- 441/441 路径全部存在于 `568474ab..25fce2bf` 的提交差异中。
+- 报告记录的 441 个 SHA-256 与 `25fce2bf` 中对应文件逐一一致，漂移数为 0。
+- 该提交比旧报告多 17 个文件，主要是 M1 首批知识内容、内容供给报告、长期总纲和报告自身。
+- 因此旧报告对当前工作树为 stale，但它仍是该提交内五批内容的有效不可变审查快照。
+
+### 8.2 五批最终结论
+
+| 批次 | 最终复核 | 证据 | 结论 |
+|---|---|---|---|
+| 1 共享合同与核心 | 22 个已跟踪重叠文件逐 hunk 风险项沿用第 3 节结论；共享 schema、路由、生成和项目兼容由全量 Web 测试覆盖 | `web npm run check` 通过；授权环境 82 文件、806 用例通过；Web build 通过 | 未发现新的阻断；外部模型仍要求显式 opt-in |
+| 2 15 片型专业管线 | 175 个文件的机器信用、人工信用和 release 边界复核 | 15/15 片型合同；Stage 8 五条检查通过；全量 Web 测试通过 | fixture、阈值、验签和 candidate 仍为零信用 |
+| 3 Stage 6 | 71 个文件的输入、两轮修订、退出审计和签名验证复核 | P0/P1/P3 `--check` 全部通过；真实轮次 0、退出候选 0、professional pass 0 | 外部输入仍 fail closed，没有新增执行或签发权限 |
+| 4 生产卡与文档 | 101 个文件的 JSON、准备态文案和浏览器证据复核 | 23 个 JSON 可解析；Web build、知识库 lint 和 `git diff --check` 通过 | `approved`/ready 仅存在于明确排除信用的演练或模板语境 |
+| 5 治理与 MCP | 68 个文件的软归档、断链、真实外部交付和 MCP 摘要复核 | MCP 79 文件、345 用例和 build 通过；治理 stale-check 通过；知识库 lint 通过 | 删除 0、猜测 relink 0、`external_ready=0/5`，local acceptance 未混入真实交付 |
+
+五批审查至此完成；它不构成重新暂存、重写历史或拆分既有提交的授权。
+
+### 8.3 当前 dirty worktree 的新边界
+
+当前未提交变化已经转为知识内容扩充和本轮 Phase 0/Phase 1 状态文档，不再是旧 441 文件的 Story Agent 大型代码集合。其 hold 原因如下：
+
+- M1 的 23 条内容已经写入并通过 lint/audit/固定检索，但真人来源与文化审稿仍为 0/23，机器完成不得写成 M1 正式验收完成。
+- 25 条旧内容的生产字段修复只提高机器字段覆盖，不代表事实复审或黄金资产晋升。
+- M2 当前只允许继续候选与来源研究；在 M1 人审阻塞关闭前，不得用新增数量抬高人工完成口径。
+- 三个真实样板只完成候选、CreativeBrief 和验收草案，真实业务授权、预算、模型、评审者和外部 endpoint 均未到位。
+- 所有当前变化保持 unstaged；在并发内容写入稳定后，以 `node scripts/story-agent-p4-change-review-plan.mjs --write` 重建实时清单，再运行 `--check`。
+
+### 8.4 2026-07-14 再复核
+
+2026-07-14 10:05 CST 已按当前工作树重写 `data/reports/story-agent-p4-change-review-plan.json`。新报告显示：
+
+- 报告排除自身后，当前 dirty worktree 为 51 个文件级变更：47 个已跟踪修改、4 个未跟踪文件、0 个 staged。
+- `hold_file_count=34`，`production_docs=9`，`governance=8`；没有新的 `shared_core`、`professional_formats` 或 `stage6` 代码路径进入当前 dirty worktree。
+- `git status --short | wc -l` 为 52，差值 1 来自被报告排除的 `data/reports/story-agent-p4-change-review-plan.json` 自身。
+- P4 stale-check 已从“过期”恢复到与当前工作树一致，但 `review_plan_ready` 仍为 `false`，原因是 34 个 province/report 路径仍需人工分批归属，且所有已跟踪修改未来仍必须逐 hunk 复核。
+
+本轮还发现并修正一个五套进度口径漂移：`data/reports/knowledge-base-content-supply-progress.json` 已记录 M2 机器写入/校验 30/97、正式条目 222 条，而 `data/reports/story-agent-comprehensive-progress.json` 仍停留在 5/97、197 条。现已按现有源报告同步；这只修正机器统计，不增加任何真人审稿、真实交付或 professional pass 信用。
+
+### 8.5 34 个省级 hold 的逐批归属与当前 SHA 边界
+
+2026-07-14 12:15 CST 已对当前 34 个 `data/provinces/*.md` 差异执行结构化逐 hunk 复核，并将其确定性归入原 P4 第 4 批“知识条目、生产卡、实现文档与长期蓝图”。这不是新增 Stage/P 准备层，也不构成真人内容审稿或未来暂存授权。
+
+| 审查子批 | 当前差异 | 结构结论 | 信用边界 |
+|---|---:|---|---|
+| M1 后续写入 | 18 个新增条目 | 与 `batch_2_entries` 至 `batch_5_entries` 完整对应，无未知或缺失标题 | 仅机器写入/校验；M1 真人来源与文化审稿仍为 0/23 |
+| M2-1A/1B | 10 个新增条目 | 与内容供给报告两批 10/10 对应 | 不计黄金卡、真实故事、外部 artifact 或 professional pass |
+| M2-2A/2B | 10 个新增条目 | 与内容供给报告两批 10/10 对应 | 同上，真人审稿仍为 0 |
+| M2-2C/2D | 10 个新增条目 | 与内容供给报告两批 10/10 对应 | 同上，真人审稿仍为 0 |
+| M1 质量尾项 | 25 个既有条目追加“创作边界补充（非知识事实）” | 未改写原事实段，只补可戏剧化空间、对白口吻、禁用表达、安全/授权边界 | 仅机器字段覆盖，不计事实复审或黄金资产晋升 |
+
+当前 34 文件总计新增 6621 行、删除 0 行；新增条目 48、删除或改名条目 0。48 个新增标题全部能在 M1/M2 内容供给批次中一一找到，未知新增 0、计划缺失 0；来源数量或机器生产卡阈值低于当前批次门槛的条目均为 0。来源索引变化均由新增条目引用带入。
+
+`scripts/story-agent-p4-change-review-plan.mjs` 现将 `data/provinces/` 明确归入第 4 批；报告仍保存每个文件的 SHA-256，并要求所有 tracked 文件未来逐 hunk 复核。因此本次重写报告后，34 个“未归属 hold”可归零；若任一文件继续变化，`--check` 会立即 stale，必须重新审查新差异。`review_plan_ready=true` 只表示“无未归属文件、无 staged、无缺失文件”，`staging_authorized=false` 与 `commit_authorized=false` 保持不变。
+
+### 8.6 2026-07-15 轨道 A 权限切片复核
+
+当前分支和 HEAD 仍为 `codex-ai-comic-series-longform` / `25fce2bf38c86b9c6b46a35f8aae69f9822b8c74`。在不暂存、不提交、不推送的边界内，轨道 A 已完成五入口、受控二级入口、统一项目状态机、唯一主 NEXT、六角色视图和五条 Playwright 路径，并进一步补齐服务端访问控制基础：
+
+- 生产环境默认要求服务端 hash-only 身份注册表；请求角色头不受信任，撤销账号和缺失权限均 fail closed。
+- Stage 6–8、模型生成、项目写入、素材审稿和生产操作按角色权限与 `internal_story_tools` feature flag 双重隔离。
+- GEARS/Seedance 外部回调统一使用机器密钥；生产环境缺密钥返回 503，错误密钥返回 401，不接受产品角色头替代机器鉴权。
+- 这些结果只证明机器实现与测试合同，不代表真实登录系统、真实用户验收、真实回片、真人审核、signed release 或 professional pass。
+
+本轮 Unified CI 21/21 通过：Web 86 个测试文件、830 个用例，Track A Playwright 5/5，MCP 79 个测试文件、345 个用例，Web/MCP build、知识库 lint、治理检查、P4 stale-check 和 `git diff --check` 均通过。P4 报告排除自身后记录 89 个文件级变化：`shared_core=31`、`professional_formats=2`、`stage6=1`、`production_docs=43`、`governance=12`，hold 0、staged 0。报告本身仍是第 90 个工作区状态项；所有已跟踪差异仍需未来逐 hunk 复核，且没有产生暂存或提交授权。
+
+### 8.7 2026-07-15 项目资源所有权与持久化审计复核
+
+轨道 A 在角色权限之上新增项目资源边界：单片项目、故事详情和漫剧系列按 `organization_id + owner_actor_id + member_actor_ids` 授权，同组织管理员可管理组织资源，跨组织或非成员访问返回 403；required 模式下没有有效绑定的旧项目同样 fail closed。新建单片和系列把 ownership 写入项目元数据，旧项目可由 hash-only 服务端注册表的 `resource_bindings` 显式迁移；注册表与存储 ownership 不一致时拒绝访问，不猜测归属。项目、故事和系列列表只返回当前 actor 可访问的资源。
+
+生产环境现默认要求持久化访问审计：没有 `STORY_AGENT_ACCESS_AUDIT_JSONL` 或目标不可写时，已认证的允许请求返回 503；审计记录包含权限、资源类型、资源 ID、组织和决定，但不包含 token 或 token hash。Playwright required 模式同时启用资源绑定和持久化审计路径，5/5 核心路径通过。
+
+本轮 Unified CI 再次 21/21 通过：Web 86 个测试文件、838 个用例，MCP 79 个测试文件、345 个用例，构建、lint、Stage 6–8 零信用门禁、治理和 P4 检查均通过。P4 报告排除自身后为 92 个文件级变化：`shared_core=34`、`professional_formats=2`、`stage6=1`、`production_docs=43`、`governance=12`，hold 0、staged 0。该结果仍是机器实现证据；没有增加真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.8 2026-07-15 signed session 与资源迁移审计复核
+
+轨道 A 在 hash-only 静态注册表兼容层之上新增外部 session 验签合同：`sa1` session 固定校验 issuer、audience、HMAC-SHA256 签名、签发时间、到期时间和最长 24 小时 TTL，actor 的组织、角色、状态与 feature flag 仍只由服务端注册表决定。生产环境默认拒绝静态注册表 token；即使启用紧急逃生开关，production readiness 仍保持 blocked。该能力是服务端验签，不等于真实身份提供方、登录页面或真实用户 UAT 已完成。
+
+项目资源侧新增管理员受控的只读 ownership inventory 与迁移 manifest。扫描会区分 stored-only、注册表托管旧资源、未绑定、冲突、无效元数据和孤儿绑定；无效或冲突元数据访问 fail closed。manifest 明确 `automatic_owner_assignment=false`、`writeback_performed=false`，不会根据目录、创建时间或当前登录者猜测历史 owner。
+
+对当前 `web/generated` 的真实只读扫描发现 949 个项目资源，`access_enforcement_ready=0`、`unbound=949`、冲突/无效元数据/孤儿绑定均为 0，因此生产迁移仍被 949 项人工 owner 分配与复核阻塞。本轮没有写回任一项目元数据。
+
+刷新 P4 后，报告排除自身仍为 92 个文件级变化：70 个 tracked、22 个 untracked，`shared_core=34`、`professional_formats=2`、`stage6=1`、`production_docs=43`、`governance=12`，hold 0、staged 0。受控环境 Unified CI 21/21 通过：Web 86 个测试文件、841 个用例，Track A Playwright 5/5，MCP 79 个测试文件、345 个用例，构建、知识库 lint、零信用门禁、治理、P4 stale-check 和 `git diff --check` 均通过。测试 session、只读 inventory 和迁移 manifest 只计机器证据，不计真实登录、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.9 2026-07-15 资源归属受控迁移执行合同
+
+949 项只读迁移清单现已连接到受控写入合同，但写入默认保持关闭。单项迁移必须同时提供显式人工复核引用、`ownership_reviewed` 确认、原 metadata SHA-256 和服务端注册表中同组织的 active owner/member；执行 actor 必须是带内部 feature flag 的管理员。已有 ownership 无论内容是否相同均禁止由新 migration ID 覆盖，注册表绑定不一致、metadata 变化、无效 JSON、跨组织 actor 或外部并发 lock 均 fail closed。
+
+非 dry-run 还要求 `STORY_AGENT_RESOURCE_MIGRATION_WRITE_ENABLED=true` 与绝对、可写、非 symlink 的专用 JSONL 审计路径。执行先持久化 intent，再原子替换 metadata，最后记录 applied；项目 metadata 保存 migration ID、operator、review reference 和迁移前 SHA。相同 migration ID、review reference 和 ownership 可安全幂等 replay。并发测试确认其他 operator 创建的 lock 不会被失败请求删除。
+
+所有 apply、CAS、并发和 replay 测试只使用临时目录；当前 `web/generated` 的 949 个资源仍为 `migrations_applied=0`，生产写入开关未启用。受控环境 Unified CI 21/21 通过：Web 86 个测试文件、843 个用例，Track A Playwright 5/5，MCP 79 个测试文件、345 个用例；P4 排除自身为 93 文件、hold 0、staged 0。该执行合同不替代 949 项真实人工 owner 决定与复核，也不授予真人审核、真实回片、signed release 或 professional pass 信用。
+
+### 8.10 2026-07-15 客户端 session 生命周期与登录 handoff
+
+客户端现于受控路由进入前同步服务端 access context；任何 API 返回 `ACCESS_UNAUTHENTICATED` 都会清空缓存 actor 并进入 `AccessRequired`，而不是继续使用页面角色或旧权限。登录目标只从公开的服务端 handoff 合同读取，生产 readiness 要求 login URL 有效；`return_to` 仅接受规范化站内路径，并拒绝绝对 URL、双斜线、反斜线、控制字符和编码后的双斜线。session cookie 合同固定为 HttpOnly、SameSite=Lax，并要求生产 Secure。
+
+第六条 Playwright 路径在已打开的生产工作区中清除 session，触发一条显式预期的 401，验证页面进入登录 handoff；重新写入受控测试 session 后恢复原“修订与桌读”任务。测试框架分别追踪预期 401/浏览器日志与意外 API/控制台错误，避免把真实异常静默忽略。当前浏览器 E2E 为 6/6，Web 全量为 86 文件、844 用例。
+
+`STORY_AGENT_LOGIN_URL=/auth/login` 和 Playwright cookie 仅用于合同与失败态验证，不代表外部身份提供方、真实登录、账号生命周期、撤销同步或真人 UAT 已完成，也不增加任何真实创作、评审、交付或发布信用。受控环境 Unified CI 21/21 通过；P4 排除自身为 95 文件、hold 0、staged 0。
+
+### 8.11 2026-07-15 持久化访问审计生命周期
+
+生产就绪现要求持久化审计除绝对可写路径外，还必须配置 `size_external_retention`、有效最大文件字节数和外部保留天数。每次追加先获取专用排他轮转锁；超过阈值时把当前 JSONL 原子改名为带时间戳和 UUID 的归档，再建立新的 active 文件。应用不包含归档删除逻辑，保留期只作为外部归档服务的显式合同，避免本地清理误删合规证据。
+
+审计路径、生命周期配置、轮转锁或追加任一不可用时，required/production 模式下原本允许的请求返回 503。外部 operator 或 archiver 已持有的锁不会被失败请求删除。新增测试覆盖非法模式/阈值/保留期阻断 production readiness、跨六条审计事件轮转、归档全量保留、secret/hash 不落盘，以及外部锁失败关闭；定向服务端测试 26/26、Track A Playwright 6/6 通过。
+
+该切片完成后的 Unified CI 21/21 通过：Web 86 个测试文件、846 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，Web/MCP build、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 `git diff --check` 均通过。该切片没有部署真实归档存储、保留任务、监控告警或恢复演练，production lifecycle 环境值仍需 operator 配置。因此综合研发保持 73%、轨道 A 机器实现保持 97%、发布运营保持 60%；真人审核、真实修订、真实回片、signed release 和 professional pass 均不增加。
+
+### 8.12 2026-07-15 actor 级 signed-session 撤销
+
+服务端 hash-only actor registry 现接受可选的 `session_not_before` epoch 秒。signed session 在完成 HMAC、issuer、audience、签发/到期和最长 TTL 校验后，还必须解析到 active registry actor；`issued_at` 早于该 actor 截止点时返回 401 `signed_session_revoked`，恰好等于截止点时允许继续。该字段不进入公开 actor/context，非法负数、非整数或非数值使 registry 整体失效并 fail closed。
+
+该机制用于 operator 通过受控配置撤销 actor 的既有 session，不改变非生产兼容静态 token 的语义，也不信任 session 中的角色、组织或 feature flag。定向服务端测试 28/28 和 Web 两端类型检查通过，覆盖旧 session、时间边界、兼容 token、非法配置与公开响应零泄露。
+
+registry 截止点只证明本地服务端撤销合同，未证明真实 IdP 已发布撤销事件、生产配置已更新、密钥已轮换或用户端 UAT 已完成。该切片完成后的 Unified CI 21/21 通过：Web 86 个测试文件、848 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。综合研发保持 73%、轨道 A 机器实现保持 97%、发布运营保持 60%，所有真实创作、审核、回片与 release 信用保持 0。
+
+### 8.13 2026-07-15 ProjectRepository 首个文件 provider
+
+轨道 G 从 11,456 行 `project-service.ts` 抽出首个可替换的 `ProjectRepository` 合同及文件 provider，并把初始项目创建、项目元数据读取、项目 ID 列举、版本列举/读取、版本提交和版本快照写回接入该边界。现有路由、共享类型、ownership 持久化和 source-story 迁移入口保持兼容，尚未接管的生产板/素材/回片元数据写入仍留在兼容服务中，避免一次性重写大型 dirty 文件。
+
+文件 provider 对项目和版本 ID 做路径约束，拒绝 traversal 与 symlink 项目目录；JSON 写入使用同目录临时文件和原子 rename，项目级排他锁保护 writer，版本提交使用 `current_version_id + version_count` 做乐观并发检查。stale writer、外部 lock 或不安全目录均 fail closed，外部 lock 不会被失败请求删除。旧的不可读 `project.json` 兼容自愈仍保留，但会先将损坏文件无删除归档，再从 source story 原子重建。
+
+定向 repository/project-service 回归为 2 文件、62 用例通过，Web 两端类型检查通过。完成后的 Unified CI 21/21 通过：Web 87 个测试文件、853 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。P4 分类规则同步把 `web/server/src/repositories/` 纳入共享合同与核心批次；报告排除自身为 97 文件、hold 0、staged 0。
+
+该切片只建立文件型存储边界与并发语义，不代表 PostgreSQL、对象存储、完整事务、备份恢复或多人协作已经完成；综合研发保持 73%、专业文本 47.5%、真实 GEARS/Seedance 0/5、发布运营 60%，所有真人和 signed release 信用保持 0。
+
+### 8.14 2026-07-15 项目状态写入统一经过 repository
+
+`project-service.ts` 中剩余直接写 `project.json` 或当前版本 JSON 的路径已全部迁入文件型 `ProjectRepository`。素材库、素材批量导入/上传/复用、Seedance shot 与 provider queue、GEARS job ledger/callback、生产就绪自动化、Production Board/当前版本导出、知识补充任务和当前 GEARS delivery/webhook/video 状态不再绕过 repository。单文件继续使用同目录临时文件和原子 rename；元数据与当前版本成对更新时持有同一个项目锁，并以原 `current_version_id + version_count` 拒绝 stale writer。该语义不是跨文件数据库事务，断电后的完整恢复仍待后续 provider/WAL 设计。
+
+定向回归首次暴露生成响应后的 webhook 状态后台写入会与临时 root 清理竞态。修复后，未配置 webhook 的 `skipped` 状态在 API 返回前完成本地落盘；配置真实 webhook 时仍异步，但显式捕获请求当时的 generated root，后续环境变化不会把项目、source story 或 webhook failure log 写到另一个 root。新增测试验证 failure log 的 captured root，ownership 生成用例不再出现 `ENOTEMPTY` 清理竞态。
+
+定向 repository、project-service、API、access 和 webhook 回归为 5 文件、273 用例通过，Web 两端类型检查通过。完成后的 Unified CI 21/21 通过：Web 87 个测试文件、854 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。P4 排除自身为 99 文件（74 tracked、25 untracked），shared_core 41、hold 0、staged 0。
+
+综合研发保持 73%、轨道 A 97%、专业文本 47.5%、真实 GEARS/Seedance 0/5、发布运营 60%；fixture、机器测试与本地存储协调不增加真人审核、真实回片、professional pass 或 signed release 信用。
+
+### 8.15 2026-07-15 文件 provider WAL 与确定性恢复
+
+`create_initial`、`commit_version` 和 `write_current_state` 三类成对写入现使用 `story-agent-project-repository-transaction/v1`。repository 在修改 snapshot/meta 前，先把包含 transaction ID、操作类型、版本期望、前态 SHA-256、目标 SHA-256 和目标数据的 intent 以临时文件写入、`fsync` 并原子 rename；随后逐个持久化 snapshot 与 meta，最后把 `.intent.json` 原子改名为 `.applied.json`。applied 记录和损坏/陈旧归档均不由 repository 删除。
+
+读写进入项目时会检查 pending intent。恢复只接受文件处于记录的前态或目标态；snapshot 已写而 meta 未写、两者均已写但 intent 未标 applied 等中间状态可幂等重放。intent 内容与目标哈希不符、文件出现未记录第三态、transaction 目录为 symlink 或记录格式非法时均 fail closed。锁文件记录 PID、主机、时间和 nonce；仅同主机且 PID 已不存在的受控锁会被无删除归档，当前进程、其他主机、空白或外部自定义锁不会自动移除。
+
+故障注入在 snapshot 后中断写入，并由新 repository 实例在带死进程锁的条件下恢复；另一测试篡改 intent 目标但不更新哈希，确认恢复拒绝且 intent/原 meta 保留。定向 repository、project-service、API、access 和 webhook 回归为 5 文件、275 用例通过，Web 两端类型检查通过。完成后的 Unified CI 21/21 通过：Web 87 个测试文件、856 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。
+
+这是机器级文件恢复合同，不是断电测试、备份恢复或灾难演练，综合研发保持 73%、发布运营保持 60%，所有真实交付和人工信用保持 0。
+
+### 8.16 2026-07-15 metadata-only 乐观并发
+
+项目级排他锁此前只能避免物理同时写，无法阻止两个请求先后读取同一前态、排队后由后写者静默覆盖先写者。文件 provider 现为 metadata-only 写入增加 `updated_at + current_version_id + version_count` 期望；进入锁后重新读取当前 meta，任一前态字段不一致即抛出 `PROJECT_WRITE_CONFLICT`。`project-service.ts` 中素材、Seedance、GEARS ledger、生产自动化和导出等所有 metadata-only writer 均传入其原始 project 前态，轮询循环也在重建 `currentProject` 前单独保存 expectation。
+
+统一 error handler 把 repository conflict 稳定映射为 HTTP 409 API envelope，而不是 500；路径/标识非法仍为 400。repository 测试确认第一个 metadata writer 成为 winner 后，持有相同期望的 stale writer 被拒绝且 winner 保留，并验证 409 的错误码和文案合同。定向 repository、project-service、API、access 与 webhook 回归为 5 文件、276 用例通过，Web 两端类型检查通过。完成后的 Unified CI 21/21 通过：Web 87 个测试文件、857 个用例，MCP 79 个测试文件、345 个用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。P4 排除自身为 100 文件、hold 0、staged 0。
+
+该切片证明机器并发语义，不代表真实双用户协作、冲突解决 UI 或生产数据库事务已经验收。综合研发保持 73%、轨道 A 97%、专业文本 47.5%、真实 GEARS/Seedance 0/5、发布运营 60%，所有真实人工和发布信用仍为 0。
+
+### 8.17 2026-07-15 文件型 ArtifactStore 首切片
+
+轨道 G 新增可替换的 `ArtifactStore` 合同和文件 provider，并把 Seedance 本地上传、本地 SVG 占位参考卡、Production Board JSON/Markdown/manifest 导出三类直接落盘接入统一边界。调用端必须显式选择 `forbid` 或 `replace`：随机上传文件禁止覆盖，固定占位卡和固定导出文件允许显式替换。原有相对路径、绝对文件路径、MIME 和字节数返回合同保持不变。
+
+文件 provider 在任何写入前拒绝绝对路径、traversal、反斜线、控制字符、重复 batch 目标、symlink 父目录和 symlink/非普通文件目标；文件先以 `0600` 在目标同目录独占创建，写入并 `fsync` 后再原子发布，随后同步父目录。默认禁止覆盖使用 hard-link 发布避免检查与 rename 间静默覆盖；显式替换才使用原子 rename。batch 会在第一笔写入前校验全部路径，但逐文件持久化，不声明跨文件事务。
+
+新增测试覆盖文本/二进制、SHA-256/字节数、显式覆盖、batch 预校验与重复目标、路径穿越、符号链接、外部文件不变及统一 400/409 错误合同；定向 ArtifactStore/项目服务回归为 2 文件、63 用例，服务端全量为 88 文件、863 用例。完成后的 Unified CI 21/21 通过，MCP 79 文件、345 用例，Track A Playwright 6/6，构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 与 diff check 全通过。P4 排除自身为 102 文件（75 tracked、27 untracked），`shared_core=44`、hold 0、staged 0。
+
+该切片没有部署对象存储、CDN、备份恢复或真实媒体资产，也没有把 batch 提升为数据库事务。占位文件、本地上传、hash、测试与导出均不计真实 GEARS/Seedance 回片或 professional pass；综合研发保持 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，真人审核、signed release 和全部真实信用保持 0。
+
+### 8.18 2026-07-15 文件型 ReviewRepository 与审稿 CAS
+
+轨道 G 新增泛型 `ReviewRepository` 合同和同步文件 provider，首个接入点是 Domain Pack 扩库运行态 `review-state.json`。选择该边界是因为它原本就是独立于候选 seed 和省份 Markdown 的完整审稿状态文件；AI 漫剧 Seedance 审片 ledger 仍嵌在整份系列项目 JSON 中，本轮不制造第二份权威数据源。seed 优先级、runtime override、单条/批量更新和写回草案返回结构保持兼容，正式省份 Markdown 仍不自动写回。
+
+provider 以持久化文档原始字节 SHA-256 作为 revision；写入进入排他锁后重新读取当前 revision，stale reviewer 不再能静默覆盖 winner。目标文档通过同目录 `0600` 临时文件、文件 `fsync`、原子 rename 和父目录 `fsync` 发布。未知或外部 lock 保留且返回冲突；仅同主机、PID 明确不存在的 lock 会无删除归档。无效 JSON、schema/item、重复 review ID、symlink root/target 和非法文件名均 fail closed，存储不可用不会伪装成普通 409 冲突。
+
+新增 7 个 repository 测试覆盖空读不创建、排序与 exact-byte revision、CAS winner、临时文件故障注入、路径/符号链接、损坏状态、外部锁和死进程锁归档；ReviewRepository 与 Domain Pack 定向回归 2 文件、14 用例通过，服务端全量 89 文件、870 用例通过。完成后的授权环境 Unified CI 21/21 通过：MCP 79 文件、345 用例，Track A Playwright 6/6，Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 均通过。P4 排除自身为 105 文件（76 tracked、29 untracked），`shared_core=46`、`governance=13`、hold 0、staged 0。
+
+seed/runtime 状态、reviewer 字段、机器 CAS 和测试不证明真人实际审稿或签署；本轮没有生成真人审核、真实修订、real artifact、professional pass 或 signed release。综合研发保持 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.19 2026-07-15 文件型 JobRepository 与 Webhook 失败死信
+
+轨道 G 新增泛型 `JobRepository` 合同和文件 provider，首个接入点是现有 `web/generated/webhook_failures.log`。GEARS `story_ready` webhook 在重试耗尽后不再直接 `appendFile`，而是写入带确定性 SHA-256 `failure_id` 的不可变失败事件；相同逻辑投递的精确 replay 返回 duplicate，不重复增加死信，复用同一幂等键但内容不同则 fail closed。旧版无 schema/failure ID 的既有 webhook failure 行仍可规范化读取。
+
+provider 在排他锁下读取和验证完整 JSONL，再通过同目录临时文件、文件 `fsync`、原子 rename 和父目录 `fsync` 发布完整新日志，因此不会留下 partial trailing line。并发写使用有界锁重试，测试中的四路并发全部保留；未知/外部 lock 不删除，同主机死 PID lock 无删除归档。空行、无结尾换行、无效 JSON/event、重复 event ID、symlink root/target 和 64 MiB 上限越界均 fail closed。失败证据中的 webhook URL 会移除 userinfo、query 和 fragment，避免持久化基础认证或 query secret。
+
+新增 7 个 JobRepository 测试，另扩充 webhook 测试验证 schema/failure ID、精确去重、captured root 和 URL secret 零落盘；定向回归 2 文件、14 用例，服务端全量 90 文件、878 用例通过。完成后的授权环境 Unified CI 21/21 通过：MCP 79 文件、345 用例，Track A Playwright 6/6，Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身为 107 文件（76 tracked、31 untracked），`shared_core=48`、hold 0、staged 0。
+
+文件 provider 当前以完整日志原子重写换取崩溃一致性，尚无生产消息队列、分区、lease、取消、超时、轮转、死信重放、监控或 SLO；测试 fetch 和本地 failure log 不是真实 GEARS 调用或 artifact。综合研发保持 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，全部真实人工与发布信用仍为 0。
+
+### 8.20 2026-07-15 文件型 SeriesProjectRepository 核心生命周期
+
+轨道 G 为 AI 漫剧系列项目建立可替换的 `SeriesProjectRepository` 合同和首个文件 provider。首切片只迁移核心生命周期：系列保存的新建/替换、读取、列表、复制、归档/恢复和连续性台账重建。主存储根与既有兼容根继续合并读取；兼容根中的旧项目在原位置替换，不会静默复制成第二份权威数据。服务中其余 19 处生产子流程 mutation 仍使用兼容直写，后续必须逐组迁移，因此本轮不宣称完整系列服务抽离。
+
+provider 限制 series project ID，拒绝 traversal、symlink root/项目目录/`project.json` 和嵌入 ID 不一致；损坏 JSON 或缺失身份元数据 fail closed。新建不会覆盖既有项目，替换在排他锁内重新读取 `project.updated_at`，stale writer 返回 `SERIES_PROJECT_WRITE_CONFLICT`/HTTP 409。JSON 先写入同目录 `0600` 临时文件并 `fsync`，再原子 rename 和同步父目录。未知或外部 lock 保留；仅同主机且 PID 明确不存在的 lock 会无删除归档。
+
+新增 8 个仓库测试覆盖新建/列表/读取、不覆盖、CAS winner、兼容根原位替换、路径与符号链接、损坏状态、原子写故障、外部锁和死进程锁恢复；系列 repository 与服务定向回归为 2 文件、40 用例，服务端全量为 91 文件、886 用例。完成后的授权环境 Unified CI 21/21 通过：MCP 79 文件、345 用例，Track A Playwright 6/6，Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身为 109 文件（76 tracked、33 untracked），`shared_core=50`、hold 0、staged 0。
+
+该文件 provider 不是 PostgreSQL、对象存储、跨文件事务或真实多用户冲突 UAT；机器 CAS、故障注入和测试均不计真实修订、真人审核、真实回片、signed release 或 professional pass。综合研发保持 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.21 2026-07-15 系列项目状态 mutation 全量接入 repository
+
+8.20 留下的 19 处 `project.json` 生产 mutation 已全部迁入 `SeriesProjectRepository.replace`。范围覆盖 Seedance prompt/生产状态/版本选择、资产与音频库、剪辑/字幕/混音/片头片尾/最终装配、审片增改、GEARS 提交/callback/轮询失败、生产就绪自动化台账、缩略图和生成集连续性写回。服务源码不再保留 `writeJsonFile(seriesProjectPath(...))` 或同类直接 `writeFile` 状态写入；架构测试会在未来重新引入绕过时失败。
+
+专项回归首次发现 GEARS callback 的组合业务动作会先持久化 Seedance ledger、再持久化 GEARS ledger，第二次 CAS 可能把业务内部生成的新时间戳误当作存储前态而冲突。现将 Seedance 与 GEARS 变化先在内存中合并，整个 submit/callback 只以最初读取的 `updated_at` 做一次 repository replace；这既消除中间可见状态，也确保真正的并发 writer 仍返回 409，而不是静默覆盖。
+
+新增源码边界测试后，SeriesProjectRepository 与系列服务定向回归为 2 文件、41 用例，服务端全量为 91 文件、887 用例。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身仍为 109 文件（76 tracked、33 untracked），`shared_core=50`、hold 0、staged 0。
+
+完成的是系列 `project.json` 状态 mutation 边界，不是 11k+ 行服务的完整模块化；生产 artifact 文件仍有独立落盘路径，也没有 PostgreSQL、跨进程事务协调、真实双用户冲突 UI/UAT、备份恢复或灾难演练。五套进度保持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，全部机器测试与本地文件状态均不增加真实信用。
+
+### 8.22 2026-07-15 文件型 StoryRepository 与跨服务项目同步收口
+
+轨道 G 新增 `StoryRepository` 合同和文件 provider。`story-service.ts` 的故事生成、新建防覆盖、列表、读取、GEARS delivery Markdown 修改和 GEARS 视频 callback 写回，连同 AI 漫剧单集的故事合并，现统一经过该 repository。`story-service.ts` 不再直接调用 `mkdir`/`writeFile`；其“从当前项目读取 story”路径改用 `ProjectRepository`。AI 漫剧单集原先直接覆盖当前版本 JSON 和 `project.json` 的同步也改为 `ProjectRepository.writeCurrentState`，源码边界测试锁定这些旁路不得恢复。
+
+Story provider 对 story ID 和 15 个 video type 做约束，以原始文件字节 SHA-256 作为 replace revision；重复 story ID 跨 video type、stale writer、损坏 JSON、嵌入 identity 不一致、超过 64 MiB、traversal、symlink root/type 目录/故事文件和未知外部 lock 均 fail closed。写入使用根目录 story 级排他锁、同目录 `0600` 临时文件、文件 `fsync`、原子 rename 和父目录 `fsync`；同主机死 PID lock 仅无删除归档。列表遇到伪装成 `.json` 的 symlink/非普通文件也拒绝，而不是静默隐藏异常状态。
+
+新增 9 个 StoryRepository/架构测试；StoryRepository、GEARS 两条写回与系列服务定向回归为 4 文件、43 用例，服务端全量为 92 文件、896 用例。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身为 111 文件（76 tracked、35 untracked），`shared_core=52`、hold 0、staged 0。
+
+故事文件与项目 WAL 仍是两个 repository，AI 单集合并当前先发布 story、再同步 project current state，尚不构成跨 repository 原子事务；也没有数据库 provider、备份恢复或真实多人冲突 UAT。机器 story、callback fixture、CAS 和故障注入不计真实修订、真人审核、真实回片、signed release 或 professional pass；五套进度仍为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.23 2026-07-15 ArtifactStore 扩展到系列后期 sidecar
+
+AI 漫剧系列服务中由应用自身生成的剪辑 concat 清单、字幕 SRT、final concat 清单和 final delivery manifest 已从 `mkdir + writeFile` 迁入 `FileArtifactStore.writeText`。所有路径继续相对系列项目目录，写入前统一拒绝绝对路径、traversal、反斜线、控制字符和 symlink parent/target，并使用显式 `replace`、同目录 `0600` 临时文件、文件 `fsync`、原子 rename 和父目录 `fsync`。系列服务中的 `writeFile` 调用现为 0，源码边界测试禁止重新引入应用侧直接写盘。
+
+本轮有意保留 6 个外部 worker 输出目录准备点：cut、字幕烧录、混音、片头片尾、final assemble 和 thumbnail runner 仍由测试/ffmpeg runner 直接生成媒体文件。ArtifactStore 当前不提供外部进程临时输出的流式原子导入，强行把这些路径写成普通文本/二进制 buffer 会放大大媒体内存占用，也不能解决 runner 与 publish 之间的竞态。因此这些输出仍明确标记为后续 `prepare -> runner temp -> verify -> atomic import`/对象存储切片，而不伪装成已完成。
+
+ArtifactStore 与系列服务定向回归为 2 文件、39 用例，服务端全量为 92 文件、897 用例。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身仍为 111 文件（76 tracked、35 untracked），`shared_core=52`、hold 0、staged 0。
+
+concat/SRT/manifest 及其 hash 只是本地应用 artifact；dry-run 生成的 sidecar 仍不计真实媒体生产。外部 runner 尚未接入原子导入、对象存储、CDN、备份或真实回片验收，所以五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，真实修订、真人审核、signed release 和 professional pass 仍为 0。
+
+### 8.24 2026-07-15 外部 runner staging 与原子媒体发布
+
+ArtifactStore 新增外部写 session：应用先校验最终相对路径、overwrite policy、目标和父目录，再返回同目录随机、不可预测的 staging 路径；ffmpeg/thumbnail runner 只接收 staging 路径。runner 返回后，store 要求 staging 为普通文件且不是 symlink，执行文件 `fsync`，通过流式读取计算 SHA-256 和字节数，最后按 `forbid` hard-link 或 `replace` rename 原子发布并同步父目录。未产出文件、伪造/已关闭 session、symlink staging、发布竞态和外部 target 冲突均 fail closed；失败/中止清理 partial staging，不跟随 symlink 改写外部文件。
+
+该合同已接入六条系列媒体路径：剪辑装配、字幕烧录、音频混合、片头片尾、final assemble 和缩略图抽帧。旧测试中 cut、字幕和 thumbnail 的 no-op runner 曾被当作成功，本轮将 fixture 改为真实写出 staging 文件；ArtifactStore 另明确验证 no-output 必须失败。音频、片头片尾和 final 既有“runner 不产出即失败”用例继续通过。`ai-comic-series-service.ts` 的直接 `writeFile` 和 `mkdir` 均为 0，源码边界测试同时锁定 sidecar 与 runner 输出不能绕开 store。
+
+ArtifactStore 与系列服务定向回归为 2 文件、41 用例，服务端全量为 92 文件、899 用例。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和 diff check 全通过。P4 排除自身仍为 111 文件（76 tracked、35 untracked），`shared_core=52`、hold 0、staged 0。
+
+原子发布只证明本地文件 provider 的机器合同，不证明真实 ffmpeg、Seedance、GEARS worker、对象存储、CDN、媒体备份或公共 artifact URL 已部署。所有 fake media bytes、runner fixture、hash 和本地最终路径仍排除真实回片信用；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.25 2026-07-15 当前项目状态三字段 CAS
+
+`ProjectRepository.writeCurrentState` 原先只校验 `current_version_id + version_count`，因此两个请求若都读取同一版本、但修改的是 callback/素材补充等当前状态，第一个请求完成后版本号不变，第二个 stale writer 仍可能静默覆盖。该路径现统一要求 `updated_at + current_version_id + version_count` 三字段 expectation；进入项目锁后重读 meta，任一字段不一致都返回 `PROJECT_WRITE_CONFLICT`。目标 `updated_at` 还必须是有效时间并严格晚于前态，避免写入不推进 CAS token。事务 intent 对 `write_current_state` 也要求并保存三字段 expectation，`commit_version` 继续保持两字段追加式版本契约。
+
+知识补充任务、手工素材包、GEARS delivery/webhook/video callback 和 AI 漫剧分集 story→project 同步均已迁移到三字段 expectation。服务端为同毫秒连续动作生成单调递增的 `updated_at`；AI 分集同步不再沿用旧时间戳。repository 回归验证同一版本上的首个 current-state writer 成为 winner 后，持有相同旧 `updated_at` 的第二 writer 被拒绝，未推进时间戳也被拒绝；故障注入 intent 明确保留三字段前态并继续可恢复。
+
+定向 ProjectRepository 为 1 文件、8 用例，Web Server 全量为 92 文件、899 用例，服务端 TypeScript 与 `git diff --check` 通过。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 112 文件（77 tracked、35 untracked），`shared_core=53`、hold 0、staged 0。
+
+该切片只证明文件 provider 的机器并发控制，不等于 PostgreSQL 事务、跨 repository 原子性、真实多人冲突 UI/UAT 或生产故障演练。五套进度保持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%；fixture、CAS、测试和本地 WAL 均不增加真实修订、真人审核、真实回片、signed release 或 professional pass 信用。
+
+### 8.26 2026-07-15 版本提交三字段 CAS 与 Board 成对发布
+
+继续审计发现 `commitVersion` 虽能拒绝版本号变化，却仍可能在同一版本的 metadata-only writer 已获胜后，用更早读取的整份 meta 创建新版本并覆盖素材、回调或账本字段。版本提交现同样要求 `updated_at + current_version_id + version_count`，目标时间戳必须严格推进；`commit_version` intent 保存三字段 expectation，恢复解析也拒绝缺少有效 `updated_at` 的新意图。测试先完成同版本 metadata winner，再尝试 stale 新版本，确认目标版本文件不创建；随后使用新前态提交可成功并保留 winner 字段。另以 snapshot 后故障注入验证三字段 commit intent 可确定性重放。
+
+Production Board 导出原先先写 meta、再以无 expectation 的 `writeVersion` 覆盖当前 snapshot，任一步失败或并发 callback 都可能造成两份状态分裂或静默丢字段。该 snapshot-only 写入口已从 `ProjectRepository` 公共合同和文件 provider 移除；Board 导出现在读取当前 snapshot 后，通过一次 `writeCurrentState` WAL 成对发布导出后的 meta 与 `production_board_export`。源码边界测试禁止重新引入 `.writeVersion(`，已有导出回归继续验证项目 `exported` 状态与版本导出记录一致。
+
+ProjectRepository/项目服务定向回归为 2 文件、68 用例，Web Server 全量为 92 文件、902 用例，服务端 TypeScript 与 `git diff --check` 通过。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身仍为 112 文件（77 tracked、35 untracked），`shared_core=53`、hold 0、staged 0。
+
+本轮没有执行真实多用户冲突、断电、数据库事务、对象存储或真实 Board 外部交付；本地 artifact、WAL、fault injection 和测试均不计真实成果。五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，真实修订、真人审核、真实回片、signed release 和 professional pass 全部保持 0。
+
+### 8.27 2026-07-15 metadata-only 强制 CAS 与单调 revision token
+
+`ProjectRepository.writeMeta` 的 expectation 过去在接口上仍可省略，虽然当前生产调用已经主动传值，未来代码仍可能重新引入无 CAS 覆盖；同时目标 `updated_at` 若等于前态，第一次写入不会推进 revision token，后续 stale writer 仍可能通过。该方法现强制接收 `ProjectMetaExpectation`，并与版本/当前状态写入一致地要求目标时间戳有效且严格递增。路径错误、外部锁等测试也必须显式提供 expectation，公共 API 不再保留“可信单写者”逃生入口。
+
+项目服务全部 15 条 metadata-only 生产写路径已核对：Seedance 资产绑定/批量导入/上传/占位/复用、shot 版本与 provider queue、超时恢复、GEARS 提交/callback/轮询失败、生产就绪自动化和当前版本导出均使用 `nextProjectUpdatedAt`。业务事件仍保存其实际事件时间，项目顶层 revision token 则保证单调；GEARS 提交若没有产生任何新 ledger job 会直接跳过 metadata 写入，不再用原时间戳制造无变化写。源码测试同时禁止重新出现可选 expectation。
+
+ProjectRepository/项目服务定向回归为 2 文件、68 用例，Web Server 全量为 92 文件、902 用例，服务端 TypeScript 与 `git diff --check` 通过。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身仍为 112 文件（77 tracked、35 untracked），`shared_core=53`、hold 0、staged 0。
+
+该结果是文件 provider 的机器级乐观锁合同；没有真实多用户 UAT、冲突解决 UI、生产数据库或跨 repository 事务。五套进度仍为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，所有 fixture、时间戳、CAS 和测试均不计真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.28 2026-07-15 SeriesProject revision token 推进门禁
+
+横向检查 Project/Series/Story/Review 四类 CAS 后确认：StoryRepository 与 ReviewRepository 使用 exact-byte SHA-256 revision，不同内容成功写入必然改变 token；SeriesProjectRepository 仅核对旧 `updated_at`，却未验证目标时间有效或更晚，改变内容但复用旧时间会让下一名 stale writer 继续通过。系列 replace 现要求 expected 为有效时间，目标 `project.updated_at` 也必须有效且严格晚于 expected；复用/回退/非法时间均在获取并覆盖目标前 fail closed。
+
+全量测试首次暴露 `autoSelectAiComicSeriesSeedanceProductionVersions` 在没有任何可择优版本时仍执行 replace，并刻意沿用旧时间。该 no-op 现在直接返回现存项目，不写 `project.json`；有实际选择时才推进项目与 ledger 时间并执行 CAS。其余 22 条系列 replace 生产路径在新门禁下通过，说明没有隐藏的确定性 token 复用路径；同毫秒动作若不能推进仍会返回 409，而不是静默覆盖。
+
+SeriesProjectRepository/outline 系列流程定向回归为 2 文件、41 用例，Web Server 全量为 92 文件、902 用例，服务端 TypeScript 与 `git diff --check` 通过。完成后的授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身仍为 112 文件（77 tracked、35 untracked），`shared_core=53`、hold 0、staged 0。
+
+该门禁不代表真实多人冲突 UAT、冲突合并 UI、生产数据库事务或备份恢复已经完成。五套进度继续为综合 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%；测试系列、CAS 和时间戳均不计任何真实人工、媒体或发布信用。
+
+### 8.29 2026-07-15 最小 Domain Pack 注册表与搜索动态分发
+
+依据平台路线 Phase 1 的增量拆分红线，本轮建立 `platform/domain-pack.ts`、`platform/domain-registry.ts` 与 `domains/china-culture/domain-pack.ts`，没有搬迁或重写既有故事业务。Domain Pack 现以 `story-agent-domain-pack/v1` 元数据自描述，注册时校验 `domain_id`、显示名、描述与语义版本；重复、非法注册 fail closed，注册表提供确定性领域列表与显式 require。首个 `china_culture` 包只声明 `entry_search` 能力，通过薄适配器复用现有 entry service，因此不虚报完整 DomainPack 合同或第二领域完成。
+
+`GET /api/entries/search` 已由平台路由骨架按可选 `domain` 动态分发：未提供参数时默认 `china_culture`，旧 URL、旧筛选字段与前端无需改动；显式 `domain=china_culture` 与旧查询逐项相等。合法但未注册的领域返回 404 `DOMAIN_PACK_NOT_FOUND`，路径式或非规范标识在 Zod 层返回 400 `VALIDATION_ERROR`。平台搜索接口只认通用 `keywords/type` 与扩展字段，不在平台层写死 `province/region` 文化语义。
+
+Domain Pack 注册表与 Entries API 定向回归为 2 文件、184 用例，Web Server 全量为 93 文件、909 用例，服务端 TypeScript、构建和 `git diff --check` 通过。更新后 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 118 文件（79 tracked、39 untracked），`shared_core=59`、hold 0、staged 0。
+
+本切片仍未动态分发 entry detail/match、故事规划/生成、安全/可信度或 GEARS 映射，也未完成 service 物理迁移与第二个生产 Domain Pack。fixture、兼容测试、注册表元数据和机器验签不计真实修订、真人审核、真实回片、signed release 或 professional pass；五套进度继续为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.30 2026-07-15 Domain Pack 条目能力闭环
+
+在搜索分发骨架上继续收口条目能力：Domain Pack 标准合同现要求 `entry_search`、`entry_detail`、`entry_match` 三项能力与对应实现，注册时拒绝缺项、重复或额外未知能力，避免元数据声称与运行时能力漂移。`china_culture` 适配器复用现有搜索、精确详情和智能匹配实现；平台参数只声明通用字段并允许领域扩展，文化特有偏好仍封装在适配器边界。
+
+`GET /api/entries/detail` 与 `POST /api/entries/match` 新增可选 `domain`，缺省继续使用 `china_culture`；显式领域调用分别与旧调用逐项相等，未知领域返回 404，非法领域标识仍由 schema 返回 400。`routes/entries.ts` 已完全移除对 `entry-service.ts` 的直接 import，并以源码边界测试防止回退；`multi-match` 属于 outline/知识包协同能力，本轮未伪装为基础条目能力。
+
+Domain Pack/Entries API 定向回归为 2 文件、189 用例，Web Server 全量为 93 文件、914 用例，TypeScript 与 `git diff --check` 通过。授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。默认沙箱中的 supertest 临时监听曾被 `listen EPERM 0.0.0.0` 拒绝；相同测试在获准环境完整通过，该环境错误不作为代码通过证据。
+
+P4 排除自身仍为 118 文件（79 tracked、39 untracked），`shared_core=59`、hold 0、staged 0。故事 plan/generate、类型路由、安全规则、可信度和 GEARS 适配仍未进入 Domain Pack，service 也尚未物理迁移；本轮机器测试不增加任何真实修订、真人审核、真实回片、signed release 或 professional pass。五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.31 2026-07-15 Domain Pack 故事创建能力分发
+
+在条目能力之后，Domain Pack 合同增量加入 `story_plan` 与 `story_generate`，注册表现在要求五项能力与实际方法同时存在。`china_culture` 包以薄适配器调用既有 `planStory` 和 `generateAndStoreStory`，没有复制生成算法或绕开 StoryRepository/ProjectRepository。`POST /api/stories/plan` 与 `/generate` 接受可选 `domain`，缺省行为不变；显式文化领域规划与旧结果逐项一致，未知领域均返回 `DOMAIN_PACK_NOT_FOUND`。
+
+生成路由仍先执行服务端 `story:create` RBAC，再选择 Domain Pack；认证 actor 派生出的 `access_control` 原样传给领域生成方法，因而新项目所有权持久化、原子写与审计语义不变。未知领域在调用生成服务前 fail closed，不创建 story/project。源码边界测试禁止 stories route 重新直接 import `planStory` 或 `generateAndStoreStory`；已有 story 列表、详情、GEARS 与 Seedance 读取保持平台公共路径，不按请求领域重新解释存量资源。
+
+Domain Pack 与 entry/story API 定向回归为 2 文件、194 用例，Web Server 全量为 93 文件、919 用例，TypeScript 与 `git diff --check` 通过。授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身仍为 118 文件（79 tracked、39 untracked），`shared_core=59`、hold 0、staged 0。
+
+本切片没有完成 generation type/entry type 元数据、可执行 safety/credibility 合同、GEARS 映射、service 物理迁移或第二个真实领域；领域路由与测试不计真实模型修订、真人审核、真实回片、signed release 或 professional pass。五套进度仍为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.32 2026-07-15 Domain Pack 类型目录与只读发现
+
+平台 `system.ts` 原先直接保存 12 个中国文化条目类型及其推荐片型/表现形式，违反“平台内核不知道领域具体类型名”的边界。该目录现迁入 `domains/china-culture/type-catalog.ts`，并与 15 个现有 VideoType 元数据一起成为 Domain Pack 的 `entryTypes` / `generationTypes`。注册表新增 `type_catalog` 必需能力，拒绝空目录、重复 entry name 或重复 generation id，避免只声明能力却没有可用目录。
+
+新增只读 `GET /api/system/domain-packs`，只返回领域元数据、能力与 12/15 计数，不序列化方法、凭据或服务内部状态；`GET /api/system/types` 改为按可选 `domain` 读取领域目录，缺省及显式 `china_culture` 与旧响应逐项一致；`GET /api/system/generation-types` 提供相同领域选择与 15 片型目录。未知领域返回 404，非法领域标识返回 400，前端无需改动。
+
+Domain Pack 注册/发现与 API 定向回归为 2 文件、199 用例，Web Server 全量为 93 文件、924 用例，TypeScript 与 `git diff --check` 通过。授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 119 文件（79 tracked、40 untracked），`shared_core=60`、hold 0、staged 0。
+
+目录可发现不等于第二领域可用，也不代表 safety/credibility、type routing、GEARS 映射或 service 物理拆分完成；所有目录测试与 metadata 均不计真实修订、真人审核、真实回片、signed release 或 professional pass。五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.33 2026-07-15 Domain Pack 落盘前文化可信度安全门禁
+
+安全审计发现，兼容的外部模型输出只要提供非空 `cultural_constraints` 或 `credibility_note`，原实现就会整段替换本地引擎根据条目可信度、待核实点和来源生成的基线。该合并现改为“本地基线 + 模型补充”的去重追加：模型不能删除本地 constraints，credibility note 也必须先保留本地说明再附加模型内容，避免模型把 D 级传说、存疑或待核实边界静默洗掉。
+
+`china_culture` Domain Pack 新增 `story_safety` 能力与四条可执行规则：可信度约束存在、每个待核实点存在、credibility note 同时包含条目名与可信度等级、至少一个场景保留来源条目追踪。校验在最终修订/质量/GEARS package 形成后、ProjectRepository 与 StoryRepository 写入前执行；任何 blocker 返回 422 `DOMAIN_SAFETY_VALIDATION_FAILED`，不创建 story/project。通过结果随 Story 保存为 `story-domain-safety/v1`，并固定 `machine_validation_only=true`、`human_review_complete=false`、`real_credit_granted=false`。
+
+Domain Pack safety、模型合并与注册边界定向回归为 3 文件、27 用例，API 集成为 1 文件、193 用例，Web Server 全量为 94 文件、926 用例，TypeScript 与 `git diff --check` 通过。授权环境 Unified CI 21/21 通过：Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 122 文件（80 tracked、42 untracked），`shared_core=63`、hold 0、staged 0。
+
+该门禁只证明四条结构化边界未被机器输出删除，不判断历史主张真伪、文化适切性、现实授权或真人审稿结论，也不代表第二 Domain Pack 安全规则完成。五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%；所有 safety report、fixture 与测试均不增加真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.34 2026-07-15 GEARS segments/v2 领域映射与旧字段兼容
+
+GEARS segments 端点原先已经把 `schema_version` 写成 `gears-segments/v2`，但响应没有 v2 契约要求的 `sourceDomain`，分段也仍只有领域专用的 `cultural_constraints`。本轮将 `gears_mapping` 纳入 Domain Pack 强制能力：`china_culture` 把 story 全局文化边界与 segment 镜头边界合并、去空白并去重，输出平台统一字段 `constraint_note`。响应同时保留内容完全等价的 `cultural_constraints`，使旧消费者在迁移窗口内不丢约束；单一 `/api/stories/:storyId/gears-segments` 端点保持不变。
+
+新生成故事会持久化 `sourceDomain=china_culture`；旧 snapshot 没有该字段时走明确的 legacy `china_culture` 默认，不批量改写历史文件。API 根据故事的 `sourceDomain` 解析 Domain Pack，持久化了未注册领域的故事返回 404 `DOMAIN_PACK_NOT_FOUND`，不静默套用错误领域规则。`GearsSegmentsResponse` 现以字面量锁定 v2 schema、`sourceDomain` 和含 `constraint_note` 的分段类型，避免以后再次出现“版本号先升级、数据契约未升级”。
+
+Domain Pack/文化安全定向回归为 2 文件、9 用例，API 集成为 194 用例，Web Server 全量为 94 文件、928 用例，TypeScript 与 `git diff --check` 通过。该契约和 fixture 只验证本地映射与兼容行为，没有调用真实 GEARS/Seedance worker、生成真实媒体或取得公共 artifact URL；五套进度保持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，不增加真实修订、真人审核、signed release 或 professional pass 信用。
+
+### 8.35 2026-07-15 平台共享基础类型抽取
+
+Phase 1 的共享模型不再只停留在路线文档：新增 `web/shared/platform-types.ts`，定义与领域无关的 `BaseEntry`、`BaseStoryScene`、`BaseGearsSegment` 和泛型 `BaseStory`；`web/server/src/platform/types.ts` 作为服务端平台入口只做 type re-export。既有 `EntrySearchResult`、`EntryDetail`、`StoryScene`、`GearsSegment` 和 `StoryGenerateResult` 通过结构继承接入，不改变当前 API 字段、序列化结果或前端调用。
+
+基础文件明确不包含 `cultural_note`、`cultural_constraints`、可信度等级等 china_culture 专用字段，也不包含 const/class/function 运行时实现；领域字段继续留在现有文化模型。`sourceDomain` 在基础资源中仅因旧 snapshot 兼容而可选，新生成故事仍由 Domain Pack 强制持久化；GEARS v2 导出类型继续把 `constraint_note` 收紧为必填。该拆分建立了第二 Domain Pack 可复用的最小类型边界，但没有把 4k+ 行 entry/story/mcp 服务实体迁入领域目录，因此不宣称 Phase 1 完整服务抽离。
+
+平台类型/Domain Pack 定向回归为 2 文件、9 用例，Web Server 全量为 95 文件、930 用例，TypeScript 与 `git diff --check` 通过。P4 排除自身为 125 文件（80 tracked、45 untracked），`shared_core=66`、hold 0、staged 0。纯类型合同、结构断言和机器测试不计真实修订、真人审核、真实回片、signed release 或 professional pass；五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.36 2026-07-15 Domain Pack 类型目录去文化枚举耦合
+
+基础故事模型抽取后继续横向审计发现，`DomainPack.entryTypes` 与 `generationTypes` 仍直接声明为现有 `TypeInfo`/`VideoTypeMeta`，后者把推荐生成类型、VideoType、PresentationStyle 和分组全部限定在 china_culture 当前联合类型。这样的注册表虽然能列出第二领域，却无法在 TypeScript 中合法声明 `case_drama`、`anti_fraud_short` 等新类型。本轮在共享平台类型中新增 `DomainEntryTypeDescriptor` 与 `DomainGenerationTypeDescriptor`，所有领域标识、分组、表现形式和兼容条目均为领域自有字符串；时长兼容当前字符串和未来数值合同。
+
+Domain Pack 注册表现改用上述基础目录描述，既有 `TypeInfo` 与 `VideoTypeMeta` 以窄类型继承，因此 `china_culture` 的 12 条目类型、15 生成类型、系统 API 与前端响应均不变化。注册时新增目录内容校验：空名称/描述/表现形式、非规范生成类型 ID、非正数时长和重复 ID 全部 fail closed。测试包以不属于当前文化联合的 `police_story_story`、`police_story_style` 和数值时长 60 注册成功，同时验证大写连字符 ID 被拒绝；这只证明平台目录合同可扩展，不代表 police_story 业务、安全规则或数据已经实现。
+
+平台类型/Domain Pack 定向回归为 2 文件、10 用例，Web Server 全量为 95 文件、931 用例，TypeScript 与 `git diff --check` 通过。该切片未注册第二个生产 Domain Pack、未生成第二领域内容，也未调用真实模型或 GEARS；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，机器目录 fixture 不计任何真实信用。
+
+### 8.37 2026-07-15 china_culture 规划风险规则物理抽取
+
+作为大型文化 story service 的首块真实业务拆分，本轮把 `computeCulturalRisks` 与 `buildPlanSupplementNeeds` 从 `services/story-service.ts` 迁入 `domains/china-culture/planning-rules.ts`，并改为显式的 `computeChinaCulturePlanningRisks` / `buildChinaCulturePlanSupplementNeeds`。风险规则仍按“存疑/待核实 + 每条待核点”形成规划边界；补充需求仍覆盖可信度复核、缺核验方式、最多五条待核内容和不足 120 字的故事细节。`planStory` 只调用领域规则，返回字段和顺序保持不变。
+
+新增正反测试验证：资料充分且可靠的条目不凭空生成风险或补充任务；待核实条目保留可信度、核验方式、全部规划风险和短素材边界；七个待核点只在补充队列展示五个，但整体“存疑” blocker 不被隐藏。源码边界测试禁止两个旧函数体重新进入 legacy story service，并确认服务只通过领域函数调用。完成的是两个纯规划规则的物理迁移，不是 entry/story/mcp 三个大服务的整体抽离，也未做真人文化判断。
+
+文化规划/Domain Pack/safety 定向回归为 3 文件、13 用例，Web Server 全量为 96 文件、935 用例，TypeScript 与 `git diff --check` 通过。P4 排除自身为 127 文件（80 tracked、47 untracked），`shared_core=68`、hold 0、staged 0。所有规划结果仍是机器建议，不计真人来源核验、文化审核、真实修订、真实回片、signed release 或 professional pass；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.38 2026-07-15 china_culture 三维类型路由矩阵物理抽取
+
+继续拆分 legacy story service 后，条目类型到旧 `GenerationType`、15 片型 `VideoType` 和 8 类 `StoryStructureType` 的三份矩阵已迁入 `domains/china-culture/type-routing.ts`。规划推荐、event type 选择与叙事结构推荐全部改调领域函数；函数返回副本，调用者不能修改注册常量。未知旧条目类型仍确定性降级为 `character_story` / `character_story` / `single_event_drama`，保持既有兼容行为。
+
+目录一致性测试以 `CHINA_CULTURE_ENTRY_TYPES` 为权威集合，验证 12 个条目类型在三份矩阵中无缺失、无额外项；generation/video 推荐逐项等于系统目录中已发布的顺序，所有类型至少有一个叙事结构。源码边界测试确认 legacy story service 不再含三份 `TYPE_*_ROUTING` 矩阵。该切片把领域路由数据实体迁出，但视频配置、prompt、生成引擎和大型 story service 其余逻辑仍待后续增量抽离。
+
+类型路由/文化规划/Domain Pack 定向回归为 3 文件、16 用例，Web Server 全量为 97 文件、939 用例，TypeScript 与 `git diff --check` 通过。P4 排除自身为 129 文件（80 tracked、49 untracked），`shared_core=70`、hold 0、staged 0。所有目录、fallback 和结构测试均为机器合同，不计真人文化审稿、真实修订、真实 GEARS/Seedance 回片、signed release 或 professional pass；五套进度仍为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.39 2026-07-15 china_culture 完整只读故事规划服务迁移
+
+在规划规则和路由矩阵完成抽取后，本轮将完整 `planStory` 从 4k+ 行 legacy `services/story-service.ts` 迁入 `domains/china-culture/story-planning-service.ts`。新领域服务自行读取/转换文化条目，生成旧 generation 推荐、片型推荐、表现形式、粗体事件与冲突分、推荐时长、叙事结构、叙事模式、补充需求和文化风险；Domain Pack 直接调用 `planChinaCultureStory`，不再经 legacy story service 规划。外部 `/api/stories/plan` 路由、请求与响应字段均保持不变。
+
+粗体事件解析也迁入领域服务：省份、类型、故事梗概、可信度和待核实点等结构标题不被误当成故事事件。生成链仍需要从知识条目选择 central event，因此只复用导出的 `extractChinaCultureBoldEvents`，没有复制规则。源码边界测试确认 Domain Pack 的 planning import 指向领域服务、legacy story service 不再导出/实现 `planStory`；API 194 用例通过，覆盖成功规划、未知领域、未知条目与既有动态分发。生成链、模型合并、项目落盘和其余 entry/mcp 代码仍待继续分拆，本轮不宣称完整 Phase 1。
+
+领域规划/路由/规则/Domain Pack 定向回归为 4 文件、19 用例，API 集成为 194 用例，TypeScript 与 `git diff --check` 通过。P4 排除自身为 131 文件（80 tracked、51 untracked），`shared_core=72`、hold 0、staged 0。规划结果仍是机器推荐，不计真实模型项目、真人文化审核、真实修订、真实回片、signed release 或 professional pass；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.40 2026-07-15 Domain Pack 运行时注册 fail-closed
+
+注册表过去主要依赖 TypeScript：如果未来从 JavaScript、动态插件或反序列化配置传入的 pack 声称具备 capability、实际却缺少函数，注册会成功，直到首个流量才以 500 暴露。现在 `register` 在写入 registry 前验证 `story-agent-domain-pack/v1` schema、domain/显示名/描述/语义版本、capability 数组与完整集合，以及 search/detail/match/plan/generate/safety/GEARS 七个运行时函数实现；缺一项立即抛出 `DOMAIN_PACK_REGISTRY_INVALID`。
+
+目录校验同步覆盖非数组 catalog、trim 后重复名称/ID、缺失或非字符串的推荐类型/表现形式、非规范 generation ID、空元数据、非字符串或非正数时长、以及非字符串 compatible entry。所有检查均先做运行时类型收窄，不让畸形对象以原生 `TypeError` 逃出统一注册错误。负向测试用错误 v99 schema、缺失 `mapGearsConstraints` 和布尔时长验证在接收流量前拒绝；合法任意领域字符串目录仍可注册。
+
+Domain Pack/平台类型定向回归为 2 文件、11 用例，TypeScript 与 `git diff --check` 通过。P4 排除自身仍为 131 文件（80 tracked、51 untracked），`shared_core=72`、hold 0、staged 0。该门禁只验证本进程注册合同，不证明第三方插件供应链、真实生产热加载或第二领域安全审核完成；五套进度与真实信用均保持不变。
+
+### 8.41 2026-07-15 china_culture 条目详情读取物理迁移
+
+继续审计 628 行 legacy `services/entry-service.ts` 后确认，搜索、匹配、摘要和关键词辅助同时被故事与大纲链路复用，整文件搬迁会把多个生产调用面绑在一次高风险改动中。本轮先把可独立验收的精确详情读取迁入 `domains/china-culture/entry-detail-service.ts`：领域服务负责 MCP 详情读取、统一模型转换与 `ENTRY_NOT_FOUND` 失败合同；Domain Pack 直接绑定 `getChinaCultureEntryDetailByName`，legacy entry service 不再导出或实现详情读取。
+
+平台 `/api/entries/detail` 路由、默认 `china_culture`、显式领域选择、成功响应和不存在条目的 404 合同均未改变。源码边界测试同时锁定 Domain Pack 必须从领域目录导入详情能力，并禁止旧 `getEntryDetailByName` 回流；搜索、匹配和跨服务共享 helper 保持原位，后续仍需按消费者边界继续拆分，不能据此宣称完整 entry service 已迁移。
+
+服务端 TypeScript 通过，Domain Pack + Entries API 定向回归为 2 文件、204 用例（API 194）；获准环境完整 Unified CI 21/21 通过，Web Server 98 文件/944 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。默认沙箱首次运行因 Supertest 临时监听被 `listen EPERM 0.0.0.0` 统一拒绝而失败，原样在获准环境复跑后通过；该环境失败未被记作代码通过证据。P4 排除自身为 132 文件（80 tracked、52 untracked），`shared_core=73`、hold 0、staged 0。
+
+这一切片只增加领域所有权与机器回归证据，没有执行真人条目核验、真实模型生成、真实 GEARS/Seedance 回片或发布签署。五套进度仍为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%；测试、源码边界和本地知识读取均不增加真实修订、真人审核、signed release 或 professional pass 信用。
+
+### 8.42 2026-07-15 china_culture 条目搜索与意图排序物理迁移
+
+在详情读取迁移后继续做依赖闭包审计：`searchEntries`、搜索意图识别、命中理由和搜索排序只由 Domain Pack 搜索能力消费，而条目全集收集、关键词提取、匹配片段和知识摘要同时被 match、story 与 outline 使用。本轮把前一组完整迁入 `domains/china-culture/entry-search-service.ts`，Domain Pack 改调 `searchChinaCultureEntries`；后一组继续留在兼容 service 供多个既有消费者复用，没有复制文化规则，也没有强行搬迁跨服务公共 helper。
+
+搜索领域服务继续直接调用既有 MCP 搜索与转换边界，保持空查询、无关键词筛选、关键词排序、地点/人物/民俗/宗教/事件/工艺意图、matched snippets 与 match reason 的原顺序和响应格式。源码边界测试要求 Domain Pack 从领域目录分发，并确认 legacy entry service 不再导出搜索入口、也不再包含 `detectSearchIntent` 或 `computeSearchRank`；详情、匹配和平台路由合同不变。
+
+服务端 TypeScript 与 `git diff --check` 通过，Domain Pack + Entries API 定向回归为 2 文件、205 用例（API 194）。完整 Unified CI 21/21 通过，Web Server 98 文件/945 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、零信用门禁、治理、P4 stale-check 和无暂存检查均通过。P4 排除自身为 133 文件（80 tracked、53 untracked），`shared_core=74`、hold 0、staged 0。
+
+匹配能力与其评分规则、跨服务共享 helper、故事生成主链和 MCP 数据适配仍未完成领域迁移，因而不宣称 entry service 或 Phase 1 已整体拆完。本地检索和机器回归没有真人事实/文化结论，不增加真实模型修订、真人审核、真实 GEARS/Seedance 回片、signed release 或 professional pass；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.43 2026-07-15 china_culture 条目匹配、语言规则与 outline 依赖迁移
+
+匹配依赖闭包审计确认，`matchEntries`、评分、地方化目标加权、匹配理由、文化类型关键词表与省份识别属于 `china_culture`；关键词扩展和省份识别同时被 story/outline 消费，不能只搬主函数后继续从 legacy service 反向取规则。本轮新增 `entry-match-service.ts` 与 `entry-language-helpers.ts`，Domain Pack 直接调用 `matchChinaCultureEntries`；故事服务和大纲服务分别以显式域内 import 复用关键词、省份与评分函数。
+
+评分合同保持精确名称、核心名称、长故事、相关地点、地方化创作关系、文化意义、来源/核验/待核字段、资产拆分、省份/偏好类型和甲方指定地域的原权重与 0.99 上限；最低入选 0.35、可用阈值 0.75、排序、fallback 与中文 match reason 不变。legacy entry service 已移除 match 入口、`computeMatchScore`、类型关键词表和省份探测，只保留多消费者共用的条目收集、片段与摘要兼容层。
+
+服务端 TypeScript 和 `git diff --check` 通过；Domain Pack + Entries API + outline 定向回归为 3 文件、238 用例。完整 Unified CI 21/21 通过：Web Server 98 文件/946 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查均通过。P4 排除自身为 136 文件（81 tracked、55 untracked），`shared_core=77`、hold 0、staged 0。
+
+这完成了 Domain Pack 三个条目能力入口及核心文化搜索/匹配规则的物理迁移，但数据收集/片段层、MCP proxy 和故事生成主链仍待继续拆分，第二个生产领域也仍为 0。所有匹配与大纲结果是机器合同，不计真人事实/文化审核、真实修订、真实回片、signed release 或 professional pass；五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.44 2026-07-15 china_culture entry 知识数据层完整抽取与兼容门面
+
+三项条目能力迁移后，legacy `entry-service.ts` 只剩省份文件遍历、完整条目组装、地方化关系文本、资产拆分文本、匹配片段和故事知识摘要。本轮将这些实现整体迁入 `domains/china-culture/entry-knowledge-service.ts`，并使用显式的 `collectChinaCultureSearchableEntries`、`buildChinaCultureEntryMatchedSnippets` 和 `buildChinaCultureEntryKnowledgeSummary` 命名。搜索、匹配、story 与 outline 生产消费者全部改为直接依赖领域服务。
+
+旧 `services/entry-service.ts` 没有删除，以兼容潜在未纳入当前搜索范围的外部 import；文件现只做三个值导出和一个类型导出的别名门面，不再 import MCP、不再声明函数或保存文化规则。源码边界测试锁定门面无逻辑、四类生产消费者直连领域知识层；仓库内生产代码对 legacy entry service 的 import 为 0。原数据字段、片段排序、120 字截断、360 字摘要、地方化关系标签和资产拆分拼接均保持兼容。
+
+服务端 TypeScript 与 `git diff --check` 通过；Domain Pack + Entries API + outline 定向回归为 3 文件、239 用例。完整 Unified CI 21/21 通过：Web Server 98 文件/947 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、构建、知识库 lint、零信用门禁、治理、P4 stale-check 与无暂存检查均通过。P4 排除自身为 137 文件（81 tracked、56 untracked），`shared_core=78`、hold 0、staged 0。
+
+至此当前 entry service 的运行实现已物理归入 `china_culture`，但 MCP proxy 仍是共享兼容基础设施，4k+ 故事生成服务也未完成抽取，因此 Phase 1 与完整 Domain Pack 化仍未结束。机器数据转换与回归测试不等于真人事实/文化审核，不增加真实修订、真实回片、signed release 或 professional pass；五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.45 2026-07-15 china_culture 知识源适配器物理迁移
+
+`services/mcp-proxy.ts` 横向审计后确认只负责中国文化省份 Markdown、文化条目搜索/详情解析、MCP 内部模型到 Web 文化模型转换和文化元数据 enrich，不存在第二领域或领域中立数据源合同。本轮将实现迁入 `domains/china-culture/knowledge-source-adapter.ts`，使用 `searchChinaCultureKnowledgeBase`、`convertChinaCultureFullEntryDetail`、`readAllChinaCultureProvinceFiles` 等显式命名；entry 四个领域模块、story、outline、规划服务和系统省份路由均直接依赖该适配器。
+
+旧 `mcp-proxy.ts` 与 entry 旧路径一样保留为无逻辑重导出门面，不删除兼容路径；它不再直接 import MCP server、不定义转换函数。系统省份路由仍属于当前文化产品能力，本轮只让依赖关系诚实显式，没有把省份概念伪装为平台通用字段。源码边界测试锁定 MCP 纯函数只由领域适配器导入、legacy 门面无函数、系统路由不回退；生产代码对旧 proxy 的 import 为 0。
+
+服务端 TypeScript 与 `git diff --check` 通过；Domain Pack + Entries API + outline + 专业人物基准定向回归为 4 文件、244 用例。完整 Unified CI 21/21 通过：Web Server 98 文件/948 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、构建、知识库 lint、零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 分类规则同步将旧 MCP 兼容门面纳入 shared-core；排除清单报告自身后为 140 文件（83 tracked、57 untracked），`shared_core=80`、`professional_formats=3`、hold 0、staged 0。
+
+文化元数据 enrich 和大型故事生成链仍在 legacy service 目录，第二个生产 Domain Pack 仍未建立；知识源迁移也没有新增或真人核验任何条目。五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，所有转换、测试和本地 MCP 读取均不计真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.46 2026-07-15 china_culture 条目元数据推断规则物理迁移
+
+知识源适配器迁移后，`domain-pack-service.ts` 中仍有一组只服务中国文化条目的纯规则：知识领域推断、朝代识别、资产用途推断，以及搜索/详情元数据缺省 enrich。该组现在整体迁入 `domains/china-culture/entry-metadata-service.ts`，使用 `inferChinaCultureEntryMetadata`、`detectChinaCultureEra` 等显式命名；知识源适配器直接依赖新服务，不再反向依赖 600+ 行扩展包服务。
+
+扩展包候选选择仍需要识别输入年代，因此 legacy domain-pack service 改为 import 同一 `detectChinaCultureEra`；旧 `inferEntryMetadata`、`enrichSearchResultWithMetadata` 和 `enrichEntryDetailWithMetadata` 出口保留为域函数别名，避免外部兼容断裂。原领域优先级、周敦颐/柳毅/近现代补充识别、12 类资产用途正则、显式 metadata 优先于推断的合并语义均保持不变；源码测试禁止旧文件重新出现三份函数实现。
+
+服务端 TypeScript 与 `git diff --check` 通过；metadata + Domain Pack + API 定向回归为 4 文件、218 用例。完整 Unified CI 21/21 通过：Web Server 99 文件/952 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查均通过。P4 排除自身为 143 文件（84 tracked、59 untracked），`governance=14`、`shared_core=82`、hold 0、staged 0。
+
+扩展包 seed 选择、生产健康与 append 流程仍在 legacy domain-pack service，大型故事生成链和第二生产领域也仍待后续切片。元数据推断只是机器标注，不是来源核验或文化审稿；五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，不增加真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.47 2026-07-15 Track A 浏览器 E2E 隔离端口与并行开发保护
+
+本轮基线 Unified CI 的 Web 合同、99 文件/952 用例和构建均通过，但 Track A Playwright 在执行测试前发现固定的 `localhost:5173` 已被本仓库一个持续运行的开发服务占用。该进程没有被终止或接管；问题被收口为测试基础设施缺少端口隔离，而不是以清理用户进程掩盖冲突。
+
+Playwright 现支持 `STORY_AGENT_E2E_CLIENT_PORT` 与 `STORY_AGENT_E2E_SERVER_PORT`，Vite 同步支持经校验的 `VITE_DEV_PORT` 和 `VITE_API_PROXY_TARGET`；非法、越界端口 fail closed。开发默认仍保持 5173/3000，Unified CI 则默认使用隔离的 15173/13000。会话 cookie 改为 `localhost` 域与根路径，不再把固定客户端端口写进测试数据。源码边界测试锁定可配置端口、CI 隔离默认值和无固定 cookie URL，避免回退。
+
+Web 类型检查、导航边界 7/7 与隔离 Track A Playwright 6/6 定向通过；随后在保留既有 5173 服务的条件下，完整 Unified CI 21/21 通过：Web Server 99 文件/953 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 144 文件（85 tracked、59 untracked），`governance=14`、`shared_core=83`、`professional_formats=3`、hold 0、staged 0。
+
+端口隔离只提高本地与 CI 的可重复性，不代表真实身份 UAT、真实用户验收、真实修订、真人审核、真实 GEARS/Seedance 回片、signed release 或 professional pass。五套进度继续为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.48 2026-07-15 china_culture Domain Pack 生产包运行时完整迁移
+
+`services/domain-pack-service.ts` 的剩余实现经依赖审计确认全部固定读取 `data/domain-packs/china-culture.json`，并包含宋/唐 fallback、志异/地域/年代/GEARS 匹配、八个必需生产包健康规则和文化资产边界，不是平台通用 Domain Pack 服务。本轮将其整体迁入 `domains/china-culture/domain-pack-production-service.ts`，公开函数和类型使用 `ChinaCulture` 显式命名；旧路径保留为无函数、无 fallback、无读盘逻辑的兼容重导出门面。
+
+当前五个生产消费者均在领域边界上取用实现：outline、系统生产健康端点、MVP 状态、GEARS 执行，以及新域内 story knowledge-pack 服务；不存在生产代码回退到旧 service 路径。metadata 兼容别名仍留在旧门面，年代识别只在域内生产服务调用。P4 分类器同步为本次新触达的 `gears-execution-service.ts` 与 `story-agent-mvp-status-service.ts` 增加精确 `shared_core` 归属；首次刷新出现的 2 个 hold 因而按可审计规则归零，没有使用宽泛匹配绕过门禁。
+
+迁移后的生产包/metadata 定向回归为 2 文件、11 用例，Domain Pack + API + outline 为 4 文件、237 用例，Web 类型检查与 `git diff --check` 通过。最终完整 Unified CI 证据与下一节共享：21/21、Web Server 100 文件/956 用例、Track A 6/6、MCP 79 文件/345 用例。生产健康报告和本地 seed 只属于机器合同，不增加任何真人或外部交付信用。
+
+### 8.49 2026-07-15 china_culture 单条目故事 KnowledgePack 物理抽取
+
+按 Story Agent 生成合同先核对共享 request/schema、KnowledgePack/EntryDetail、生成 prompt、Blueprint、类型矩阵、类型质量与本地 dramatic engine 后，本轮只搬迁“单条文化条目 → 可追踪 KnowledgePack”纯准备闭包：条目摘要、查询关键词、primary source trace、最多四个文化 supporting packs 和置信度保持原值。新实现位于 `story-knowledge-pack-service.ts`；故事总编排器不再直接拼文化 entry summary 或追加文化 Domain Pack，只调用域内服务。模型选择/调用、scene skeleton、Blueprint、类型路由、质量阈值、repair、落盘、安全门禁和 GEARS 输出均未改动。
+
+生成相关定向回归为 4 文件、32 用例，知识包 + Domain Pack + API + outline 为 4 文件、235 用例。首次全量 Web 回归为 100 文件中 99 通过、956 用例中 955 通过；唯一失败是旧源码边界断言仍要求 story service 直接 import entry knowledge。断言已收紧为 `story orchestrator → story knowledge pack → entry knowledge`，3 文件/23 用例复验通过，随后完整 Unified CI 21/21 通过：Web Server 100 文件/956 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、构建、知识库 lint、零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。
+
+P4 排除自身为 150 文件（88 tracked、62 untracked），`governance=14`、`shared_core=89`、`professional_formats=3`、hold 0、staged 0。本轮没有注册第二生产领域，也没有调用真实模型、真人审稿或真实 GEARS/Seedance；五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，fixture、fallback、健康报告与机器测试均不计真实信用。
+
+### 8.50 2026-07-15 china_culture 故事来源解析与 EntryDetail 合成迁移
+
+故事总编排器的来源前置段原本直接读取中国文化知识源，并在本文件合成“用户原创/小说素材”与 MaterialPack 对应的文化 `EntryDetail`。本轮将四种输入优先级完整迁入 `story-source-service.ts`：KnowledgePack 主条目优先于显式 `entry_name`，随后是已声明原创/改编模式的用户 outline/query，最后是非空 MaterialPack；没有可用来源时继续 fail closed。主条目缺失与显式条目缺失仍分别返回原 `ENTRY_NOT_FOUND` 文案，空来源继续返回原 `VALIDATION_ERROR`。
+
+用户素材的标题截断、原创/改编类型、文化意义、事实边界、来源和可信度保持原值；MaterialPack 的 primary/reference/supporting 选择顺序、摘要、uncertain claims、0.7 置信度门槛和 12 关键词截断保持原值。新测试一度错误要求 tags 必然进入已满的 12 关键词上限，40 条中 39 条通过；该假设被移除，没有借迁移改变既有排序/截断规则。KnowledgePack/MaterialPack 相互转换、创作合同、模型/Blueprint/质量/repair/落盘和 GEARS 流程仍留在总编排器且未变。
+
+来源/生成边界定向回归为 4 文件、40 用例，来源 + KnowledgePack + API + outline 为 4 文件、233 用例；Web 类型检查和 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 101 文件/961 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 与无暂存检查均通过。P4 排除自身为 152 文件（88 tracked、64 untracked），`shared_core=91`、hold 0、staged 0。
+
+该切片只是文化领域来源适配与机器合同，不证明用户素材权利、事实真伪、真人审稿或真实生成完成。五套进度继续为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，不增加真实修订、真人审核、signed release 或 professional pass。
+
+### 8.51 2026-07-15 china_culture 故事补充任务规则物理迁移
+
+故事总编排器中“知识缺口 + 素材充分性 + 生产模板缺口 → 补充任务”的实现包含人物经历、配角、建筑、事件、地域、文化背景和通用资料七类中文语义规则，属于 `china_culture` 而非平台通用生成调度。本轮将完整闭包迁入 `story-supplement-task-service.ts`；总编排器只传入三个报告和 story/time context，不再保存分类正则、中文 intake 文案、task id 清理、重复项合并、stage 继承或 production affects 映射。质量报告附加函数仍留在总编排器，没有扩大迁移范围。
+
+领域测试锁定七类分类顺序；同一 knowledge missing need 与 `missing_need_*` 素材项只形成一条任务，继承 script-ready stage、blocking、affects 与 recommended question，并把内部“知识库/知识包”措辞转换为面向用户的“项目素材/素材包”。三个生产阶段分别继续影响 blueprint/logline、full_text/scene_breakdown、gears_segments/asset_handoff；所有任务维持 open 状态和原 source 类型。
+
+补充任务/来源/KnowledgePack/生成定向回归为 4 文件、30 用例，补充任务 + 来源 + API + outline 为 4 文件、235 用例，Web 类型检查与 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 102 文件/965 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 154 文件（88 tracked、66 untracked），`shared_core=93`、hold 0、staged 0。
+
+补充任务仍是机器建议，不代表任何资料已补充、来源已核验或真人已审核；五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，不增加真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.52 2026-07-15 平台 scene→GEARS 映射抽取与旧死代码清理
+
+生成主链横向调用审计确认：legacy `buildSceneBreakdown`、其人物名称启发式、`buildActStructure`、七组本地时长表和相关镜头常量均为零调用，当前生产内容已由 `dramatic-story`/memory mosaic engine 形成；旧注释也明确它们已被替代。本轮删除这些已证明的死代码，不迁移无效 fallback。仍被模型输出合并与人物提示合并两条生产路径调用的 scene→GEARS 映射迁入 `platform/story-gears-segment.ts`，不写入 `china_culture` 领域目录。
+
+平台 mapper 保持 12–120 秒已知时长到 6/8/9/10/12 格 panel count 的原映射，未知时长仍为 6；script_text、前三项 visual focus、主体/动作 prompt hint、scene cultural note、video type 和表现形式逐项兼容。源码测试锁定故事总编排器不再保存旧 scene/act/duration/GEARS 实现，并确认两个活跃 rebuild 调用都通过平台函数。
+
+平台/生成/领域边界定向回归为 4 文件、40 用例，平台 + 生成 + API 为 3 文件、216 用例，Web 类型检查与 `git diff --check` 通过。首次完整 CI 在 Web 全量并发中有一条既有 Seedance recovery 参数校验超过默认 5 秒，103 文件/968 用例中 102/967 通过；该测试单独运行 14ms 通过，原样完整重跑随后 21/21 通过：Web Server 103 文件/968 用例、Track A 6/6、MCP 79 文件/345 用例、构建、知识库 lint、零信用门禁、治理、P4 stale-check 与无暂存检查均通过。没有修改业务逻辑、断言或测试超时掩盖该失败。
+
+P4 排除自身为 156 文件（88 tracked、68 untracked），`shared_core=95`、hold 0、staged 0。平台映射与 fallback/机器测试不等于真实 GEARS 执行或回片；五套进度维持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，不增加任何真实信用。
+
+### 8.53 2026-07-15 平台模型输出合并与人物提示边界抽取
+
+故事总编排器内的模型场景兼容检查、模型输出覆盖本地骨架，以及 outline 人物提示合入最终故事均为领域中立的生成后处理。本轮将完整闭包迁入 `platform/story-model-output-merge.ts`；生产总编排器直接依赖平台模块，同时保留旧 `story-service.ts` 的三个兼容重导出，不再在巨型服务内保存重复实现。既有测试改为直接验证平台出口，并新增源码边界测试阻止实现回流。
+
+迁移保持 scene 数量、scene id 完全一致且唯一的 fail-closed 门禁；本地时长、scene id 等结构字段不变，模型只覆盖兼容的创意字段。顶层文化约束仍以本地基线加模型补充去重合并，可信度说明仍保留本地文本并明确标注“模型补充”；人物提示的五类角色映射、名称清洗、场景匹配、recurring fallback 和 GEARS 重新构建均保持原语义。模型 provider/prompt、Blueprint、类型矩阵、类型质量、repair、Domain Pack 安全校验、落盘与外部交付流程未改动。
+
+Web 类型与可见文案检查通过；模型输出合并/GEARS 平台定向回归为 3 文件、23 用例，扩展的 Domain Pack/platform/generation 回归为 9 文件、66 用例。首次完整 CI 在受限沙箱中因 Supertest 临时监听统一被 `listen EPERM 0.0.0.0` 拒绝，造成 24 文件 242 条级联失败；未修改代码、断言、端口或超时，原命令在获准环境复跑后完整 21/21 通过：Web Server 104 文件/969 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 与无暂存检查均通过。
+
+P4 排除自身为 158 文件（88 tracked、70 untracked），`shared_core=97`、hold 0、staged 0。该抽取没有调用真实模型、真人审稿或真实 GEARS/Seedance；五套进度继续为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，fixture、fallback、机器测试和兼容门禁均不计真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.54 2026-07-15 平台故事生成策略边界抽取
+
+视频类型优先级、15 个 `VideoType` 到三个 legacy generation family 的映射、小说改编 narrative pattern 补全/去重/六项上限、三档 story priority 指令，以及显式结构兼容与默认结构选择迁入 `platform/story-generation-policy.ts`。平台函数不写入“历史人物”字符串；文化入口只在调用处把 `entry.type === '历史人物'` 转换为 `historical_person_entry` 布尔信号。主服务不再保存五组策略函数。
+
+Web 类型检查通过，平台策略 + 视频类型矩阵 + 生成模型/prompt/bridge 定向回归为 5 文件、40 用例。该策略抽取不改变 prompt schema、Blueprint、genre matrix、质量阈值、repair 或持久化，不代表真实模型生成或真人审核。
+
+### 8.55 2026-07-15 china_culture 类型专属故事字段派生迁移
+
+推广类视觉符号/技艺流程/现代连接/核心信息/标语，场景类空间身份/视觉路线/时间层/氛围，漫剧对白，讲解类论点/知识提纲，以及纪录片引文/田野备注均依赖文化 `EntryDetail` 字段与中文规则，本轮迁入 `story-type-specific-fields-service.ts`。模型字段仍优先，本地 fallback 顺序、截断、关键词过滤、情绪映射和输出字段保持原值。
+
+直接回归为 4 文件、41 用例，获准环境视频类型矩阵 + API 为 2 文件、195 用例。新测试最初错误假定中文弯引号会被既有 `extractQuotes` 识别，并漏掉“云锦”同样命中“云”意境词；预期按真实旧行为校正，没有借迁移扩大引文识别或改变氛围规则。
+
+### 8.56 2026-07-15 china_culture 本地故事引擎分派与回忆拼图 fail-closed
+
+dramatic 与 memory-mosaic 的本地结构骨架分派、memory seed 及 style pack reference trace 迁入 `story-local-generation-service.ts`。总编排器只接收 `storyResult`、可选 memory seed 与 trace，不再直接调用两个本地生成器或组装其风格规则。
+
+迁移测试发现既有回忆拼图生成器在资料无法识别任何见证人物时会对空数组取模并抛 `TypeError`。新域边界在生成内容、模型调用、项目创建和 story 写入之前检查 seed；零见证人物时返回明确 `VALIDATION_ERROR`，要求补充人物关系或改用其他结构。没有虚构“匿名见证人”，也没有把 fallback 计作真实资料。直接回归为 5 文件、45 用例，获准视频类型矩阵 + API 为 2 文件、195 用例。
+
+### 8.57 2026-07-15 生成后持久化与 GEARS 通知平台边界
+
+项目创建、story repository 不覆盖写入、内部 `_request_meta` 剥离、GEARS story-ready 通知、Project 当前 webhook 状态同步，以及 webhook URL 查询参数脱敏迁入 `platform/generated-story-persistence.ts`。通知仍保持“配置真实 URL 时不阻塞 API、未配置时等待 skipped 状态同步”的原时序；repository 冲突仍抛 `StoryRepositoryConflictError` 并由统一 handler 映射 409。
+
+定向生成/persistence/repository/webhook 回归为 5 文件、41 用例，获准 API/视频类型矩阵/webhook 为 3 文件、202 用例。该本地持久化与通知合同不表示真实外部 worker、回调或公共 artifact 已就绪。
+
+### 8.58 2026-07-15 Story 平台存储发现与读取服务抽取
+
+15 个 story video-type 目录、Story/Project repository 构造、list 过滤与排序、旧快照 API 规范化，以及“可编辑项目当前版本优先于 immutable story snapshot”的读取规则分别迁入 `platform/story-storage.ts` 和 `platform/story-read-service.ts`。旧 `story-service.ts` 保留 `listStories`/`getStory` 兼容再导出，生产读取路径不变。
+
+定向读取/repository/生成回归为 5 文件、42 用例，获准 API + Story/Project repository 为 3 文件、214 用例。读取错误仍 fail closed，损坏或无权访问的 repository 条目不会被推断修复。
+
+### 8.59 2026-07-15 GEARS/Seedance 交付读取与双仓写回平台边界
+
+GEARS segments/v2 聚合、legacy source domain 兼容、Domain Pack constraint 映射、delivery/Seedance 包读取，以及 GEARS Markdown/视频结果的 Story + Project 双仓写回迁入 `platform/story-delivery-service.ts`。旧故事服务只保留五个兼容再导出；schema version、总时长、constraint note 去重、CAS repository 写入、received/updated 时间语义和错误码均保持不变。
+
+定向 delivery/read/repository/webhook 回归为 5 文件、29 用例，获准 API + Story/Project repository 为 3 文件、214 用例。累计切片随后完整 Unified CI 21/21 通过：Web Server 110 文件/986 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 与无暂存检查全部通过。
+
+P4 排除自身为 171 文件（88 tracked、83 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=110`、`stage6=1`，hold 0、staged 0。以上均为机器架构、fallback 与回归证据；五套进度保持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%，不增加真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.60 2026-07-15 回忆拼图 API fail-closed 与 Stories 状态码修复
+
+回忆拼图零见证人物的域级测试扩展到真实 Stories API：outline-only 原创请求显式选择 `memory_mosaic_biography`，服务在任何项目创建前返回 `VALIDATION_ERROR`；测试同时读取前后项目列表并确认数量不变。该测试首次得到 HTTP 404，响应 envelope 内错误码却已是 `VALIDATION_ERROR`，定位到 `/api/stories/generate` 把除 Domain Safety 外的所有业务失败硬编码为 404。
+
+路由现与 Projects/Outline 的既有合同一致：`VALIDATION_ERROR=400`、`DOMAIN_SAFETY_VALIDATION_FAILED=422`、缺失条目/Domain 等其余失败为 404。API 全量 195/195 通过；主故事服务中零调用的旧 `slugify` 同步删除并由源码测试锁定。该修复不生成项目、不创建 story、不调用真实模型，也不产生任何真实信用。
+
+### 8.61 2026-07-15 平台故事质量评估编排抽取
+
+genre quality、creation/truth/material context 回填、quality workflow enrich 与 GEARS delivery enrich 的固定调用顺序迁入 `platform/story-quality-evaluation.ts`。初始生成、repair 候选和 repair 回滚现在调用同一 `evaluateStoryQualityReport`；交付包完成后调用单独的 delivery enrich。底层 dramatic/memory 质量验证、genre 权重/阈值、repair 触发条件和“修复分数不升则回滚”均未改变。
+
+质量/repair 定向回归为 6 文件、41 用例，获准 API + 视频类型矩阵为 2 文件、196 用例。机器质量报告、阈值与 repair simulation 仍不计 professional pass、真人修订或真人评审。
+
+### 8.62 2026-07-15 平台外部模型最终结果选择抽取
+
+`resolveStoryGenerationResult` 进入 `story-model-output-merge.ts`，统一处理四类结果：兼容模型输出成为 `external_model`、scene 骨架不兼容时整包 `local_fallback`、adapter 失败时带原因 fallback、未配置 adapter 时保持 `local_only` 且不误标失败。总编排器只消费 story result/mode/fallback/trace 并追加 reference trace；文化约束、可信度、本地骨架与人物提示合并仍由同一平台边界保护。
+
+模型/repair 定向回归为 4 文件、26 用例。累计最终完整 Unified CI 21/21 通过：Web Server 111 文件/991 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 173 文件（88 tracked、85 untracked），`shared_core=112`、hold 0、staged 0。
+
+本轮没有真实 provider 凭据、真实模型调用、真人稿件修订或外部交付；五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，所有 local-only/fallback/测试证据均明确排除真实修订、真人审核、真实回片、signed release 与 professional pass。
+
+### 8.63 2026-07-15 china_culture repair 组装回填与平台 Story 标识边界
+
+repair 候选通过质量比较后，原总编排器会再次逐项覆盖标题、logline、正文、场景、GEARS、文化约束、可信度、人物、幕结构、主角弧和类型专属字段；这与首次组装是同一组中国文化 `EntryDetail`/`VideoType` 语义。本轮把该闭包合入既有 `story-type-specific-fields-service.ts`，统一由 `applyChinaCultureStoryAssemblyToStoryData` 处理初始结果和 repair 胜出结果。总编排器不再保存重复的 story-data mutation helper，repair 分数未提升时的回滚、质量阈值和模型优先字段语义均未改变。
+
+Story ID 的日期、时间、UUID、随机扰动和字符和计算迁入 `platform/story-identity.ts`；总编排器只调用 `generateStoryId`。格式继续为 `YYYYMMDD-story-<base36+uuid-suffix>`，注入时钟/UUID/随机源的测试锁定可重复行为，并验证条目名称不会直接出现在标识中。该抽取不改变 repository 冲突、项目创建顺序、API 响应或任何真实身份合同。
+
+类型字段/repair 直接回归为 4 文件、29 用例，Story 标识/生成边界直接回归为 3 文件、29 用例，获准环境 API + 视频类型矩阵为 2 文件、196 用例。最终完整 Unified CI 21/21 通过：Web Server 112 文件/995 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。P4 排除自身为 175 文件（88 tracked、87 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=114`、`stage6=1`，hold 0、staged 0。
+
+以上仍只是机器架构与回归证据，没有真实模型调用、真人 repair、真人事实/文化审核、真实 GEARS/Seedance 回片或发布签署。五套进度维持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%；fixture、simulation、fallback、prepared、readiness、机器阈值、测试验签、截图和 memory handoff 均不计真实修订、真人审核、signed release 或 professional pass。
+
+### 8.64 2026-07-15 平台 repair 状态机与 china_culture 基础质量验证抽取
+
+repair 主链依赖闭包分为两层：dramatic/memory-mosaic 基础质量选择依赖当前文化领域的本地故事结构与 memory seed，现迁入 `domains/china-culture/story-base-quality-service.ts`；是否尝试 repair、构造 repair prompt、调用同一模型适配器、scene 骨架兼容门禁、候选合并、质量分数比较、应用/回滚和 trace 原因则为领域中立流程，现迁入 `platform/story-repair-orchestration.ts`。平台层只通过 `applyStoryAssembly` 与 `evaluateStoryQuality` 回调接入领域规则，不 import `china-culture`。
+
+总生成编排器不再直接 import repair prompt 服务，不保存 `repair_scene_breakdown_incompatible`、`repair_score_not_improved`、模型兼容判断或 repair trace 构造；初始与 repair 候选共用同一领域基础验证，组装回填仍经 8.63 的领域边界。注入式适配器测试覆盖关闭 auto-repair、adapter 无输出、scene 不兼容、分数不降应用和分数下降回滚五条状态路径，并锁定回滚恢复原模型类型字段来源。真实模型适配器、prompt 内容、阈值、scene 合并、repository 和 Domain Pack 安全门禁均未改变。
+
+平台/领域 repair 直接回归为 5 文件、16 用例，获准环境 API + 15 类型矩阵为 2 文件、196 用例，TypeScript 和 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 113 文件/1001 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。`story-service.ts` 由 568 行降至 494 行；P4 排除自身为 178 文件（88 tracked、90 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=117`、`stage6=1`，hold 0、staged 0。
+
+repair adapter fixture、机器质量比较、local fallback 和 trace 只是机器合同，没有发生真人修订、真实 provider 调用或专业验收。五套进度继续为 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%，不增加真人审核、真实回片、signed release 或 professional pass。
+
+### 8.65 2026-07-15 china_culture 生成前准备闭包抽取
+
+总编排器在本地/外部生成前原本同时承担来源解析、KnowledgePack/MaterialPack 互转、视频/表现/结构策略、类型矩阵、创作合同、素材充分度、小说改编分析、生产素材 readiness、模型档案选择、文化事件选择和初步 StoryBlueprint 组装。这些步骤共享当前 `china_culture EntryDetail` 和文化事件语义，若只把通用函数搬到平台会留下跨层拼装；本轮把完整依赖闭包迁入 `story-generation-preparation-service.ts`，主服务只处理 fail-closed 结果并消费显式准备输出。
+
+准备服务仍调用既有平台生成策略，不复制类型映射；文化来源、知识包与事件提取保持域内调用链。KnowledgePack 优先、MaterialPack 转换、用户原创/小说改编来源、历史人物结构信号、genre matrix 重写 narrative patterns、truth/creation contract、生产上下文文本、模型选择和 Blueprint 参数顺序均未改变。直接测试使用用户原创与用户小说素材验证“不依赖真实知识源的机器准备”，并保留无来源 `VALIDATION_ERROR`；这些用户素材 fixture 不被当成确权或事实证据。
+
+首次完整 CI 的业务 API 已通过，但 4 条旧源码边界断言仍要求主服务直接 import 已下沉的 knowledge-pack/规划能力；断言被改为锁定 `主编排器 → preparation → knowledge-pack/planning → Domain Pack` 完整链路，没有恢复旧依赖。第二次运行代码、Web 114/1004、浏览器和 MCP 均通过，最终仅因断言文件更新后的 P4 内容哈希尚未刷新被 stale-check 拦截；刷新 P4 后原样第三次运行完整 21/21 通过。
+
+准备/策略/来源/领域链直接回归为 7 文件、40 用例，获准环境 API + 15 类型矩阵为 2 文件、196 用例，最终 Unified CI 为 Web Server 114 文件/1004 用例、Track A Playwright 6/6、MCP 79 文件/345 用例，并通过 Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查。`story-service.ts` 由 494 行降至 393 行；P4 排除自身为 180 文件（88 tracked、92 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=119`、`stage6=1`，hold 0、staged 0。
+
+本轮没有真实知识核验、素材确权、模型调用、真人审稿或外部交付。五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%；prepared input、fixture、readiness、Blueprint 和机器回归不计真实修订、真人审核、真实回片、signed release 或 professional pass。
+
+### 8.66 2026-07-15 china_culture 初始 Story 文档构造器抽取
+
+生成结果进入质量/repair 前的 Story 文档组装同时包含文化 `EntryDetail`、类型专属字段、补充任务、素材/可信度上下文和内部 request metadata，不能归为纯平台对象。本轮新增 `story-document-service.ts`，统一构造生成来源标签、Story/GEARS URL、Blueprint、KnowledgePack/MaterialPack、creation/truth、production readiness、reference/memory trace、supplement tasks、初始 GEARS webhook、角色/幕结构/主角弧、类型专属字段和 `_request_meta`。构造器消费 8.65 的显式准备结果，不重新计算来源、策略或质量。
+
+主编排器不再保存 `generation_source` 三态文案、GEARS URL、输出 segments 选择、supplement 调用、初始 webhook、类型字段派生或 `_request_meta` 字段清单；仍负责生成 ID/Blueprint scene 绑定、基础与综合质量评估、平台 repair、Domain Pack safety 和持久化。repair 回调继续通过领域 assembly 服务更新既有文档，文档构造器不接管流程控制。源码测试锁定上述所有权，supplement 测试同步验证 `主编排器 → document → supplement` 依赖链。
+
+文档/supplement/type-field/persistence/repair 直接回归为 5 文件、17 用例，获准环境 API + 15 类型矩阵为 2 文件、196 用例，TypeScript 和 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 115 文件/1005 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。`story-service.ts` 由 393 行降至 306 行；P4 排除自身为 182 文件（88 tracked、94 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=121`、`stage6=1`，hold 0、staged 0。
+
+初始 Story 文档、内部元数据、fixture 和机器字段兼容只属于架构与回归证据，不表示真实模型输出、真人修订、真人审核、真实 GEARS/Seedance 回片或发布签署。五套进度继续为综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.67 2026-07-15 china_culture 故事生成执行闭包抽取
+
+准备完成后的 `local skeleton → prompt package → model adapter → external/local resolution → adapter trace → character hints` 是一个不可拆散的执行闭包：local engine 与 prompt 均消费当前文化 Entry/KnowledgePack/Blueprint，而模型兼容合并使用平台边界。本轮新增 `story-generation-execution-service.ts`，由领域服务顺序调用既有 local generation、prompt、adapter 和平台 model-output merge；顶层总编排器只处理 fail-closed 结果并消费 story、memory seed、reference trace、prompt、adapter metadata 和 generation mode。
+
+执行服务保留“始终先生成 local skeleton”、adapter 未配置/失败时 whole fallback、scene 数量与 ID 兼容门禁、文化约束/可信度本地基线、adapter trace 追加和 character hints 后置合并。它没有修改 provider、prompt schema、模型输出 Zod、人物匹配或 fallback 文案。源码测试锁定顶层不再直接构造 prompt、调用 adapter、解析 model resolution、追加 adapter trace 或合并 character hints，并验证平台 merge 仍无 `china_culture` 依赖。
+
+执行/local/model/prompt/platform 直接回归为 5 文件、41 用例，获准环境 API + 15 类型矩阵为 2 文件、196 用例，TypeScript 与 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 116 文件/1006 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。`story-service.ts` 由 306 行降至 217 行；P4 排除自身为 184 文件（88 tracked、96 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=123`、`stage6=1`，hold 0、staged 0。
+
+本轮 adapter 未配置路径、local skeleton、fallback、trace 和 character hint 测试均为机器证据；没有真实 provider 凭据或调用，没有真人修订、真人审核、真实回片、signed release 或 professional pass。五套进度保持 73%、47.5%、247 条/902 来源且 M2 55/97、0/5、60%。
+
+### 8.68 2026-07-15 平台生成后质量、repair 与 delivery 编排抽取
+
+初始 Story 文档生成后的固定状态序列为：综合质量评估 → 可选 repair → repair 应用/回滚 → GEARS delivery package → delivery readiness enrich。各底层能力已在 8.61/8.64 分别抽取，但调用和 mutation 顺序仍散落在顶层服务。本轮新增 `platform/story-post-generation-orchestration.ts`，集中该领域中立状态机；`china_culture` 只通过回调提供 assembly 应用和 dramatic/memory 基础质量验证。
+
+平台状态机先把初始 base report 送入统一质量评估，再把结果交给既有 repair orchestration；无论 repair 跳过、失败、应用或回滚，随后只基于最终 Story 构造 GEARS delivery 并执行 delivery enrich。源码测试锁定四段顺序，且主服务不再直接 import quality evaluation、repair orchestration 或 GEARS delivery builder。genre 阈值、repair prompt/score、GEARS schema、quality 字段和 Domain Pack safety 顺序均未改变。
+
+post-generation/quality/repair/document/execution 直接回归为 4 文件、9 用例，获准环境 API + 15 类型矩阵为 2 文件、196 用例，TypeScript 与 `git diff --check` 通过。完整 Unified CI 21/21 通过：Web Server 116 文件/1006 用例、Track A Playwright 6/6、MCP 79 文件/345 用例、Web/MCP 构建、知识库 lint、Stage 6–8 零信用门禁、治理、P4 stale-check 和无暂存检查全部通过。`story-service.ts` 由 217 行降至 187 行，现主要呈现 prepare、execute、document、post-process、safety、persist 六步；P4 排除自身为 185 文件（88 tracked、97 untracked），`governance=14`、`production_docs=43`、`professional_formats=3`、`shared_core=124`、`stage6=1`，hold 0、staged 0。
+
+质量阈值、repair、delivery readiness 和本地 GEARS package 均是机器证据，不计真实模型修订、真人审核、真实回片、signed release 或 professional pass。五套进度最终保持综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。
+
+### 8.69 2026-07-15 china_culture 六步生成协调归域与 legacy Story 门面收口
+
+8.68 后 `story-service.ts` 虽已只剩 prepare、execute、document、post-process、safety、persist 六步，但仍由 legacy service 直接拼接全部 `china_culture` 领域服务和平台能力，且 `china-culture/domain-pack.ts` 反向 import legacy service，形成不必要的领域包 → 兼容层 → 领域实现依赖环。本轮新增 `domains/china-culture/story-generation-service.ts`，完整承接六步协调、Story ID/Blueprint scene 绑定、基础质量、repair 回填、Domain Pack safety 回调和持久化；Domain Pack 改为直接调用该领域入口。
+
+`services/story-service.ts` 由 187 行收口为 17 行逻辑零实现兼容门面，继续原名再导出 `generateAndStoreStory`、读取、GEARS/Seedance 交付和模型合并函数，现有 routes、AI 漫剧系列与测试 import path 无需迁移。生成请求/响应、source domain、安全回调、quality/repair 顺序、repository 与 webhook 行为未改变。新的源码边界测试锁定 legacy 门面无函数实现、Domain Pack 不再依赖门面，以及领域协调器六步顺序；既有领域/平台边界断言同步改为检查真实生产协调器，避免用兼容门面的空壳误判所有权。
+
+定向边界回归为 17 文件、65 用例，获准环境 Story API + 15 类型矩阵为 2 文件、196 用例，TypeScript 与 `git diff --check` 通过。最终完整 Unified CI、P4 inventory 和提交证据见本节后续收口记录；本轮不改变五套进度：综合研发 73%、专业文本 47.5%、知识库 247 条/902 来源且 M2 55/97、真实 GEARS/Seedance 0/5、发布运营 60%。兼容门面、机器架构、fixture、fallback 和测试验签均不计真实模型修订、真人审核、真实回片、signed release 或 professional pass。

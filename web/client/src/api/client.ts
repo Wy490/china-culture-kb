@@ -4,6 +4,21 @@ import { fail, ErrorCodes } from '@shared/types'
 const API_BASE = '/api'
 
 type QueryParams = Record<string, string | string[]>
+type ApiAccessFailureHandler = (response: ApiResponse<unknown>, status: number) => void
+
+let apiAccessFailureHandler: ApiAccessFailureHandler | null = null
+
+export function setApiAccessFailureHandler(handler: ApiAccessFailureHandler | null): void {
+  apiAccessFailureHandler = handler
+}
+
+async function readApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  const envelope = await response.json() as ApiResponse<T>
+  if (!envelope.ok && envelope.error?.code === ErrorCodes.ACCESS_UNAUTHENTICATED) {
+    apiAccessFailureHandler?.(envelope as ApiResponse<unknown>, response.status)
+  }
+  return envelope
+}
 
 function buildQueryString(params: QueryParams): string {
   const qs = new URLSearchParams()
@@ -24,8 +39,8 @@ export async function apiGet<T>(path: string, params?: QueryParams): Promise<Api
     if (qs) url += `?${qs}`
   }
   try {
-    const res = await fetch(url)
-    return res.json() as Promise<ApiResponse<T>>
+    const res = await fetch(url, { credentials: 'same-origin' })
+    return readApiResponse<T>(res)
   } catch (err: any) {
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
@@ -35,10 +50,11 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    return res.json() as Promise<ApiResponse<T>>
+    return readApiResponse<T>(res)
   } catch (err: any) {
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
@@ -48,9 +64,10 @@ export async function apiPostForm<T>(path: string, body: FormData): Promise<ApiR
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
+      credentials: 'same-origin',
       body,
     })
-    return res.json() as Promise<ApiResponse<T>>
+    return readApiResponse<T>(res)
   } catch (err: any) {
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
@@ -60,10 +77,11 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<ApiRespo
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: 'PATCH',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    return res.json() as Promise<ApiResponse<T>>
+    return readApiResponse<T>(res)
   } catch (err: any) {
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }
@@ -73,8 +91,9 @@ export async function apiDelete<T>(path: string): Promise<ApiResponse<T>> {
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: 'DELETE',
+      credentials: 'same-origin',
     })
-    return res.json() as Promise<ApiResponse<T>>
+    return readApiResponse<T>(res)
   } catch (err: any) {
     return fail<T>(ErrorCodes.INTERNAL_ERROR, err.message || '网络请求失败')
   }

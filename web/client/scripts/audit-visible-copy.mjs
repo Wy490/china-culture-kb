@@ -7,6 +7,7 @@ const clientRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const visibleFiles = [
   'index.html',
   'src/App.vue',
+  '../shared/product-navigation.ts',
   'src/views/Home.vue',
   'src/views/StoryStudio.vue',
   'src/views/AiComicSeriesStudio.vue',
@@ -35,17 +36,17 @@ const requiredCopyChecks = [
   {
     file: 'src/App.vue',
     label: 'app title',
-    pattern: /<h1 class="app-title">AI影视工作台<\/h1>/,
+    pattern: /<RouterLink class="app-title" to="\/">AI影视工作台<\/RouterLink>/,
   },
   {
-    file: 'src/App.vue',
+    file: '../shared/product-navigation.ts',
     label: 'single-video nav label',
-    pattern: /<RouterLink to="\/story\/new">单片短片<\/RouterLink>/,
+    pattern: /label: '单片短片',[\s\S]*?to: '\/story\/new'/,
   },
   {
-    file: 'src/App.vue',
+    file: '../shared/product-navigation.ts',
     label: 'series nav label',
-    pattern: /<RouterLink to="\/ai-comic-series\/new">漫剧系列<\/RouterLink>/,
+    pattern: /label: '漫剧系列',[\s\S]*?to: '\/ai-comic-series\/new'/,
   },
   {
     file: 'src/views/Home.vue',

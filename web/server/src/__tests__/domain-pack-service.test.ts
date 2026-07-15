@@ -1,10 +1,11 @@
+import { readFile } from 'node:fs/promises';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
 import {
-  buildDomainPackEntries,
-  getDomainPackProductionHealthReport,
-  getDomainPackSeeds,
-} from '../services/domain-pack-service.js';
+  buildChinaCultureDomainPackEntries,
+  getChinaCultureDomainPackProductionHealthReport,
+  getChinaCultureDomainPackSeeds,
+} from '../domains/china-culture/domain-pack-production-service.js';
 
 beforeAll(() => {
   if (!process.env.KB_ROOT) {
@@ -12,9 +13,9 @@ beforeAll(() => {
   }
 });
 
-describe('domain-pack-service', () => {
+describe('china_culture domain-pack production service', () => {
   it('loads editable china culture domain pack seeds from data/domain-packs', () => {
-    const seeds = getDomainPackSeeds();
+    const seeds = getChinaCultureDomainPackSeeds();
 
     expect(seeds.length).toBeGreaterThanOrEqual(6);
     expect(seeds.some(seed => seed.entry_name === '宋代士人设定包——服饰器物与称谓')).toBe(true);
@@ -46,7 +47,7 @@ describe('domain-pack-service', () => {
   });
 
   it('reports production Domain Pack health for prompt and review-boundary gates', () => {
-    const report = getDomainPackProductionHealthReport({ generatedAt: '2026-07-06T00:00:00.000Z' });
+    const report = getChinaCultureDomainPackProductionHealthReport({ generatedAt: '2026-07-06T00:00:00.000Z' });
 
     expect(report).toMatchObject({
       schema_version: 'domain-pack-production-health/v1',
@@ -83,7 +84,7 @@ describe('domain-pack-service', () => {
   });
 
   it('builds knowledge pack entries from editable domain pack data', () => {
-    const entries = buildDomainPackEntries({
+    const entries = buildChinaCultureDomainPackEntries({
       query: '周敦颐在月岩洞读书悟道，需要宋代士人服饰和洞穴场景资产边界',
       limit: 4,
     });
@@ -93,7 +94,7 @@ describe('domain-pack-service', () => {
   });
 
   it('injects narrative pattern packs for local historical influence stories', () => {
-    const entries = buildDomainPackEntries({
+    const entries = buildChinaCultureDomainPackEntries({
       query: '周敦颐人物故事要讲长沙岳麓书院的思想影响、后世影响和当代转化',
       limit: 5,
     });
@@ -106,7 +107,7 @@ describe('domain-pack-service', () => {
   });
 
   it('injects production domain packs for explainer and storyboard gaps', () => {
-    const entries = buildDomainPackEntries({
+    const entries = buildChinaCultureDomainPackEntries({
       query: 'explainer_video 需要讲解知识结构包、核心问题、图示字幕，同时 AI漫剧分镜包 要补关键帧和连续性验收',
       limit: 6,
     });
@@ -127,7 +128,7 @@ describe('domain-pack-service', () => {
   });
 
   it('injects high-frequency domain packs for children, social short, and training requests', () => {
-    const entries = buildDomainPackEntries({
+    const entries = buildChinaCultureDomainPackEntries({
       query: 'children_story 儿童故事要做年龄分层和善意张力；social_short 竖屏短视频要前三秒钩子；education_training 培训片要学习目标、练习和板书复盘',
       limit: 8,
     });
@@ -145,5 +146,30 @@ describe('domain-pack-service', () => {
     ).toEqual(expect.arrayContaining([
       expect.stringContaining('学习目标'),
     ]));
+  });
+
+  it('keeps the legacy path logic-free and production consumers on the domain service', async () => {
+    const [legacySource, storySource, preparationSource, storyKnowledgeSource, outlineSource, statusSource, gearsSource, systemSource] = await Promise.all([
+      readFile(new URL('../services/domain-pack-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../domains/china-culture/story-generation-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../domains/china-culture/story-generation-preparation-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../domains/china-culture/story-knowledge-pack-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../services/outline-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../services/story-agent-mvp-status-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../services/gears-execution-service.ts', import.meta.url), 'utf-8'),
+      readFile(new URL('../routes/system.ts', import.meta.url), 'utf-8'),
+    ]);
+
+    expect(legacySource).toContain('Compatibility facade');
+    expect(legacySource).not.toContain('function ');
+    expect(legacySource).not.toContain('FALLBACK_DOMAIN_PACK_SEEDS');
+    expect(storySource).toContain('story-generation-preparation-service.js');
+    expect(preparationSource).toContain('story-knowledge-pack-service.js');
+    expect(storyKnowledgeSource).toContain('domain-pack-production-service.js');
+    expect(storySource).not.toContain('domain-pack-service.js');
+    for (const source of [outlineSource, statusSource, gearsSource, systemSource]) {
+      expect(source).toContain('domain-pack-production-service.js');
+      expect(source).not.toContain('domain-pack-service.js');
+    }
   });
 });

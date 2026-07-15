@@ -10,7 +10,8 @@ import {
   isModelSceneBreakdownCompatible,
   mergeCharacterHintsIntoStoryResult,
   mergeModelOutputOntoLocalSkeleton,
-} from '../services/story-service.js';
+  resolveStoryGenerationResult,
+} from '../platform/story-model-output-merge.js';
 import type { StoryGenerationPromptPackage, StoryGenerationModelOutput } from '../services/story-generation-prompt.js';
 import type { StoryDetectedCharacter, StoryScene, StoryGenerateResult } from '@shared/types.js';
 
@@ -416,9 +417,9 @@ describe('mergeModelOutputOntoLocalSkeleton', () => {
     expect(merged.scene_breakdown[0].plot).toBe('模型开场情节，足够长度');
     expect(merged.scene_breakdown[1].title).toBe('模型冲突');
 
-    // Cultural fields from model
-    expect(merged.cultural_constraints).toEqual(['模型约束']);
-    expect(merged.credibility_note).toBe('模型可信度说明');
+    // Model may append cultural context but cannot delete the local credibility boundary.
+    expect(merged.cultural_constraints).toEqual(['本地约束', '模型约束']);
+    expect(merged.credibility_note).toBe('本地可信度；模型补充：模型可信度说明');
   });
 
   it('uses local fallback for creative fields when model omits them', () => {
@@ -452,6 +453,80 @@ describe('mergeModelOutputOntoLocalSkeleton', () => {
 
     const merged = mergeModelOutputOntoLocalSkeleton(local, model, 'character_story', 'cinematic');
     expect(merged.act_structure).toEqual(local.act_structure);
+  });
+});
+
+describe('resolveStoryGenerationResult', () => {
+  it('selects compatible model output and records the provider', () => {
+    const result = resolveStoryGenerationResult({
+      localResult: makeLocalSkeleton(),
+      adapterResult: {
+        provider: 'command_json',
+        output: makeCompatibleModelOutput(),
+        used_fallback: false,
+      },
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+    });
+
+    expect(result.storyResult.title).toBe('模型标题');
+    expect(result).toMatchObject({
+      adapterTrace: 'provider:command_json',
+      generationMode: 'external_model',
+      generationUsedFallback: false,
+    });
+  });
+
+  it('falls back as a whole when model scene structure is incompatible', () => {
+    const localResult = makeLocalSkeleton();
+    const result = resolveStoryGenerationResult({
+      localResult,
+      adapterResult: {
+        provider: 'command_json',
+        output: makeIncompatibleModelOutput_wrongIds(),
+        used_fallback: false,
+      },
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+    });
+
+    expect(result.storyResult).toBe(localResult);
+    expect(result).toMatchObject({
+      adapterTrace: 'fallback:scene_breakdown_incompatible_with_local_skeleton',
+      generationMode: 'local_fallback',
+      generationUsedFallback: true,
+    });
+  });
+
+  it('distinguishes intended local-only generation from adapter failure fallback', () => {
+    const localResult = makeLocalSkeleton();
+    expect(resolveStoryGenerationResult({
+      localResult,
+      adapterResult: { provider: 'local_only', output: null, used_fallback: false },
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+    })).toMatchObject({
+      storyResult: localResult,
+      adapterTrace: undefined,
+      generationMode: 'local_only',
+      generationUsedFallback: false,
+    });
+    expect(resolveStoryGenerationResult({
+      localResult,
+      adapterResult: {
+        provider: 'command_json',
+        output: null,
+        used_fallback: true,
+        reason: 'timeout',
+      },
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+    })).toMatchObject({
+      storyResult: localResult,
+      adapterTrace: 'fallback:timeout',
+      generationMode: 'local_fallback',
+      generationUsedFallback: true,
+    });
   });
 });
 

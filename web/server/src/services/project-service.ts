@@ -171,6 +171,14 @@ import {
   syncSeedanceShotLedgerWithShots,
 } from './production-board-service.js';
 import { buildProductionReadinessAutomationPlan } from './production-readiness-automation.js';
+import { resolveStoryProjectWorkflow } from '@shared/project-workflow.js';
+import type { ProductResourceOwnership } from '@shared/product-access.js';
+import {
+  FileProjectRepository,
+  type ProjectMetaExpectation,
+  type ProjectVersionExpectation,
+} from '../repositories/project-repository.js';
+import { FileArtifactStore } from '../repositories/artifact-store.js';
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 import {
   buildGearsLedgerItem,
@@ -238,20 +246,39 @@ function generatedRoot(): string {
   return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
 }
 
-function storiesRoot(): string {
-  return resolve(generatedRoot(), 'stories');
+function storiesRoot(generatedRootOverride?: string): string {
+  return resolve(generatedRootOverride ?? generatedRoot(), 'stories');
 }
 
-function projectsRoot(): string {
-  return resolve(generatedRoot(), 'projects');
+function projectsRoot(generatedRootOverride?: string): string {
+  return resolve(generatedRootOverride ?? generatedRoot(), 'projects');
+}
+
+function projectRepository(generatedRootOverride?: string): FileProjectRepository {
+  return new FileProjectRepository(projectsRoot(generatedRootOverride));
+}
+
+function projectVersionExpectation(project: StoryProjectMeta): ProjectVersionExpectation {
+  return {
+    current_version_id: project.current_version_id,
+    version_count: project.version_count,
+  };
+}
+
+function projectMetaExpectation(project: StoryProjectMeta): ProjectMetaExpectation {
+  return {
+    ...projectVersionExpectation(project),
+    updated_at: project.updated_at,
+  };
+}
+
+function nextProjectUpdatedAt(project: StoryProjectMeta): string {
+  const previous = Date.parse(project.updated_at);
+  return new Date(Math.max(Date.now(), Number.isFinite(previous) ? previous + 1 : Date.now())).toISOString();
 }
 
 function projectDir(projectId: string): string {
   return resolve(projectsRoot(), projectId);
-}
-
-function projectMetaPath(projectId: string): string {
-  return resolve(projectDir(projectId), 'project.json');
 }
 
 function projectVersionsDir(projectId: string): string {
@@ -340,8 +367,11 @@ function qualitySummary(story: Pick<StoryGenerateResult, 'quality_report'>): {
   };
 }
 
-function storySourcePath(story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>): string {
-  return resolve(storiesRoot(), story.video_type, `${story.storyId}.json`);
+function storySourcePath(
+  story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>,
+  generatedRootOverride?: string,
+): string {
+  return resolve(storiesRoot(generatedRootOverride), story.video_type, `${story.storyId}.json`);
 }
 
 function storySourcePathsForId(storyId: string): string[] {
@@ -391,6 +421,7 @@ function buildProjectMeta(
   createdAt: string,
   currentVersionId: string,
   versionCount: number,
+  accessControl?: ProductResourceOwnership,
 ): StoryProjectMeta {
   return {
     project_id: story.project_id ?? buildProjectId(story.storyId, story.video_type),
@@ -423,6 +454,7 @@ function buildProjectMeta(
     gears_video_status: story.gears_video?.status,
     gears_video_url: story.gears_video?.video_url,
     gears_video_thumbnail_url: story.gears_video?.thumbnail_url,
+    ...(accessControl ? { access_control: accessControl } : {}),
   };
 }
 
@@ -2464,6 +2496,7 @@ async function readAllStoriesForMigration(): Promise<Array<{ story: StoryGenerat
 function buildInitialProjectSnapshot(
   story: StoryGenerateResult,
   createdAt: string,
+  accessControl?: ProductResourceOwnership,
 ): { meta: StoryProjectMeta; snapshot: StoryProjectVersionSnapshot } {
   const projectId = story.project_id ?? buildProjectId(story.storyId, story.video_type);
   const versionId = story.current_version_id ?? buildVersionId(projectId, 1);
@@ -2474,7 +2507,7 @@ function buildInitialProjectSnapshot(
   };
 
   return {
-    meta: buildProjectMeta(storyWithProject, createdAt, versionId, 1),
+    meta: buildProjectMeta(storyWithProject, createdAt, versionId, 1, accessControl),
     snapshot: {
       project_id: projectId,
       version_id: versionId,
@@ -2487,14 +2520,20 @@ function buildInitialProjectSnapshot(
   };
 }
 
-async function ensureProjectFromStory(story: StoryGenerateResult, createdAt: string): Promise<StoryProjectMeta> {
-  const { meta, snapshot } = buildInitialProjectSnapshot(story, createdAt);
+async function ensureProjectFromStory(
+  story: StoryGenerateResult,
+  createdAt: string,
+  accessControl?: ProductResourceOwnership,
+): Promise<StoryProjectMeta> {
+  const { meta, snapshot } = buildInitialProjectSnapshot(story, createdAt, accessControl);
   const existingMeta = await readProjectMeta(meta.project_id);
   if (existingMeta) return existingMeta;
 
-  await writeJsonFile(projectVersionPath(meta.project_id, snapshot.version_id), snapshot);
-  await writeJsonFile(projectMetaPath(meta.project_id), meta);
-  return meta;
+  const outcome = await projectRepository().createInitial(meta, snapshot);
+  if (outcome === 'created') return meta;
+  const concurrentMeta = await projectRepository().readMeta(meta.project_id);
+  if (concurrentMeta) return concurrentMeta;
+  throw new Error(`Project "${meta.project_id}" exists but its metadata is unreadable`);
 }
 
 async function ensureProjectsFromStories(): Promise<void> {
@@ -2505,39 +2544,11 @@ async function ensureProjectsFromStories(): Promise<void> {
 }
 
 async function readProjectMeta(projectId: string): Promise<StoryProjectMeta | null> {
-  const metaFile = projectMetaPath(projectId);
-  if (!(await pathExists(metaFile))) return null;
-  try {
-    return await readJsonFile<StoryProjectMeta>(metaFile);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[project-service] Skipping unreadable project metadata: ${metaFile} (${message})`);
-    return null;
-  }
+  return projectRepository().readMeta(projectId);
 }
 
 async function readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]> {
-  const versionsDir = projectVersionsDir(projectId);
-  let files: string[];
-  try {
-    files = await readdir(versionsDir);
-  } catch {
-    return [];
-  }
-
-  const snapshots: StoryProjectVersionSnapshot[] = [];
-  for (const file of files) {
-    if (!file.endsWith('.json')) continue;
-    try {
-      const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(resolve(versionsDir, file));
-      snapshots.push(snapshot);
-    } catch {
-      continue;
-    }
-  }
-
-  snapshots.sort((a, b) => b.created_at.localeCompare(a.created_at));
-  return snapshots;
+  return projectRepository().readVersionSnapshots(projectId);
 }
 
 async function ensureProjectExists(projectId: string): Promise<StoryProjectMeta | null> {
@@ -2557,7 +2568,7 @@ async function persistProjectVersion(
   note?: string,
 ): Promise<StoryProjectMeta> {
   const nextVersionNumber = project.version_count + 1;
-  const createdAt = new Date().toISOString();
+  const createdAt = nextProjectUpdatedAt(project);
   const versionId = buildVersionId(project.project_id, nextVersionNumber);
   const updatedStory: StoryGenerateResult = {
     ...story,
@@ -2608,31 +2619,20 @@ async function persistProjectVersion(
     production_readiness_automation_ledger: project.production_readiness_automation_ledger,
   };
 
-  await writeJsonFile(projectVersionPath(project.project_id, versionId), snapshot);
-  await writeJsonFile(projectMetaPath(project.project_id), updatedMeta);
-  return updatedMeta;
-}
-
-async function updateProjectVersionProductionBoardExport(
-  projectId: string,
-  versionId: string,
-  productionBoardExport: StoryProductionBoardExportRecord,
-): Promise<void> {
-  const versionPath = projectVersionPath(projectId, versionId);
-  if (!(await pathExists(versionPath))) return;
-
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(versionPath);
-  await writeJsonFile(versionPath, {
-    ...snapshot,
-    production_board_export: productionBoardExport,
+  await projectRepository().commitVersion(updatedMeta, snapshot, {
+    current_version_id: project.current_version_id,
+    version_count: project.version_count,
+    updated_at: project.updated_at,
   });
+  return updatedMeta;
 }
 
 export async function createProjectFromGeneratedStory(
   story: StoryGenerateResult,
   createdAt: string,
+  accessControl?: ProductResourceOwnership,
 ): Promise<StoryGenerateResult> {
-  const meta = await ensureProjectFromStory(story, createdAt);
+  const meta = await ensureProjectFromStory(story, createdAt, accessControl);
   return {
     ...story,
     project_id: meta.project_id,
@@ -2645,7 +2645,7 @@ export async function listProjects(): Promise<ApiResponse<StoryProjectListItem[]
 
   let projectIds: string[];
   try {
-    projectIds = await readdir(projectsRoot());
+    projectIds = await projectRepository().listProjectIds();
   } catch {
     return success([]);
   }
@@ -2671,7 +2671,7 @@ async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {
   await ensureProjectsFromStories();
   let projectIds: string[];
   try {
-    projectIds = await readdir(projectsRoot());
+    projectIds = await projectRepository().listProjectIds();
   } catch {
     return [];
   }
@@ -2714,7 +2714,7 @@ export async function updateProjectSeedanceAssetLibrary(
   if (!project) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
   }
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
   const byId = new Map(current.items.map(item => [item.asset_id, item]));
   for (const item of request.items) {
@@ -2764,7 +2764,7 @@ export async function updateProjectSeedanceAssetLibrary(
       }),
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return getProject(project.project_id);
 }
 
@@ -2781,7 +2781,7 @@ export async function importProjectSeedanceAssetBatch(
   }
 
   const { project, current_story } = detail.data;
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
@@ -2894,7 +2894,7 @@ export async function importProjectSeedanceAssetBatch(
       }),
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   const nextDetail = await getProject(project.project_id);
   if (!nextDetail.ok || !nextDetail.data) {
     return fail(
@@ -2942,7 +2942,7 @@ export async function uploadProjectSeedanceAssetFile(
   }
 
   const { project, current_story } = detail.data;
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
@@ -2974,8 +2974,9 @@ export async function uploadProjectSeedanceAssetFile(
   const fileId = `seedance-upload-${slugifySeedanceAssetLabel(assetId)}-${randomUUID().slice(0, 8)}`;
   const filename = `${fileId}${extension}`;
   const uploadDir = resolve(projectDir(project.project_id), 'seedance-assets', 'uploads');
-  await mkdir(uploadDir, { recursive: true });
-  await writeFile(resolve(uploadDir, filename), request.file.buffer);
+  await new FileArtifactStore(uploadDir).writeBinary(filename, request.file.buffer, {
+    overwrite: 'forbid',
+  });
   const localPath = `projects/${project.project_id}/seedance-assets/uploads/${filename}`;
   const existing = byId.get(assetId);
   const asset: SeedanceAssetLibraryItem = {
@@ -3019,7 +3020,7 @@ export async function uploadProjectSeedanceAssetFile(
       }),
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   const nextDetail = await getProject(project.project_id);
   if (!nextDetail.ok || !nextDetail.data) {
     return fail(
@@ -3169,7 +3170,7 @@ export async function draftProjectSeedanceAssetPlaceholders(
   }
 
   const { project, current_story } = detail.data;
-  const generatedAt = new Date().toISOString();
+  const generatedAt = nextProjectUpdatedAt(project);
   const beforeBoard = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
@@ -3177,7 +3178,7 @@ export async function draftProjectSeedanceAssetPlaceholders(
   const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
   const byId = new Map(current.items.map(item => [item.asset_id, item]));
   const placeholderDir = resolve(projectDir(project.project_id), 'production-board', 'seedance-assets');
-  await mkdir(placeholderDir, { recursive: true });
+  const placeholderStore = new FileArtifactStore(placeholderDir);
 
   const items: ProjectSeedanceAssetPlaceholderResult['items'] = [];
   let createdCount = 0;
@@ -3191,11 +3192,11 @@ export async function draftProjectSeedanceAssetPlaceholders(
     }
 
     const filename = seedanceAssetPlaceholderFilename(asset);
-    const filePath = resolve(placeholderDir, filename);
-    const existed = await pathExists(filePath);
     const svg = renderSeedanceAssetPlaceholderSvg(asset, project);
-    await writeFile(filePath, svg, 'utf-8');
-    const size = Buffer.byteLength(svg, 'utf-8');
+    const artifact = await placeholderStore.writeText(filename, svg, { overwrite: 'replace' });
+    const filePath = artifact.absolute_path;
+    const existed = artifact.replaced;
+    const size = artifact.byte_size;
     const relativePath = `production-board/seedance-assets/${filename}`;
     const localPath = `projects/${project.project_id}/${relativePath}`;
     const existing = byId.get(asset.asset_id);
@@ -3283,7 +3284,7 @@ export async function draftProjectSeedanceAssetPlaceholders(
       }),
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
 
   const exportResult = await exportProjectProductionBoard(project.project_id);
   if (!exportResult.ok || !exportResult.data) {
@@ -3408,7 +3409,7 @@ export async function reuseProjectSeedanceAsset(
   }
 
   const { project, current_story } = detail.data;
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
@@ -3471,7 +3472,7 @@ export async function reuseProjectSeedanceAsset(
       }),
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   const nextDetail = await getProject(project.project_id);
   if (!nextDetail.ok || !nextDetail.data) {
     return fail(
@@ -3508,7 +3509,7 @@ export async function updateProjectSeedanceShotStatus(
     return fail(ErrorCodes.VALIDATION_ERROR, `Seedance shot "${request.shot_id}" not found in project "${projectId}"`);
   }
 
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const currentLedger = syncSeedanceShotLedgerWithShots({
     ledger: project.seedance_shot_ledger,
     shotUnits: board.shot_units,
@@ -3566,7 +3567,7 @@ export async function updateProjectSeedanceShotStatus(
       items,
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return getProject(project.project_id);
 }
 
@@ -3638,7 +3639,7 @@ export async function selectProjectSeedanceShotVersion(
     return fail(ErrorCodes.VALIDATION_ERROR, `Seedance video version "${request.version_id}" is not ready for cutting`);
   }
 
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const items = board.seedance_shot_ledger.items.map(candidate => {
     if (candidate.production_id !== productionId) return candidate;
     return {
@@ -3667,7 +3668,7 @@ export async function selectProjectSeedanceShotVersion(
       items,
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return getProject(project.project_id);
 }
 
@@ -3688,7 +3689,7 @@ export async function autoSelectProjectSeedanceShotVersions(
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
   });
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   let selectedCount = 0;
   const items = board.seedance_shot_ledger.items.map(item => {
     if (item.selected_version_id && !request.overwrite_manual) return item;
@@ -3722,7 +3723,7 @@ export async function autoSelectProjectSeedanceShotVersions(
     },
   };
   if (selectedCount > 0) {
-    await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+    await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   }
   return selectedCount > 0 ? getProject(project.project_id) : success(detail.data);
 }
@@ -3740,7 +3741,7 @@ export async function submitProjectSeedanceShotsToProvider(
   }
 
   const { project, current_story } = detail.data;
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const provider = request.provider?.trim() || 'seedance';
   let queueId = request.queue_id?.trim() || seedanceProviderQueueId(provider, updatedAt);
   const queuePriority = request.queue_priority ?? 'normal';
@@ -3940,7 +3941,7 @@ export async function submitProjectSeedanceShotsToProvider(
     },
     seedance_provider_queue: providerQueue,
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return success({
     project: updatedProject,
     seedance_shot_ledger: updatedProject.seedance_shot_ledger,
@@ -3981,7 +3982,7 @@ export async function recoverProjectSeedanceProviderQueue(
     shotUnits: board.shot_units,
     generatedAt: board.generated_at,
   });
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const nowMs = Date.parse(updatedAt);
   const checkedItems = currentLedger.items.filter((item): item is SeedanceShotLedgerItem & {
     status: SeedanceShotProviderRecoverableStatus;
@@ -4062,7 +4063,7 @@ export async function recoverProjectSeedanceProviderQueue(
       items,
     },
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return success({
     project: updatedProject,
     seedance_shot_ledger: updatedProject.seedance_shot_ledger,
@@ -4862,7 +4863,7 @@ export async function submitProjectGearsJobs(
 
   const { project, current_story } = detail.data;
   const jobType = request.job_type ?? 'seedance_video';
-  const submittedAt = new Date().toISOString();
+  const submittedAt = nextProjectUpdatedAt(project);
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
@@ -4977,7 +4978,9 @@ export async function submitProjectGearsJobs(
     gears_job_ledger: gearsJobLedger,
     seedance_shot_ledger: seedanceShotLedger,
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  if (ledgerJobs.length > 0) {
+    await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
+  }
   return success({
     project: updatedProject,
     gears_job_ledger: updatedProject.gears_job_ledger,
@@ -5528,7 +5531,7 @@ export async function importProjectGearsCallback(
     });
   }
 
-  const receivedAt = new Date().toISOString();
+  const receivedAt = nextProjectUpdatedAt(project);
   const duplicateCount = gearsCallbackEventIsDuplicate({
     existing: match.callback_events,
     callback,
@@ -5564,7 +5567,7 @@ export async function importProjectGearsCallback(
     gears_job_ledger: gearsJobLedger,
     seedance_shot_ledger: seedanceShotLedger,
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return success({
     project: updatedProject,
     gears_job_ledger: gearsJobLedger,
@@ -5889,7 +5892,8 @@ export async function syncProjectGearsJobStatuses(
   }
 
   if (pollRes.data.failures.length) {
-    const updatedAt = new Date().toISOString();
+    const previousProject = currentProject;
+    const updatedAt = nextProjectUpdatedAt(previousProject);
     currentLedger = markGearsLedgerPollFailures({
       ledger: currentLedger,
       failures: pollRes.data.failures,
@@ -5900,7 +5904,7 @@ export async function syncProjectGearsJobStatuses(
       updated_at: updatedAt,
       gears_job_ledger: currentLedger,
     };
-    await writeJsonFile(projectMetaPath(projectId), currentProject);
+    await projectRepository().writeMeta(currentProject, projectMetaExpectation(previousProject));
   }
 
   return success({
@@ -6700,25 +6704,37 @@ export async function getProjectProductionReadiness(
   ];
 
   const sortedNextActions = nextActions.sort((a, b) => a.priority - b.priority);
+  const summary = buildProductionReadinessSummary(lanes, issues, sortedNextActions, {
+    qualityScore,
+    deliveryStage: board.delivery_manifest.stage,
+    totalShotCount: shotCount,
+    readyShotCount: shotStatusCounts.ready,
+    failedShotCount: shotStatusCounts.failed,
+    seedancePlaceholderAssetCount,
+    seedanceProductionAssetReadyCount: board.seedance_asset_report.production_asset_ready_count ?? 0,
+    gearsSummary,
+  });
   const base: Omit<StoryProjectProductionReadinessReport, 'markdown'> = {
     schema_version: 'story-project-production-readiness/v1',
     scope: 'story_project',
     project: detail.project,
     title: detail.current_story.title,
     generated_at: new Date().toISOString(),
-    summary: buildProductionReadinessSummary(lanes, issues, sortedNextActions, {
-      qualityScore,
-      deliveryStage: board.delivery_manifest.stage,
-      totalShotCount: shotCount,
-      readyShotCount: shotStatusCounts.ready,
-      failedShotCount: shotStatusCounts.failed,
-      seedancePlaceholderAssetCount,
-      seedanceProductionAssetReadyCount: board.seedance_asset_report.production_asset_ready_count ?? 0,
-      gearsSummary,
-    }),
+    summary,
     lanes,
     issues,
     next_actions: sortedNextActions,
+    workflow: resolveStoryProjectWorkflow({
+      project_id: detail.project.project_id,
+      project_status: detail.project.status,
+      readiness_status: summary.status,
+      open_supplement_task_count: detail.project.open_supplement_task_count ?? 0,
+      gears_job_count: summary.gears_job_count,
+      external_ready_gears_job_count: summary.external_ready_gears_job_count,
+      ready_without_external_gears_artifact_count: summary.ready_without_external_gears_artifact_count,
+      next_actions: sortedNextActions,
+      issues,
+    }),
     automation_plan: buildProductionReadinessAutomationPlan({
       scope: 'story_project',
       projectId: detail.project.project_id,
@@ -6912,13 +6928,13 @@ async function appendProjectProductionReadinessAutomationRun(
   if (!project) return;
   const updatedProject: StoryProjectMeta = {
     ...project,
-    updated_at: run.completed_at,
+    updated_at: nextProjectUpdatedAt(project),
     production_readiness_automation_ledger: buildProductionReadinessAutomationRunLedger(
       project.production_readiness_automation_ledger,
       run,
     ),
   };
-  await writeJsonFile(projectMetaPath(projectId), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
 }
 
 async function executeProjectReadinessAutomationStep(
@@ -7166,6 +7182,14 @@ function buildStoryProjectProductionReadinessMarkdown(
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     '',
+    '## Project Workflow',
+    '',
+    `- 状态: ${report.workflow.state_label}`,
+    `- 唯一 NEXT: ${report.workflow.primary_next_action.label}`,
+    `- 说明: ${report.workflow.primary_next_action.detail}`,
+    `- 外部输入: ${report.workflow.primary_next_action.external_input_required ? 'required' : 'not required'}`,
+    `- 真实完成信用: ${report.workflow.primary_next_action.counts_as_real_completion ? 'granted' : 'not granted'}`,
+    '',
     '## Lanes',
     '',
     '| 模块 | 状态 | 分数 | 说明 |',
@@ -7235,10 +7259,10 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
   });
-  const exportedAt = new Date().toISOString();
+  const exportedAt = nextProjectUpdatedAt(project);
   const sanitizedGearsJobLedger = sanitizeGearsJobLedgerPayloadSummaries(project.gears_job_ledger, exportedAt);
   const exportDir = resolve(projectDir(project.project_id), 'production-board');
-  await mkdir(exportDir, { recursive: true });
+  const exportStore = new FileArtifactStore(exportDir);
 
   const files: StoryProductionBoardExportFile[] = [];
   const writeExportFile = async (
@@ -7249,16 +7273,15 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     content: string,
     mimeType: string,
   ) => {
-    const filePath = resolve(exportDir, filename);
-    await writeFile(filePath, content, 'utf-8');
+    const artifact = await exportStore.writeText(filename, content, { overwrite: 'replace' });
     files.push({
       file_id: fileId,
       kind,
       label,
       relative_path: `production-board/${filename}`,
-      file_path: filePath,
+      file_path: artifact.absolute_path,
       mime_type: mimeType,
-      byte_size: Buffer.byteLength(content, 'utf-8'),
+      byte_size: artifact.byte_size,
     });
   };
 
@@ -7365,14 +7388,30 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     updated_at: exportedAt,
     gears_job_ledger: sanitizedGearsJobLedger.ledger,
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
-  await updateProjectVersionProductionBoardExport(project.project_id, project.current_version_id, {
-    exported_at: exportedAt,
-    export_dir: exportDir,
-    file_count: files.length,
-    delivery_stage: board.delivery_manifest.stage,
-    delivery_stage_label: board.delivery_manifest.stage_label,
-  });
+  const currentSnapshot = await projectRepository().readVersion(
+    project.project_id,
+    project.current_version_id,
+  );
+  if (!currentSnapshot) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      `Project "${project.project_id}" current version is unavailable`,
+    );
+  }
+  await projectRepository().writeCurrentState(
+    updatedProject,
+    {
+      ...currentSnapshot,
+      production_board_export: {
+        exported_at: exportedAt,
+        export_dir: exportDir,
+        file_count: files.length,
+        delivery_stage: board.delivery_manifest.stage,
+        delivery_stage_label: board.delivery_manifest.stage_label,
+      },
+    },
+    projectMetaExpectation(project),
+  );
 
   return success({
     schema_version: 'story-production-board-export/v1',
@@ -7398,13 +7437,13 @@ export async function exportProjectCurrentVersion(projectId: string): Promise<Ap
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
   }
 
-  const exportedAt = new Date().toISOString();
+  const exportedAt = nextProjectUpdatedAt(project);
   const updatedProject: StoryProjectMeta = {
     ...project,
     status: project.status === 'finalized' ? 'finalized' : 'exported',
     updated_at: exportedAt,
   };
-  await writeJsonFile(projectMetaPath(project.project_id), updatedProject);
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
 
   const story = normalizeStoryGenerationFields(currentVersion.story);
   return success(buildProjectExportPackage({
@@ -8615,8 +8654,9 @@ function hydrateProjectMetaForStory(project: StoryProjectMeta, story: StoryGener
 async function updateSourceStory(
   story: Pick<StoryGenerateResult, 'storyId' | 'video_type'>,
   updater: (raw: StoredStoryFile) => StoredStoryFile,
+  generatedRootOverride?: string,
 ): Promise<void> {
-  const sourcePath = storySourcePath(story);
+  const sourcePath = storySourcePath(story, generatedRootOverride);
   if (!(await pathExists(sourcePath))) return;
   const raw = await readJsonFile<StoredStoryFile>(sourcePath);
   await writeJsonFile(sourcePath, updater(raw));
@@ -10628,7 +10668,7 @@ export async function updateProjectSupplementTask(
     return fail(ErrorCodes.VALIDATION_ERROR, `Supplement task "${taskId}" not found in project "${projectId}"`);
   }
 
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const requestFieldValues = normalizeSupplementFieldValues(request.supplement_field_values);
   const updatedTasks = tasks.map((task, index) => {
     if (index !== taskIndex) return task;
@@ -10707,15 +10747,15 @@ export async function updateProjectSupplementTask(
     material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
     creation_contract: updatedStory.creation_contract ?? project.creation_contract,
   };
-  const currentPath = projectVersionPath(projectId, project.current_version_id);
-
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
-  await writeJsonFile(currentPath, {
+  const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
+  if (!snapshot) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version is unavailable`);
+  }
+  await projectRepository().writeCurrentState(updatedMeta, {
     ...snapshot,
     quality_report: updatedStory.quality_report ?? snapshot.quality_report,
     story: updatedStory,
-  });
-  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  }, projectMetaExpectation(project));
 
   await updateSourceStory(updatedStory, raw => ({
     ...raw,
@@ -10738,7 +10778,7 @@ export async function addProjectMaterialPackMaterial(
   }
 
   const { project, current_story } = detailResult.data;
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const materialPack = buildMaterialPackWithManualMaterial(current_story, request, updatedAt);
   const materialRefresh = refreshStoryMaterialContract(current_story, materialPack);
   const updatedStory: StoryGenerateResult = {
@@ -10752,15 +10792,15 @@ export async function addProjectMaterialPackMaterial(
     material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
     creation_contract: updatedStory.creation_contract ?? project.creation_contract,
   };
-  const currentPath = projectVersionPath(projectId, project.current_version_id);
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
-
-  await writeJsonFile(currentPath, {
+  const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
+  if (!snapshot) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version is unavailable`);
+  }
+  await projectRepository().writeCurrentState(updatedMeta, {
     ...snapshot,
     quality_report: updatedStory.quality_report ?? snapshot.quality_report,
     story: updatedStory,
-  });
-  await writeJsonFile(projectMetaPath(projectId), updatedMeta);
+  }, projectMetaExpectation(project));
 
   await updateSourceStory(updatedStory, raw => ({
     ...raw,
@@ -11316,16 +11356,14 @@ export async function updateProjectCurrentGearsDelivery(
   projectId: string | undefined,
   storyId: string,
   gearsDelivery: GearsDeliveryPackage,
+  generatedRootOverride?: string,
 ): Promise<void> {
   if (!projectId) return;
-  const metaPath = projectMetaPath(projectId);
-  if (!(await pathExists(metaPath))) return;
-
-  const project = await readJsonFile<StoryProjectMeta>(metaPath);
-  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
-  if (!(await pathExists(currentPath))) return;
-
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  const repository = projectRepository(generatedRootOverride);
+  const project = await repository.readMeta(projectId);
+  if (!project) return;
+  const snapshot = await repository.readVersion(projectId, project.current_version_id);
+  if (!snapshot) return;
   if (snapshot.story.storyId !== storyId) return;
 
   const updatedSnapshot: StoryProjectVersionSnapshot = {
@@ -11337,27 +11375,28 @@ export async function updateProjectCurrentGearsDelivery(
   };
   const updatedMeta: StoryProjectMeta = {
     ...project,
-    updated_at: new Date().toISOString(),
+    updated_at: nextProjectUpdatedAt(project),
   };
 
-  await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(metaPath, updatedMeta);
+  await repository.writeCurrentState(
+    updatedMeta,
+    updatedSnapshot,
+    projectMetaExpectation(project),
+  );
 }
 
 export async function updateProjectCurrentGearsWebhookStatus(
   projectId: string | undefined,
   storyId: string,
   gearsWebhook: GearsWebhookStatus,
+  generatedRootOverride?: string,
 ): Promise<void> {
   if (!projectId) return;
-  const metaPath = projectMetaPath(projectId);
-  if (!(await pathExists(metaPath))) return;
-
-  const project = await readJsonFile<StoryProjectMeta>(metaPath);
-  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
-  if (!(await pathExists(currentPath))) return;
-
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  const repository = projectRepository(generatedRootOverride);
+  const project = await repository.readMeta(projectId);
+  if (!project) return;
+  const snapshot = await repository.readVersion(projectId, project.current_version_id);
+  if (!snapshot) return;
   if (snapshot.story.storyId !== storyId) return;
 
   const updatedSnapshot: StoryProjectVersionSnapshot = {
@@ -11367,36 +11406,37 @@ export async function updateProjectCurrentGearsWebhookStatus(
       gears_webhook: gearsWebhook,
     },
   };
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: updatedAt,
   };
 
-  await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(metaPath, updatedMeta);
+  await repository.writeCurrentState(
+    updatedMeta,
+    updatedSnapshot,
+    projectMetaExpectation(project),
+  );
   await updateSourceStory(snapshot.story, raw => ({
     ...raw,
     gears_webhook: gearsWebhook,
     project_id: snapshot.story.project_id,
     current_version_id: snapshot.story.current_version_id,
-  }));
+  }), generatedRootOverride);
 }
 
 export async function updateProjectCurrentGearsVideo(
   projectId: string | undefined,
   storyId: string,
   gearsVideo: GearsVideoResult,
+  generatedRootOverride?: string,
 ): Promise<void> {
   if (!projectId) return;
-  const metaPath = projectMetaPath(projectId);
-  if (!(await pathExists(metaPath))) return;
-
-  const project = await readJsonFile<StoryProjectMeta>(metaPath);
-  const currentPath = resolve(dirname(metaPath), 'versions', `${project.current_version_id}.json`);
-  if (!(await pathExists(currentPath))) return;
-
-  const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(currentPath);
+  const repository = projectRepository(generatedRootOverride);
+  const project = await repository.readMeta(projectId);
+  if (!project) return;
+  const snapshot = await repository.readVersion(projectId, project.current_version_id);
+  if (!snapshot) return;
   if (snapshot.story.storyId !== storyId) return;
 
   const updatedSnapshot: StoryProjectVersionSnapshot = {
@@ -11406,7 +11446,7 @@ export async function updateProjectCurrentGearsVideo(
       gears_video: gearsVideo,
     },
   };
-  const updatedAt = new Date().toISOString();
+  const updatedAt = nextProjectUpdatedAt(project);
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: updatedAt,
@@ -11415,12 +11455,15 @@ export async function updateProjectCurrentGearsVideo(
     gears_video_thumbnail_url: gearsVideo.thumbnail_url,
   };
 
-  await writeJsonFile(currentPath, updatedSnapshot);
-  await writeJsonFile(metaPath, updatedMeta);
+  await repository.writeCurrentState(
+    updatedMeta,
+    updatedSnapshot,
+    projectMetaExpectation(project),
+  );
   await updateSourceStory(snapshot.story, raw => ({
     ...raw,
     gears_video: gearsVideo,
     project_id: snapshot.story.project_id,
     current_version_id: snapshot.story.current_version_id,
-  }));
+  }), generatedRootOverride);
 }

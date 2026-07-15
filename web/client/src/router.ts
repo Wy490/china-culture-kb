@@ -1,4 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { PRODUCT_SECONDARY_NAVIGATION, canAccessProductNavigationItem } from '@shared/product-navigation'
+import {
+  currentProductNavigationAccess,
+  productAccessLifecycleState,
+  synchronizeProductAccessContext,
+} from './product-access'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -7,6 +13,16 @@ export const router = createRouter({
       path: '/',
       name: 'Home',
       component: () => import('./views/Home.vue'),
+    },
+    {
+      path: '/access-denied',
+      name: 'AccessDenied',
+      component: () => import('./views/AccessDenied.vue'),
+    },
+    {
+      path: '/access-required',
+      name: 'AccessRequired',
+      component: () => import('./views/AccessRequired.vue'),
     },
     {
       path: '/search',
@@ -65,6 +81,18 @@ export const router = createRouter({
       path: '/story/new',
       name: 'StoryStudio',
       component: () => import('./views/StoryStudio.vue'),
+    },
+    {
+      path: '/workspace/production',
+      name: 'ProductionWorkspace',
+      component: () => import('./views/WorkspaceHub.vue'),
+      meta: { workspace: 'production' },
+    },
+    {
+      path: '/workspace/review',
+      name: 'ReviewWorkspace',
+      component: () => import('./views/WorkspaceHub.vue'),
+      meta: { workspace: 'review' },
     },
     {
       path: '/story/stage6-revisions',
@@ -162,4 +190,24 @@ export const router = createRouter({
       component: () => import('./views/StoryDetail.vue'),
     },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (to.name === 'AccessRequired') return true
+  await synchronizeProductAccessContext()
+  if (productAccessLifecycleState.value === 'unauthenticated') {
+    return {
+      name: 'AccessRequired',
+      query: { return_to: to.fullPath },
+    }
+  }
+  if (to.name === 'AccessDenied') return true
+  const controlledItems = PRODUCT_SECONDARY_NAVIGATION.filter(item => item.to === to.path)
+  if (controlledItems.length === 0) return true
+  const access = currentProductNavigationAccess()
+  if (controlledItems.some(item => canAccessProductNavigationItem(item, access))) return true
+  return {
+    name: 'AccessDenied',
+    query: { target: to.fullPath },
+  }
 })

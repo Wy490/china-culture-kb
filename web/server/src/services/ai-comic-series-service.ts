@@ -5,8 +5,19 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
-import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
 import { ErrorCodes, GEARS_CALLBACK_BATCH_ITEM_LIMIT, success, fail } from '@shared/types.js';
+import type { ProductResourceOwnership } from '@shared/product-access.js';
+import {
+  FileSeriesProjectRepository,
+  SeriesProjectRepositoryConflictError,
+} from '../repositories/series-project-repository.js';
+import { FileProjectRepository } from '../repositories/project-repository.js';
+import {
+  FileStoryRepository,
+  StoryRepositoryConflictError,
+} from '../repositories/story-repository.js';
+import { FileArtifactStore } from '../repositories/artifact-store.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
@@ -1408,65 +1419,55 @@ function buildAiComicEpisodeCredibilityNote(
 }
 
 async function persistAiComicEpisodeStoryFile(story: StoryGenerateResult): Promise<void> {
-  const storyPath = resolve(generatedRoot(), 'stories', story.video_type, `${story.storyId}.json`);
-  await mkdir(dirname(storyPath), { recursive: true });
-  let storedStory: Record<string, unknown> = {};
-  if (existsSync(storyPath)) {
-    try {
-      storedStory = JSON.parse(await readFile(storyPath, 'utf-8')) as Record<string, unknown>;
-    } catch {
-      storedStory = {};
-    }
-  }
-  const mergedStory = { ...storedStory, ...story } as StoryGenerateResult & {
+  const storyRepository = new FileStoryRepository(resolve(generatedRoot(), 'stories'));
+  const currentDocument = await storyRepository.read(story.storyId);
+  const mergedStory = { ...(currentDocument?.story ?? {}), ...story } as StoryGenerateResult & {
     project_id?: string;
     current_version_id?: string;
   };
-  await writeFile(storyPath, JSON.stringify(mergedStory, null, 2), 'utf-8');
+  if (currentDocument) {
+    await storyRepository.replace(mergedStory, currentDocument.revision);
+  } else if (await storyRepository.create(mergedStory) === 'exists') {
+    throw new StoryRepositoryConflictError(`Story "${story.storyId}" already exists`);
+  }
 
   if (!mergedStory.project_id || !mergedStory.current_version_id) return;
-  const projectVersionPath = resolve(
-    generatedRoot(),
-    'projects',
+  const projectRepository = new FileProjectRepository(resolve(generatedRoot(), 'projects'));
+  const meta = await projectRepository.readMeta(mergedStory.project_id);
+  if (!meta || meta.current_version_id !== mergedStory.current_version_id) return;
+  const snapshot = await projectRepository.readVersion(
     mergedStory.project_id,
-    'versions',
-    `${mergedStory.current_version_id}.json`,
+    mergedStory.current_version_id,
   );
-  if (existsSync(projectVersionPath)) {
-    try {
-      const snapshot = JSON.parse(await readFile(projectVersionPath, 'utf-8')) as Record<string, unknown>;
-      await writeFile(projectVersionPath, JSON.stringify({
-        ...snapshot,
-        quality_report: mergedStory.quality_report,
-        story: {
-          ...((snapshot.story as Record<string, unknown> | undefined) ?? {}),
-          ...mergedStory,
-        },
-      }, null, 2), 'utf-8');
-    } catch {
-      // Best-effort sync: the generated story file remains the source of truth for the story detail page.
-    }
-  }
-
-  const projectMetaPath = resolve(generatedRoot(), 'projects', mergedStory.project_id, 'project.json');
-  if (existsSync(projectMetaPath)) {
-    try {
-      const meta = JSON.parse(await readFile(projectMetaPath, 'utf-8')) as Record<string, unknown>;
-      await writeFile(projectMetaPath, JSON.stringify({
-        ...meta,
-        title: mergedStory.title,
-        logline: mergedStory.logline,
-        credibility_note: mergedStory.credibility_note,
-        scene_count: mergedStory.scene_breakdown.length,
-        has_gears_segments: mergedStory.gears_segments.length > 0,
-        quality_passed: mergedStory.quality_report?.passed ?? meta.quality_passed,
-        quality_issue_count: mergedStory.quality_report?.issues.length ?? meta.quality_issue_count,
-        genre_score: mergedStory.quality_report?.genre_score ?? meta.genre_score,
-      }, null, 2), 'utf-8');
-    } catch {
-      // Best-effort project metadata sync.
-    }
-  }
+  if (!snapshot) return;
+  const previousUpdatedAt = Date.parse(meta.updated_at);
+  const updatedAt = new Date(Math.max(
+    Date.now(),
+    Number.isFinite(previousUpdatedAt) ? previousUpdatedAt + 1 : Date.now(),
+  )).toISOString();
+  await projectRepository.writeCurrentState({
+    ...meta,
+    updated_at: updatedAt,
+    title: mergedStory.title,
+    logline: mergedStory.logline,
+    credibility_note: mergedStory.credibility_note,
+    scene_count: mergedStory.scene_breakdown.length,
+    has_gears_segments: mergedStory.gears_segments.length > 0,
+    quality_passed: mergedStory.quality_report?.passed ?? meta.quality_passed,
+    quality_issue_count: mergedStory.quality_report?.issues.length ?? meta.quality_issue_count,
+    genre_score: mergedStory.quality_report?.genre_score ?? meta.genre_score,
+  }, {
+    ...snapshot,
+    quality_report: mergedStory.quality_report,
+    story: {
+      ...snapshot.story,
+      ...mergedStory,
+    },
+  }, {
+    current_version_id: meta.current_version_id,
+    version_count: meta.version_count,
+    updated_at: meta.updated_at,
+  });
 }
 
 function buildAiComicEpisodeBlueprint(
@@ -3285,6 +3286,7 @@ function matchesAny(text: string, needles: string[]): boolean {
 
 export async function saveAiComicSeriesProject(
   request: AiComicSeriesProjectSaveRequest,
+  options: { access_control?: ProductResourceOwnership } = {},
 ): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
   const now = new Date().toISOString();
   const seriesProjectId = request.series_project_id ?? generateSeriesProjectId();
@@ -3311,6 +3313,7 @@ export async function saveAiComicSeriesProject(
       updatedAt: now,
       generatedEpisodeStoryIds,
       archivedAt: existing?.project.archived_at,
+      accessControl: existing?.project.access_control ?? options.access_control,
     }),
     plan: normalizedPlan,
     generated_episode_story_ids: generatedEpisodeStoryIds,
@@ -3334,7 +3337,11 @@ export async function saveAiComicSeriesProject(
     previousAudit: existing?.series_quality_audit,
   });
 
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  if (existing) {
+    await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
+  } else if (await seriesProjectRepository().create(detail) === 'exists') {
+    throw new SeriesProjectRepositoryConflictError(`Series project "${seriesProjectId}" already exists`);
+  }
   return success(detail);
 }
 
@@ -3378,6 +3385,7 @@ export async function rebuildAiComicSeriesContinuityLedger(
       updatedAt: now,
       generatedEpisodeStoryIds: existing.generated_episode_story_ids,
       archivedAt: existing.project.archived_at,
+      accessControl: existing.project.access_control,
     }),
     continuity_ledger: continuityLedger,
   };
@@ -3388,24 +3396,15 @@ export async function rebuildAiComicSeriesContinuityLedger(
     previousAudit: existing.series_quality_audit,
   });
 
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
 export async function listAiComicSeriesProjects(
   options: { includeArchived?: boolean } = {},
 ): Promise<ApiResponse<AiComicSeriesProjectMeta[]>> {
-  const projectIds = new Set<string>();
-  for (const rootPath of seriesProjectsRoots()) {
-    try {
-      for (const projectId of await readdir(rootPath)) {
-        projectIds.add(projectId);
-      }
-    } catch {
-      continue;
-    }
-  }
-  if (!projectIds.size) {
+  const projectIds = await seriesProjectRepository().listProjectIds();
+  if (!projectIds.length) {
     return success([]);
   }
 
@@ -3450,6 +3449,7 @@ async function buildAiComicSeriesProjectListMeta(
 export async function copyAiComicSeriesProject(
   seriesProjectId: string,
   request: AiComicSeriesProjectCopyRequest = {},
+  options: { access_control?: ProductResourceOwnership } = {},
 ): Promise<ApiResponse<AiComicSeriesProjectDetail>> {
   const existing = await readSeriesProject(seriesProjectId);
   if (!existing) {
@@ -3470,6 +3470,7 @@ export async function copyAiComicSeriesProject(
       createdAt: now,
       updatedAt: now,
       generatedEpisodeStoryIds: existing.generated_episode_story_ids,
+      accessControl: options.access_control ?? existing.project.access_control,
     }),
     plan,
     generated_episode_story_ids: { ...existing.generated_episode_story_ids },
@@ -3517,7 +3518,9 @@ export async function copyAiComicSeriesProject(
     previousAudit: detail.series_quality_audit,
   });
 
-  await writeJsonFile(seriesProjectPath(newSeriesProjectId), detail);
+  if (await seriesProjectRepository().create(detail) === 'exists') {
+    throw new SeriesProjectRepositoryConflictError(`Series project "${newSeriesProjectId}" already exists`);
+  }
   return success(detail);
 }
 
@@ -3541,10 +3544,11 @@ export async function archiveAiComicSeriesProject(
       updatedAt: now,
       generatedEpisodeStoryIds: existing.generated_episode_story_ids,
       archivedAt,
+      accessControl: existing.project.access_control,
     }),
   };
 
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
@@ -3683,7 +3687,7 @@ export async function exportAiComicSeriesSeedancePrompts(
     },
     seedance_production: seedanceProduction,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
   const renderPackage = {
     ...basePackage,
     project: updatedDetail.project,
@@ -3718,27 +3722,39 @@ export async function updateAiComicSeriesSeedanceProductionStatuses(
     }
   }
 
-  const now = new Date().toISOString();
-  const ledger = request.updates.reduce((currentLedger, update) => {
+  const detail = buildAiComicSeriesSeedanceProductionUpdate(
+    existing,
+    request.updates,
+    new Date().toISOString(),
+  );
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
+  return success(detail);
+}
+
+function buildAiComicSeriesSeedanceProductionUpdate(
+  existing: StoredAiComicSeriesProject,
+  updates: readonly AiComicSeedanceProductionStatusUpdateRequest[],
+  updatedAt: string,
+): AiComicSeriesProjectDetail {
+  const episodeMap = new Map(existing.plan.episodes.map(episode => [episode.episode_no, episode]));
+  const ledger = updates.reduce((currentLedger, update) => {
     const episode = episodeMap.get(update.episode_no)!;
     return updateSeedanceProductionLedger({
       ledger: currentLedger,
       episodeTitle: episode.title,
       storyId: existing.generated_episode_story_ids[String(update.episode_no)],
       request: update,
-      updatedAt: now,
+      updatedAt,
     });
   }, existing.seedance_production);
-  const detail: AiComicSeriesProjectDetail = {
+  return {
     ...existing,
     project: {
       ...existing.project,
-      updated_at: now,
+      updated_at: updatedAt,
     },
     seedance_production: ledger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
-  return success(detail);
 }
 
 export async function applyAiComicSeriesSeedanceProductionCallback(
@@ -3923,7 +3939,7 @@ export async function selectAiComicSeriesSeedanceProductionVersion(
       items: nextItems,
     },
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
@@ -3958,19 +3974,20 @@ export async function autoSelectAiComicSeriesSeedanceProductionVersions(
       ]).slice(-12),
     };
   });
+  if (selectedCount === 0) return success(existing);
   const detail: AiComicSeriesProjectDetail = {
     ...existing,
     project: {
       ...existing.project,
-      updated_at: selectedCount > 0 ? updatedAt : existing.project.updated_at,
+      updated_at: updatedAt,
     },
     seedance_production: {
       schema_version: 'ai-comic-seedance-production-ledger/v1',
-      updated_at: selectedCount > 0 ? updatedAt : ledger.updated_at,
+      updated_at: updatedAt,
       items: nextItems,
     },
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
@@ -4015,7 +4032,7 @@ export async function updateAiComicSeriesSeedanceAssetLibrary(
       }),
     },
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
@@ -4063,7 +4080,7 @@ export async function updateAiComicSeriesSeedanceAudioLibrary(
       }),
     },
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
 }
 
@@ -4184,30 +4201,36 @@ export async function assembleAiComicSeriesSeedanceCut(
   const outputPath = `cuts/${seriesProjectId}/${outputFilename}`;
   const concatListPath = `cuts/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
-  const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
+  const artifactStore = new FileArtifactStore(projectDir);
   const absoluteConcatListPath = resolveSeedanceProjectOutputPath(projectDir, concatListPath);
   const ffmpegCommand = buildFfmpegCutAssemblyCommand(ffmpegPath, concatListPath, outputPath, profile);
-  const alreadyReady = !overwrite && await pathExists(absoluteOutputPath);
+  const alreadyReady = !overwrite && await artifactStore.exists(outputPath);
   let status: AiComicSeriesSeedanceCutAssemblyResult['status'] = dryRun ? 'planned' : 'assembled';
   let failureReason: string | undefined;
 
   try {
-    await mkdir(dirname(absoluteConcatListPath), { recursive: true });
-    await writeFile(
-      absoluteConcatListPath,
+    await artifactStore.writeText(
+      concatListPath,
       `${shots.map(shot => ffmpegConcatFileLine(shot.video_url)).join('\n')}\n`,
-      'utf-8',
+      { overwrite: 'replace' },
     );
     if (alreadyReady) {
       status = 'skipped';
     } else if (!dryRun) {
-      await mkdir(dirname(absoluteOutputPath), { recursive: true });
-      await runner({
-        ffmpegPath,
-        concatListPath: absoluteConcatListPath,
-        outputPath: absoluteOutputPath,
-        profile,
+      const outputSession = await artifactStore.prepareExternalWrite(outputPath, {
+        overwrite: overwrite ? 'replace' : 'forbid',
       });
+      try {
+        await runner({
+          ffmpegPath,
+          concatListPath: absoluteConcatListPath,
+          outputPath: outputSession.staging_absolute_path,
+          profile,
+        });
+        await artifactStore.publishExternalWrite(outputSession);
+      } finally {
+        await artifactStore.abortExternalWrite(outputSession);
+      }
     }
   } catch (err) {
     status = 'failed';
@@ -4243,7 +4266,7 @@ export async function assembleAiComicSeriesSeedanceCut(
     },
     seedance_cut_assembly: assemblyLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-cut-assembly-result/v1',
@@ -5225,34 +5248,27 @@ export async function submitAiComicSeriesGearsJobs(
   let updatedDetail = existing;
   if (jobType === 'seedance_video' && ledgerJobs.length) {
     const jobsByProductionId = new Map(ledgerJobs.map(item => [item.source_unit_id, item]));
-    const updateRes = await updateAiComicSeriesSeedanceProductionStatuses(seriesProjectId, {
-      updates: [...jobsByProductionId.values()]
-        .map(item => built.candidatesByProductionId.get(item.source_unit_id))
-        .filter((candidate): candidate is AiComicSeedanceRetryExecutionCandidate => Boolean(candidate))
-        .map(candidate => {
-          const item = jobsByProductionId.get(candidate.production_id)!;
-          return {
-            episode_no: candidate.episode_no,
-            shot_id: candidate.shot_id,
-            status: aiComicGearsSeedanceStatus(item.status),
-            provider_job_id: item.gears_job_id,
-            video_url: item.status === 'ready' ? item.artifact_urls[0] : undefined,
-            failure_reason: item.failure_reason,
-            failure_category: item.status === 'failed' || item.status === 'rejected' ? item.failure_category : undefined,
-            provider_error_code: item.status === 'failed' || item.status === 'rejected' ? item.error_code : undefined,
-            note: request.note ?? `GEARS job ${item.status}: ${item.gears_job_id}`,
-            increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
-          };
-        }),
-    });
-    if (!updateRes.ok || !updateRes.data) {
-      return fail(
-        normalizeErrorCode(updateRes.error?.code),
-        updateRes.error?.message ?? 'Update series Seedance production ledger failed',
-        updateRes.error?.details,
-      );
-    }
-    updatedDetail = updateRes.data;
+    const productionUpdates = [...jobsByProductionId.values()]
+      .map(item => built.candidatesByProductionId.get(item.source_unit_id))
+      .filter((candidate): candidate is AiComicSeedanceRetryExecutionCandidate => Boolean(candidate))
+      .map(candidate => {
+        const item = jobsByProductionId.get(candidate.production_id)!;
+        return {
+          episode_no: candidate.episode_no,
+          shot_id: candidate.shot_id,
+          status: aiComicGearsSeedanceStatus(item.status),
+          provider_job_id: item.gears_job_id,
+          video_url: item.status === 'ready' ? item.artifact_urls[0] : undefined,
+          failure_reason: item.failure_reason,
+          note: request.note ?? `GEARS job ${item.status}: ${item.gears_job_id}`,
+          increment_retry: candidate.status !== 'not_started' && candidate.status !== 'prompt_exported',
+        } satisfies AiComicSeedanceProductionStatusUpdateRequest;
+      });
+    updatedDetail = buildAiComicSeriesSeedanceProductionUpdate(
+      existing,
+      productionUpdates,
+      submittedAt,
+    );
   }
 
   const gearsJobLedger = mergeGearsLedgerItems({
@@ -5268,7 +5284,7 @@ export async function submitAiComicSeriesGearsJobs(
     },
     gears_job_ledger: gearsJobLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: existing.project.updated_at });
   const result: Omit<AiComicSeriesGearsJobSubmitResult, 'markdown'> = {
     schema_version: 'ai-comic-series-gears-job-submit-result/v1',
     project: updatedDetail.project,
@@ -5587,7 +5603,7 @@ export async function importAiComicSeriesGearsCallback(
     const productionItem = normalizeSeedanceProductionLedger(existing.seedance_production)
       .items.find(item => item.production_id === updatedItem.source_unit_id || item.provider_job_id === updatedItem.gears_job_id);
     if (productionItem) {
-      const updateRes = await updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+      updatedDetail = buildAiComicSeriesSeedanceProductionUpdate(existing, [{
         episode_no: productionItem.episode_no,
         shot_id: productionItem.shot_id,
         status: aiComicGearsSeedanceStatus(updatedItem.status),
@@ -5595,15 +5611,7 @@ export async function importAiComicSeriesGearsCallback(
         video_url: updatedItem.status === 'ready' ? updatedItem.artifact_urls[0] : undefined,
         failure_reason: updatedItem.failure_reason,
         note: callback.note ?? callback.message ?? `GEARS callback: ${updatedItem.status}`,
-      });
-      if (!updateRes.ok || !updateRes.data) {
-        return fail(
-          normalizeErrorCode(updateRes.error?.code),
-          updateRes.error?.message ?? 'Update series Seedance production ledger failed',
-          updateRes.error?.details,
-        );
-      }
-      updatedDetail = updateRes.data;
+      }], receivedAt);
     }
   } else {
     updatedDetail = applyAiComicSeriesGearsPostProductionCallback({
@@ -5625,7 +5633,7 @@ export async function importAiComicSeriesGearsCallback(
     },
     gears_job_ledger: nextLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: existing.project.updated_at });
   return success({
     schema_version: 'ai-comic-series-gears-job-callback-result/v1',
     project: updatedDetail.project,
@@ -5761,6 +5769,7 @@ export async function syncAiComicSeriesGearsJobStatuses(
 
   if (pollRes.data.failures.length) {
     const updatedAt = new Date().toISOString();
+    const expectedUpdatedAt = currentDetail.project.updated_at;
     currentLedger = markGearsLedgerPollFailures({
       ledger: currentLedger,
       failures: pollRes.data.failures,
@@ -5774,7 +5783,7 @@ export async function syncAiComicSeriesGearsJobStatuses(
       },
       gears_job_ledger: currentLedger,
     };
-    await writeJsonFile(seriesProjectPath(seriesProjectId), currentDetail);
+    await seriesProjectRepository().replace(currentDetail, { updated_at: expectedUpdatedAt });
   }
 
   const result: Omit<AiComicSeriesGearsJobStatusSyncResult, 'markdown'> = {
@@ -6315,6 +6324,7 @@ export async function renderAiComicSeriesSeedanceSubtitles(
   const overwrite = request.overwrite ?? false;
   const executedAt = new Date().toISOString();
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const artifactStore = new FileArtifactStore(projectDir);
   const absoluteSrtPath = resolveSeedanceProjectOutputPath(projectDir, subtitlePackage.srt_path);
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
   const sourceCutOutputPath = request.input_video_path ?? detail.seedance_cut_assembly?.output_path;
@@ -6326,7 +6336,6 @@ export async function renderAiComicSeriesSeedanceSubtitles(
   const burnInOutputPath = `cuts/${seriesProjectId}/${burnInOutputFilename}`;
   const renderOutputPath = mode === 'sidecar' ? subtitlePackage.srt_path : burnInOutputPath;
   const renderOutputFilename = mode === 'sidecar' ? subtitlePackage.srt_filename : burnInOutputFilename;
-  const absoluteBurnInOutputPath = resolveSeedanceProjectOutputPath(projectDir, burnInOutputPath);
   let absoluteInputVideoPath: string | undefined;
   try {
     absoluteInputVideoPath = sourceCutOutputPath
@@ -6342,28 +6351,37 @@ export async function renderAiComicSeriesSeedanceSubtitles(
     ? buildFfmpegSubtitleBurnInCommand(ffmpegPath, sourceCutOutputPath, subtitlePackage.srt_path, burnInOutputPath)
     : undefined;
   const runner = options.runner ?? runFfmpegSubtitleBurnIn;
-  const targetPath = mode === 'sidecar' ? absoluteSrtPath : absoluteBurnInOutputPath;
   let status: AiComicSeriesSeedanceSubtitleRenderResult['status'] = dryRun ? 'planned' : 'rendered';
   let failureReason: string | undefined;
 
   try {
-    const alreadyReady = !overwrite && !dryRun && await pathExists(targetPath);
+    const alreadyReady = !overwrite && !dryRun && await artifactStore.exists(renderOutputPath);
     if (alreadyReady) {
       status = 'skipped';
     } else if (!dryRun) {
-      await mkdir(dirname(absoluteSrtPath), { recursive: true });
-      await writeFile(absoluteSrtPath, subtitlePackage.srt_content, 'utf-8');
+      await artifactStore.writeText(
+        subtitlePackage.srt_path,
+        subtitlePackage.srt_content,
+        { overwrite: 'replace' },
+      );
       if (mode === 'burn_in') {
         if (!sourceCutOutputPath || !absoluteInputVideoPath) {
           throw new Error('Burn-in subtitle render requires a Seedance cut output or input_video_path');
         }
-        await mkdir(dirname(absoluteBurnInOutputPath), { recursive: true });
-        await runner({
-          ffmpegPath,
-          inputVideoPath: absoluteInputVideoPath,
-          subtitlePath: absoluteSrtPath,
-          outputPath: absoluteBurnInOutputPath,
+        const outputSession = await artifactStore.prepareExternalWrite(burnInOutputPath, {
+          overwrite: overwrite ? 'replace' : 'forbid',
         });
+        try {
+          await runner({
+            ffmpegPath,
+            inputVideoPath: absoluteInputVideoPath,
+            subtitlePath: absoluteSrtPath,
+            outputPath: outputSession.staging_absolute_path,
+          });
+          await artifactStore.publishExternalWrite(outputSession);
+        } finally {
+          await artifactStore.abortExternalWrite(outputSession);
+        }
       }
     }
   } catch (err) {
@@ -6400,7 +6418,7 @@ export async function renderAiComicSeriesSeedanceSubtitles(
     },
     seedance_subtitle_render: renderLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-subtitle-render-result/v1',
@@ -6541,11 +6559,10 @@ export async function mixAiComicSeriesSeedanceAudio(
     || seedanceAudioMixFilename(seriesProjectId, request.episode_no);
   const outputPath = `cuts/${seriesProjectId}/${outputFilename}`;
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const artifactStore = new FileArtifactStore(projectDir);
   let absoluteInputVideoPath: string;
-  let absoluteOutputPath: string;
   try {
     absoluteInputVideoPath = resolveSeedanceProjectOutputPath(projectDir, sourceVideoPath);
-    absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
   } catch (err) {
     return fail(
       ErrorCodes.VALIDATION_ERROR,
@@ -6583,7 +6600,7 @@ export async function mixAiComicSeriesSeedanceAudio(
   let failureReason: string | undefined;
 
   try {
-    const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+    const alreadyReady = !overwrite && !dryRun && await artifactStore.exists(outputPath);
     if (alreadyReady) {
       status = 'skipped';
     } else if (!dryRun) {
@@ -6594,17 +6611,21 @@ export async function mixAiComicSeriesSeedanceAudio(
         throw new Error(`Seedance audio mix input video not found: ${sourceVideoPath}`);
       }
       const runnerAudioInputs = await resolveSeedanceAudioMixRunnerInputs(projectDir, audioInputs);
-      await mkdir(dirname(absoluteOutputPath), { recursive: true });
-      await runner({
-        ffmpegPath,
-        inputVideoPath: absoluteInputVideoPath,
-        audioInputs: runnerAudioInputs,
-        includeOriginalAudio,
-        originalAudioVolumeDb,
-        outputPath: absoluteOutputPath,
+      const outputSession = await artifactStore.prepareExternalWrite(outputPath, {
+        overwrite: overwrite ? 'replace' : 'forbid',
       });
-      if (!(await pathExists(absoluteOutputPath))) {
-        throw new Error(`Seedance audio mix runner did not create output file: ${outputPath}`);
+      try {
+        await runner({
+          ffmpegPath,
+          inputVideoPath: absoluteInputVideoPath,
+          audioInputs: runnerAudioInputs,
+          includeOriginalAudio,
+          originalAudioVolumeDb,
+          outputPath: outputSession.staging_absolute_path,
+        });
+        await artifactStore.publishExternalWrite(outputSession);
+      } finally {
+        await artifactStore.abortExternalWrite(outputSession);
       }
     }
   } catch (err) {
@@ -6642,7 +6663,7 @@ export async function mixAiComicSeriesSeedanceAudio(
     },
     seedance_audio_mix: mixLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-audio-mix-result/v1',
@@ -6750,6 +6771,7 @@ export async function renderAiComicSeriesSeedanceTitleCards(
 
   const executedAt = new Date().toISOString();
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const artifactStore = new FileArtifactStore(projectDir);
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
   const runner = options.runner ?? runFfmpegTitleCardRender;
   const renderFontPath = fontPath ?? '<FFMPEG_FONT_PATH>';
@@ -6761,8 +6783,7 @@ export async function renderAiComicSeriesSeedanceTitleCards(
 
   try {
     for (const card of cards) {
-      const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, card.output_path);
-      const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+      const alreadyReady = !overwrite && !dryRun && await artifactStore.exists(card.output_path);
       outputPaths.push(card.output_path);
       ffmpegCommands.push(buildFfmpegTitleCardCommand(ffmpegPath, card, outputProfile, renderFontPath, card.output_path));
       if (alreadyReady) {
@@ -6770,16 +6791,20 @@ export async function renderAiComicSeriesSeedanceTitleCards(
         continue;
       }
       if (!dryRun) {
-        await mkdir(dirname(absoluteOutputPath), { recursive: true });
-        await runner({
-          ffmpegPath,
-          card,
-          outputPath: absoluteOutputPath,
-          profile: outputProfile,
-          fontPath: renderFontPath,
+        const outputSession = await artifactStore.prepareExternalWrite(card.output_path, {
+          overwrite: overwrite ? 'replace' : 'forbid',
         });
-        if (!(await pathExists(absoluteOutputPath))) {
-          throw new Error(`Seedance title card runner did not create output: ${card.output_path}`);
+        try {
+          await runner({
+            ffmpegPath,
+            card,
+            outputPath: outputSession.staging_absolute_path,
+            profile: outputProfile,
+            fontPath: renderFontPath,
+          });
+          await artifactStore.publishExternalWrite(outputSession);
+        } finally {
+          await artifactStore.abortExternalWrite(outputSession);
         }
         renderedCount += 1;
       }
@@ -6816,7 +6841,7 @@ export async function renderAiComicSeriesSeedanceTitleCards(
     },
     seedance_title_card_render: renderLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-title-card-render-result/v1',
@@ -6883,8 +6908,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
   const manifestPath = `delivery/${seriesProjectId}/${seedanceFinalDeliveryManifestFilename(outputFilename)}`;
   const concatListPath = `delivery/${seriesProjectId}/${outputFilename.replace(/\.mp4$/i, '.concat.txt')}`;
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
-  const absoluteOutputPath = resolveSeedanceProjectOutputPath(projectDir, outputPath);
-  const absoluteManifestPath = resolveSeedanceProjectOutputPath(projectDir, manifestPath);
+  const artifactStore = new FileArtifactStore(projectDir);
   const absoluteConcatListPath = resolveSeedanceProjectOutputPath(projectDir, concatListPath);
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
   const titleCardPaths = includeTitleCards && dependencyStatus.title_cards_ready
@@ -6904,17 +6928,16 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
   let failureReason: string | undefined;
 
   try {
-    await mkdir(dirname(absoluteConcatListPath), { recursive: true });
     if (useConcat) {
-      await writeFile(
-        absoluteConcatListPath,
+      await artifactStore.writeText(
+        concatListPath,
         `${concatInputs
           .map(item => ffmpegConcatFileLine(resolveSeedanceProjectOutputPath(projectDir, item)))
           .join('\n')}\n`,
-        'utf-8',
+        { overwrite: 'replace' },
       );
     }
-    const alreadyReady = !overwrite && !dryRun && await pathExists(absoluteOutputPath);
+    const alreadyReady = !overwrite && !dryRun && await artifactStore.exists(outputPath);
     if (alreadyReady) {
       status = 'skipped';
     } else if (!dryRun) {
@@ -6923,17 +6946,21 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
         includeAudioMix,
         includeTitleCards,
       });
-      await mkdir(dirname(absoluteOutputPath), { recursive: true });
-      await runner({
-        ffmpegPath,
-        concatListPath: useConcat ? absoluteConcatListPath : undefined,
-        inputVideoPath: resolveSeedanceProjectOutputPath(projectDir, dependencyStatus.source_cut_path),
-        outputPath: absoluteOutputPath,
-        outputProfile,
-        useConcat,
+      const outputSession = await artifactStore.prepareExternalWrite(outputPath, {
+        overwrite: overwrite ? 'replace' : 'forbid',
       });
-      if (!(await pathExists(absoluteOutputPath))) {
-        throw new Error(`Seedance final delivery runner did not create output: ${outputPath}`);
+      try {
+        await runner({
+          ffmpegPath,
+          concatListPath: useConcat ? absoluteConcatListPath : undefined,
+          inputVideoPath: resolveSeedanceProjectOutputPath(projectDir, dependencyStatus.source_cut_path),
+          outputPath: outputSession.staging_absolute_path,
+          outputProfile,
+          useConcat,
+        });
+        await artifactStore.publishExternalWrite(outputSession);
+      } finally {
+        await artifactStore.abortExternalWrite(outputSession);
       }
     }
   } catch (err) {
@@ -6961,8 +6988,11 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     manifestDeliverableStatus: 'ready',
   });
   try {
-    await mkdir(dirname(absoluteManifestPath), { recursive: true });
-    await writeFile(absoluteManifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    await artifactStore.writeText(
+      manifestPath,
+      JSON.stringify(manifest, null, 2),
+      { overwrite: 'replace' },
+    );
   } catch (err) {
     status = 'failed';
     failureReason = err instanceof Error ? err.message : String(err);
@@ -7026,7 +7056,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     seedance_final_delivery: deliveryLedger,
     seedance_review_ledger: resolvedReviewLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-final-delivery-result/v1',
@@ -7098,7 +7128,7 @@ export async function addAiComicSeriesSeedanceReview(
     },
     seedance_review_ledger: seedanceReviewLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-review-update-result/v1',
@@ -7144,7 +7174,7 @@ export async function resolveAiComicSeriesSeedanceReview(
     },
     seedance_review_ledger: seedanceReviewLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-review-update-result/v1',
@@ -7854,7 +7884,7 @@ async function appendAiComicSeriesProductionReadinessAutomationRun(
       run,
     ),
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 }
 
 async function executeAiComicSeriesReadinessAutomationStep(
@@ -8185,6 +8215,7 @@ export async function captureAiComicSeriesSeedanceThumbnails(
   const ffmpegPath = process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
   const runner = options.runner ?? runFfmpegThumbnailCapture;
   const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const artifactStore = new FileArtifactStore(projectDir);
   const plannedShots = planRes.data.episodes
     .flatMap(episode => episode.shots)
     .filter(shot => request.episode_no === undefined || shot.episode_no === request.episode_no)
@@ -8196,13 +8227,12 @@ export async function captureAiComicSeriesSeedanceThumbnails(
   const resultShots: AiComicSeedanceThumbnailCaptureResultShot[] = [];
 
   for (const shot of plannedShots) {
-    const outputPath = resolveSeedanceThumbnailOutputPath(projectDir, shot.output_path);
     const existingItem = ledgerMap.get(shot.production_id);
     const existingThumbnail = existingItem?.thumbnail;
     const alreadyReady = existingThumbnail?.status === 'ready'
       && existingThumbnail.output_path === shot.output_path
       && !overwrite
-      && await pathExists(outputPath);
+      && await artifactStore.exists(shot.output_path);
     let status: AiComicSeedanceThumbnailCaptureResultShot['status'] = dryRun ? 'planned' : 'captured';
     let failureReason: string | undefined;
     let skippedReason: string | undefined;
@@ -8212,13 +8242,20 @@ export async function captureAiComicSeriesSeedanceThumbnails(
         status = 'skipped';
         skippedReason = '缩略图已存在，未启用覆盖';
       } else if (!dryRun) {
-        await mkdir(dirname(outputPath), { recursive: true });
-        await runner({
-          ffmpegPath,
-          videoUrl: shot.video_url,
-          outputPath,
-          captureTimeSec: shot.capture_time_sec,
+        const outputSession = await artifactStore.prepareExternalWrite(shot.output_path, {
+          overwrite: overwrite ? 'replace' : 'forbid',
         });
+        try {
+          await runner({
+            ffmpegPath,
+            videoUrl: shot.video_url,
+            outputPath: outputSession.staging_absolute_path,
+            captureTimeSec: shot.capture_time_sec,
+          });
+          await artifactStore.publishExternalWrite(outputSession);
+        } finally {
+          await artifactStore.abortExternalWrite(outputSession);
+        }
       }
     } catch (err) {
       status = 'failed';
@@ -8287,7 +8324,7 @@ export async function captureAiComicSeriesSeedanceThumbnails(
     },
     seedance_production: nextLedger,
   };
-  await writeJsonFile(seriesProjectPath(seriesProjectId), updatedDetail);
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
 
   return success({
     schema_version: 'ai-comic-series-seedance-thumbnail-capture-result/v1',
@@ -8336,6 +8373,7 @@ async function recordGeneratedEpisodeStory(
       updatedAt: now,
       generatedEpisodeStoryIds,
       archivedAt: existing.project.archived_at,
+      accessControl: existing.project.access_control,
     }),
     generated_episode_story_ids: generatedEpisodeStoryIds,
     continuity_ledger: continuityLedger,
@@ -8348,7 +8386,7 @@ async function recordGeneratedEpisodeStory(
     latestStory: params.story,
     latestEpisodeNo: params.episode.episode_no,
   });
-  await writeJsonFile(seriesProjectPath(params.seriesProjectId), detail);
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
 }
 
 function getPlanEpisodes(plan: AiComicSeriesPlan): AiComicSeriesPlan['episodes'] {
@@ -9220,19 +9258,9 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
-async function readJsonFile<T>(filePath: string): Promise<T> {
-  return JSON.parse(await readFile(filePath, 'utf-8')) as T;
-}
-
-async function writeJsonFile(filePath: string, data: unknown): Promise<void> {
-  await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
-
 async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComicSeriesProject | null> {
-  const filePath = seriesProjectPath(seriesProjectId);
-  if (!(await pathExists(filePath))) return null;
-  const detail = await readJsonFile<StoredAiComicSeriesProject>(filePath);
+  const detail = await seriesProjectRepository().read(seriesProjectId);
+  if (!detail) return null;
   const plan = normalizeAiComicSeriesPlan(detail.plan);
   const continuityLedger = normalizeContinuityLedger(detail.continuity_ledger, plan);
   return {
@@ -9258,6 +9286,13 @@ async function readSeriesProject(seriesProjectId: string): Promise<StoredAiComic
   };
 }
 
+function seriesProjectRepository(): FileSeriesProjectRepository {
+  const primaryRoot = seriesProjectsRoot();
+  return new FileSeriesProjectRepository(primaryRoot, {
+    fallback_roots: seriesProjectsRoots().filter(root => root !== primaryRoot),
+  });
+}
+
 function generateSeriesProjectId(): string {
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
@@ -9272,6 +9307,7 @@ function buildSeriesProjectMeta(params: {
   updatedAt: string;
   generatedEpisodeStoryIds: Record<string, string>;
   archivedAt?: string;
+  accessControl?: ProductResourceOwnership;
 }): AiComicSeriesProjectMeta {
   const meta: AiComicSeriesProjectMeta = {
     series_project_id: params.seriesProjectId,
@@ -9283,6 +9319,7 @@ function buildSeriesProjectMeta(params: {
     created_at: params.createdAt,
     updated_at: params.updatedAt,
     generated_episode_count: Object.keys(params.generatedEpisodeStoryIds).length,
+    ...(params.accessControl ? { access_control: params.accessControl } : {}),
   };
   if (params.archivedAt) meta.archived_at = params.archivedAt;
   return meta;
@@ -12007,10 +12044,6 @@ async function runFfmpegFinalDelivery(params: {
     ),
     { timeout: 900_000 },
   );
-}
-
-function resolveSeedanceThumbnailOutputPath(projectDir: string, outputPath: string): string {
-  return resolveSeedanceProjectOutputPath(projectDir, outputPath);
 }
 
 function resolveSeedanceProjectOutputPath(projectDir: string, outputPath: string): string {

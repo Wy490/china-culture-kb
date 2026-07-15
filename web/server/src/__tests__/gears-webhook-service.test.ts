@@ -158,5 +158,69 @@ describe('gears-webhook-service', () => {
     const log = await readFile(logPath, 'utf-8');
     expect(log).toContain('20260611-story-webhook');
     expect(log).toContain('https://grears.example/api/webhook/story-ready');
+    const record = JSON.parse(log.trim());
+    expect(record).toMatchObject({
+      schema_version: 'story-agent-gears-webhook-failure-job/v1',
+      event: 'story_ready',
+      storyId: '20260611-story-webhook',
+    });
+    expect(record.failure_id).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('deduplicates an exact failed delivery replay and redacts URL credentials and query secrets', async () => {
+    const generatedRoot = await mkdtemp(resolve(tmpdir(), 'gears-webhook-idempotent-'));
+    TEMP_DIRS.push(generatedRoot);
+    const webhookUrl = 'https://worker-user:worker-pass@grears.example/api/story-ready?token=secret-value#private';
+    const now = new Date('2026-07-15T06:20:00.000Z');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503 })) as unknown as typeof fetch);
+
+    const first = await notifyGearsStoryReady(makeStory(), {
+      webhookUrl,
+      retryDelaysMs: [0],
+      timeoutMs: 10,
+      now,
+      generatedRoot,
+    });
+    const replay = await notifyGearsStoryReady(makeStory(), {
+      webhookUrl,
+      retryDelaysMs: [0],
+      timeoutMs: 10,
+      now,
+      generatedRoot,
+    });
+    expect(first.status).toBe('failed');
+    expect(replay.status).toBe('failed');
+
+    const log = await readFile(resolve(generatedRoot, 'webhook_failures.log'), 'utf8');
+    const lines = log.split('\n').filter(Boolean);
+    expect(lines).toHaveLength(1);
+    expect(log).not.toContain('worker-user');
+    expect(log).not.toContain('worker-pass');
+    expect(log).not.toContain('secret-value');
+    expect(JSON.parse(lines[0]).webhook_url).toBe('https://grears.example/api/story-ready');
+  });
+
+  it('writes failure evidence to the generated root captured by the caller', async () => {
+    const capturedRoot = await mkdtemp(resolve(tmpdir(), 'gears-webhook-captured-'));
+    const laterRoot = await mkdtemp(resolve(tmpdir(), 'gears-webhook-later-'));
+    TEMP_DIRS.push(capturedRoot, laterRoot);
+    process.env.KB_ROOT = resolve(capturedRoot, 'initial-data');
+    process.env.GEARS_WEBHOOK_URL = 'https://grears.example/api/webhook/story-ready';
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      process.env.KB_ROOT = resolve(laterRoot, 'later-data');
+      return { ok: false, status: 503 } as Response;
+    }) as unknown as typeof fetch);
+    const generatedRoot = resolve(capturedRoot, 'captured-generated');
+
+    const result = await notifyGearsStoryReady(makeStory(), {
+      retryDelaysMs: [0],
+      timeoutMs: 10,
+      generatedRoot,
+    });
+    expect(result.status).toBe('failed');
+    expect(await readFile(resolve(generatedRoot, 'webhook_failures.log'), 'utf8'))
+      .toContain('20260611-story-webhook');
+    await expect(readFile(resolve(laterRoot, 'web/generated/webhook_failures.log'), 'utf8'))
+      .rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

@@ -1,13 +1,13 @@
 // web/server/src/services/outline-service.ts — Story outline analysis + multi-entry matching
 
 import {
-  mcpReadAllProvinceFiles,
-  mcpParseEntries,
-  mcpProvinces,
-  convertSearchResult,
-  mcpGetFullEntryDetail,
-  convertFullEntryDetail,
-} from './mcp-proxy.js';
+  readAllChinaCultureProvinceFiles as mcpReadAllProvinceFiles,
+  parseChinaCultureEntries as mcpParseEntries,
+  chinaCultureProvinces as mcpProvinces,
+  convertChinaCultureSearchResult as convertSearchResult,
+  getChinaCultureFullEntryDetail as mcpGetFullEntryDetail,
+  convertChinaCultureFullEntryDetail as convertFullEntryDetail,
+} from '../domains/china-culture/knowledge-source-adapter.js';
 import { success, fail, ErrorCodes } from '@shared/types.js';
 import type {
   ApiResponse,
@@ -25,14 +25,16 @@ import type {
 } from '@shared/types.js';
 import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
-  buildEntryKnowledgeSummary,
-  collectSearchableEntries,
-  detectProvince,
-  extractKeywords,
-  computeMatchScore,
-} from './entry-service.js';
-import type { SearchableEntry } from './entry-service.js';
-import { appendDomainPackEntries } from './domain-pack-service.js';
+  buildChinaCultureEntryKnowledgeSummary as buildEntryKnowledgeSummary,
+  collectChinaCultureSearchableEntries as collectSearchableEntries,
+} from '../domains/china-culture/entry-knowledge-service.js';
+import type { SearchableEntry } from '../domains/china-culture/entry-knowledge-service.js';
+import {
+  detectChinaCultureProvince as detectProvince,
+  extractChinaCultureKeywords as extractKeywords,
+} from '../domains/china-culture/entry-language-helpers.js';
+import { computeChinaCultureMatchScore as computeMatchScore } from '../domains/china-culture/entry-match-service.js';
+import { appendChinaCultureDomainPackEntries } from '../domains/china-culture/domain-pack-production-service.js';
 
 // ---------------------------------------------------------------------------
 // Predefined word lists for outline subject extraction
@@ -760,7 +762,7 @@ export async function multiMatchEntries(
   const cappedSupportingEntries = supportingEntries.slice(0, Math.max(8, limit_per_need * 2));
   const requestsProductionPack = /服饰|器物|称谓|场景道具|资产边界|GEARS|分镜|传说|志异|神话|地方化|后世影响|当代转化/.test(outline);
   const enrichedSupportingEntries = requestsProductionPack
-    ? appendDomainPackEntries(cappedSupportingEntries, {
+    ? appendChinaCultureDomainPackEntries(cappedSupportingEntries, {
         query: [outline, localizedContext].filter(Boolean).join(' '),
         primaryEntries,
         limit: 3,
