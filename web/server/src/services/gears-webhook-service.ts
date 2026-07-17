@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { StoryGenerateResult } from '@shared/types.js';
 import { FileJobRepository } from '../repositories/job-repository.js';
+import { storyGeneratedRoot } from '../platform/story-storage-root.js';
 
 export interface GearsStoryReadyWebhookPayload {
   event: 'story_ready';
@@ -52,12 +53,8 @@ export interface GearsWebhookFailureJobEvent {
 const DEFAULT_RETRY_DELAYS_MS = [0, 5000, 15000];
 const DEFAULT_TIMEOUT_MS = 8000;
 
-function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
-}
-
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+  return storyGeneratedRoot();
 }
 
 function publicApiUrl(path: string): string {

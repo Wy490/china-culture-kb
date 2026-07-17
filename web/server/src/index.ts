@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import { resolve } from 'node:path';
 import { createCorsOptions } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { createJsonBodyParser } from './middleware/json-body.js';
@@ -13,11 +12,15 @@ import { gearsCallbackRouter } from './routes/gears-callback.js';
 import { stage6RevisionsRouter } from './routes/stage6-revisions.js';
 import { stage7GoldenCardsRouter } from './routes/stage7-golden-cards.js';
 import { stage8BlindReviewRouter } from './routes/stage8-blind-review.js';
+import {
+  initializeStoryStorageRootEnvironment,
+  storyGeneratedRoot,
+  storyKbRoot,
+} from './platform/story-storage-root.js';
 
-// Default KB_ROOT to ../../data (relative to this file → project root /data)
-if (!process.env.KB_ROOT) {
-  process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'data');
-}
+// Resolve both roots once before the server accepts traffic. Production starts
+// fail closed unless operators explicitly provide two absolute, disjoint roots.
+initializeStoryStorageRootEnvironment();
 
 const app = express();
 
@@ -46,5 +49,6 @@ app.listen(PORT, () => {
   console.log(
     `china-culture-kb server running on http://localhost:${PORT} (NODE_ENV=${process.env.NODE_ENV ?? 'development'})`,
   );
-  console.log(`KB_ROOT=${process.env.KB_ROOT}`);
+  console.log(`KB_ROOT=${storyKbRoot()}`);
+  console.log(`WEB_GENERATED_ROOT=${storyGeneratedRoot()}`);
 });

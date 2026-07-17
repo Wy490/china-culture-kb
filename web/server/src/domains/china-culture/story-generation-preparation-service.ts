@@ -43,7 +43,7 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const presentationStyle = request.presentation_style
     ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
   const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
-  const productionMaterialPack = getProductionMaterialPack(videoType);
+  const productionMaterialPack = getProductionMaterialPack(videoType, { sourceDomain: 'china_culture' });
 
   const sourceResolution = await resolveChinaCultureStorySource(request);
   if (!sourceResolution.ok) return sourceResolution;
@@ -100,6 +100,7 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const productionMaterialReadiness = buildProductionMaterialReadinessReport({
     productionMaterialPack,
     materialPack: materialPackToUse,
+    sourceDomain: 'china_culture',
     contextText: [
       original_user_query,
       outline,

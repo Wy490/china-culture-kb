@@ -22,6 +22,7 @@ import {
   resolveProductAccess,
   validateProductResourceOwnershipAgainstRegistry,
 } from './product-access-service.js';
+import { storyGeneratedRoot } from '../platform/story-storage-root.js';
 
 const STORY_PROJECT_ID_PATTERN = /^\d{8}-story-[0-9a-z]+--[a-z_]+$/;
 const SERIES_PROJECT_ID_PATTERN = /^\d{8}-series-[0-9a-z]+$/;
@@ -42,8 +43,7 @@ interface StoredProductResourceInspection {
 }
 
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT
-    || resolve(import.meta.dirname, '..', '..', '..', '..', 'web', 'generated');
+  return storyGeneratedRoot();
 }
 
 function ownershipFromUnknown(value: unknown): ProductResourceOwnership | null {

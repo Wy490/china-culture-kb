@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import { resolveStorySourceDomain } from '../lib/story-source-domain.js';
 import { getProjectContext } from './get-project-context.js';
 
 type SourceKind = 'project_id' | 'story_id' | 'story_json';
@@ -53,6 +54,7 @@ interface GearsSegmentLike {
 type StoryLike = Record<string, unknown> & {
   storyId?: string;
   project_id?: string;
+  sourceDomain?: string;
   title?: string;
   logline?: string;
   theme?: string;
@@ -138,6 +140,7 @@ interface SeedancePromptShotUnitLite {
 interface SeedancePromptPackageLite {
   schema_version: 'seedance-prompt-package/v1';
   storyId: string;
+  sourceDomain: string;
   title: string;
   target_platform: 'seedance_2_0';
   prompt_language: 'zh';
@@ -984,6 +987,7 @@ function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackageLite, 'markdown'>
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    `> sourceDomain: ${pkg.sourceDomain}`,
     `> 总时长: ${pkg.total_duration_sec} 秒`,
     `> 素材: ${pkg.material_validation.total_file_count}/${pkg.material_validation.max_total_files} 个文件（图片 ${pkg.material_validation.image_count}/${pkg.material_validation.max_image_files}，视频 ${pkg.material_validation.video_count}/${pkg.material_validation.max_video_files}，音频 ${pkg.material_validation.audio_count}/${pkg.material_validation.max_audio_files}）`,
     '',
@@ -1026,6 +1030,7 @@ function buildSeedancePromptPackage(story: StoryLike, includeMarkdown: boolean):
   const pkgWithoutMarkdown: Omit<SeedancePromptPackageLite, 'markdown'> = {
     schema_version: 'seedance-prompt-package/v1',
     storyId: asString(story.storyId) || asString(story.story_id) || 'unknown-story',
+    sourceDomain: resolveStorySourceDomain(story),
     title: asString(story.title) || '未命名故事',
     target_platform: 'seedance_2_0',
     prompt_language: 'zh',

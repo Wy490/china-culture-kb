@@ -335,28 +335,46 @@ function productionMaterialPackLane(report: ProductionMaterialPackHealthReport):
       : 'ready';
   const coreReady = report.production_ready_core_video_types.length;
   const coreTotal = report.core_video_types.length;
+  const domainSamplePacks = report.packs.filter(pack =>
+    Object.keys(pack.minimum_sample_entry_count_by_source_domain).length > 0,
+  );
+  const domainSampleReady = domainSamplePacks.filter(pack =>
+    Object.entries(pack.minimum_sample_entry_count_by_source_domain).every(
+      ([sourceDomain, minimumCount]) =>
+        (pack.sample_entry_count_by_source_domain[sourceDomain] ?? 0) >= minimumCount,
+    ),
+  ).length;
+  const duplicatePackVideoTypeCount = report.rejected_pack_diagnostics.filter(
+    diagnostic => diagnostic.code === 'duplicate_video_type',
+  ).length;
   return {
     key: 'production_material_packs',
     label: 'Production material packs',
     status,
     score: clampScore(100 - errorCount * 25 - warningCount * 8 - report.missing_required_video_types.length * 20),
     detail: report.status === 'passed'
-      ? `${coreReady}/${coreTotal} core production video types pass template health gates; ${report.covered_required_video_types.length}/${report.required_video_types.length} high-frequency video types are covered.`
+      ? `${coreReady}/${coreTotal} core production video types pass template health gates; ${report.covered_required_video_types.length}/${report.required_video_types.length} high-frequency video types are covered; ${domainSampleReady}/${domainSamplePacks.length} cross-domain sample gates pass.`
       : `${errorCount} errors and ${warningCount} warnings in production material pack health gates.`,
     evidence: [
       `schema=${report.schema_version}`,
       `pack_status=${report.status}`,
+      `pack_file_valid=${report.pack_file_valid}`,
       `pack_count=${report.pack_count}`,
+      `rejected_pack_count=${report.rejected_pack_count}`,
+      `duplicate_pack_video_type_count=${duplicatePackVideoTypeCount}`,
       `required_video_types=${report.required_video_types.length}`,
       `covered_required_video_types=${report.covered_required_video_types.length}`,
       `missing_required_video_types=${report.missing_required_video_types.length}`,
       `core_ready=${coreReady}/${coreTotal}`,
+      `domain_sample_policy_valid=${report.domain_sample_policy_valid}`,
+      `domain_sample_policy_video_types=${report.domain_sample_policy_video_types.length}`,
+      `domain_sample_ready=${domainSampleReady}/${domainSamplePacks.length}`,
       `issues=${report.issues.length}`,
       `errors=${errorCount}`,
       `warnings=${warningCount}`,
     ],
     next_action: report.status === 'failed'
-      ? 'Fix missing production packs, unknown required_fields, or duplicate fields before Story Agent generation sign-off.'
+      ? 'Fix the pack file contract, duplicate video types, domain sample policy, missing production packs, unknown required_fields, or duplicate fields before Story Agent generation sign-off.'
       : report.status === 'warning'
         ? 'Top up underfilled prompt layers, gate items, supplement questions, or sample entries before expanding production volume.'
         : undefined,
@@ -629,7 +647,8 @@ function isPublicCallbackBaseUrl(value: string | undefined): boolean {
 }
 
 function getRealExternalAcceptanceMetrics(): RealExternalAcceptanceMetrics {
-  const realGearsEndpointConfigured = envConfigured('GEARS_API_BASE_URL');
+  const realGearsEndpointConfigured = envConfigured('GEARS_EXECUTION_WORKER_API_BASE_URL')
+    || envConfigured('GEARS_API_BASE_URL');
   const realGearsCallbackSecretConfigured = envConfigured('GEARS_CALLBACK_SECRET');
   const gearsCallbackBase = firstConfiguredEnvValue(GEARS_CALLBACK_BASE_ENVS);
   const realGearsCallbackBaseConfigured = Boolean(gearsCallbackBase);

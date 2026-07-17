@@ -87,12 +87,11 @@ export function storyGenerate(req: StoryGenerateRequest) {
   return apiPost<StoryGenerateResult>('/stories/generate', req)
 }
 
-export function listStories(generationType?: string, videoType?: VideoType) {
-  const qs: Record<string, string> | undefined = videoType
-    ? { video_type: videoType }
-    : generationType
-      ? { generation_type: generationType }
-      : undefined
+export function listStories(generationType?: string, videoType?: VideoType, sourceDomain?: string) {
+  const qs: Record<string, string> = {}
+  if (videoType) qs.video_type = videoType
+  else if (generationType) qs.generation_type = generationType
+  if (sourceDomain) qs.domain = sourceDomain
   return apiGet<StoryListItem[]>('/stories', qs)
 }
 

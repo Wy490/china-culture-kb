@@ -48,7 +48,7 @@ beforeEach(() => {
     project_id: projectId,
     current_story_id: '20260615-story-test',
     title: '测试故事',
-    source_domain: 'china_culture',
+    source_domain: 'second_domain',
     source_entry: '周敦颐——理学开山鼻祖',
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -109,10 +109,12 @@ describe('kb_get_project_context', () => {
 
     expect(result).not.toBeNull();
     expect(result!.project.project_id).toBe(projectId);
+    expect(result!.project.source_domain).toBe('second_domain');
     expect(result!.project.creation_contract?.truth_mode).toBe('fictional_original');
     expect(result!.project.material_sufficiency?.score).toBe(88);
     expect(result!.current_story.creation_contract).toEqual(expect.objectContaining({ creation_use_case: 'original_ai_comic' }));
     expect(result!.current_story.title).toBe('测试故事');
+    expect(result!.current_story.sourceDomain).toBe('second_domain');
     expect(result!.versions).toHaveLength(1);
     expect(result!.versions[0].quality_passed).toBe(true);
     expect(result!.version_snapshots).toBeUndefined();
@@ -127,7 +129,127 @@ describe('kb_get_project_context', () => {
     });
 
     expect(result!.version_snapshots).toHaveLength(1);
+    expect(result!.version_snapshots![0].story.sourceDomain).toBe('second_domain');
     expect(result!.exports).toEqual(['20260615-story.json']);
+  });
+
+  it('hydrates legacy missing domains in memory without rewriting project files', async () => {
+    const projectRoot = path.join(tmpDir, 'web', 'generated', 'projects', projectId);
+    const projectPath = path.join(projectRoot, 'project.json');
+    const versionPath = path.join(projectRoot, 'versions', `${projectId}-v1.json`);
+    const project = JSON.parse(fs.readFileSync(projectPath, 'utf-8'));
+    delete project.source_domain;
+    fs.writeFileSync(projectPath, JSON.stringify(project, null, 2));
+
+    const result = await getProjectContext({ project_id: projectId, include_versions: true });
+
+    expect(result!.project.source_domain).toBe('china_culture');
+    expect(result!.current_story.sourceDomain).toBe('china_culture');
+    expect(result!.version_snapshots![0].story.sourceDomain).toBe('china_culture');
+    expect(JSON.parse(fs.readFileSync(projectPath, 'utf-8')).source_domain).toBeUndefined();
+    expect(JSON.parse(fs.readFileSync(versionPath, 'utf-8')).story.sourceDomain).toBeUndefined();
+  });
+
+  it('fails closed when a version snapshot conflicts with the project source domain', async () => {
+    const versionPath = path.join(
+      tmpDir,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'versions',
+      `${projectId}-v1.json`,
+    );
+    const snapshot = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
+    snapshot.story.sourceDomain = 'china_culture';
+    fs.writeFileSync(versionPath, JSON.stringify(snapshot, null, 2));
+
+    await expect(getProjectContext({ project_id: projectId, include_versions: true }))
+      .rejects.toThrow(
+        `版本快照 ${projectId}-v1 的 Story sourceDomain（china_culture）与项目 source_domain（second_domain）不一致`,
+      );
+  });
+
+  it('fails closed instead of falling back to an old snapshot when current_version_id is missing', async () => {
+    const projectPath = path.join(
+      tmpDir,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'project.json',
+    );
+    const project = JSON.parse(fs.readFileSync(projectPath, 'utf-8'));
+    project.current_version_id = `${projectId}-v9`;
+    fs.writeFileSync(projectPath, JSON.stringify(project, null, 2));
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow(`项目当前版本快照缺失：${projectId}-v9`);
+  });
+
+  it('fails closed when a version snapshot belongs to another project', async () => {
+    const versionPath = path.join(
+      tmpDir,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'versions',
+      `${projectId}-v1.json`,
+    );
+    const snapshot = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
+    snapshot.project_id = 'another-project--ai_comic_drama';
+    fs.writeFileSync(versionPath, JSON.stringify(snapshot, null, 2));
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow(`版本快照 ${projectId}-v1.json 的 project_id（another-project--ai_comic_drama）与项目（${projectId}）不一致`);
+  });
+
+  it('fails closed when a snapshot version_id does not match its file name', async () => {
+    const versionPath = path.join(
+      tmpDir,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'versions',
+      `${projectId}-v1.json`,
+    );
+    const snapshot = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
+    snapshot.version_id = `${projectId}-v2`;
+    fs.writeFileSync(versionPath, JSON.stringify(snapshot, null, 2));
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow(`版本快照 ${projectId}-v1.json 的 version_id（${projectId}-v2）与文件名不一致`);
+  });
+
+  it('fails closed when two snapshot files declare the same version_id', async () => {
+    const versionsRoot = path.join(tmpDir, 'web', 'generated', 'projects', projectId, 'versions');
+    const v1Path = path.join(versionsRoot, `${projectId}-v1.json`);
+    const duplicate = JSON.parse(fs.readFileSync(v1Path, 'utf-8'));
+    fs.writeFileSync(path.join(versionsRoot, `${projectId}-v2.json`), JSON.stringify(duplicate, null, 2));
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow(`项目存在重复 version_id：${projectId}-v1`);
+  });
+
+  it('fails closed on an invalid snapshot file name', async () => {
+    const versionsRoot = path.join(tmpDir, 'web', 'generated', 'projects', projectId, 'versions');
+    fs.writeFileSync(path.join(versionsRoot, 'foreign.json'), '{}');
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow('非法版本快照文件名：foreign.json');
+  });
+
+  it('fails closed when a snapshot path is a symbolic link', async () => {
+    const versionsRoot = path.join(tmpDir, 'web', 'generated', 'projects', projectId, 'versions');
+    fs.symlinkSync(
+      path.join(versionsRoot, `${projectId}-v1.json`),
+      path.join(versionsRoot, `${projectId}-v2.json`),
+    );
+
+    await expect(getProjectContext({ project_id: projectId }))
+      .rejects.toThrow(`版本快照不是普通文件：${projectId}-v2.json`);
   });
 
   it('returns null for missing project', async () => {

@@ -401,6 +401,37 @@ describe('story-generation-prompt', () => {
     expect(getProductionMaterialPack('character_story')).toBeUndefined();
   });
 
+  it('scopes production sample entries to the active source domain', () => {
+    const originalChildren = getProductionMaterialPack('children_story', {
+      sourceDomain: 'original_fiction',
+    });
+    const chinaChildren = getProductionMaterialPack('children_story', {
+      sourceDomain: 'china_culture',
+    });
+    const originalSocial = getProductionMaterialPack('social_short', {
+      sourceDomain: 'original_fiction',
+    });
+    const originalComic = getProductionMaterialPack('ai_comic_drama', {
+      sourceDomain: 'original_fiction',
+    });
+
+    expect(originalChildren?.sample_entries.length).toBeGreaterThan(0);
+    expect(originalSocial?.sample_entries.length).toBeGreaterThan(0);
+    expect(originalComic?.sample_entries.length).toBeGreaterThan(0);
+    expect(originalChildren?.sample_entries.map(item => item.entry_name)).toContain('停电夜的纸飞机队');
+    expect(originalSocial?.sample_entries.map(item => item.entry_name)).toContain('同一封信的两个结局');
+    expect(originalComic?.sample_entries.map(item => item.entry_name)).toContain('零号站台——只剩一分钟的列车');
+    expect(originalComic?.sample_entries.map(item => item.entry_name).join('\n')).not.toMatch(/周敦颐|柳毅|屈原|岳麓书院|年画/);
+    expect(originalComic?.sample_entries.every(item =>
+      item.applicable_source_domains?.includes('original_fiction'),
+    )).toBe(true);
+
+    expect(chinaChildren?.sample_entries.map(item => item.entry_name)).toContain('端午龙舟小鼓手');
+    expect(chinaChildren?.sample_entries.map(item => item.entry_name)).not.toContain('停电夜的纸飞机队');
+    expect(getProductionMaterialPack('ai_comic_drama')?.sample_entries.length)
+      .toBeGreaterThan(originalComic?.sample_entries.length ?? 0);
+  });
+
   it('adds only the current video type production material template to the prompt', () => {
     const request: StoryGenerateRequest = {
       entry_name: '周敦颐——理学开山鼻祖',

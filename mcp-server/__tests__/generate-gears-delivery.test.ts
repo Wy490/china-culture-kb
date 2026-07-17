@@ -88,7 +88,7 @@ beforeEach(() => {
     project_id: projectId,
     current_story_id: storyId,
     title: '雨夜拒签',
-    source_domain: 'china_culture',
+    source_domain: 'second_domain',
     source_entry: '测试条目',
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -126,6 +126,7 @@ describe('kb_generate_gears_delivery', () => {
     expect(result).not.toBeNull();
     expect(result!.source).toBe('project_id');
     expect(result!.package.schema_version).toBe('gears-delivery/v1');
+    expect(result!.package.sourceDomain).toBe('second_domain');
     expect(result!.package.units).toHaveLength(2);
     expect(result!.package.character_assets.map(asset => asset.name)).toContain('少年');
     expect(result!.package.scene_assets.map(asset => asset.name)).toContain('书院门外');
@@ -136,10 +137,14 @@ describe('kb_generate_gears_delivery', () => {
   });
 
   it('accepts direct story_json and includes markdown by default', async () => {
-    const result = await generateGearsDelivery({ story_json: JSON.stringify(baseStory()) });
+    const result = await generateGearsDelivery({
+      story_json: JSON.stringify({ ...baseStory(), sourceDomain: 'second_domain' }),
+    });
 
     expect(result!.source).toBe('story_json');
+    expect(result!.package.sourceDomain).toBe('second_domain');
     expect(result!.package.markdown).toContain('GEARS 交付包');
+    expect(result!.package.markdown).toContain('> sourceDomain: second_domain');
     expect(result!.validation_summary.unit_count).toBe(2);
     expect(result!.package.units[0]).toMatchObject({
       source_scene_id: 1,
@@ -153,6 +158,7 @@ describe('kb_generate_gears_delivery', () => {
 
     expect(result!.source).toBe('story_id');
     expect(result!.story_id).toBe(storyId);
+    expect(result!.package.sourceDomain).toBe('china_culture');
     expect(result!.validation_summary.character_asset_count).toBeGreaterThan(0);
   });
 

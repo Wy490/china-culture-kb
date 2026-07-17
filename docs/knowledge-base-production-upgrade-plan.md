@@ -1,12 +1,12 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-14T16:04:11.195Z
-来源审计时间：2026-07-14T16:04:11.188Z
+生成时间：2026-07-15T17:25:10.393Z
+来源审计时间：2026-07-15T17:25:10.386Z
 
 ## 总览
 
-- 条目总数：247
-- 高优先级条目：202
+- 条目总数：262
+- 高优先级条目：204
 - 批次数：13
 - 计划动作数：399
 - 可格式化自动处理动作：0
@@ -89,6 +89,7 @@
 | 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
 |---|---|---|---:|---|---|
 | 川江号子——船工协作的劳动声音 | 重庆 | 非遗 | 100 | high | official_catalog_or_resource_links、tools、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection |
+| 凉茶配制——澳门街坊生活中的草本饮品与配方边界 | 澳门 | 传统技艺 | 100 | high | official_catalog_or_resource_links、tools、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection |
 | 常德丝弦——湘北水乡的扬琴说唱 | 湖南 | 非遗 | 82 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 泥人张彩塑——塑形与设色相接的天津民间美术 | 天津 | 传统美术 | 82 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 岳阳巴陵戏——洞庭湖畔的古戏曲遗存 | 湖南 | 地方戏曲 | 82 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
@@ -107,7 +108,6 @@
 | 辰州傩戏——沅水中游的中国戏剧活化石 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 侗族琵琶歌——鼓楼月堂下的湘西南情歌 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 靖州苗族歌鼟——三锹大山的多声部和声 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
-| 澧水船工号子——湘北水路百年船歌 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 
 验收标准：
 - 补齐当前片型 required_fields 中最影响生成的字段。

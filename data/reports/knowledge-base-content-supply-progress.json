@@ -1,8 +1,8 @@
 {
   "schema_version": "knowledge-base-content-supply-progress/v1",
-  "generated_at": "2026-07-14T15:58:26Z",
+  "generated_at": "2026-07-16T01:25:24+08:00",
   "timezone": "Asia/Shanghai",
-  "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3E machine validation complete / human review pending",
+  "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3H machine validation complete / human review pending",
   "progress_scope": "content_supply_only",
   "governance_progress_excluded": true,
   "baseline": {
@@ -23,22 +23,22 @@
     "hunan_share_percent": 73.37
   },
   "current": {
-    "audit_generated_at": "2026-07-14T15:55:56.580Z",
+    "audit_generated_at": "2026-07-15T17:25:10.052Z",
     "province_files": 34,
-    "formal_entries": 247,
-    "sources": 902,
+    "formal_entries": 262,
+    "sources": 960,
     "regions_with_entries": 34,
     "regions_at_least_two_entries": 34,
-    "regions_at_least_five_entries": 12,
+    "regions_at_least_five_entries": 14,
     "zero_entry_regions": [],
     "one_entry_region_count": 0,
     "hunan_entries": 124,
-    "hunan_share_percent": 50.2,
+    "hunan_share_percent": 47.33,
     "entries_missing_sources": 0,
     "entries_missing_related_locations": 0,
     "entries_missing_verification_method": 0,
-    "entries_with_machine_metadata": 247,
-    "entries_with_asset_split": 247
+    "entries_with_machine_metadata": 262,
+    "entries_with_asset_split": 262
   },
   "m1": {
     "target_formal_entries": 192,
@@ -75,19 +75,19 @@
   "m2": {
     "target_formal_entries": 289,
     "target_new_entries": 97,
-    "machine_researched_written_and_validated": 55,
-    "machine_remaining": 42,
-    "machine_progress_percent": 56.7,
-    "current_batch": "M2-1A, M2-1B, M2-2A, M2-2B, M2-2C, M2-2D, M2-3A, M2-3B, M2-3C, M2-3D and M2-3E",
-    "current_batch_machine_validated": 55,
-    "current_batch_target": 55,
+    "machine_researched_written_and_validated": 70,
+    "machine_remaining": 27,
+    "machine_progress_percent": 72.16,
+    "current_batch": "M2-1A, M2-1B, M2-2A, M2-2B, M2-2C, M2-2D, M2-3A, M2-3B, M2-3C, M2-3D, M2-3E, M2-3F, M2-3G and M2-3H",
+    "current_batch_machine_validated": 70,
+    "current_batch_target": 70,
     "human_source_and_cultural_reviewed": 0,
-    "human_source_and_cultural_review_pending": 55,
+    "human_source_and_cultural_review_pending": 70,
     "formal_human_acceptance_complete": false,
-    "source_qualified_new_entries": 55,
-    "production_card_score_100": 55,
-    "fixed_retrieval_queries_passed": 55,
-    "fixed_retrieval_queries_total": 55,
+    "source_qualified_new_entries": 70,
+    "production_card_score_100": 70,
+    "fixed_retrieval_queries_passed": 70,
+    "fixed_retrieval_queries_total": 70,
     "next_batch": [],
     "credit_boundary": "written and machine-validated only; not a golden card, human approval, real production artifact or professional pass"
   },
@@ -669,6 +669,117 @@
       "credibility": "基本可靠"
     }
   ],
+  "m2_batch_3f_entries": [
+    {
+      "province": "黑龙江",
+      "name": "鄂伦春族狍皮制作技艺——熟皮、剪裁与北方生活器物",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "湖北",
+      "name": "武当武术——拳械套路、传习谱系与武当山文化空间",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "澳门",
+      "name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
+      "source_count": 6,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "重庆",
+      "name": "木洞山歌——禾籁、劳动歌与巴南口头歌唱传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "福建",
+      "name": "南音——泉州方言、洞箫琵琶与指谱曲传统",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3g_entries": [
+    {
+      "province": "香港",
+      "name": "长洲太平清醮——祭仪、飘色与社区节会",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "台湾",
+      "name": "布袋戏——掌中操偶、前后场与多媒介传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "广西",
+      "name": "宾阳炮龙节——游彩架、灯会与舞炮龙的社区节庆",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "海南",
+      "name": "黎族原始制陶技艺——泥条盘筑、露天烧成与昌江传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "河南",
+      "name": "朱仙镇木版年画——雕版、套印与开封年节图像",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3h_entries": [
+    {
+      "province": "吉林",
+      "name": "朝鲜族鹤舞——安图传承、鹤形动作与社区演出",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "江苏",
+      "name": "昆曲——苏州保护网络、曲牌体制与舞台传习",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "内蒙古",
+      "name": "蒙古族马头琴音乐——拉弦演奏、曲目传习与社区语境",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "四川",
+      "name": "灯会（自贡灯会）——彩灯展示、节会活动与当代保护",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "浙江",
+      "name": "绍兴黄酒酿制技艺——传统流程、保护传承与标志边界",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
   "excluded_from_completion": {
     "fixtures": 0,
     "simulations": 0,
@@ -680,14 +791,14 @@
     "generated_stories_written_back": 0
   },
   "verification": {
-    "kb_lint": "passed: 34 files, 247 entries, 247 enriched entries",
-    "tests": "passed: 79 files, 345 tests; three local HTTP bridge tests required unrestricted loopback after sandbox listen EPERM",
-    "production_audit": "passed: 247 entries, 902 sources, 0 missing verification method, 247 asset splits; 0 entries below production-card score 80",
+    "kb_lint": "passed: 34 files, 262 entries, 262 enriched entries",
+    "tests": "passed: 79 files, 345 tests",
+    "production_audit": "passed: 262 entries, 960 sources, 0 missing verification method, 262 asset splits; 0 entries below production-card score 80",
     "credibility_normalization": "dry-run: 34 files scanned, 0 files changed, 0 entries changed",
     "machine_metadata_enrichment": "dry-run: 34 files scanned, 0 files changed, 0 fields added",
-    "asset_split_suggestions": "247 entries scanned, 0 entries without asset split, 0 suggestions",
+    "asset_split_suggestions": "262 entries scanned, 0 entries without asset split, 0 suggestions",
     "production_upgrade_plan": "generated: 13 batches, 399 actions; advisory only",
-    "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5 and batch 3E: 5/5 new-entry queries returned the intended entry at top 1",
+    "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5, batch 3E: 5/5, batch 3F: 5/5, batch 3G: 5/5 and batch 3H: 5/5 new-entry queries returned the intended entry at top 1",
     "git_diff_check": "passed"
   }
 }

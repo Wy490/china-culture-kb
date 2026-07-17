@@ -15,6 +15,8 @@ import type {
   GearsExecutionWorkerAcceptanceKit,
   GearsExecutionWorkerEvidenceBundle,
   GearsExecutionWorkerEvidenceSignoffReport,
+  GearsWorkbenchCapabilities,
+  GearsWorkbenchConfigInfo,
   GearsJobCallbackRequest,
   DomainPackExpansionCandidateReport,
   DomainPackExpansionReviewStateBulkUpdateRequest,
@@ -188,6 +190,14 @@ export function exportKnowledgeWritebackQueuePackage(options: {
 
 export function getGearsExecutionConfig() {
   return apiGet<GearsExecutionConfigInfo>('/system/gears-execution-config')
+}
+
+export function getGearsWorkbenchConfig() {
+  return apiGet<GearsWorkbenchConfigInfo>('/system/gears-workbench-config')
+}
+
+export function getGearsWorkbenchCapabilities() {
+  return apiGet<GearsWorkbenchCapabilities>('/system/gears-workbench-capabilities')
 }
 
 export function getGearsExecutionContract() {

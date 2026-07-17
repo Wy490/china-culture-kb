@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FileReviewRepository } from '../repositories/review-repository.js';
+import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import type {
   DomainPackExpansionNextDevelopmentTask,
   DomainPackExpansionReviewStateBulkUpdateRequest,
@@ -2238,11 +2239,11 @@ function statusFromIssues(issues: DomainPackExpansionCandidateIssue[]): DomainPa
 }
 
 function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  return storyKbRoot();
 }
 
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+  return storyGeneratedRoot();
 }
 
 function domainPackRuntimeReviewRepository(): FileReviewRepository<DomainPackExpansionReviewStateItem> {

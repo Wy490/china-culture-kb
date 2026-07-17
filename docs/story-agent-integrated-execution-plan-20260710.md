@@ -77,6 +77,9 @@
 - 9 个项目：只有故事 ID 后缀相似线索，不能据此自动 relink。
 - 91 个历史 failed item：全部有测试标记，不计真实 Seedance 交付失败。
 - 目标项目：`external_ready=0`、`local_acceptance_ready=5`、待真实外部 artifact 为 5。
+- Story Project legacy `domain_safety`：只读 inventory 与默认禁写、管理员显式、版本/SHA/source identity 锁定、durable audit、append-only 新版本迁移合同已建立；真实工作区 22 项中 20 项为机器候选、2 项被来源/可信边界阻断。实际迁移 0、历史覆盖 0，候选必须逐项人工确认，不计来源/文化审稿、真实修订或专业通过。
+- File ProjectRepository → SQLite：完整 meta/version 历史的只读 canonical SHA、pending transaction 不恢复、空目标库单事务导入、非覆盖数据库/manifest 发布、源 SHA 二次复验、durable audit 与幂等重放合同已建立。真实工作区只读 preflight 为 22 Projects / 52 versions / logical SHA `b4cd2fcf2ad1812026bece49fad75573f1b810f87524ae985f79899f2532343f`；目标写入 0、provider 切换 0、生产恢复信用 0。
+- Story storage root：单一平台解析器统一 server 入口与直接 service import，默认固定为仓库 `/data` 和 `/web/generated`；相对路径、知识/生成根重叠会 fail closed，生产必须显式提供两个绝对根。旧误解析 `/web/web/generated` 只保留只读 discovery，不再参与任何 active read/write fallback。真实盘点为 active 22 Projects / 52 versions / 927 series，legacy 26 Projects / 0 versions；搬运、合并、删除、覆盖、写回与真实交付信用均为 0。
 
 ## 3. 轨道 A：专业文本开发
 
@@ -237,13 +240,45 @@ Stage 1 仍不因“结构存在”而声明专业质量通过。
 
 禁止使用 `.invalid`、`.example`、localhost、私网、本地文件或未经核验的短期占位 URL。真实回片未提供前，项目保持 `needs_action` 是正确状态。
 
+### B4. legacy generated root 逐项处置预检
+
+状态：machine_preflight_complete_human_disposition_blocked。
+
+`/api/system/story-storage-legacy-disposition-preflight` 已对误解析 `/web/web/generated/projects` 的 26 个目录完成逐项只读检查：22 个空目录、4 个仅有 `project.json`、0 个完整 version history；4 个来源条目均可解析，但 ownership 有效记录为 0。active Project ID、Story ID 和元数据语义指纹碰撞均为 0；4 个元数据项目分别命中同来源同标题 active 候选，并组成 1 个四项 legacy 元数据等价组，这两类信号都只能交人工比较，不能自动推断重复。
+
+预检要求管理员 `access:audit:read` 与 `internal_story_tools`，不跟随 Project/metadata 符号链接；相对、相同、互相包含、不可读或 active 索引不完整的根 fail closed。真实盘点 inventory SHA-256 为 `7fbb642494231f0eea4b43e358335e9368a18b913439c8bfe0cdb2b48432dbe2`，legacy 树运行前后快照 SHA-256 同为 `eb0fde08cd88b421559937b8559a4f413eaff068da629eec8b6814a150bab5f4`。26/26 项均 `requires_human_review=true`；自动动作、迁移、合并、删除、覆盖、写回、`domain_safety` apply 和真实信用全部为 0。
+
+退出条件：操作者逐项签署保留/迁移/归档决定，补足 ownership 与版本/内容核验，并为任何后续动作另行提供非覆盖执行授权和动作前重检。空目录也不得仅凭机器结果自动删除。
+
+### B5. Domain Pack 正式知识写回目标
+
+状态：machine_contract_complete_human_writeback_blocked。
+
+Domain Pack 注册合同新增第十项 `knowledge_writeback` capability 和 `story-domain-knowledge-writeback-plan/v1`。`china_culture` 在领域包内部根据来源条目解析省份，只允许固定 34 个规范名称生成 `data/provinces/<省份>.md` 仓库相对目标；缺省、非规范和路径型值全部阻断，不再生成 `data/provinces/待确认.md`。`original_fiction` 明确返回 `domain_does_not_support_formal_knowledge_writeback`，即使项目素材含省份字段也不会获得目标或正式写回草案。
+
+平台计划只接受安全仓库相对路径，拒绝绝对路径、反斜杠、空段和 `.`/`..` 段；未注册历史领域归一为 `domain_pack_not_registered` blocker，不中断其他任务的可见性。Project 补充任务、正式 Patch 与统一队列只消费领域计划；任务响应显式输出 `source_domain`、`knowledge_writeback_eligible` 和 blockers。所有计划固定 `requires_human_review=true`、`direct_writeback_allowed=false`、`writeback_performed=false`、`real_credit_granted=false`。
+
+退出条件：只有适用 Domain Pack 给出合法目标，且真人完成来源、文化、普适性与目标位置复核后，才可在独立人工流程复制草案；本 capability 本身永远不直接修改正式知识文件，也不授予真实作品、回片或发布信用。
+
+### B6. Domain Pack 修订/补素材提示与持久化禁写合同
+
+状态：machine_contract_complete_real_edit_and_human_review_pending。
+
+Domain Pack 第十一项 `story_supplement` capability 和 `story-domain-supplement-guidance/v1` 决定候选稿类型、领域标题、复核规则以及正式写回草案是否适用。`china_culture` 生成领域知识候选；`original_fiction` 生成项目内素材候选，并在请求正式知识候选导出时 fail closed。`project-service` 不再自行硬编码“知识库候选稿”、`data/provinces` 或中国文化复核措辞。
+
+平台 `story-domain-edit-persistence/v1` 把项目编辑允许写入的位置集中声明：修订仅追加 Project version，补素材仅更新当前 Project 状态和 generated story snapshot；两者都禁止 Domain source 写入、自动知识写回、外部交付触发、迁移动作和真实信用。任何 Domain Pack 指导或持久化边界不一致均在写入前阻断。
+
+退出条件：内部合同已完成；真实完成仍要求已授权模型运行、真实修订证据和真人评审。正式知识写回继续服从 B5 的独立人工授权，不能因项目补素材成功而自动发生。
+
 ## 5. 综合执行顺序
 
 1. A0、B0、B1 manifest/signoff 排除、B2 机器分流和 A1 已完成。
 2. 七个片型内部合同已就绪；外部线等待真实模型与真人评审，内部线继续 `city_brand_promo`。
 3. B2 在获得准确故事备份或人工用途确认后继续逐项关闭；不得猜测补链。
 4. 外部真实回片到位时执行 B3；该外部阻塞不阻止 A2 及后续专业文本开发。
-5. 每次批量治理与每个专业开发 Iteration 分开验证、分开差异审查，避免将行为升级和历史数据迁移混入同一改动。
+5. B4 的机器 preflight 已完成；等待逐项人工处置时不得搬运、合并、删除、覆盖或写回 legacy 数据。
+6. B5 的领域写回计划只提供机器目标与阻断信息；正式知识文件仍等待逐项真人复核和独立执行授权。
+7. 每次批量治理与每个专业开发 Iteration 分开验证、分开差异审查，避免将行为升级和历史数据迁移混入同一改动。
 
 ## 6. 每轮汇报格式
 
@@ -280,3 +315,4 @@ professional_text_creation_progress：A% -> B%
 - 专业非劣验证需要真人编剧/剧本编辑、类型/导演、事实/文化三类评审者。
 - 需要用户自有、公共领域或已授权的专业结构基准，以及真实模型运行凭据、模型选择与成本记录。
 - 本机 strict bridge 和 Claude CLI 技术 hash 锚 5/5 可核验，但模型凭据未核验、独立付费授权/预算未提供；授权真实模型可执行数仍为 0/5。
+- 旧 `/web/web/generated` 下 26 个 Project 已完成机器逐项只读 preflight，但仍需人工签署 ownership、版本/内容、重复关系及保留/迁移/归档结论；当前不授权自动合并、迁移、删除、覆盖或写回。

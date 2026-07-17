@@ -1,19 +1,19 @@
 {
   "schema_version": "kb-production-material-audit/v1",
-  "generated_at": "2026-07-14T15:55:56.580Z",
+  "generated_at": "2026-07-15T17:25:10.052Z",
   "totals": {
     "files": 34,
-    "entries": 247,
-    "sources": 902,
-    "average_sources_per_entry": 3.65,
+    "entries": 262,
+    "sources": 960,
+    "average_sources_per_entry": 3.66,
     "entries_missing_sources": 0,
     "entries_missing_related_locations": 0,
     "missing_verification_method": 0,
     "missing_explicit_verification_method_section": 0,
     "entries_with_merged_credibility_verification": 0,
-    "entries_with_unverified_points": 247,
-    "entries_with_machine_metadata": 247,
-    "entries_with_asset_split": 247,
+    "entries_with_unverified_points": 262,
+    "entries_with_machine_metadata": 262,
+    "entries_with_asset_split": 262,
     "non_enum_credibility": 0
   },
   "by_province": [
@@ -46,6 +46,14 @@
       "count": 5
     },
     {
+      "province": "黑龙江",
+      "count": 5
+    },
+    {
+      "province": "湖北",
+      "count": 5
+    },
+    {
       "province": "江西",
       "count": 5
     },
@@ -66,48 +74,56 @@
       "count": 5
     },
     {
-      "province": "黑龙江",
-      "count": 4
-    },
-    {
-      "province": "湖北",
-      "count": 4
-    },
-    {
       "province": "澳门",
-      "count": 3
+      "count": 4
     },
     {
       "province": "重庆",
-      "count": 3
+      "count": 4
     },
     {
       "province": "福建",
-      "count": 3
+      "count": 4
     },
     {
       "province": "广西",
-      "count": 3
+      "count": 4
     },
     {
       "province": "海南",
-      "count": 3
+      "count": 4
     },
     {
       "province": "河南",
-      "count": 3
+      "count": 4
     },
     {
       "province": "吉林",
-      "count": 3
+      "count": 4
     },
     {
       "province": "江苏",
-      "count": 3
+      "count": 4
     },
     {
       "province": "内蒙古",
-      "count": 3
+      "count": 4
+    },
+    {
+      "province": "四川",
+      "count": 4
+    },
+    {
+      "province": "台湾",
+      "count": 4
+    },
+    {
+      "province": "香港",
+      "count": 4
+    },
+    {
+      "province": "浙江",
+      "count": 4
     },
     {
       "province": "宁夏",
@@ -126,19 +142,7 @@
       "count": 3
     },
     {
-      "province": "四川",
-      "count": 3
-    },
-    {
-      "province": "台湾",
-      "count": 3
-    },
-    {
       "province": "西藏",
-      "count": 3
-    },
-    {
-      "province": "香港",
       "count": 3
     },
     {
@@ -147,10 +151,6 @@
     },
     {
       "province": "云南",
-      "count": 3
-    },
-    {
-      "province": "浙江",
       "count": 3
     }
   ],
@@ -164,6 +164,10 @@
       "count": 45
     },
     {
+      "type": "传统技艺",
+      "count": 27
+    },
+    {
       "type": "历史人物",
       "count": 24
     },
@@ -172,20 +176,16 @@
       "count": 24
     },
     {
-      "type": "传统技艺",
-      "count": 23
-    },
-    {
       "type": "传统美术",
-      "count": 13
+      "count": 14
     },
     {
       "type": "传统戏剧",
-      "count": 10
+      "count": 12
     },
     {
       "type": "传统音乐",
-      "count": 8
+      "count": 11
     },
     {
       "type": "节庆习俗",
@@ -194,6 +194,10 @@
     {
       "type": "民俗活动",
       "count": 6
+    },
+    {
+      "type": "传统舞蹈",
+      "count": 5
     },
     {
       "type": "地方戏曲",
@@ -208,20 +212,20 @@
       "count": 4
     },
     {
-      "type": "传统舞蹈",
-      "count": 4
-    },
-    {
       "type": "民间文学",
       "count": 4
     },
     {
-      "type": "神话传说",
+      "type": "传统体育、游艺与杂技",
       "count": 3
     },
     {
-      "type": "传统体育、游艺与杂技",
-      "count": 2
+      "type": "民俗",
+      "count": 3
+    },
+    {
+      "type": "神话传说",
+      "count": 3
     },
     {
       "type": "民间故事",
@@ -259,11 +263,11 @@
   "credibility_distribution": [
     {
       "credibility": "基本可靠",
-      "count": 208
+      "count": 222
     },
     {
       "credibility": "混合",
-      "count": 27
+      "count": 28
     },
     {
       "credibility": "待核实",
@@ -12098,6 +12102,231 @@
       ]
     },
     {
+      "name": "蒙古族马头琴音乐——拉弦演奏、曲目传习与社区语境",
+      "province": "内蒙古",
+      "region": "内蒙古自治区相关蒙古族社区、传习、院团、档案与获准演出空间",
+      "type": "传统音乐",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 3,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 3,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 91,
+      "missing_production_fields": [
+        "forbidden_expressions"
+      ],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": false,
+          "reason": "需要禁用表达和事实边界。"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "knowledge_outline",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "knowledge_outline",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "dialogue_bubbles",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 18
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
       "name": "九一八事变——东北沦陷的开端",
       "province": "辽宁",
       "region": "沈阳→大东区（北大营旧址位于沈阳市大东区）",
@@ -13858,6 +14087,450 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "朝鲜族鹤舞——安图传承、鹤形动作与社区演出",
+      "province": "吉林",
+      "region": "吉林省延边朝鲜族自治州安图县及获准的传习、展演与公共文化空间",
+      "type": "传统舞蹈",
+      "credibility": "基本可靠",
+      "source_count": 3,
+      "related_location_count": 3,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 3,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 91,
+      "missing_production_fields": [
+        "forbidden_expressions"
+      ],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": false,
+          "reason": "需要禁用表达和事实边界。"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound",
+            "what_must_not_be_claimed"
+          ],
+          "readiness_score": 25
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "misconception_or_boundary",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note",
+            "misconception_or_boundary",
+            "forbidden_claims"
+          ],
+          "readiness_score": 0
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "case_examples",
+            "knowledge_outline",
+            "slide_or_board_assets",
+            "audience_takeaway",
+            "misconception_or_boundary",
+            "forbidden_claims"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "knowledge_outline",
+            "concept_definitions",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway",
+            "misconception_or_boundary"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook",
+            "forbidden_claims"
+          ],
+          "readiness_score": 18
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
+      "name": "鄂伦春族狍皮制作技艺——熟皮、剪裁与北方生活器物",
+      "province": "黑龙江",
+      "region": "黑龙江省黑河市爱辉区新生鄂伦春族乡及获准传习、展陈空间",
+      "type": "传统技艺",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 5,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 47
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -16474,6 +17147,231 @@
       ]
     },
     {
+      "name": "昆曲——苏州保护网络、曲牌体制与舞台传习",
+      "province": "江苏",
+      "region": "江苏省苏州市及获准的昆曲院团、传习、博物馆、曲社与演出空间",
+      "type": "传统戏剧",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 3,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 3,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "process_steps",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 27
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "knowledge_outline",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "knowledge_outline",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 25
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
       "name": "绿茶制作技艺（西湖龙井）——鲜叶、手工炒制与产地边界",
       "province": "浙江",
       "region": "杭州市西湖区西湖龙井茶相关产区、合作社、传习和公共展示空间；产品产地认定以现行制度为准",
@@ -17130,6 +18028,232 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：documentary_short、explainer_video"
+      ]
+    },
+    {
+      "name": "绍兴黄酒酿制技艺——传统流程、保护传承与标志边界",
+      "province": "浙江",
+      "region": "浙江省绍兴市及获准的酿制、传习、档案、展示与食品生产空间",
+      "type": "传统技艺",
+      "credibility": "基本可靠",
+      "source_count": 3,
+      "related_location_count": 3,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 3,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "knowledge_outline",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "knowledge_outline",
+            "concept_definitions",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "dialogue_bubbles",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 18
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -18228,6 +19352,220 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "南音——泉州方言、洞箫琵琶与指谱曲传统",
+      "province": "福建",
+      "region": "福建省泉州市及闽南相关馆阁、院团、社区、学校和获准仪式表演空间",
+      "type": "传统音乐",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 6,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_steps",
+            "concrete_examples",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "comment_prompt"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -20650,6 +21988,223 @@
       ]
     },
     {
+      "name": "朱仙镇木版年画——雕版、套印与开封年节图像",
+      "province": "河南",
+      "region": "河南省开封市朱仙镇及年画制作、展示、研究与传承空间",
+      "type": "传统美术",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 4,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "concept_definitions",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
       "name": "少林功夫——嵩山寺院文化空间中的武术传习",
       "province": "河南",
       "region": "河南省登封市嵩山少林寺及经授权的传习、研究和公共展示空间",
@@ -21296,6 +22851,223 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "武当武术——拳械套路、传习谱系与武当山文化空间",
+      "province": "湖北",
+      "region": "湖北省十堰市武当山及获准武术传习、赛事、院校和公共展示空间",
+      "type": "传统体育、游艺与杂技",
+      "credibility": "混合",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 5,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "process_steps",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 27
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "argument_points",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "step_sequence",
+            "case_examples",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": true,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "high",
+      "priority_reasons": [
+        "存在待核点",
+        "推荐片型模板覆盖低：ai_comic_drama"
       ]
     },
     {
@@ -50710,6 +52482,223 @@
       ]
     },
     {
+      "name": "宾阳炮龙节——游彩架、灯会与舞炮龙的社区节庆",
+      "province": "广西",
+      "region": "广西壮族自治区南宁市宾阳县及其社区节庆与公共文化空间",
+      "type": "民俗",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 4,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "learner_profile",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
       "name": "刘三姐歌谣——宜州口头传统、对歌与多版本记忆",
       "province": "广西",
       "region": "广西河池市宜州区及刘三姐歌谣流布、采录、传习与公共文化空间",
@@ -51352,6 +53341,221 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "黎族原始制陶技艺——泥条盘筑、露天烧成与昌江传承",
+      "province": "海南",
+      "region": "海南省昌江黎族自治县及黎族制陶传承、教学与公共文化空间",
+      "type": "传统技艺",
+      "credibility": "基本可靠",
+      "source_count": 3,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 4,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -51998,6 +54202,221 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "木洞山歌——禾籁、劳动歌与巴南口头歌唱传统",
+      "province": "重庆",
+      "region": "重庆市巴南区木洞镇及周边社区、学校和获准演出传习空间",
+      "type": "传统音乐",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 5,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "audience_level",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "share_trigger",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "opponent_or_pressure",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 24
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -53304,6 +55723,233 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "灯会（自贡灯会）——彩灯展示、节会活动与当代保护",
+      "province": "四川",
+      "region": "四川省自贡市及获准的灯会、博物馆、传习、设计与公共展示空间",
+      "type": "民俗",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 3,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 3,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_outline",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 25
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "knowledge_outline",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "learner_profile",
+            "knowledge_outline",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 17
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {
@@ -59477,6 +62123,227 @@
       ]
     },
     {
+      "name": "长洲太平清醮——祭仪、飘色与社区节会",
+      "province": "香港",
+      "region": "香港长洲及其社区节庆、祭仪、巡游与公共文化空间",
+      "type": "民俗",
+      "credibility": "基本可靠",
+      "source_count": 4,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 4,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "learner_profile",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
+      ]
+    },
+    {
       "name": "粤剧——香港戏棚、剧场与馆藏中的活态传承",
       "province": "香港",
       "region": "香港各粤剧剧场、临时戏棚、社区神功戏场合、传习与博物馆空间",
@@ -60119,6 +62986,229 @@
       ]
     },
     {
+      "name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
+      "province": "澳门",
+      "region": "澳门凉茶铺、中药房、社区生活空间及获准非遗展示、博物馆和专业讲解场所",
+      "type": "传统技艺",
+      "credibility": "基本可靠",
+      "source_count": 6,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 5,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": true,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "process_steps",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 27
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": true,
+          "missing_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "wonder_or_cultural_symbol",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": true,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 30
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "case_examples",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": true,
+          "missing_fields": [
+            "learning_objective",
+            "learner_profile",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 42
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": true,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "high",
+      "priority_reasons": [
+        "存在待核点",
+        "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+      ]
+    },
+    {
       "name": "土生土语话剧——澳门土生葡人社群的语言舞台",
       "province": "澳门",
       "region": "澳门土生葡人社群、澳门土生土语话剧社及澳门艺术节等获准演出和传习空间",
@@ -60755,6 +63845,219 @@
       "priority_reasons": [
         "存在待核点",
         "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+      ]
+    },
+    {
+      "name": "布袋戏——掌中操偶、前后场与多媒介传承",
+      "province": "台湾",
+      "region": "台湾各地布袋戏演出、传习、典藏与文化资产保护空间",
+      "type": "传统戏剧",
+      "credibility": "基本可靠",
+      "source_count": 3,
+      "related_location_count": 4,
+      "has_verification_method": true,
+      "has_explicit_verification_method_section": true,
+      "has_merged_credibility_verification_section": false,
+      "unverified_point_count": 4,
+      "has_machine_metadata": true,
+      "has_asset_split": true,
+      "production_card_score": 100,
+      "missing_production_fields": [],
+      "field_audits": [
+        {
+          "field": "confirmed_facts",
+          "label": "已确认事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "unverified_facts",
+          "label": "待核事实",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dramatization_space",
+          "label": "可戏剧化空间",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "characters",
+          "label": "人物",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "scenes",
+          "label": "场景",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "props",
+          "label": "道具",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "costume_or_era",
+          "label": "服饰/时代",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "visual_symbols",
+          "label": "视觉符号",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "dialogue_tone",
+          "label": "对白口吻",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "forbidden_expressions",
+          "label": "禁用表达",
+          "present": true,
+          "reason": "已覆盖"
+        },
+        {
+          "field": "source_grades",
+          "label": "来源等级",
+          "present": true,
+          "reason": "已覆盖"
+        }
+      ],
+      "type_template_audits": [
+        {
+          "video_type": "heritage_promo",
+          "label": "非遗/工艺宣传片",
+          "recommended": false,
+          "missing_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "readiness_score": 40
+        },
+        {
+          "video_type": "documentary_short",
+          "label": "微纪录片",
+          "recommended": false,
+          "missing_fields": [
+            "documentary_question",
+            "witness_or_expert_roles",
+            "interview_clip_selection",
+            "field_notes",
+            "b_roll_plan",
+            "reconstruction_boundary",
+            "present_day_trace",
+            "ambient_sound"
+          ],
+          "readiness_score": 33
+        },
+        {
+          "video_type": "explainer_video",
+          "label": "知识讲解视频",
+          "recommended": false,
+          "missing_fields": [
+            "core_question",
+            "argument_points",
+            "knowledge_steps",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "readiness_score": 58
+        },
+        {
+          "video_type": "children_story",
+          "label": "儿童故事片",
+          "recommended": false,
+          "missing_fields": [
+            "audience_age_band",
+            "core_question",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "emotional_resolution"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "social_short",
+          "label": "竖屏短视频",
+          "recommended": false,
+          "missing_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "readiness_score": 20
+        },
+        {
+          "video_type": "lecture_video",
+          "label": "宣讲片",
+          "recommended": false,
+          "missing_fields": [
+            "speaker_position",
+            "communication_goal",
+            "argument_points",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "education_training",
+          "label": "教育/培训片",
+          "recommended": false,
+          "missing_fields": [
+            "learning_objective",
+            "learner_profile",
+            "step_sequence",
+            "practice_task",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "readiness_score": 50
+        },
+        {
+          "video_type": "ai_comic_drama",
+          "label": "AI漫剧",
+          "recommended": false,
+          "missing_fields": [
+            "episode_hook",
+            "world_and_truth_mode",
+            "protagonist_goal",
+            "relationship_collision",
+            "emotion_beats",
+            "shot_prompt_layers",
+            "reference_images_or_keyframes",
+            "identity_motion_consistency_plan",
+            "single_shot_test",
+            "multi_shot_continuity",
+            "transition_plan",
+            "ending_hook"
+          ],
+          "readiness_score": 29
+        }
+      ],
+      "priority": "low",
+      "priority_reasons": [
+        "存在待核点"
       ]
     },
     {

@@ -134,14 +134,17 @@ function seriesAuditItem(dirName, record, availableStoryIds, availableStoryIdsBy
   const finalLedger = isRecord(record.seedance_final_delivery) ? record.seedance_final_delivery : undefined;
   const cutReady = ledgerUsable(cutLedger) && hasPathLikeOutput(cutLedger, ['output_path', 'concat_list_path']);
   const subtitleReady = ledgerUsable(subtitleLedger) && hasPathLikeOutput(subtitleLedger, ['output_path', 'srt_path']);
-  const finalDeliveryReady = ledgerUsable(finalLedger) && hasPathLikeOutput(finalLedger, ['output_path', 'manifest_path']);
+  const finalDeliveryOutputDeclared = ledgerUsable(finalLedger) && hasPathLikeOutput(finalLedger, ['output_path']);
+  const finalDeliveryManifestReady = ledgerUsable(finalLedger) && hasPathLikeOutput(finalLedger, ['manifest_path']);
+  const finalDeliveryReady = finalDeliveryOutputDeclared && finalDeliveryManifestReady;
+  const finalDeliveryManifestMissing = finalDeliveryOutputDeclared && !finalDeliveryManifestReady;
   const contractEvidence = [
     productionItems.length > 0 ? 'seedance_production' : '',
     isRecord(record.gears_job_ledger) ? 'gears_job_ledger' : '',
     thumbnailReadyCount > 0 ? 'thumbnails' : '',
     cutReady ? 'cut_assembly' : '',
     subtitleReady ? 'subtitle_render' : '',
-    finalDeliveryReady ? 'final_delivery' : '',
+    finalDeliveryReady ? 'final_delivery' : finalDeliveryOutputDeclared ? 'final_delivery_plan' : '',
   ].filter(Boolean);
   const embeddedSnapshotStoryIds = missingStoryIds.filter(storyId => containsExactStorySnapshot(record, storyId));
   const unresolvedStoryIds = missingStoryIds.filter(storyId => !embeddedSnapshotStoryIds.includes(storyId));
@@ -166,6 +169,10 @@ function seriesAuditItem(dirName, record, availableStoryIds, availableStoryIdsBy
     test_fixture_failure_item_count: testFixtureFailureItems.length,
     unmarked_failure_item_count: failedProductionItems.length - testFixtureFailureItems.length,
     seedance_failure_marker_present: JSON.stringify(record).includes('seedance-job-failed'),
+    final_delivery_ready: finalDeliveryReady,
+    final_delivery_manifest_ready: finalDeliveryManifestReady,
+    final_delivery_manifest_missing: finalDeliveryManifestMissing,
+    final_delivery_dry_run: finalLedger?.dry_run === true,
     embedded_snapshot_story_ids: embeddedSnapshotStoryIds,
     unresolved_story_ids: unresolvedStoryIds,
     potential_suffix_matches: potentialSuffixMatches,
@@ -194,6 +201,7 @@ const archiveOrRebuildCandidates = interrupted.filter(item => item.contract_evid
 const failedProjects = seriesRecords.filter(item => item.failed_production_item_count > 0);
 const testFixtureFailureProjects = seriesRecords.filter(item => item.test_fixture_failure_item_count > 0);
 const failureMarkerProjects = seriesRecords.filter(item => item.seedance_failure_marker_present);
+const finalDeliveryManifestGaps = seriesRecords.filter(item => item.final_delivery_manifest_missing);
 const missingStoryReferenceCounts = new Map();
 for (const item of interrupted) {
   for (const storyId of item.missing_story_ids) {
@@ -257,15 +265,24 @@ const report = {
       (sum, item) => sum + item.unmarked_failure_item_count,
       0,
     ),
+    series_missing_final_delivery_manifest_count: finalDeliveryManifestGaps.length,
   },
   relink_candidates: relinkCandidates,
   archive_or_rebuild_candidates: archiveOrRebuildCandidates,
+  final_delivery_manifest_gaps: finalDeliveryManifestGaps.map(item => ({
+    project_id: item.project_id,
+    title: item.title,
+    updated_at: item.updated_at,
+    final_delivery_dry_run: item.final_delivery_dry_run,
+    remediation: 'rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence',
+  })),
   duplicate_missing_story_ids: duplicateMissingStoryIds,
   notes: [
     'The queue is evidence-only and does not mutate web/generated.',
     'Relink is safe only when every missing story ID has an exact recoverable story snapshot; title or episode similarity is not sufficient.',
     'Potential suffix matches are review hints only; a repeated random suffix under a newer date does not prove story identity.',
     'Archive/rebuild candidates have broken story refs and no production/postproduction contract evidence.',
+    'A final-delivery concat/output plan without manifest.json is tracked as incomplete and is not publishable delivery evidence.',
     'A real GEARS/Seedance callback still requires public external artifact URLs and is outside this local audit.',
   ],
 };

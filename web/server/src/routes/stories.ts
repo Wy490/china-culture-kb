@@ -1,12 +1,13 @@
 // web/server/src/routes/stories.ts — Story plan, generate, list, detail, gears-segments routes
 
 import { Router, type Request } from 'express';
-import { validateBody, validateParams } from '../middleware/validate.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import {
   GearsDeliveryUpdateRequestSchema,
   StoryPlanRequestSchema,
   StoryGenerateRequestSchema,
   StoryIdParamSchema,
+  StoryListQuerySchema,
 } from '@shared/schemas.js';
 import {
   listStories,
@@ -88,11 +89,13 @@ storiesRouter.post(
 );
 
 // GET /api/stories — list stories (optional query params: generation_type, video_type)
-storiesRouter.get('/', requireProductAccess('project:read'), async (req, res, next) => {
+storiesRouter.get('/', requireProductAccess('project:read'), validateQuery(StoryListQuerySchema), async (req, res, next) => {
   try {
     const generationType = req.query.generation_type as string | undefined;
     const videoType = req.query.video_type as VideoType | undefined;
-    const result = await listStories(generationType, videoType);
+    const domain = req.query.domain as string | undefined;
+    if (domain) storyAgentDomainRegistry.require(domain);
+    const result = await listStories(generationType, videoType, domain);
     const data = result.data
       ? await filterProductResourcesForRequest(
         req,

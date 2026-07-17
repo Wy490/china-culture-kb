@@ -67,26 +67,34 @@ const requiredDomainPackEntries = [
 ];
 
 function makeProductionPacks() {
-  return productionVideoTypes.map(videoType => ({
-    video_type: videoType,
-    label: `${videoType} 测试生产模板`,
-    goal: '测试 MCP MVP 状态的生产素材包健康门禁。',
-    material_template: {
-      required_fields: requiredFieldsForVideoType(videoType),
-      prompt_layers: ['事实边界', '素材资产', '镜头抓手', '审稿约束'],
-      minimum_viable_story_gate: ['主体明确', '来源明确', '画面明确'],
-      script_ready_gate: ['结构明确', '动作明确', '边界明确'],
-      production_ready_gate: ['资产明确', '镜头明确', '验收明确'],
-      supplement_questions: ['问题一？', '问题二？', '问题三？', '问题四？'],
-    },
-    sample_entries: Array.from(
-      { length: coreProductionVideoTypes.has(videoType) ? 10 : 2 },
-      (_, index) => ({
+  const crossDomainVideoTypes = new Set(['ai_comic_drama', 'children_story', 'social_short']);
+  return productionVideoTypes.map(videoType => {
+    const sampleCount = coreProductionVideoTypes.has(videoType)
+      ? 10
+      : crossDomainVideoTypes.has(videoType) ? 4 : 2;
+    return {
+      video_type: videoType,
+      label: `${videoType} 测试生产模板`,
+      goal: '测试 MCP MVP 状态的生产素材包健康门禁。',
+      material_template: {
+        required_fields: requiredFieldsForVideoType(videoType),
+        prompt_layers: ['事实边界', '素材资产', '镜头抓手', '审稿约束'],
+        minimum_viable_story_gate: ['主体明确', '来源明确', '画面明确'],
+        script_ready_gate: ['结构明确', '动作明确', '边界明确'],
+        production_ready_gate: ['资产明确', '镜头明确', '验收明确'],
+        supplement_questions: ['问题一？', '问题二？', '问题三？', '问题四？'],
+      },
+      sample_entries: Array.from({ length: sampleCount }, (_, index) => ({
         sample_id: `${videoType}-${index + 1}`,
         entry_name: `${videoType} 样板 ${index + 1}`,
-      }),
-    ),
-  }));
+        applicable_source_domains: [
+          crossDomainVideoTypes.has(videoType) && index >= sampleCount / 2
+            ? 'original_fiction'
+            : 'china_culture',
+        ],
+      })),
+    };
+  });
 }
 
 function requiredFieldsForVideoType(videoType: string): string[] {
@@ -164,6 +172,14 @@ beforeEach(() => {
   fs.mkdirSync(path.join(dataRoot, 'domain-packs'), { recursive: true });
   fs.writeFileSync(path.join(dataRoot, 'production-packs', 'video-type-material-supplement-packs.json'), JSON.stringify({
     schema_version: 'video-type-material-supplement-packs/v1',
+    health_policy: {
+      required_domain_sample_video_types: ['ai_comic_drama', 'children_story', 'social_short'],
+      domain_sample_minimums: {
+        ai_comic_drama: { china_culture: 2, original_fiction: 2 },
+        children_story: { china_culture: 2, original_fiction: 2 },
+        social_short: { china_culture: 2, original_fiction: 2 },
+      },
+    },
     packs: makeProductionPacks(),
   }, null, 2));
   fs.writeFileSync(path.join(dataRoot, 'domain-packs', 'china-culture.json'), JSON.stringify({
@@ -388,6 +404,17 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
+    expect(result.production_material_pack_health.pack_file_valid).toBe(true);
+    expect(result.production_material_pack_health.pack_file_diagnostics).toEqual([]);
+    expect(result.production_material_pack_health.rejected_pack_count).toBe(0);
+    expect(result.production_material_pack_health.rejected_pack_diagnostics).toEqual([]);
+    expect(result.lanes.find(lane => lane.key === 'production_material_packs')?.evidence)
+      .toEqual(expect.arrayContaining([
+        'domain_sample_ready=3/3',
+        'pack_file_valid=true',
+        'rejected_pack_count=0',
+        'duplicate_pack_video_type_count=0',
+      ]));
     expect(result.domain_pack_health.schema_version).toBe('domain-pack-production-health/v1');
     expect(result.domain_pack_expansion_candidates.schema_version).toBe('domain-pack-expansion-candidates-report/v1');
     expect(result.domain_pack_expansion_candidates.status).toBe('passed');
@@ -654,7 +681,11 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(productionMaterialPackHealth).toMatchObject({
       schema_version: 'production-material-pack-health/v1',
       status: 'passed',
+      pack_file_valid: true,
+      pack_file_diagnostics: [],
       pack_count: 8,
+      rejected_pack_count: 0,
+      rejected_pack_diagnostics: [],
       production_ready_core_video_types: ['heritage_promo', 'documentary_short', 'ai_comic_drama', 'explainer_video'],
       issues: [],
     });

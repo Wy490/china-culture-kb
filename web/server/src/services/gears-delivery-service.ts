@@ -17,6 +17,7 @@ import type {
   StoryGenerateResult,
   StoryScene,
 } from '@shared/types.js';
+import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
 
 const VALID_PANEL_COUNTS: PanelCount[] = [4, 6, 8, 9, 10, 12];
 
@@ -24,7 +25,7 @@ export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeli
   const characterAssets = buildCharacterAssets(story);
   const characterGenderSummary = summarizeCharacterGenders(characterAssets);
   const sceneAssets = buildSceneAssets(story);
-  const units = buildDeliveryUnits(story.scene_breakdown, characterAssets);
+  const units = buildDeliveryUnits(story, characterAssets);
   const validationNotes = [
     ...validateDeliveryPackage(characterAssets, sceneAssets, units),
     ...validateProductionMaterialReadiness(story.production_material_readiness),
@@ -32,6 +33,7 @@ export function buildGearsDeliveryPackage(story: StoryGenerateResult): GearsDeli
   const pkgWithoutMarkdown = {
     schema_version: 'gears-delivery/v1',
     storyId: story.storyId,
+    sourceDomain: resolveStorySourceDomain(story),
     title: story.title,
     delivery_status: deriveDeliveryStatus(validationNotes),
     character_assets: characterAssets,
@@ -53,19 +55,26 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
 
   const fresh = buildGearsDeliveryPackage(story);
   const characterAssets = mergeCharacterAssets(current.character_assets, fresh.character_assets);
-  const validationNotes = fresh.validation_notes;
+  const sceneAssets = current.scene_assets?.length ? current.scene_assets : fresh.scene_assets;
+  const units = mergeDeliveryUnits(current.units, fresh.units);
+  const validationNotes = [
+    ...validateDeliveryPackage(characterAssets, sceneAssets, units),
+    ...validateProductionMaterialReadiness(story.production_material_readiness),
+  ];
   const pkgWithoutMarkdown: Omit<GearsDeliveryPackage, 'markdown'> = {
     schema_version: current.schema_version ?? fresh.schema_version,
     storyId: current.storyId ?? fresh.storyId,
+    sourceDomain: fresh.sourceDomain,
     title: current.title ?? fresh.title,
     delivery_status: deriveDeliveryStatus(validationNotes),
     character_assets: characterAssets,
     character_gender_summary: summarizeCharacterGenders(characterAssets),
-    scene_assets: current.scene_assets?.length ? current.scene_assets : fresh.scene_assets,
-    units: current.units?.length ? current.units : fresh.units,
+    scene_assets: sceneAssets,
+    units,
     validation_notes: validationNotes,
   };
   const shouldKeepMarkdown = Boolean(current.markdown?.includes('# 人物性别统计'))
+    && current.markdown?.includes(`> sourceDomain: ${pkgWithoutMarkdown.sourceDomain}`) === true
     && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary)
     && areStringArraysEqual(current.validation_notes, pkgWithoutMarkdown.validation_notes);
   const markdown = shouldKeepMarkdown && current.markdown
@@ -76,6 +85,28 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
     ...pkgWithoutMarkdown,
     markdown,
   };
+}
+
+function mergeDeliveryUnits(
+  currentUnits: GearsDeliveryUnit[] | undefined,
+  freshUnits: GearsDeliveryUnit[],
+): GearsDeliveryUnit[] {
+  if (!currentUnits?.length) return freshUnits;
+  const freshById = new Map(freshUnits.map(unit => [unit.unit_id, unit]));
+  return currentUnits.map((unit) => {
+    const fresh = freshById.get(unit.unit_id);
+    if (!fresh) return unit;
+    return {
+      ...fresh,
+      ...unit,
+      visual_prompt: unit.visual_prompt ?? fresh.visual_prompt,
+      camera_suggestion: unit.camera_suggestion ?? fresh.camera_suggestion,
+      segment_prompt_hint: unit.segment_prompt_hint ?? fresh.segment_prompt_hint,
+      constraint_note: unit.constraint_note?.length
+        ? unit.constraint_note
+        : fresh.constraint_note,
+    };
+  });
 }
 
 function areStringArraysEqual(left: string[] | undefined, right: string[]): boolean {
@@ -652,12 +683,23 @@ function inferAtmosphere(scenes: StoryScene[]): GearsSceneAtmosphere {
   return '中性';
 }
 
-function buildDeliveryUnits(scenes: StoryScene[], characterAssets: GearsCharacterAsset[]): GearsDeliveryUnit[] {
+function buildDeliveryUnits(
+  story: StoryGenerateResult,
+  characterAssets: GearsCharacterAsset[],
+): GearsDeliveryUnit[] {
   const units: GearsDeliveryUnit[] = [];
   const validCharacterNames = new Set(characterAssets.map(character => character.name));
-  for (const scene of scenes) {
+  for (const scene of story.scene_breakdown) {
     const chunks = splitSceneIntoChunks(scene);
+    const sceneSegments = story.gears_segments.filter(
+      segment => segment.source_scene_id === scene.scene_id,
+    );
     chunks.forEach((chunk, index) => {
+      const segment = sceneSegments[index] ?? sceneSegments[0];
+      const segmentConstraintNote = segment && 'constraint_note' in segment
+        && Array.isArray(segment.constraint_note)
+        ? segment.constraint_note.filter((item): item is string => typeof item === 'string')
+        : segment?.cultural_constraints ?? [];
       const targetDuration = Math.max(5, Math.min(15, Math.ceil(scene.duration_sec / chunks.length)));
       const unitDuration = chooseSuggestedDuration(targetDuration, chunk);
       units.push({
@@ -672,6 +714,13 @@ function buildDeliveryUnits(scenes: StoryScene[], characterAssets: GearsCharacte
         time_of_day: normalizeTimeOfDay(scene.time_of_day),
         beat_count: estimateBeatCount(chunk),
         script_text: chunk,
+        visual_prompt: scene.visual_prompt?.trim() || undefined,
+        camera_suggestion: scene.camera_suggestion?.trim() || undefined,
+        segment_prompt_hint: segment?.segment_prompt_hint?.trim() || undefined,
+        constraint_note: [...new Set([
+          ...segmentConstraintNote,
+          ...story.cultural_constraints,
+        ].map(item => item.trim()).filter(Boolean))],
       });
     });
   }
@@ -905,6 +954,7 @@ function renderDeliveryMarkdown(pkg: Omit<GearsDeliveryPackage, 'markdown'>): st
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    `> sourceDomain: ${pkg.sourceDomain}`,
     `> delivery_status: ${pkg.delivery_status ?? deriveDeliveryStatus(pkg.validation_notes)}`,
     '',
     '# 人物性别统计',
@@ -962,6 +1012,10 @@ function renderDeliveryMarkdown(pkg: Omit<GearsDeliveryPackage, 'markdown'>): st
       `- 建议格数: ${unit.suggested_panel_count}`,
     );
     if (unit.time_of_day) lines.push(`- 时段: ${unit.time_of_day}`);
+    if (unit.visual_prompt) lines.push(`- 视觉提示: ${unit.visual_prompt}`);
+    if (unit.camera_suggestion) lines.push(`- 运镜建议: ${unit.camera_suggestion}`);
+    if (unit.segment_prompt_hint) lines.push(`- 段落生成提示: ${unit.segment_prompt_hint}`);
+    if (unit.constraint_note?.length) lines.push(`- 约束: ${unit.constraint_note.join('；')}`);
     lines.push('', '正文：', unit.script_text);
   }
 

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import { resolveStorySourceDomain } from '../lib/story-source-domain.js';
 import { getProjectContext } from './get-project-context.js';
 
 type ProjectVersionChangeType = 'scene_regeneration' | 'quality_repair' | 'production_board_repair';
@@ -18,6 +19,7 @@ type StoryLike = Record<string, unknown> & {
   storyId?: string;
   project_id?: string;
   current_version_id?: string;
+  sourceDomain?: string;
   title?: string;
   source_entry?: string;
   video_type?: string;
@@ -258,6 +260,21 @@ function fillMissingSnapshotFields(params: {
     ...params.currentStory,
     ...params.parsedStory,
   };
+  const projectSourceDomain = resolveStorySourceDomain({
+    sourceDomain: params.project.source_domain,
+  });
+  const currentSourceDomain = asString(params.currentStory.sourceDomain).trim();
+  const parsedSourceDomain = asString(params.parsedStory.sourceDomain).trim();
+  if (currentSourceDomain && currentSourceDomain !== projectSourceDomain) {
+    throw new Error(
+      `当前 Story sourceDomain（${currentSourceDomain}）与项目 source_domain（${projectSourceDomain}）不一致`,
+    );
+  }
+  if (parsedSourceDomain && parsedSourceDomain !== projectSourceDomain) {
+    throw new Error(
+      `snapshot_json sourceDomain（${parsedSourceDomain}）与项目 source_domain（${projectSourceDomain}）不一致`,
+    );
+  }
 
   for (const field of CRITICAL_STORY_FIELDS) {
     if (params.parsedStory[field] === undefined && params.currentStory[field] !== undefined) {
@@ -268,6 +285,7 @@ function fillMissingSnapshotFields(params: {
 
   story.project_id = params.project.project_id;
   story.current_version_id = params.nextVersionId;
+  story.sourceDomain = projectSourceDomain;
   story.storyId = asString(story.storyId) || asString(params.currentStory.storyId) || params.project.current_story_id;
   story.video_type = asString(story.video_type) || asString(params.currentStory.video_type) || params.project.video_type;
   story.presentation_style = asString(story.presentation_style)

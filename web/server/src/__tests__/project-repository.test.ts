@@ -81,6 +81,70 @@ describe('FileProjectRepository', () => {
     }
   });
 
+  it('inspects the complete logical history without recovery or writeback', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-agent-project-logical-inspection-'));
+    try {
+      const repository = new FileProjectRepository(root);
+      const initial = projectMeta();
+      await repository.createInitial(initial, snapshot(initial));
+      const current = projectMeta(initial.project_id, `${initial.project_id}-v2-inspected`, 2);
+      await repository.commitVersion(current, snapshot(current), {
+        current_version_id: initial.current_version_id,
+        version_count: initial.version_count,
+        updated_at: initial.updated_at,
+      });
+
+      const inspection = await repository.inspectLogicalStateReadOnly();
+      expect(inspection).toMatchObject({
+        schema_version: 'story-agent-project-repository-logical-state/v1',
+        project_count: 1,
+        version_count: 2,
+        pending_transactions_recovered: false,
+        writeback_performed: false,
+        state: {
+          meta: [current],
+        },
+      });
+      expect(inspection.logical_sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(inspection.state.versions.map(version => version.version_id)).toEqual([
+        initial.current_version_id,
+        current.current_version_id,
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed when persisted version snapshot identifiers or file type are inconsistent', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-agent-project-read-identity-'));
+    try {
+      const repository = new FileProjectRepository(root);
+      const meta = projectMeta();
+      const versionPath = resolve(root, meta.project_id, 'versions', `${meta.current_version_id}.json`);
+      await repository.createInitial(meta, snapshot(meta));
+
+      const wrongProject = { ...snapshot(meta), project_id: 'another-project--ai_comic_drama' };
+      await writeFile(versionPath, JSON.stringify(wrongProject), 'utf8');
+      await expect(repository.readVersion(meta.project_id, meta.current_version_id))
+        .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
+      await expect(repository.readVersionSnapshots(meta.project_id))
+        .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
+
+      const wrongStoryVersion = snapshot(meta);
+      wrongStoryVersion.story.current_version_id = `${meta.project_id}-v2`;
+      await writeFile(versionPath, JSON.stringify(wrongStoryVersion), 'utf8');
+      await expect(repository.readVersionSnapshots(meta.project_id))
+        .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
+
+      await rm(versionPath);
+      await symlink(resolve(root, 'outside-version.json'), versionPath);
+      await expect(repository.readVersionSnapshots(meta.project_id))
+        .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('uses optimistic version expectations so a stale writer cannot replace the winner', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'story-agent-project-conflict-'));
     try {

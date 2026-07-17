@@ -17,6 +17,12 @@ export interface ProductionMaterialFieldSpec {
   question?: string;
 }
 
+interface ProductionMaterialFieldSpecOverride {
+  label?: string;
+  keywords?: string[];
+  question?: string;
+}
+
 const FIELD_SPECS: Record<string, ProductionMaterialFieldSpec> = {
   project_name: field('项目名称', 'minimum_viable_story', 'blocking', ['项目名称', '片名', '主题', 'project', 'entry_name']),
   communication_goal: field('传播目标', 'minimum_viable_story', 'blocking', ['传播目标', '目标', '希望', '让观众', 'communication']),
@@ -39,7 +45,10 @@ const FIELD_SPECS: Record<string, ProductionMaterialFieldSpec> = {
   real_world_site_or_object: field('现实地点或实物入口', 'minimum_viable_story', 'blocking', ['旧址', '现场', '地点', '实物', '文物', '展陈', '碑刻', 'site']),
   source_quotes_or_source_cues: field('来源提示或引用线索', 'script_ready', 'blocking', ['引用', '来源', '文献', '史料', '展板', '档案']),
   timeline: field('时间线', 'script_ready', 'risk', ['时间线', '年代', '年', '朝代', '时期', 'timeline']),
-  witness_or_expert_roles: field('见证人/专家角色', 'script_ready', 'risk', ['采访', '馆员', '专家', '研究者', '见证人', '传承人']),
+  witness_or_expert_roles: field('见证人/专家角色', 'script_ready', 'risk', [
+    '采访', '馆员', '专家', '研究者', '见证人', '传承人',
+    '创作者', '编剧', '角色设计', '权利顾问',
+  ]),
   interview_clip_selection: field('采访片段选择', 'production_ready', 'risk', ['采访片段', '同期声', '口述', 'clip', 'interview']),
   field_notes: field('现场笔记', 'production_ready', 'optional', ['现场', '环境声', '光线', '人流', '路径', 'field']),
   b_roll_plan: field('B-roll 计划', 'production_ready', 'risk', ['b-roll', 'B-roll', '空镜', '补充画面', '素材镜头']),
@@ -105,12 +114,41 @@ const FIELD_SPECS: Record<string, ProductionMaterialFieldSpec> = {
   forbidden_claims: field('禁用/不可声称内容', 'script_ready', 'blocking', ['禁用', '不得', '不可', '待核实', '虚构边界']),
 };
 
+const DOMAIN_FIELD_SPEC_OVERRIDES: Record<string, Record<string, ProductionMaterialFieldSpecOverride>> = {
+  original_fiction: {
+    wonder_or_cultural_symbol: {
+      label: '奇观或故事标志物',
+      keywords: ['故事标志物', '关键物件', '视觉意象', '世界观物件', '记忆物件'],
+      question: '请补充一个能让儿童记住原创故事的奇观、关键物件或视觉意象，并说明它如何服务角色选择。',
+    },
+    share_trigger: {
+      keywords: ['人物选择', '讨论焦点', '剧情讨论', '故事悬念', '叙事可能'],
+      question: '请补充原创故事中值得观众讨论或转发的人物选择、剧情反差或故事悬念。',
+    },
+    source_cues: {
+      label: '项目素材/权利线索',
+      keywords: ['项目素材', '素材入口', '原创大纲', '角色设定稿', '创作说明', '权利记录'],
+      question: '请补充原创大纲、角色设定稿、创作说明或权利记录等项目素材线索。',
+    },
+    fact_boundary_card: {
+      label: '项目/权利边界卡',
+      keywords: ['项目边界卡', '权利边界卡', '项目边界', '权利边界', '创作者确认', '授权待核'],
+      question: '请补充项目设定、现实引用和授权状态的边界卡。',
+    },
+    world_and_truth_mode: {
+      keywords: ['原创设定', '架空', '世界规则', '虚构世界', 'fictional_original'],
+      question: '请说明原创世界规则、架空程度，以及哪些现实引用仍需创作者或权利确认。',
+    },
+  },
+};
+
 const STAGE_ORDER: MaterialSufficiencyStage[] = ['minimum_viable_story', 'script_ready', 'production_ready'];
 
 export function buildProductionMaterialReadinessReport(input: {
   productionMaterialPack?: ProductionMaterialPack;
   materialPack?: MaterialPack;
   contextText?: string;
+  sourceDomain?: string;
 }): ProductionMaterialReadinessReport | undefined {
   const { productionMaterialPack } = input;
   if (!productionMaterialPack) return undefined;
@@ -118,15 +156,15 @@ export function buildProductionMaterialReadinessReport(input: {
   const materialText = normalizeSearchText(materialPackToText(input.materialPack, input.contextText));
   const fields = productionMaterialPack.material_template.required_fields;
   const availableFields = fields.filter(fieldId =>
-    hasFieldEvidence(fieldId, productionMaterialPack.video_type, materialText, input.materialPack),
+    hasFieldEvidence(fieldId, productionMaterialPack.video_type, materialText, input.materialPack, input.sourceDomain),
   );
   const missingFields = fields
     .filter(fieldId => !availableFields.includes(fieldId))
-    .map((fieldId, index) => missingFieldForTemplateField(fieldId, productionMaterialPack, index));
+    .map((fieldId, index) => missingFieldForTemplateField(fieldId, productionMaterialPack, index, input.sourceDomain));
   const gateReports = STAGE_ORDER.map(stage =>
-    buildGateReport(stage, productionMaterialPack, availableFields, missingFields),
+    buildGateReport(stage, productionMaterialPack, availableFields, missingFields, input.sourceDomain),
   );
-  const score = scoreReadiness(fields, availableFields, missingFields);
+  const score = scoreReadiness(fields, availableFields, missingFields, input.sourceDomain);
   const status = readinessStatus(missingFields);
 
   return {
@@ -145,8 +183,19 @@ export function buildProductionMaterialReadinessReport(input: {
   };
 }
 
-export function getProductionMaterialFieldSpec(fieldId: string): ProductionMaterialFieldSpec | undefined {
-  return FIELD_SPECS[fieldId];
+export function getProductionMaterialFieldSpec(
+  fieldId: string,
+  sourceDomain?: string,
+): ProductionMaterialFieldSpec | undefined {
+  const base = FIELD_SPECS[fieldId];
+  if (!base) return undefined;
+  const override = sourceDomain ? DOMAIN_FIELD_SPEC_OVERRIDES[sourceDomain]?.[fieldId] : undefined;
+  if (!override) return base;
+  return {
+    ...base,
+    ...override,
+    keywords: [...new Set([...base.keywords, ...(override.keywords ?? [])])],
+  };
 }
 
 export function listProductionMaterialFieldIds(): string[] {
@@ -168,8 +217,9 @@ function buildGateReport(
   pack: ProductionMaterialPack,
   availableFields: string[],
   missingFields: ProductionMaterialMissingField[],
+  sourceDomain?: string,
 ): ProductionMaterialGateReport {
-  const stageAvailable = availableFields.filter(fieldId => fieldStage(fieldId) === stage);
+  const stageAvailable = availableFields.filter(fieldId => fieldStage(fieldId, sourceDomain) === stage);
   const stageMissing = missingFields.filter(field => field.stage === stage);
   return {
     stage,
@@ -199,16 +249,17 @@ function scoreReadiness(
   fields: string[],
   availableFields: string[],
   missingFields: ProductionMaterialMissingField[],
+  sourceDomain?: string,
 ): number {
-  const totalWeight = fields.reduce((sum, fieldId) => sum + fieldWeight(fieldStage(fieldId)), 0);
-  const availableWeight = availableFields.reduce((sum, fieldId) => sum + fieldWeight(fieldStage(fieldId)), 0);
+  const totalWeight = fields.reduce((sum, fieldId) => sum + fieldWeight(fieldStage(fieldId, sourceDomain)), 0);
+  const availableWeight = availableFields.reduce((sum, fieldId) => sum + fieldWeight(fieldStage(fieldId, sourceDomain)), 0);
   const blockingPenalty = missingFields.filter(field => field.blocking_level === 'blocking').length * 6;
   if (totalWeight <= 0) return 100;
   return Math.max(0, Math.min(100, Math.round((availableWeight / totalWeight) * 100 - blockingPenalty)));
 }
 
-function fieldStage(fieldId: string): MaterialSufficiencyStage {
-  return FIELD_SPECS[fieldId]?.stage ?? 'production_ready';
+function fieldStage(fieldId: string, sourceDomain?: string): MaterialSufficiencyStage {
+  return getProductionMaterialFieldSpec(fieldId, sourceDomain)?.stage ?? 'production_ready';
 }
 
 function fieldWeight(stage: MaterialSufficiencyStage): number {
@@ -221,8 +272,10 @@ function missingFieldForTemplateField(
   fieldId: string,
   pack: ProductionMaterialPack,
   index: number,
+  sourceDomain?: string,
 ): ProductionMaterialMissingField {
-  const spec = FIELD_SPECS[fieldId] ?? field(humanizeFieldId(fieldId), 'production_ready', 'risk', []);
+  const spec = getProductionMaterialFieldSpec(fieldId, sourceDomain)
+    ?? field(humanizeFieldId(fieldId), 'production_ready', 'risk', []);
   const fallbackQuestion = pack.material_template.supplement_questions[index % Math.max(1, pack.material_template.supplement_questions.length)]
     ?? `请补充「${spec.label}」。`;
   return {
@@ -240,16 +293,17 @@ function hasFieldEvidence(
   videoType: ProductionMaterialPack['video_type'],
   materialText: string,
   materialPack: MaterialPack | undefined,
+  sourceDomain?: string,
 ): boolean {
   if (fieldId === 'project_name') return Boolean(materialPack?.primary_materials.length || materialPack?.brand_or_institution_profile?.name || materialPack?.source_work_profile?.title);
   if (fieldId === 'confirmed_status_and_sources') return Boolean(materialPack?.verified_facts.length || materialPack?.uncertain_claims.length || /来源|出处|核实|source|verified/.test(materialText));
   if (fieldId === 'production_risks') return Boolean(materialPack?.uncertain_claims.length || materialPack?.brand_or_institution_profile?.forbidden_claims?.length || /风险|禁用|待核实|边界/.test(materialText));
   if (fieldId === 'visual_symbols') return Boolean(materialPack?.visual_assets.length || materialPackHasPurpose(materialPack, 'visual_asset') || /视觉|图案|纹样|符号/.test(materialText));
-  if (fieldId === 'world_and_truth_mode') return /真实度|虚构|传说|史实|fictional|truth|相传|待核实/.test(materialText);
+  if (fieldId === 'world_and_truth_mode' && /真实度|虚构|传说|史实|fictional|truth|相传/.test(materialText)) return true;
   if (fieldId === 'forbidden_claims') return /不得|不能|不可|禁用|待核实|边界/.test(materialText);
   if (fieldId === 'heritage_or_craft_type' && videoType === 'heritage_promo') return /非遗|工艺|技艺|民俗|传承/.test(materialText);
   if (fieldId === 'scene_anchor') return /场景|地点|空间|洞|楼|书院|江|馆|旧址|scene/.test(materialText);
-  const spec = FIELD_SPECS[fieldId];
+  const spec = getProductionMaterialFieldSpec(fieldId, sourceDomain);
   if (!spec) return materialText.includes(fieldId.toLowerCase());
   return spec.keywords.some(keyword => materialText.includes(keyword.toLowerCase()));
 }

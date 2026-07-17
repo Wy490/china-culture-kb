@@ -453,6 +453,7 @@
         <span>缺分集引用 {{ generatedHealth.summary.missing_episode_story_id_count }}</span>
         <span>系列缺交付 {{ generatedHealth.summary.series_missing_delivery_count }}</span>
         <span>系列缺后期指令 {{ generatedHealth.summary.series_missing_postproduction_count }}</span>
+        <span>缺最终 manifest {{ generatedHealth.summary.series_missing_final_delivery_manifest_count ?? 0 }}</span>
       </div>
       <div class="projects-page__portfolio-grid">
         <article

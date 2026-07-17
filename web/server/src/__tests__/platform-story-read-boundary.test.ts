@@ -19,5 +19,7 @@ describe('story read platform boundary', () => {
     expect(source).not.toContain('function readCurrentProjectStoryForStoryId(');
     expect(readSource).toContain('export async function listStories(');
     expect(readSource).toContain('export async function getStory(');
+    expect(readSource).toContain('resolveStorySourceDomain(data)');
+    expect(readSource).toContain('resolvedSourceDomain !== sourceDomain');
   });
 });

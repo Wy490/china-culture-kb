@@ -42,6 +42,7 @@ import {
   listAiComicSeriesProjects,
   runAiComicSeriesProductionReadinessAutomation,
 } from './ai-comic-series-service.js';
+import { storyGeneratedRoot } from '../platform/story-storage-root.js';
 
 export interface ProductionReadinessPortfolioOptions {
   includeArchivedSeries?: boolean;
@@ -56,12 +57,8 @@ type ReadinessReport = StoryProjectProductionReadinessReport | AiComicSeriesProd
 
 const portfolioAutomationLedgerLimit = 20;
 
-function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
-}
-
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+  return storyGeneratedRoot();
 }
 
 function portfolioAutomationLedgerPath(): string {

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isSupportedProductionMaterialVideoType } from '../lib/production-material-video-types.js';
 
 type ProductionMaterialPackDraftStatus = 'ready_for_editor_review' | 'needs_more_sources';
 
@@ -7,6 +8,7 @@ interface SourceObservation {
   source_id: string;
   source_type?: string;
   applies_to_video_types?: string[];
+  applies_to_source_domains?: string[];
   title?: string;
   url?: string;
   usable_takeaways?: string[];
@@ -22,25 +24,32 @@ interface ProductionMaterialTemplate {
   supplement_questions: string[];
 }
 
+interface ProductionMaterialSampleEntry {
+  sample_id?: string;
+  entry_name?: string;
+  applicable_source_domains?: string[];
+}
+
 interface ProductionMaterialPack {
   video_type: string;
   label: string;
   goal: string;
   material_template: ProductionMaterialTemplate;
-  sample_entries: unknown[];
+  sample_entries: ProductionMaterialSampleEntry[];
 }
 
 interface ProductionMaterialPackFile {
   schema_version: string;
-  source_observations?: SourceObservation[];
+  source_observations?: unknown;
   packs?: ProductionMaterialPack[];
 }
 
 export interface DraftProductionMaterialPackOptions {
   videoType: string;
+  sourceDomain?: string;
   label?: string;
   goal?: string;
-  additionalObservations?: SourceObservation[];
+  additionalObservations?: unknown;
   generatedAt?: string;
 }
 
@@ -49,7 +58,13 @@ export interface ProductionMaterialPackDraftReport {
   generated_at: string;
   status: ProductionMaterialPackDraftStatus;
   video_type: string;
+  source_domain?: string;
   source_count: number;
+  excluded_observation_count: number;
+  duplicate_source_observation_count: number;
+  invalid_source_observation_count: number;
+  excluded_sample_entry_count: number;
+  duplicate_sample_entry_count: number;
   source_ids: string[];
   matched_observations: SourceObservation[];
   draft_pack: ProductionMaterialPack;
@@ -63,33 +78,75 @@ export async function draftProductionMaterialPack(
 ): Promise<ProductionMaterialPackDraftReport> {
   const videoType = options.videoType.trim();
   if (!videoType) throw new Error('videoType is required');
+  if (!isSupportedProductionMaterialVideoType(videoType)) {
+    throw new Error('videoType must be a supported video type');
+  }
+  const sourceDomain = options.sourceDomain?.trim();
+  if (options.sourceDomain !== undefined && !sourceDomain) {
+    throw new Error('sourceDomain must be a non-empty string when provided');
+  }
 
   const packFile = await readProductionPackFile();
   const existingPack = packFile.packs?.find(pack => pack.video_type === videoType);
-  const matchedObservations = [
-    ...(packFile.source_observations ?? []),
-    ...(options.additionalObservations ?? []),
+  const videoTypeObservations = [
+    ...parseSourceObservations(packFile.source_observations, 'source_observations'),
+    ...parseSourceObservations(options.additionalObservations, 'additionalObservations'),
   ].filter(observation => appliesToVideoType(observation, videoType));
-  const sourceIds = matchedObservations.map(item => item.source_id).filter(uniqueString);
-  const warnings = buildWarnings(existingPack, matchedObservations);
+  const domainMatchedObservations = videoTypeObservations.filter(observation =>
+    appliesToSourceDomain(observation.applies_to_source_domains, sourceDomain),
+  );
+  const validDomainMatchedObservations = domainMatchedObservations.filter(observation =>
+    typeof observation.source_id === 'string' && Boolean(observation.source_id.trim()),
+  );
+  const matchedObservations = deduplicateSourceObservations(validDomainMatchedObservations);
+  const existingSampleEntries = existingPack?.sample_entries ?? [];
+  const domainMatchedSampleEntries = existingSampleEntries.filter(sample =>
+    appliesToSourceDomain(sample.applicable_source_domains, sourceDomain),
+  );
+  const scopedSampleEntries = deduplicateProductionSampleEntries(domainMatchedSampleEntries);
+  const excludedObservationCount = videoTypeObservations.length - domainMatchedObservations.length;
+  const invalidSourceObservationCount = domainMatchedObservations.length - validDomainMatchedObservations.length;
+  const duplicateSourceObservationCount = validDomainMatchedObservations.length - matchedObservations.length;
+  const excludedSampleEntryCount = existingSampleEntries.length - domainMatchedSampleEntries.length;
+  const duplicateSampleEntryCount = domainMatchedSampleEntries.length - scopedSampleEntries.length;
+  const sourceIds = matchedObservations
+    .map(item => item.source_id.trim())
+    .filter(Boolean)
+    .filter(uniqueString);
+  const warnings = buildWarnings(
+    existingPack,
+    matchedObservations,
+    sourceDomain,
+    excludedObservationCount,
+    duplicateSourceObservationCount,
+    invalidSourceObservationCount,
+    excludedSampleEntryCount,
+    duplicateSampleEntryCount,
+  );
   const template = buildDraftTemplate(videoType, existingPack, matchedObservations);
   const draftPack: ProductionMaterialPack = {
     video_type: videoType,
     label: options.label?.trim() || existingPack?.label || defaultLabel(videoType),
     goal: options.goal?.trim() || existingPack?.goal || defaultGoal(videoType),
     material_template: template,
-    sample_entries: existingPack?.sample_entries ?? [],
+    sample_entries: scopedSampleEntries,
   };
   const base: Omit<ProductionMaterialPackDraftReport, 'markdown'> = {
     schema_version: 'production-material-pack-draft/v1',
     generated_at: options.generatedAt ?? new Date().toISOString(),
-    status: matchedObservations.length >= 3 ? 'ready_for_editor_review' : 'needs_more_sources',
+    status: sourceIds.length >= 3 ? 'ready_for_editor_review' : 'needs_more_sources',
     video_type: videoType,
+    ...(sourceDomain ? { source_domain: sourceDomain } : {}),
     source_count: matchedObservations.length,
+    excluded_observation_count: excludedObservationCount,
+    duplicate_source_observation_count: duplicateSourceObservationCount,
+    invalid_source_observation_count: invalidSourceObservationCount,
+    excluded_sample_entry_count: excludedSampleEntryCount,
+    duplicate_sample_entry_count: duplicateSampleEntryCount,
     source_ids: sourceIds,
     matched_observations: matchedObservations,
     draft_pack: draftPack,
-    review_checklist: buildReviewChecklist(videoType, existingPack, matchedObservations),
+    review_checklist: buildReviewChecklist(videoType, existingPack, matchedObservations, sourceDomain),
     warnings,
   };
 
@@ -101,16 +158,222 @@ export async function draftProductionMaterialPack(
 
 async function readProductionPackFile(): Promise<ProductionMaterialPackFile> {
   const filePath = path.join(kbRoot(), 'production-packs', 'video-type-material-supplement-packs.json');
-  const raw = await fs.readFile(filePath, 'utf8');
-  return JSON.parse(raw) as ProductionMaterialPackFile;
+  let raw: string;
+  try {
+    raw = await fs.readFile(filePath, 'utf8');
+  } catch {
+    throw new Error('production pack file is unavailable');
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error('production pack file must contain valid JSON');
+  }
+  if (!isRecord(parsed)) throw new Error('production pack file must be an object');
+  if (parsed.schema_version !== 'video-type-material-supplement-packs/v1') {
+    throw new Error('schema_version must equal video-type-material-supplement-packs/v1');
+  }
+  return {
+    schema_version: parsed.schema_version,
+    source_observations: parsed.source_observations,
+    packs: parseProductionMaterialPacks(parsed.packs),
+  };
 }
 
 function kbRoot(): string {
   return process.env.KB_ROOT || path.resolve(import.meta.dirname, '..', '..', '..', 'data');
 }
 
+function parseSourceObservations(value: unknown, fieldName: string): SourceObservation[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error(`${fieldName} must be an array`);
+  return value.map((item, index) => {
+    const itemName = `${fieldName}[${index}]`;
+    if (!isRecord(item)) throw new Error(`${itemName} must be an object`);
+    if (typeof item.source_id !== 'string') throw new Error(`${itemName}.source_id must be a string`);
+    return {
+      source_id: item.source_id,
+      ...optionalStringField(item, 'source_type', itemName),
+      ...optionalStringArrayField(item, 'applies_to_video_types', itemName),
+      ...optionalStringArrayField(item, 'applies_to_source_domains', itemName),
+      ...optionalStringField(item, 'title', itemName),
+      ...optionalStringField(item, 'url', itemName),
+      ...optionalStringArrayField(item, 'usable_takeaways', itemName),
+      ...optionalStringArrayField(item, 'limitations', itemName),
+    };
+  });
+}
+
+function parseProductionMaterialPacks(value: unknown): ProductionMaterialPack[] {
+  if (!Array.isArray(value)) throw new Error('packs must be an array');
+  return value.map((item, index) => {
+    const itemName = `packs[${index}]`;
+    if (!isRecord(item)) throw new Error(`${itemName} must be an object`);
+    const videoType = requireStringField(item, 'video_type', itemName);
+    if (!isSupportedProductionMaterialVideoType(videoType)) {
+      throw new Error(`${itemName}.video_type must be a supported video type`);
+    }
+    const template = item.material_template;
+    if (!isRecord(template)) throw new Error(`${itemName}.material_template must be an object`);
+    const promptLayers = template.prompt_layers === undefined
+      ? undefined
+      : requireStringArrayField(template, 'prompt_layers', `${itemName}.material_template`);
+    const materialTemplate: ProductionMaterialTemplate = {
+      required_fields: requireStringArrayField(template, 'required_fields', `${itemName}.material_template`),
+      ...(promptLayers ? { prompt_layers: promptLayers } : {}),
+      minimum_viable_story_gate: requireStringArrayField(
+        template,
+        'minimum_viable_story_gate',
+        `${itemName}.material_template`,
+      ),
+      script_ready_gate: requireStringArrayField(template, 'script_ready_gate', `${itemName}.material_template`),
+      production_ready_gate: requireStringArrayField(template, 'production_ready_gate', `${itemName}.material_template`),
+      supplement_questions: requireStringArrayField(template, 'supplement_questions', `${itemName}.material_template`),
+    };
+    return {
+      ...item,
+      video_type: videoType,
+      label: requireStringField(item, 'label', itemName),
+      goal: requireStringField(item, 'goal', itemName),
+      material_template: materialTemplate,
+      sample_entries: parseProductionMaterialSampleEntries(item.sample_entries, itemName),
+    } as ProductionMaterialPack;
+  });
+}
+
+function parseProductionMaterialSampleEntries(
+  value: unknown,
+  packName: string,
+): ProductionMaterialSampleEntry[] {
+  if (!Array.isArray(value)) throw new Error(`${packName}.sample_entries must be an array`);
+  return value.map((item, index) => {
+    const itemName = `${packName}.sample_entries[${index}]`;
+    if (!isRecord(item)) throw new Error(`${itemName} must be an object`);
+    const sampleId = requireStringField(item, 'sample_id', itemName);
+    const entryName = requireStringField(item, 'entry_name', itemName);
+    const applicableDomains = optionalStringArrayField(
+      item,
+      'applicable_source_domains',
+      itemName,
+    ).applicable_source_domains;
+    if (applicableDomains) {
+      const normalizedDomains = applicableDomains.map(domain => domain.trim());
+      if (applicableDomains.length === 0
+        || normalizedDomains.some(domain => !domain)
+        || new Set(normalizedDomains).size !== normalizedDomains.length) {
+        throw new Error(
+          `${itemName}.applicable_source_domains must be a non-empty array of unique non-blank strings`,
+        );
+      }
+    }
+    return {
+      ...item,
+      sample_id: sampleId,
+      entry_name: entryName,
+      ...(applicableDomains ? { applicable_source_domains: applicableDomains } : {}),
+    } as ProductionMaterialSampleEntry;
+  });
+}
+
+function requireStringField(
+  record: Record<string, unknown>,
+  fieldName: string,
+  itemName: string,
+): string {
+  const value = record[fieldName];
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${itemName}.${fieldName} must be a non-blank string`);
+  }
+  return value;
+}
+
+function requireStringArrayField(
+  record: Record<string, unknown>,
+  fieldName: string,
+  itemName: string,
+): string[] {
+  const value = record[fieldName];
+  if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) {
+    throw new Error(`${itemName}.${fieldName} must be a string array`);
+  }
+  if (value.some(item => !item.trim())) {
+    throw new Error(`${itemName}.${fieldName} must not contain blank values`);
+  }
+  return value;
+}
+
+function optionalStringField(
+  record: Record<string, unknown>,
+  fieldName: string,
+  itemName: string,
+): Record<string, string> {
+  const value = record[fieldName];
+  if (value === undefined) return {};
+  if (typeof value !== 'string') throw new Error(`${itemName}.${fieldName} must be a string`);
+  return { [fieldName]: value };
+}
+
+function optionalStringArrayField(
+  record: Record<string, unknown>,
+  fieldName: string,
+  itemName: string,
+): Record<string, string[]> {
+  const value = record[fieldName];
+  if (value === undefined) return {};
+  if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) {
+    throw new Error(`${itemName}.${fieldName} must be a string array`);
+  }
+  return { [fieldName]: value };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
 function appliesToVideoType(observation: SourceObservation, videoType: string): boolean {
   return (observation.applies_to_video_types ?? []).includes(videoType);
+}
+
+function appliesToSourceDomain(
+  applicableSourceDomains: string[] | undefined,
+  sourceDomain: string | undefined,
+): boolean {
+  if (!sourceDomain) return true;
+  const explicitDomains = [...new Set(
+    (applicableSourceDomains ?? []).map(item => item.trim()).filter(Boolean),
+  )];
+  return explicitDomains.length > 0
+    ? explicitDomains.includes(sourceDomain)
+    : sourceDomain === 'china_culture';
+}
+
+function deduplicateSourceObservations(observations: SourceObservation[]): SourceObservation[] {
+  const seen = new Set<string>();
+  const deduplicated: SourceObservation[] = [];
+  for (const observation of observations) {
+    const sourceId = observation.source_id.trim();
+    if (seen.has(sourceId)) continue;
+    seen.add(sourceId);
+    deduplicated.push(sourceId === observation.source_id
+      ? observation
+      : { ...observation, source_id: sourceId });
+  }
+  return deduplicated;
+}
+
+function deduplicateProductionSampleEntries(
+  sampleEntries: ProductionMaterialSampleEntry[],
+): ProductionMaterialSampleEntry[] {
+  const seen = new Set<string>();
+  return sampleEntries.filter(sample => {
+    const sampleId = sample.sample_id?.trim();
+    if (!sampleId) return true;
+    if (seen.has(sampleId)) return false;
+    seen.add(sampleId);
+    return true;
+  });
 }
 
 function buildDraftTemplate(
@@ -261,9 +524,10 @@ function buildReviewChecklist(
   videoType: string,
   existingPack: ProductionMaterialPack | undefined,
   observations: SourceObservation[],
+  sourceDomain: string | undefined,
 ): string[] {
   return [
-    `确认所有来源只适用于 ${videoType}，不要跨类型套用爆款方法。`,
+    `确认所有来源只适用于 ${videoType}${sourceDomain ? ` / ${sourceDomain}` : ''}，不要跨类型或跨领域套用爆款方法。`,
     `至少补足 3 个来源后再写入正式 ProductionMaterialPack；当前 ${observations.length} 个。`,
     '人工审查 required_fields 是否能驱动 minimum_viable_story、script_ready、production_ready 三阶段 gate。',
     '补 10 条高质量 sample_entries，每条包含 source_status、core_story_engine、must_collect、visual_assets、risk_boundary。',
@@ -275,11 +539,32 @@ function buildReviewChecklist(
 function buildWarnings(
   existingPack: ProductionMaterialPack | undefined,
   observations: SourceObservation[],
+  sourceDomain: string | undefined,
+  excludedObservationCount: number,
+  duplicateSourceObservationCount: number,
+  invalidSourceObservationCount: number,
+  excludedSampleEntryCount: number,
+  duplicateSampleEntryCount: number,
 ): string[] {
   const warnings: string[] = [];
   if (observations.length < 3) warnings.push('外部来源少于 3 个，只能作为草案，不能直接写入正式包。');
   if (existingPack) warnings.push('目标 video_type 已有正式 ProductionMaterialPack，建议走增量审稿。');
   if (observations.some(item => (item.limitations ?? []).length > 0)) warnings.push('部分来源有 limitations，写入正式模板前需人工复核。');
+  if (sourceDomain && excludedObservationCount > 0) {
+    warnings.push(`已排除 ${excludedObservationCount} 个不适用于 ${sourceDomain} 的来源观察。`);
+  }
+  if (sourceDomain && excludedSampleEntryCount > 0) {
+    warnings.push(`已排除 ${excludedSampleEntryCount} 个不适用于 ${sourceDomain} 的样例条目。`);
+  }
+  if (duplicateSourceObservationCount > 0) {
+    warnings.push(`已忽略 ${duplicateSourceObservationCount} 个重复 source_id 的来源观察，审稿就绪按唯一来源计数。`);
+  }
+  if (invalidSourceObservationCount > 0) {
+    warnings.push(`已忽略 ${invalidSourceObservationCount} 个缺少有效 source_id 的来源观察。`);
+  }
+  if (duplicateSampleEntryCount > 0) {
+    warnings.push(`已忽略 ${duplicateSampleEntryCount} 个重复 sample_id 的样例条目。`);
+  }
   return warnings;
 }
 
@@ -289,7 +574,13 @@ function buildMarkdown(report: Omit<ProductionMaterialPackDraftReport, 'markdown
     '',
     `- 生成时间：${report.generated_at}`,
     `- 状态：${report.status}`,
+    ...(report.source_domain ? [`- 来源领域：${report.source_domain}`] : []),
     `- 来源数：${report.source_count}`,
+    `- 排除来源数：${report.excluded_observation_count}`,
+    `- 重复来源观察数：${report.duplicate_source_observation_count}`,
+    `- 非法来源观察数：${report.invalid_source_observation_count}`,
+    `- 排除样例数：${report.excluded_sample_entry_count}`,
+    `- 重复样例数：${report.duplicate_sample_entry_count}`,
     `- 来源ID：${report.source_ids.join('、') || '无'}`,
     '',
     '## 草案包',
@@ -317,12 +608,23 @@ function buildMarkdown(report: Omit<ProductionMaterialPackDraftReport, 'markdown
     '### Supplement Questions',
     ...report.draft_pack.material_template.supplement_questions.map(item => `- ${item}`),
     '',
+    '### Sample Entries',
+    ...(report.draft_pack.sample_entries.length > 0
+      ? report.draft_pack.sample_entries.map(sample => {
+          const domains = sample.applicable_source_domains?.join('、') || 'legacy/china_culture';
+          return `- ${sample.entry_name || sample.sample_id || '未命名样例'}（适用领域：${domains}）`;
+        })
+      : ['- 暂无样例；进入正式包前需补充并标注适用领域。']),
+    '',
     '## 来源摘录',
     ...report.matched_observations.flatMap(observation => [
       '',
       `### ${observation.source_id}`,
       `- 类型：${observation.source_type ?? 'unknown'}`,
       `- 标题：${observation.title ?? '未记录'}`,
+      ...((observation.applies_to_source_domains ?? []).length
+        ? [`- 适用领域：${observation.applies_to_source_domains!.join('、')}`]
+        : []),
       ...(observation.url ? [`- URL：${observation.url}`] : []),
       ...((observation.usable_takeaways ?? []).slice(0, 5).map(item => `- ${item}`)),
     ]),

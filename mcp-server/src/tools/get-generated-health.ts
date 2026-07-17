@@ -45,6 +45,9 @@ export interface StoryAgentGeneratedHealthItem {
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
   final_delivery_ready?: boolean;
+  final_delivery_manifest_ready?: boolean;
+  final_delivery_manifest_missing?: boolean;
+  final_delivery_dry_run?: boolean;
 }
 
 export interface StoryAgentGeneratedHealthReport {
@@ -65,6 +68,7 @@ export interface StoryAgentGeneratedHealthReport {
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
     series_missing_postproduction_count: number;
+    series_missing_final_delivery_manifest_count: number;
     series_ready_count?: number;
     series_planned_only_count?: number;
     series_production_gap_count?: number;
@@ -231,6 +235,10 @@ async function storyHealth(input: { dir: string; id: string; record: JsonRecord 
   const missing = new Set<string>();
   if (!currentVersionId || !currentVersion) missing.add('current_version');
   if (!currentStoryId || !Object.keys(story).length) missing.add('current_story');
+  const versionStoryId = asString(story.storyId);
+  if (currentStoryId && versionStoryId && versionStoryId !== currentStoryId) {
+    missing.add('current_story');
+  }
   if (Object.keys(story).length && sceneCount === 0) missing.add('scene_breakdown');
   if (Object.keys(story).length && gearsSegmentCount === 0) missing.add('gears_segments');
   if (Object.keys(story).length && !Object.keys(quality).length) missing.add('quality_report');
@@ -255,8 +263,11 @@ async function storyHealth(input: { dir: string; id: string; record: JsonRecord 
       `versions=${versions.length}`,
       currentVersionId ? `current_version_id=${currentVersionId}` : 'current_version_id=missing',
       currentStoryId ? `current_story_id=${currentStoryId}` : 'current_story_id=missing',
+      currentStoryId && versionStoryId && versionStoryId !== currentStoryId
+        ? `current_story_id=${currentStoryId} but version storyId=${versionStoryId}`
+        : '',
       Object.keys(story).length ? `scenes=${sceneCount}, gears_segments=${gearsSegmentCount}` : 'story=missing',
-    ],
+    ].filter(Boolean),
     recommended_actions: status === 'interrupted'
       ? ['修复 current_version/current_story 引用，或重建当前版本快照。']
       : ['补齐 Story Agent 质量、GEARS delivery 或 Production Board 合同。'],
@@ -318,14 +329,18 @@ function seriesHealth(
   const hasGearsJobLedger = isRecord(input.record.gears_job_ledger);
   const cutReady = ledgerUsable(cut) && hasOutput(cut, ['output_path', 'concat_list_path']);
   const subtitleReady = ledgerUsable(subtitle) && hasOutput(subtitle, ['output_path', 'srt_path']);
-  const finalDeliveryReady = ledgerUsable(finalDelivery) && hasOutput(finalDelivery, ['output_path', 'manifest_path']);
+  const finalDeliveryOutputDeclared = ledgerUsable(finalDelivery) && hasOutput(finalDelivery, ['output_path']);
+  const finalDeliveryManifestReady = ledgerUsable(finalDelivery) && hasOutput(finalDelivery, ['manifest_path']);
+  const finalDeliveryReady = finalDeliveryOutputDeclared && finalDeliveryManifestReady;
+  const finalDeliveryManifestMissing = finalDeliveryOutputDeclared && !finalDeliveryManifestReady;
+  const finalDeliveryDryRun = finalDelivery.dry_run === true;
   const contractEvidence = [
     productionItems.length > 0 ? 'seedance_production' : '',
     hasGearsJobLedger ? 'gears_job_ledger' : '',
     thumbnailReadyCount > 0 ? 'thumbnails' : '',
     cutReady ? 'cut_assembly' : '',
     subtitleReady ? 'subtitle_render' : '',
-    finalDeliveryReady ? 'final_delivery' : '',
+    finalDeliveryReady ? 'final_delivery' : finalDeliveryOutputDeclared ? 'final_delivery_plan' : '',
   ].filter(Boolean);
   const relinkCandidate = missingEpisodeStoryIdCount > 0 && contractEvidence.length > 0;
   const missing = new Set<string>();
@@ -336,7 +351,8 @@ function seriesHealth(
   if (readyProductionItems.length > 0 && thumbnailReadyCount < readyProductionItems.length) missing.add('thumbnails');
   if (readyProductionItems.length > 0 && !cutReady) missing.add('cut_assembly');
   if (cutReady && !subtitleReady) missing.add('subtitles');
-  if (cutReady && !finalDeliveryReady) missing.add('final_delivery');
+  if (cutReady && finalDeliveryManifestMissing) missing.add('final_delivery_manifest');
+  else if (cutReady && !finalDeliveryReady) missing.add('final_delivery');
   if (generatedEpisodeCount > 0 && !hasGearsJobLedger && productionItems.length === 0) missing.add('series_delivery');
   const status: HealthStatus = generatedEpisodeCount === 0 && storyIds.length === 0
     ? 'planned'
@@ -360,7 +376,7 @@ function seriesHealth(
       `production_items=${productionItems.length}`,
       `failed_production_items=${failedProductionItems.length}, test_fixture_failures=${testFixtureFailureItems.length}`,
       `contract_evidence=${contractEvidence.join(',') || 'none'}`,
-      `cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}`,
+      `cut_ready=${cutReady}, subtitle_ready=${subtitleReady}, final_delivery_ready=${finalDeliveryReady}, final_delivery_manifest_ready=${finalDeliveryManifestReady}, final_delivery_dry_run=${finalDeliveryDryRun}`,
       `signoff_eligible=${!signoffExcluded}`,
     ],
     recommended_actions: signoffExcluded
@@ -370,7 +386,9 @@ function seriesHealth(
         ]
       : status === 'planned'
         ? ['生成第一集分集故事，再导出 GEARS delivery 与系列生产指挥包。']
-        : ['补齐系列 GEARS delivery、镜头生产账本或后期生产指令包。'],
+        : missing.has('final_delivery_manifest')
+          ? ['重跑 final delivery dry-run/导出以生成 manifest；concat.txt 只是装配计划，不得作为可发布交付。']
+          : ['补齐系列 GEARS delivery、镜头生产账本或后期生产指令包。'],
     episode_count: episodeCount,
     generated_episode_count: generatedEpisodeCount,
     generated_episode_story_id_count: storyIds.length,
@@ -388,6 +406,9 @@ function seriesHealth(
     subtitle_ready: subtitleReady,
     thumbnail_ready_count: thumbnailReadyCount,
     final_delivery_ready: finalDeliveryReady,
+    final_delivery_manifest_ready: finalDeliveryManifestReady,
+    final_delivery_manifest_missing: finalDeliveryManifestMissing,
+    final_delivery_dry_run: finalDeliveryDryRun,
   };
 }
 
@@ -423,6 +444,7 @@ function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>
     `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
     `- series_seedance_test_fixture_failure_projects: ${report.summary.series_seedance_test_fixture_failure_project_count ?? 0}`,
     `- series_seedance_test_fixture_failure_items: ${report.summary.series_seedance_test_fixture_failure_item_count ?? 0}`,
+    `- series_missing_final_delivery_manifest: ${report.summary.series_missing_final_delivery_manifest_count}`,
     '',
     '## Priority Items',
     '',
@@ -495,8 +517,13 @@ export async function getStoryAgentGeneratedHealth(
       missing_episode_story_id_count: seriesItems.reduce((sum, item) => sum + (item.missing_episode_story_id_count ?? 0), 0),
       series_missing_delivery_count: countMissing(allItems, 'series_delivery', 'ai_comic_series_project')
         + countMissing(allItems, 'shot_production_ledger', 'ai_comic_series_project'),
-      series_missing_postproduction_count: ['cut_assembly', 'subtitles', 'thumbnails', 'final_delivery']
+      series_missing_postproduction_count: ['cut_assembly', 'subtitles', 'thumbnails', 'final_delivery', 'final_delivery_manifest']
         .reduce((sum, contract) => sum + countMissing(allItems, contract, 'ai_comic_series_project'), 0),
+      series_missing_final_delivery_manifest_count: countMissing(
+        allItems,
+        'final_delivery_manifest',
+        'ai_comic_series_project',
+      ),
       series_ready_count: countSeriesStatus('ready'),
       series_planned_only_count: seriesPlannedOnlyCount,
       series_production_gap_count: seriesProductionGapCount,
@@ -525,6 +552,9 @@ export async function getStoryAgentGeneratedHealth(
         : '',
       seriesRelinkCandidateCount > 0
         ? `Series relink candidates: ${seriesRelinkCandidateCount} interrupted series already have production or postproduction contract evidence; restore missing episode story JSON or update refs before judging GEARS readiness.`
+        : '',
+      countMissing(allItems, 'final_delivery_manifest', 'ai_comic_series_project') > 0
+        ? `Final delivery manifest integrity: ${countMissing(allItems, 'final_delivery_manifest', 'ai_comic_series_project')} series have an output/concat plan but no manifest; concat.txt alone is not publishable delivery evidence.`
         : '',
       seriesSeedanceFailedItemCount > 0 && seriesSeedanceFailedItemCount === seriesSeedanceTestFixtureFailureItemCount
         ? `Seedance failures: all ${seriesSeedanceFailedItemCount} failed production items are explicitly test-marked fixtures; exclude them from real delivery failure counts.`

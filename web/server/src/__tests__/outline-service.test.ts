@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import { getStory } from '../services/story-service.js';
+import { getProject } from '../services/project-service.js';
 import {
   addAiComicSeriesSeedanceReview,
   archiveAiComicSeriesProject,
@@ -62,6 +63,25 @@ const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
 const ORIGINAL_GEARS_API_BASE_URL = process.env.GEARS_API_BASE_URL;
 const ORIGINAL_GEARS_API_TOKEN = process.env.GEARS_API_TOKEN;
 let testWorkspaceRoot = '';
+
+function gearsExecutionWorkerCapabilityResponse(): Response {
+  return new Response(JSON.stringify({
+    schema_version: 'gears-execution-worker-capabilities/v1',
+    service: 'gears-execution-worker',
+    execution_worker_supported: true,
+    workbench_import_supported: false,
+    bearer_auth_required: true,
+    idempotent_submit: true,
+    status_poll_supported: true,
+    callback_delivery_supported: true,
+    supported_job_types: ['seedance_video'],
+    endpoints: {
+      capabilities: { method: 'GET', path: '/gears/capabilities' },
+      submit: { method: 'POST', path: '/gears/jobs' },
+      job_status: { method: 'GET', path: '/gears/jobs/{gears_job_id}' },
+    },
+  }));
+}
 
 function outlineKbRoot(): string {
   return testWorkspaceRoot
@@ -351,14 +371,28 @@ describe('outline-service', () => {
     });
 
     expect(planRes.ok).toBe(true);
+    const accessControl = {
+      schema_version: 'story-agent-product-resource-ownership/v1' as const,
+      organization_id: 'outline-test-organization',
+      owner_actor_id: 'outline-test-owner',
+      member_actor_ids: ['outline-test-member'],
+    };
     const res = await generateAiComicEpisodeFromPlan({
       series_plan: planRes.data!,
       episode_no: 2,
       output_gears_segments: false,
       auto_repair_episode: true,
-    });
+    }, { access_control: accessControl });
 
     expect(res.ok).toBe(true);
+    expect(res.data?.sourceDomain).toBe('china_culture');
+    expect(res.data?.domain_safety).toMatchObject({
+      domain: 'china_culture',
+      passed: true,
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
     expect(res.data?.video_type).toBe('ai_comic_drama');
     expect(res.data?.presentation_style).toBe('ai_comic');
     expect(res.data?.title).toMatch(/^第2集：/);
@@ -396,6 +430,11 @@ describe('outline-service', () => {
     expect(res.data?.ai_comic_episode_blueprint?.episode_no).toBe(2);
     expect(res.data?.ai_comic_episode_quality?.schema_version).toBe('ai-comic-episode-quality/v1');
     expect(res.data?.continuity_audit?.schema_version).toBe('ai-comic-continuity-audit/v1');
+    const projectRes = await getProject(res.data!.project_id!);
+    expect(projectRes.ok).toBe(true);
+    expect(projectRes.data?.project.access_control).toEqual(accessControl);
+    expect(projectRes.data?.current_story.full_text).toBe(res.data?.full_text);
+    expect(projectRes.data?.current_story.domain_safety).toEqual(res.data?.domain_safety);
   });
 
   it('keeps adjacent AI comic episodes distinct and audience-facing after ledger generation', async () => {
@@ -410,7 +449,16 @@ describe('outline-service', () => {
     });
 
     expect(planRes.ok).toBe(true);
-    const saved = await saveAiComicSeriesProject({ plan: planRes.data! });
+    const seriesAccessControl = {
+      schema_version: 'story-agent-product-resource-ownership/v1' as const,
+      organization_id: 'series-test-organization',
+      owner_actor_id: 'series-test-owner',
+      member_actor_ids: ['series-test-member'],
+    };
+    const saved = await saveAiComicSeriesProject(
+      { plan: planRes.data! },
+      { access_control: seriesAccessControl },
+    );
     expect(saved.ok).toBe(true);
     const seriesProjectId = saved.data!.project.series_project_id;
 
@@ -431,6 +479,8 @@ describe('outline-service', () => {
 
     expect(episodeOne.ok).toBe(true);
     expect(episodeTwo.ok).toBe(true);
+    const episodeOneProject = await getProject(episodeOne.data!.project_id!);
+    expect(episodeOneProject.data?.project.access_control).toEqual(seriesAccessControl);
     expect(episodeOne.data?.title).toMatch(/^第1集：/);
     expect(episodeOne.data?.title).not.toMatch(/^第1集：第1集：/);
     expect(episodeOne.data?.title).not.toContain('主角');
@@ -1525,6 +1575,11 @@ describe('outline-service', () => {
     expect(failedUpdateRes.ok).toBe(true);
 
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (String(_url).endsWith('/gears/capabilities')) {
+        expect(init?.method).toBe('GET');
+        expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
+        return gearsExecutionWorkerCapabilityResponse();
+      }
       expect(String(_url)).toBe('https://gears.example.test/api-root/gears/jobs');
       expect(init?.method).toBe('POST');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
@@ -1598,7 +1653,7 @@ describe('outline-service', () => {
       note: '系列 GEARS retry payload smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(submitRes.ok).toBe(true);
     expect(submitRes.data).toMatchObject({
       job_type: 'seedance_video',
@@ -1679,6 +1734,7 @@ describe('outline-service', () => {
       const url = String(_url);
       expect(init?.method).toBe('GET');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
+      if (url.endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       if (url === `https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(failedJob.gears_job_id)}`) {
         return new Response('temporary GEARS outage', { status: 503 });
       }
@@ -1708,7 +1764,7 @@ describe('outline-service', () => {
       note: 'GEARS series sync smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(syncRes.ok).toBe(true);
     expect(syncRes.data).toMatchObject({
       schema_version: 'ai-comic-series-gears-job-sync-result/v1',
@@ -1764,7 +1820,7 @@ describe('outline-service', () => {
       include_completed: true,
       note: 'GEARS series sync smoke',
     });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(duplicateSyncRes.ok).toBe(true);
     expect(duplicateSyncRes.data).toMatchObject({
       schema_version: 'ai-comic-series-gears-job-sync-result/v1',
@@ -1823,6 +1879,7 @@ describe('outline-service', () => {
     const job = submitRes.data!.submitted_jobs[0]!;
 
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (String(_url).endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
       expect(init?.method).toBe('GET');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer series-gears-token');
@@ -1843,7 +1900,7 @@ describe('outline-service', () => {
       note: 'GEARS series failed status sync smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(syncRes.ok).toBe(true);
     expect(syncRes.data).toMatchObject({
       schema_version: 'ai-comic-series-gears-job-sync-result/v1',
@@ -1912,6 +1969,7 @@ describe('outline-service', () => {
     const job = submitRes.data!.submitted_jobs[0]!;
 
     const fetchMock = vi.fn(async (_url: string | URL | Request) => {
+      if (String(_url).endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
       return new Response(JSON.stringify({
         jobId: job.gears_job_id,

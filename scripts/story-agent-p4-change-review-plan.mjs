@@ -184,7 +184,17 @@ function classify(path) {
     lower.includes("web/server/src/services/product-resource-access") ||
     lower === "web/server/src/services/gears-webhook-service.ts" ||
     lower === "web/server/src/services/gears-execution-service.ts" ||
+    lower === "web/server/src/services/gears-workbench-audit-service.ts" ||
+    lower === "web/server/src/services/gears-workbench-connector.ts" ||
+    lower === "web/server/src/services/story-domain-safety-migration-service.ts" ||
+    lower === "web/server/src/services/story-project-file-to-sqlite-migration-service.ts" ||
+    lower === "web/server/src/services/story-storage-legacy-disposition-service.ts" ||
+    lower === "web/server/src/services/production-readiness-portfolio-service.ts" ||
+    lower === "web/server/src/services/production-readiness-automation.ts" ||
+    lower === "web/server/src/services/production-material-pack-service.ts" ||
+    lower === "web/server/src/services/production-material-readiness-service.ts" ||
     lower === "web/server/src/services/story-agent-mvp-status-service.ts" ||
+    lower === "web/server/src/services/seedance-prompt-service.ts" ||
     lower === "web/server/src/services/entry-service.ts" ||
     lower === "web/server/src/services/mcp-proxy.ts" ||
     lower === "web/server/src/services/story-service.ts" ||
@@ -217,8 +227,10 @@ function classify(path) {
   if (
     lower.startsWith("data/provinces/") ||
     lower.startsWith("data/production-cards/") ||
+    lower.startsWith("data/production-packs/") ||
     lower.startsWith("docs/production-cards/") ||
     lower.startsWith("docs/") ||
+    lower === "开发文档/installed-ai-tools.md" ||
     lower.startsWith("output/")
   ) {
     return { batch: "production_docs", reason: "Knowledge entry, production card, implementation document, blueprint, or review capture" };
@@ -226,6 +238,7 @@ function classify(path) {
 
   if (
     lower === ".gitignore" ||
+    lower.startsWith(".codex/skills/superpowers-lite/") ||
     lower.startsWith("mcp-server/") ||
     lower.startsWith(".github/workflows/") ||
     lower.startsWith("data/domain-packs/") ||
@@ -239,7 +252,7 @@ function classify(path) {
     lower.includes("gears-delivery") ||
     lower.includes("domain-pack")
   ) {
-    return { batch: "governance", reason: "Governance, MCP, report, manifest, domain pack, or maintenance script" };
+    return { batch: "governance", reason: "Governance, project workflow skill, MCP, report, manifest, domain pack, or maintenance script" };
   }
 
   return { batch: "hold", reason: "No deterministic P4 ownership rule; manual assignment required" };

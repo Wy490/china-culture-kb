@@ -1,9 +1,14 @@
 {
   "schema_version": "production-material-pack-draft/v1",
-  "generated_at": "2026-07-01T16:33:48.697Z",
+  "generated_at": "2026-07-17T07:33:15.671Z",
   "status": "ready_for_editor_review",
   "video_type": "ai_comic_drama",
   "source_count": 4,
+  "excluded_observation_count": 0,
+  "duplicate_source_observation_count": 0,
+  "invalid_source_observation_count": 0,
+  "excluded_sample_entry_count": 0,
+  "duplicate_sample_entry_count": 0,
   "source_ids": [
     "bilibili-BV1xuVC6AEbg",
     "seedance-v2-paper",
@@ -17,31 +22,12 @@
       "applies_to_video_types": [
         "ai_comic_drama"
       ],
-      "bvid": "BV1xuVC6AEbg",
-      "url": "https://www.bilibili.com/video/BV1xuVC6AEbg/",
-      "title": "今天把我关于《丧尸清道夫》的创作思路分享给大家，如果能帮到你，我会很开心。",
-      "creator": "Mx-Shell",
-      "observed_stats": {
-        "view": 1670585,
-        "favorite": 100546,
-        "coin": 39049,
-        "share": 15319,
-        "like": 95192,
-        "his_rank": 16
-      },
-      "duration_seconds": 2573,
-      "confirmed_chapters": [
-        "引言",
-        "提示词分析",
-        "提示词-基础设定",
-        "提示词-氛围与画质",
-        "提示词-画面内容",
-        "视频生成",
-        "功能讲解",
-        "效果演示-单镜头",
-        "效果演示-多分镜",
-        "结尾"
+      "applies_to_source_domains": [
+        "china_culture",
+        "original_fiction"
       ],
+      "title": "今天把我关于《丧尸清道夫》的创作思路分享给大家，如果能帮到你，我会很开心。",
+      "url": "https://www.bilibili.com/video/BV1xuVC6AEbg/",
       "usable_takeaways": [
         "AI漫剧生产包需要把提示词拆成基础设定、氛围画质、画面内容三层，而不是只写剧情梗概。",
         "先用单镜头验证角色、世界观、画质和镜头语法，再进入多分镜连续性测试。",
@@ -60,8 +46,12 @@
       "applies_to_video_types": [
         "ai_comic_drama"
       ],
-      "url": "https://arxiv.org/abs/2604.14148",
+      "applies_to_source_domains": [
+        "china_culture",
+        "original_fiction"
+      ],
       "title": "Seedance 2.0: Advancing Video Generation for World Complexity",
+      "url": "https://arxiv.org/abs/2604.14148",
       "usable_takeaways": [
         "AI视频生产模板要同时考虑文本、图片、音频、视频等多模态输入，而不是只写文字提示词。",
         "短剧模板应拆出参考图、关键帧、镜头运动、声音/对白和连续性验收项。",
@@ -74,8 +64,12 @@
       "applies_to_video_types": [
         "ai_comic_drama"
       ],
-      "url": "https://arxiv.org/abs/2412.02259",
+      "applies_to_source_domains": [
+        "china_culture",
+        "original_fiction"
+      ],
       "title": "Video-of-Thought: Step-by-Step Video Reasoning from Perception to Cognition",
+      "url": "https://arxiv.org/abs/2412.02259",
       "usable_takeaways": [
         "AI漫剧模板应把脚本拆成可验证步骤：角色/场景感知、动作推理、镜头组织和结果检查。",
         "多分镜生成不应只看单格质量，还要检查场景间因果和视觉连续性。",
@@ -88,8 +82,12 @@
       "applies_to_video_types": [
         "ai_comic_drama"
       ],
-      "url": "https://arxiv.org/abs/2412.07750",
+      "applies_to_source_domains": [
+        "china_culture",
+        "original_fiction"
+      ],
       "title": "Motion by Queries: Identity-Motion Trade-offs in Text-to-Video Generation",
+      "url": "https://arxiv.org/abs/2412.07750",
       "usable_takeaways": [
         "AI漫剧模板需要显式记录角色身份锚点和运动要求，避免动作增强导致角色跳变。",
         "镜头提示词应把身份、动作、场景和风格分层，而不是混成一段。",
@@ -100,7 +98,7 @@
   "draft_pack": {
     "video_type": "ai_comic_drama",
     "label": "AI漫剧",
-    "goal": "把文化材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
+    "goal": "把故事材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
     "material_template": {
       "required_fields": [
         "episode_hook",
@@ -163,7 +161,7 @@
         "角色设定卡、场景设定卡、道具卡和镜头提示词已分开",
         "单镜头测试和多分镜测试各有验收点",
         "角色身份、运动方向、视线方向、道具位置和镜头转场都有连续性检查",
-        "真实人物/机构/历史素材的虚构边界已写清",
+        "真实人物/机构/历史素材或其他现实引用的虚构/权利边界已写清",
         "角色/讲述者、场景、道具/图像、声音和字幕关键词已列清",
         "可区分实拍、档案、示意、再现和 AI 生成画面",
         "禁用表达、授权边界和核验责任已标明",
@@ -189,6 +187,9 @@
     "sample_entries": [
       {
         "sample_id": "comic-01",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "周敦颐拒签冤案——案卷压到灯下",
         "source_status": "existing_material_adaptation",
         "episode_hook": "第一格：一只手把判词按在油灯下，差役低声逼签。",
@@ -209,6 +210,9 @@
       },
       {
         "sample_id": "comic-02",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "柳毅传书——井口传来的求救声",
         "source_status": "legend_adaptation_with_boundary",
         "episode_hook": "第一格：雨夜井口泛出幽蓝水光，龙女的信从水面浮起。",
@@ -229,6 +233,9 @@
       },
       {
         "sample_id": "comic-03",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "屈原投江前夜——江风里的最后一问",
         "source_status": "historical_legend_adaptation",
         "episode_hook": "第一格：汨罗江边，衣袖被风吹起，远处船火像退去的国都。",
@@ -249,6 +256,9 @@
       },
       {
         "sample_id": "comic-04",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "贾谊长沙井边——少年太傅的孤独辩论",
         "source_status": "existing_or_candidate_material_adaptation",
         "episode_hook": "第一格：井水倒映出朝堂影子，年轻人握紧竹简。",
@@ -269,6 +279,9 @@
       },
       {
         "sample_id": "comic-05",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "岳麓书院夜读——一块匾额下的争论",
         "source_status": "fictionalized_scene_inspired_by_site",
         "episode_hook": "第一格：夜里书院门额被雷光照亮，两个学生争抢一卷旧书。",
@@ -289,6 +302,9 @@
       },
       {
         "sample_id": "comic-06",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "刘海砍樵——山路上多出来的脚印",
         "source_status": "folk_legend_adaptation",
         "episode_hook": "第一格：斧头刚落，雪地里出现一串不是人的脚印。",
@@ -309,6 +325,9 @@
       },
       {
         "sample_id": "comic-07",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "月岩悟道——洞口漏下来的月光",
         "source_status": "legendary_scene_with_source_boundary",
         "episode_hook": "第一格：天然岩洞中，月光落在书页上，字忽然像水一样流动。",
@@ -329,6 +348,9 @@
       },
       {
         "sample_id": "comic-08",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "湘妃竹传说——竹节上的泪痕",
         "source_status": "legend_adaptation_with_boundary",
         "episode_hook": "第一格：竹林深处，一滴泪落下，竹节浮出斑痕。",
@@ -349,6 +371,9 @@
       },
       {
         "sample_id": "comic-09",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "苗族赶秋少年篇——秋千飞过鼓声",
         "source_status": "folk_activity_youth_drama",
         "episode_hook": "第一格：少年在秋千最高点看见人群外有一件失落银饰。",
@@ -369,6 +394,9 @@
       },
       {
         "sample_id": "comic-10",
+        "applicable_source_domains": [
+          "china_culture"
+        ],
         "entry_name": "滩头年画夜市——画里的人眨了一下眼",
         "source_status": "fictional_original_inspired_by_heritage",
         "episode_hook": "第一格：夜市收摊时，年画门神突然眨眼。",
@@ -386,11 +414,80 @@
           "悬疑钩子"
         ],
         "ending_hook": "门神指向木版背面：那里藏着另一幅图。"
+      },
+      {
+        "sample_id": "comic-original-01",
+        "applicable_source_domains": [
+          "original_fiction"
+        ],
+        "entry_name": "零号站台——只剩一分钟的列车",
+        "source_status": "user_original_project_sample",
+        "episode_hook": "第一格：废弃站台的倒计时从00:59亮起，无人列车突然开门。",
+        "core_conflict": "修理师必须在删除乘客记忆和追查失踪姐姐之间选择，并承担被系统追捕的后果。",
+        "character_stability": [
+          "顾遥：短发修理师、橙色工具腰包",
+          "管理员：无表情制服、银色检票钳",
+          "列车：零号灯牌与冷白车门"
+        ],
+        "shot_prompt_focus": [
+          "倒计时特写",
+          "站台纵深",
+          "删除键与检票钳",
+          "表情反打",
+          "列车启动连续性"
+        ],
+        "ending_hook": "隐藏广播说出下一座站台，管理员第一次露出恐惧。"
+      },
+      {
+        "sample_id": "comic-original-02",
+        "applicable_source_domains": [
+          "original_fiction"
+        ],
+        "entry_name": "记忆修复店——顾客要求删掉真相",
+        "source_status": "user_original_project_sample",
+        "episode_hook": "第一格：一段破碎记忆从玻璃罐里伸出手，抓住修复师的袖口。",
+        "core_conflict": "修复师受雇抹去事故真相，却发现顾客正是记忆中的施害者。",
+        "character_stability": [
+          "修复师：蓝灰围裙、裂纹护目镜",
+          "顾客：黑伞、白手套",
+          "记忆罐：紫色裂光"
+        ],
+        "shot_prompt_focus": [
+          "玻璃罐微距",
+          "记忆碎片转场",
+          "手套动作",
+          "对白气泡碰撞",
+          "裂光连续"
+        ],
+        "ending_hook": "修复师锁上店门，记忆罐里传出第二名目击者的声音。"
+      },
+      {
+        "sample_id": "comic-original-03",
+        "applicable_source_domains": [
+          "original_fiction"
+        ],
+        "entry_name": "镜中城市——替身先做了选择",
+        "source_status": "user_original_project_sample",
+        "episode_hook": "第一格：镜中的主角比现实中的她早一步按下警报。",
+        "core_conflict": "主角必须证明镜中替身不是敌人，同时阻止城市把所有替身格式化。",
+        "character_stability": [
+          "主角：红围巾、左眉小痣",
+          "镜中替身：同装束但动作方向相反",
+          "巡查员：透明面罩、方形警灯"
+        ],
+        "shot_prompt_focus": [
+          "镜像构图",
+          "动作方向校验",
+          "红围巾身份锚点",
+          "警报红光",
+          "跨镜转场"
+        ],
+        "ending_hook": "镜面裂开后，现实中的主角手腕上出现了替身的编号。"
       }
     ]
   },
   "review_checklist": [
-    "确认所有来源只适用于 ai_comic_drama，不要跨类型套用爆款方法。",
+    "确认所有来源只适用于 ai_comic_drama，不要跨类型或跨领域套用爆款方法。",
     "至少补足 3 个来源后再写入正式 ProductionMaterialPack；当前 4 个。",
     "人工审查 required_fields 是否能驱动 minimum_viable_story、script_ready、production_ready 三阶段 gate。",
     "补 10 条高质量 sample_entries，每条包含 source_status、core_story_engine、must_collect、visual_assets、risk_boundary。",

@@ -25,6 +25,7 @@ import { updateProjectVersion } from './tools/update-project-version.js';
 import { getProductionReadiness } from './tools/get-production-readiness.js';
 import { getProductionReadinessPortfolio } from './tools/get-production-readiness-portfolio.js';
 import { draftProductionMaterialPack } from './tools/draft-production-material-pack.js';
+import { parseProductionMaterialSourceObservationsJson } from './lib/production-material-source-observations.js';
 import {
   getStoryAgentGeneratedGovernancePlan,
   runStoryAgentGeneratedGovernance,
@@ -450,7 +451,7 @@ server.tool(
 // kb_get_project_context — retrieve Story Agent project metadata, current story, versions, and optional exports
 server.tool(
   'kb_get_project_context',
-  '读取 Story Agent 故事项目上下文（项目元数据、当前故事、版本摘要，可选完整版本快照和导出列表）。只读，不修改项目文件。',
+  '读取 Story Agent 故事项目上下文（项目元数据、当前故事、版本摘要，可选完整版本快照和导出列表）。统一返回 Project source_domain 与 Story sourceDomain；旧快照只读补齐，领域冲突、版本文件身份冲突或 current_version_id 对应快照缺失时拒绝返回，不修改项目文件。',
   {
     project_id: z.string().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
     include_versions: z.boolean().optional().describe('是否返回完整版本快照，默认 false'),
@@ -473,7 +474,7 @@ server.tool(
 // kb_get_production_readiness — read production command readiness for project or series
 server.tool(
   'kb_get_production_readiness',
-  '读取单故事项目或 AI 漫剧系列项目的生产 readiness 指挥报告。只读，汇总质量、交付、GEARS 账本、审片返修和下一步动作。',
+  '读取单故事项目或 AI 漫剧系列项目的生产 readiness 指挥报告。只读，汇总质量、交付、GEARS 账本、审片返修和下一步动作；故事项目 current_version_id 缺少对应快照时拒绝返回，不回退历史版本。',
   {
     project_id: z.string().optional().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
     series_project_id: z.string().optional().describe('AI 漫剧系列项目 ID，例如 20260619-series-r0v5zyag'),
@@ -499,16 +500,18 @@ server.tool(
   '为指定 video_type 生成生产素材模板草案。只读正式 packs，可额外传入 JSON 来源观察；返回候选 ProductionMaterialPack、审稿清单和警告，不自动写入正式模板。',
   {
     videoType: z.string().describe('目标成片类型，例如 social_short、explainer_video、ai_comic_drama'),
+    sourceDomain: z.string().min(1).optional().describe('可选来源领域；传入后只使用适用于该领域的来源和样例，历史无标签内容仅归 china_culture'),
     label: z.string().optional().describe('可选模板标签'),
     goal: z.string().optional().describe('可选模板目标'),
     sourceObservations: z.string().optional().describe('可选 JSON 数组，元素包含 source_id、applies_to_video_types、usable_takeaways 等字段'),
   },
   async (input) => {
     const additionalObservations = input.sourceObservations
-      ? JSON.parse(input.sourceObservations)
+      ? parseProductionMaterialSourceObservationsJson(input.sourceObservations)
       : undefined;
     const result = await draftProductionMaterialPack({
       videoType: input.videoType,
+      sourceDomain: input.sourceDomain,
       label: input.label,
       goal: input.goal,
       additionalObservations,

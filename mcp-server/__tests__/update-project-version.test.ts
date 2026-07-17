@@ -89,7 +89,7 @@ beforeEach(() => {
     project_id: projectId,
     current_story_id: storyId,
     title: '雨夜书院',
-    source_domain: 'china_culture',
+    source_domain: 'second_domain',
     source_entry: '测试条目',
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -164,6 +164,7 @@ describe('kb_update_project_version', () => {
 
     const context = await getProjectContext({ project_id: projectId, include_versions: true });
     expect(context!.current_story.current_version_id).toBe(`${projectId}-v2`);
+    expect(context!.current_story.sourceDomain).toBe('second_domain');
     expect(context!.current_story.full_text).toContain('谁还敢重新审看');
     expect(context!.version_snapshots).toHaveLength(2);
 
@@ -199,6 +200,7 @@ describe('kb_update_project_version', () => {
     expect(snapshot.story.gears_segments).toHaveLength(1);
     expect(snapshot.story.project_id).toBe(projectId);
     expect(snapshot.story.current_version_id).toBe(`${projectId}-v2`);
+    expect(snapshot.story.sourceDomain).toBe('second_domain');
   });
 
   it('uses the next free version id when metadata is stale', async () => {
@@ -241,5 +243,12 @@ describe('kb_update_project_version', () => {
       change_type: 'quality_repair',
       snapshot_json: 'not-json',
     })).rejects.toThrow('snapshot_json 不是有效 JSON');
+
+    await expect(updateProjectVersion({
+      project_id: projectId,
+      change_type: 'quality_repair',
+      snapshot_json: JSON.stringify(baseStory({ sourceDomain: 'china_culture' })),
+    })).rejects.toThrow('snapshot_json sourceDomain（china_culture）与项目 source_domain（second_domain）不一致');
+    expect(fs.existsSync(path.join(versionsDir(), `${projectId}-v2.json`))).toBe(false);
   });
 });

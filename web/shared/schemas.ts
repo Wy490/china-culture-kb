@@ -475,6 +475,15 @@ export const StoryGenerateRequestSchema = z.object({
   { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
 
+export const StoryListQuerySchema = z.object({
+  generation_type: GenerationTypeSchema.optional(),
+  video_type: VideoTypeSchema.optional(),
+  domain: z.string().trim().regex(
+    /^[a-z][a-z0-9_]{1,63}$/,
+    'domain must be a lowercase domain identifier',
+  ).optional(),
+});
+
 export const ProfessionalTextPackageFieldSchema = z.enum([
   'creative_brief',
   'audience_promise',
@@ -1212,6 +1221,20 @@ export const GearsJobSubmitRequestSchema = z.object({
   callback_url: z.string().trim().url().optional(),
   note: z.string().trim().min(1).max(500).optional(),
 });
+
+export const GearsWorkbenchProjectImportRequestSchema = z.object({
+  idempotency_key: z.string().trim().min(8).max(200)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]+$/)
+    .optional(),
+  expected_source_version_id: z.string().trim().min(1).max(200).optional(),
+  expected_payload_sha256: z.string().trim().regex(/^[a-f0-9]{64}$/).optional(),
+  mapping: z.object({
+    character_style_pack_id: z.string().trim().min(1).max(100),
+    scene_style_pack_id: z.string().trim().min(1).max(100),
+    staging_pack_id: z.string().trim().min(1).max(100),
+    visual_pack_id: z.string().trim().min(1).max(100),
+  }).strict(),
+}).strict();
 
 export const GearsJobStatusSyncRequestSchema = z.object({
   job_type: GearsExecutionJobTypeSchema.optional(),
@@ -2532,3 +2555,33 @@ export const ProductResourceOwnershipMigrationRequestSchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['resource_id'], message: 'resource_id does not match resource_type' });
   }
 });
+
+export const StoryDomainSafetyMigrationRequestSchema = z.object({
+  schema_version: z.literal('story-domain-safety-migration-request/v1'),
+  migration_id: z.string().trim().min(8).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  project_id: z.string().trim().min(1).max(240).regex(/^[a-zA-Z0-9_-]+(?:--[a-z_]+)?$/),
+  expected_current_version_id: z.string().trim().min(1).max(280).regex(/^[a-zA-Z0-9_-]+$/),
+  expected_story_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  expected_source_domain: z.string().trim().min(1).max(80).regex(/^[a-z][a-z0-9_]*$/),
+  expected_source_entry: z.string().trim().min(1).max(300),
+  review_reference: z.string().trim().min(8).max(300),
+  operator_confirmation: z.literal('migration_scope_reviewed'),
+  dry_run: z.boolean().optional().default(true),
+}).strict().superRefine((request, context) => {
+  if (!request.expected_current_version_id.startsWith(`${request.project_id}-v`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['expected_current_version_id'],
+      message: 'expected_current_version_id must belong to project_id',
+    });
+  }
+});
+
+export const StoryProjectFileToSqliteMigrationRequestSchema = z.object({
+  schema_version: z.literal('story-project-file-to-sqlite-migration-request/v1'),
+  migration_id: z.string().trim().min(8).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  expected_source_logical_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  review_reference: z.string().trim().min(8).max(300),
+  operator_confirmation: z.literal('file_repository_snapshot_reviewed'),
+  dry_run: z.boolean().optional().default(true),
+}).strict();

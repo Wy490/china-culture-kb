@@ -8,6 +8,7 @@ import {
   rename,
   unlink,
 } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import { resolve } from 'node:path';
 import { hostname } from 'node:os';
 import type {
@@ -78,8 +79,45 @@ export interface ProjectMetaExpectation extends ProjectVersionExpectation {
   updated_at: string;
 }
 
+export interface ProjectCurrentStateInspection {
+  meta: StoryProjectMeta | null;
+  snapshot: StoryProjectVersionSnapshot | null;
+}
+
+export interface ProjectRepositoryLogicalState {
+  meta: StoryProjectMeta[];
+  versions: StoryProjectVersionSnapshot[];
+}
+
+export interface ProjectRepositoryLogicalStateInspection {
+  schema_version: 'story-agent-project-repository-logical-state/v1';
+  project_count: number;
+  version_count: number;
+  logical_sha256: string;
+  state: ProjectRepositoryLogicalState;
+  pending_transactions_recovered: false;
+  writeback_performed: false;
+}
+
+export function canonicalProjectRepositoryLogicalState(
+  state: ProjectRepositoryLogicalState,
+): ProjectRepositoryLogicalState {
+  return {
+    meta: [...state.meta].sort((left, right) => left.project_id.localeCompare(right.project_id)),
+    versions: [...state.versions].sort((left, right) => (
+      left.project_id.localeCompare(right.project_id)
+      || left.version_id.localeCompare(right.version_id)
+    )),
+  };
+}
+
+export function projectRepositoryLogicalSha256(state: ProjectRepositoryLogicalState): string {
+  return jsonSha256(canonicalProjectRepositoryLogicalState(state));
+}
+
 export interface ProjectRepository {
   listProjectIds(): Promise<string[]>;
+  inspectCurrentStateReadOnly(projectId: string): Promise<ProjectCurrentStateInspection>;
   readMeta(projectId: string): Promise<StoryProjectMeta | null>;
   readVersion(projectId: string, versionId: string): Promise<StoryProjectVersionSnapshot | null>;
   readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]>;
@@ -148,6 +186,84 @@ export class FileProjectRepository implements ProjectRepository {
     }
   }
 
+  async inspectCurrentStateReadOnly(projectId: string): Promise<ProjectCurrentStateInspection> {
+    if (!validProjectId(projectId)) return { meta: null, snapshot: null };
+    const meta = await this.readJson<StoryProjectMeta>(this.metaPath(projectId));
+    if (!meta) return { meta: null, snapshot: null };
+    if (meta.project_id !== projectId) {
+      throw new InvalidProjectRepositoryIdentifierError('Project metadata identity does not match its path');
+    }
+    this.assertVersion(projectId, meta.current_version_id);
+    const snapshot = await this.readJson<StoryProjectVersionSnapshot>(
+      this.versionPath(projectId, meta.current_version_id),
+    );
+    if (snapshot) this.assertSnapshotIdentity(projectId, meta.current_version_id, snapshot);
+    return { meta, snapshot };
+  }
+
+  async inspectLogicalStateReadOnly(): Promise<ProjectRepositoryLogicalStateInspection> {
+    const state: ProjectRepositoryLogicalState = { meta: [], versions: [] };
+    for (const projectId of await this.listProjectIds()) {
+      await this.assertNoPendingTransactionsReadOnly(projectId);
+      const meta = await this.readJson<StoryProjectMeta>(this.metaPath(projectId));
+      if (!meta || meta.project_id !== projectId) {
+        throw new InvalidProjectRepositoryIdentifierError(
+          `Project "${projectId}" metadata is missing or has the wrong identity`,
+        );
+      }
+      this.assertVersion(projectId, meta.current_version_id);
+      let entries: Dirent[];
+      try {
+        const directory = this.versionsDirectory(projectId);
+        const target = await lstat(directory);
+        if (!target.isDirectory() || target.isSymbolicLink()) throw new Error('unsafe versions directory');
+        entries = await readdir(directory, { withFileTypes: true });
+      } catch {
+        throw new InvalidProjectRepositoryIdentifierError(
+          `Project "${projectId}" versions directory is missing or unsafe`,
+        );
+      }
+      const versions: StoryProjectVersionSnapshot[] = [];
+      for (const entry of entries.filter(item => item.name.endsWith('.json')).sort((left, right) => left.name.localeCompare(right.name))) {
+        if (!entry.isFile() || entry.isSymbolicLink()) {
+          throw new InvalidProjectRepositoryIdentifierError(
+            `Unsafe project version snapshot file "${entry.name}"`,
+          );
+        }
+        const versionId = entry.name.slice(0, -'.json'.length);
+        this.assertVersion(projectId, versionId);
+        const snapshot = await this.readJson<StoryProjectVersionSnapshot>(this.versionPath(projectId, versionId));
+        if (!snapshot) {
+          throw new InvalidProjectRepositoryIdentifierError(
+            `Unreadable project version snapshot "${entry.name}"`,
+          );
+        }
+        this.assertSnapshotIdentity(projectId, versionId, snapshot);
+        versions.push(snapshot);
+      }
+      if (
+        versions.length !== meta.version_count
+        || !versions.some(version => version.version_id === meta.current_version_id)
+      ) {
+        throw new ProjectRepositoryConflictError(
+          `Project "${projectId}" logical history does not match its current metadata`,
+        );
+      }
+      state.meta.push(meta);
+      state.versions.push(...versions);
+    }
+    const canonical = canonicalProjectRepositoryLogicalState(state);
+    return {
+      schema_version: 'story-agent-project-repository-logical-state/v1',
+      project_count: canonical.meta.length,
+      version_count: canonical.versions.length,
+      logical_sha256: projectRepositoryLogicalSha256(canonical),
+      state: canonical,
+      pending_transactions_recovered: false,
+      writeback_performed: false,
+    };
+  }
+
   async readMeta(projectId: string): Promise<StoryProjectMeta | null> {
     if (!validProjectId(projectId)) return null;
     await this.recoverPendingTransactions(projectId);
@@ -157,31 +273,43 @@ export class FileProjectRepository implements ProjectRepository {
   async readVersion(projectId: string, versionId: string): Promise<StoryProjectVersionSnapshot | null> {
     if (!validProjectId(projectId) || !validVersionId(projectId, versionId)) return null;
     await this.recoverPendingTransactions(projectId);
-    return this.readJson<StoryProjectVersionSnapshot>(this.versionPath(projectId, versionId));
+    const snapshot = await this.readJson<StoryProjectVersionSnapshot>(this.versionPath(projectId, versionId));
+    if (!snapshot) return null;
+    this.assertSnapshotIdentity(projectId, versionId, snapshot);
+    return snapshot;
   }
 
   async readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]> {
     if (!validProjectId(projectId)) return [];
     await this.recoverPendingTransactions(projectId);
-    let files: string[];
+    let entries: Dirent[];
     try {
       const directory = this.versionsDirectory(projectId);
       const target = await lstat(directory);
       if (!target.isDirectory() || target.isSymbolicLink()) return [];
-      files = await readdir(directory);
+      entries = await readdir(directory, { withFileTypes: true });
     } catch {
       return [];
     }
-    const snapshots = (
-      await Promise.all(files
-        .filter(file => file.endsWith('.json'))
-        .map(file => {
-          const versionId = file.slice(0, -'.json'.length);
-          return validVersionId(projectId, versionId)
-            ? this.readJson<StoryProjectVersionSnapshot>(this.versionPath(projectId, versionId))
-            : null;
-        }))
-    ).filter((snapshot): snapshot is StoryProjectVersionSnapshot => snapshot !== null);
+    const snapshots: StoryProjectVersionSnapshot[] = [];
+    const seenVersionIds = new Set<string>();
+    for (const entry of entries.filter(item => item.name.endsWith('.json')).sort((left, right) => left.name.localeCompare(right.name))) {
+      if (!entry.isFile() || entry.isSymbolicLink()) {
+        throw new InvalidProjectRepositoryIdentifierError(`Unsafe project version snapshot file "${entry.name}"`);
+      }
+      const versionId = entry.name.slice(0, -'.json'.length);
+      this.assertVersion(projectId, versionId);
+      const snapshot = await this.readJson<StoryProjectVersionSnapshot>(this.versionPath(projectId, versionId));
+      if (!snapshot) {
+        throw new InvalidProjectRepositoryIdentifierError(`Unreadable project version snapshot "${entry.name}"`);
+      }
+      this.assertSnapshotIdentity(projectId, versionId, snapshot);
+      if (seenVersionIds.has(snapshot.version_id)) {
+        throw new InvalidProjectRepositoryIdentifierError(`Duplicate project version id "${snapshot.version_id}"`);
+      }
+      seenVersionIds.add(snapshot.version_id);
+      snapshots.push(snapshot);
+    }
     return snapshots.sort((left, right) => right.created_at.localeCompare(left.created_at));
   }
 
@@ -287,6 +415,28 @@ export class FileProjectRepository implements ProjectRepository {
     return resolve(this.projectDirectory(projectId), '.transactions');
   }
 
+  private async assertNoPendingTransactionsReadOnly(projectId: string): Promise<void> {
+    const directory = this.transactionsDirectory(projectId);
+    try {
+      const target = await lstat(directory);
+      if (!target.isDirectory() || target.isSymbolicLink()) {
+        throw new InvalidProjectRepositoryIdentifierError(
+          `Unsafe project transaction directory "${directory}"`,
+        );
+      }
+      const pending = (await readdir(directory, { withFileTypes: true }))
+        .filter(entry => entry.name.endsWith('.intent.json'));
+      if (pending.length > 0) {
+        throw new ProjectRepositoryConflictError(
+          `Project "${projectId}" has pending transactions; read-only migration inspection will not recover them`,
+        );
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw error;
+    }
+  }
+
   private transactionIntentPath(projectId: string, transactionId: string): string {
     return resolve(this.transactionsDirectory(projectId), `${transactionId}.intent.json`);
   }
@@ -315,6 +465,27 @@ export class FileProjectRepository implements ProjectRepository {
       || meta.current_version_id !== snapshot.version_id
     ) {
       throw new InvalidProjectRepositoryIdentifierError('Project metadata and snapshot identifiers do not match');
+    }
+  }
+
+  private assertSnapshotIdentity(
+    projectId: string,
+    versionId: string,
+    snapshot: StoryProjectVersionSnapshot,
+  ): void {
+    this.assertVersion(projectId, versionId);
+    if (snapshot.project_id !== projectId || snapshot.version_id !== versionId) {
+      throw new InvalidProjectRepositoryIdentifierError('Project version snapshot identifiers do not match their path');
+    }
+    if (snapshot.story === undefined) return;
+    if (!snapshot.story || typeof snapshot.story !== 'object' || Array.isArray(snapshot.story)) {
+      throw new InvalidProjectRepositoryIdentifierError('Project version snapshot story is invalid');
+    }
+    if (
+      (snapshot.story.project_id !== undefined && snapshot.story.project_id !== projectId)
+      || (snapshot.story.current_version_id !== undefined && snapshot.story.current_version_id !== versionId)
+    ) {
+      throw new InvalidProjectRepositoryIdentifierError('Project version snapshot story identifiers do not match their path');
     }
   }
 

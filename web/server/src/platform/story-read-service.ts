@@ -13,6 +13,7 @@ import {
   createProjectRepository,
   createStoryRepository,
 } from './story-storage.js';
+import { resolveStorySourceDomain } from './story-source-domain.js';
 
 function stripInternalFields(data: StoryGenerateResult): StoryGenerateResult {
   const cleaned = { ...data } as Record<string, unknown>;
@@ -24,6 +25,7 @@ function normalizeStoryForApi(
   data: StoryGenerateResult & { _request_meta?: unknown },
 ): StoryGenerateResult {
   const cleaned = stripInternalFields(data);
+  cleaned.sourceDomain = resolveStorySourceDomain(cleaned);
   cleaned.generation_mode = cleaned.generation_mode ?? 'local_only';
   cleaned.generation_used_fallback = cleaned.generation_used_fallback ?? false;
   cleaned.gears_delivery = ensureGearsDeliveryPackage(cleaned);
@@ -70,6 +72,7 @@ async function readCurrentProjectStoryForStoryId(
 export async function listStories(
   generationType?: string,
   videoType?: string,
+  sourceDomain?: string,
 ): Promise<ApiResponse<StoryListItem[]>> {
   const results: StoryListItem[] = [];
   const requestedType = videoType ?? generationType;
@@ -81,9 +84,12 @@ export async function listStories(
 
   for (const document of await createStoryRepository().list(typesToScan)) {
     const data = document.story;
+    const resolvedSourceDomain = resolveStorySourceDomain(data);
+    if (sourceDomain && resolvedSourceDomain !== sourceDomain) continue;
     const meta = data._request_meta as Record<string, unknown> | undefined;
     results.push({
       storyId: data.storyId,
+      sourceDomain: resolvedSourceDomain,
       title: data.title || '',
       generation_type: data.generation_type || document.video_type,
       video_type: data.video_type,

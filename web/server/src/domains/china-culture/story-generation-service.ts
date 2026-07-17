@@ -3,10 +3,8 @@ import type {
   ApiResponse,
   StoryGenerateRequest,
   StoryGenerateResult,
-  StoryDomainSafetyReport,
-  StoryDomainSafetyValidationInput,
 } from '@shared/types.js';
-import type { ProductResourceOwnership } from '@shared/product-access.js';
+import type { DomainStoryGenerateOptions } from '../../platform/domain-pack.js';
 import { attachBlueprintScenes } from '../../services/story-blueprint-service.js';
 import {
   persistGeneratedStoryAndNotifyGears,
@@ -21,20 +19,17 @@ import { validateChinaCultureStoryAssemblyBaseQuality } from './story-base-quali
 import { buildChinaCultureGeneratedStoryDocument } from './story-document-service.js';
 import { executeChinaCultureStoryGeneration } from './story-generation-execution-service.js';
 import { prepareChinaCultureStoryGeneration } from './story-generation-preparation-service.js';
+import { validateChinaCultureStoryContent } from './story-safety.js';
 import {
   applyChinaCultureStoryAssemblyToStoryData,
 } from './story-type-specific-fields-service.js';
 
-export interface ChinaCultureStoryGenerationOptions {
-  access_control?: ProductResourceOwnership;
-  source_domain?: string;
-  validate_story_content?: (input: StoryDomainSafetyValidationInput) => StoryDomainSafetyReport;
-}
+export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {}
 
 /**
  * Owns the complete china_culture generation workflow. The legacy story service
- * re-exports this entry point for compatibility, while Domain Pack callers bind
- * the source-domain and safety policy explicitly.
+ * re-exports this entry point for compatibility. The domain identifier and
+ * safety policy are bound here so no caller can bypass them accidentally.
  */
 export async function generateAndStoreChinaCultureStory(
   request: StoryGenerateRequest,
@@ -89,9 +84,9 @@ export async function generateAndStoreChinaCultureStory(
     materialSufficiency,
   });
   const createdAt = new Date().toISOString();
-  const storyData = buildChinaCultureGeneratedStoryDocument({
+  let storyData = buildChinaCultureGeneratedStoryDocument({
     request,
-    sourceDomain: options.source_domain,
+    sourceDomain: 'china_culture',
     storyId,
     createdAt,
     preparation,
@@ -143,16 +138,22 @@ export async function generateAndStoreChinaCultureStory(
   });
   storyResult = postGeneration.storyResult;
 
-  if (options.validate_story_content) {
-    const domainSafety = options.validate_story_content({ story: storyData, source_entry: entry });
-    storyData.domain_safety = domainSafety;
-    if (!domainSafety.passed) {
-      return fail(
-        ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED,
-        'Generated story failed the active Domain Pack safety boundary',
-        domainSafety,
-      );
-    }
+  if (options.transform_story_before_validation_and_persistence) {
+    const transformedStory = await options.transform_story_before_validation_and_persistence(storyData);
+    storyData = {
+      ...transformedStory,
+      _request_meta: storyData._request_meta,
+    };
+  }
+
+  const domainSafety = validateChinaCultureStoryContent({ story: storyData, source_entry: entry });
+  storyData.domain_safety = domainSafety;
+  if (!domainSafety.passed) {
+    return fail(
+      ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED,
+      'Generated story failed the china_culture safety boundary',
+      domainSafety,
+    );
   }
 
   const apiStory = await persistGeneratedStoryAndNotifyGears({

@@ -1,12 +1,34 @@
 {
   "schema_version": "video-type-material-supplement-packs/v1",
-  "updated_at": "2026-07-05",
+  "updated_at": "2026-07-17",
   "purpose": "Define production-ready material supplement templates and high-quality sample entries for stable output types: heritage_promo, documentary_short, explainer_video, ai_comic_drama, plus second-wave high-frequency packs for children_story, social_short, lecture_video, and education_training.",
+  "health_policy": {
+    "required_domain_sample_video_types": [
+      "ai_comic_drama",
+      "children_story",
+      "social_short"
+    ],
+    "domain_sample_minimums": {
+      "ai_comic_drama": {
+        "china_culture": 2,
+        "original_fiction": 2
+      },
+      "children_story": {
+        "china_culture": 2,
+        "original_fiction": 2
+      },
+      "social_short": {
+        "china_culture": 2,
+        "original_fiction": 2
+      }
+    }
+  },
   "source_observations": [
     {
       "source_id": "bilibili-BV1xuVC6AEbg",
       "source_type": "bilibili_video",
       "applies_to_video_types": ["ai_comic_drama"],
+      "applies_to_source_domains": ["china_culture", "original_fiction"],
       "bvid": "BV1xuVC6AEbg",
       "url": "https://www.bilibili.com/video/BV1xuVC6AEbg/",
       "title": "今天把我关于《丧尸清道夫》的创作思路分享给大家，如果能帮到你，我会很开心。",
@@ -48,6 +70,7 @@
       "source_id": "ihchina-video-resource-index",
       "source_type": "official_resource_index",
       "applies_to_video_types": ["heritage_promo", "documentary_short"],
+      "applies_to_source_domains": ["china_culture"],
       "url": "https://www.ihchina.cn/video",
       "title": "中国非物质文化遗产网·资源·影音",
       "usable_takeaways": [
@@ -60,6 +83,7 @@
       "source_id": "ihchina-xuanzhi-special",
       "source_type": "official_heritage_special",
       "applies_to_video_types": ["heritage_promo"],
+      "applies_to_source_domains": ["china_culture"],
       "url": "https://www.ihchina.cn/Article/Index/detail?id=16724",
       "title": "中国非物质文化遗产网·一纸千年 宣说非遗",
       "usable_takeaways": [
@@ -72,6 +96,7 @@
       "source_id": "documentary-techniques-reference",
       "source_type": "documentary_reference",
       "applies_to_video_types": ["documentary_short"],
+      "applies_to_source_domains": ["china_culture"],
       "url": "https://en.wikipedia.org/wiki/Documentary_film_techniques",
       "title": "Documentary film techniques",
       "usable_takeaways": [
@@ -84,6 +109,7 @@
       "source_id": "b-script-b-roll-paper",
       "source_type": "research_paper",
       "applies_to_video_types": ["documentary_short"],
+      "applies_to_source_domains": ["china_culture"],
       "url": "https://arxiv.org/abs/1902.11216",
       "title": "B-Script: Transcript-based B-roll Video Editing with Recommendations",
       "usable_takeaways": [
@@ -96,6 +122,7 @@
       "source_id": "seedance-v2-paper",
       "source_type": "research_paper",
       "applies_to_video_types": ["ai_comic_drama"],
+      "applies_to_source_domains": ["china_culture", "original_fiction"],
       "url": "https://arxiv.org/abs/2604.14148",
       "title": "Seedance 2.0: Advancing Video Generation for World Complexity",
       "usable_takeaways": [
@@ -108,6 +135,7 @@
       "source_id": "vgot-paper",
       "source_type": "research_paper",
       "applies_to_video_types": ["ai_comic_drama"],
+      "applies_to_source_domains": ["china_culture", "original_fiction"],
       "url": "https://arxiv.org/abs/2412.02259",
       "title": "Video-of-Thought: Step-by-Step Video Reasoning from Perception to Cognition",
       "usable_takeaways": [
@@ -120,6 +148,7 @@
       "source_id": "motion-by-queries-paper",
       "source_type": "research_paper",
       "applies_to_video_types": ["ai_comic_drama"],
+      "applies_to_source_domains": ["china_culture", "original_fiction"],
       "url": "https://arxiv.org/abs/2412.07750",
       "title": "Motion by Queries: Identity-Motion Trade-offs in Text-to-Video Generation",
       "usable_takeaways": [
@@ -575,7 +604,7 @@
     {
       "video_type": "children_story",
       "label": "儿童故事片",
-      "goal": "把文化素材改写成适龄、温和、有选择和复盘的儿童故事，不把童话化细节写成事实。",
+      "goal": "把故事与知识素材改写成适龄、温和、有选择和复盘的儿童故事，不把童话化或原创设定写成现实事实。",
       "material_template": {
         "required_fields": [
           "audience_age_band",
@@ -592,38 +621,39 @@
         "prompt_layers": [
           "受众分层：3-6岁、7-9岁、10-12岁的词汇、冲突和节奏分开。",
           "善意张力：用误会、任务、选择和帮助替代成人权谋或恐怖刺激。",
-          "文化符号：把节俗、器物、地点或传说意象转成儿童能看懂的行动。",
+          "故事标志物：把节俗、器物、地点、原创设定或传说意象转成儿童能看懂的行动。",
           "情绪复盘：结尾给安全感、价值选择和家长/教师延伸提示。"
         ],
         "minimum_viable_story_gate": [
           "年龄段和理解门槛明确",
           "有一个儿童能理解的问题或任务",
-          "有文化符号或可见道具锚点",
-          "知道哪些神异/传说不能写成事实"
+          "有故事标志物或可见道具锚点",
+          "知道哪些神异、传说或原创设定不能写成已确认现实事实或授权结论"
         ],
         "script_ready_gate": [
           "冲突温和但有选择压力",
           "主角每场有清楚行动",
-          "故事中至少一个例子能解释文化知识",
+          "故事中至少一个例子能解释核心主题或知识",
           "情绪收束不靠惩罚或惊吓"
         ],
         "production_ready_gate": [
           "角色、场景、道具和安全边界已列明",
           "画面避免血腥、恐怖、猎奇和成人化对白",
           "家长/教师可用的复盘句或延伸问题已准备",
-          "传说、童话化和可核事实分层"
+          "传说、童话化、原创设定与可核事实/权利边界分层"
         ],
         "supplement_questions": [
           "目标儿童年龄段是哪一档？哪些词必须换成更简单的说法？",
           "主角要完成什么小任务？中途遇到什么温和阻力？",
-          "哪个文化符号最适合变成可见道具或场景？",
-          "故事里哪些内容是传说或童话化表达，不能写成事实？",
-          "结尾如何让孩子理解选择、合作或保护文化的意义？"
+          "哪个故事标志物最适合变成可见道具或场景？",
+          "故事里哪些内容是传说、童话化或原创设定，不能写成已确认现实事实或授权结论？",
+          "结尾如何让孩子理解选择、合作或珍惜重要事物的意义？"
         ]
       },
       "sample_entries": [
         {
           "sample_id": "children-01",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "端午龙舟小鼓手",
           "source_status": "folk_custom_adaptation",
           "core_question": "为什么龙舟上要听鼓点？",
@@ -633,6 +663,7 @@
         },
         {
           "sample_id": "children-02",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "年画门神眨眼睛",
           "source_status": "fictionalized_heritage_intro",
           "core_question": "一张年画为什么要一层一层套色？",
@@ -642,19 +673,50 @@
         },
         {
           "sample_id": "children-03",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "书院里的迷路书签",
           "source_status": "site_inspired_story",
           "core_question": "书院为什么既是建筑，也是学习空间？",
           "child_safe_conflict": "孩子跟着一枚书签找讲堂、藏书和匾额，学会不乱碰展陈。",
           "visual_assets": ["书签", "讲堂", "匾额", "书架"],
           "risk_boundary": "现存建筑、历史原貌和童话向导必须分清。"
+        },
+        {
+          "sample_id": "children-original-01",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "停电夜的纸飞机队",
+          "source_status": "user_original_project_sample",
+          "core_question": "害怕黑暗时，怎样和同伴一起找到办法？",
+          "child_safe_conflict": "楼道停电后，孩子们折出标路纸飞机，却因各自抢着带路而走散，最后学会轮流观察和呼应。",
+          "visual_assets": ["纸飞机", "手电筒", "楼梯标记", "窗边月光"],
+          "risk_boundary": "这是原创童话样例；真实场所、品牌或安全操作需在项目内另行确认。"
+        },
+        {
+          "sample_id": "children-original-02",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "怕水的小机器人",
+          "source_status": "user_original_project_sample",
+          "core_question": "不会游泳的小机器人怎样把漂走的种子送回岸边？",
+          "child_safe_conflict": "机器人不敢下水，又不愿丢下种子，于是和小鸭一起搭出浮叶小船。",
+          "visual_assets": ["圆头机器人", "浮叶小船", "发光种子", "浅水池"],
+          "risk_boundary": "机器人能力和发光种子均为原创设定，不暗示真实产品功能。"
+        },
+        {
+          "sample_id": "children-original-03",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "会说谎的月亮邮筒",
+          "source_status": "user_original_project_sample",
+          "core_question": "为了不让朋友担心，可以假装自己一点也不难过吗？",
+          "child_safe_conflict": "邮筒把没说出口的话变成弯月纸条，主角必须选择继续藏起来还是向朋友求助。",
+          "visual_assets": ["月亮邮筒", "弯月纸条", "屋顶小路", "暖色窗灯"],
+          "risk_boundary": "魔法邮筒是显式童话设定；情绪表达保持温和，不替代现实心理建议。"
         }
       ]
     },
     {
       "video_type": "social_short",
       "label": "竖屏短视频",
-      "goal": "把文化素材转成前三秒问题、竖屏视觉对比、字幕节奏、评论触发和事实边界清晰的社媒短片。",
+      "goal": "把项目素材转成前三秒问题、竖屏视觉对比、字幕节奏、评论触发和内容/权利边界清晰的社媒短片。",
       "material_template": {
         "required_fields": [
           "opening_hook",
@@ -672,18 +734,18 @@
           "前三秒：问题、反差画面或误区句先出现。",
           "平台节奏：竖屏近景、字幕转折、10-15秒一次揭示。",
           "互动触发：评论投票、对比选择或下集追问。",
-          "事实边界：标题钩子不能变成未核实断言。"
+          "内容边界：标题钩子不能变成未核实事实、设定归属或授权断言。"
         ],
         "minimum_viable_story_gate": [
           "前三秒钩子清楚",
           "知道目标平台和竖屏呈现方式",
           "有一个核心问题或误区",
-          "有来源或事实边界提示"
+          "有项目来源、设定或事实/权利边界提示"
         ],
         "script_ready_gate": [
           "每个节奏点有字幕或画面转折",
           "分享触发点不靠虚假争议",
-          "来源线索、误区和事实边界已标注",
+          "项目素材线索、误区和事实/权利边界已标注",
           "结尾能引导评论或下一条"
         ],
         "production_ready_gate": [
@@ -697,12 +759,13 @@
           "这条内容适合问答、误区纠正、对比还是流程快剪？",
           "每10到15秒的字幕转折是什么？",
           "评论区想让观众回答什么问题？",
-          "标题钩子有哪些事实边界，不能写成断言？"
+          "标题钩子有哪些事实或权利边界，不能写成断言？"
         ]
       },
       "sample_entries": [
         {
           "sample_id": "social-01",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "为什么非遗不能只拍匠心",
           "source_status": "production_system_explainer_short",
           "opening_hook": "别再只写匠心了，镜头真正需要的是这三样。",
@@ -712,6 +775,7 @@
         },
         {
           "sample_id": "social-02",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "岳阳楼记作者真的到过岳阳楼吗",
           "source_status": "fact_boundary_short",
           "opening_hook": "这句名文，常被误解成一次登楼游记。",
@@ -721,12 +785,43 @@
         },
         {
           "sample_id": "social-03",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "一张年画为什么要套好几次颜色",
           "source_status": "heritage_process_short",
           "opening_hook": "一张年画不是画出来的，是一层层对准的。",
           "beat_plan": ["木版", "刷色", "套印", "成品前后对照"],
           "vertical_assets": ["木版纹理", "刷子动作", "错位/对准对比"],
           "risk_boundary": "具体工序名称、地域和年代必须回到来源。"
+        },
+        {
+          "sample_id": "social-original-01",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "同一封信的两个结局",
+          "source_status": "user_original_project_sample",
+          "opening_hook": "同一句“我没事”，为什么能剪出两个完全不同的故事？",
+          "beat_plan": ["信件特写", "前因补充", "人物选择对比", "评论投票"],
+          "vertical_assets": ["左右分屏", "关键词字幕", "两个结局定格"],
+          "risk_boundary": "这是原创剧情结构示例，不包装成真实投稿或真实人物经历。"
+        },
+        {
+          "sample_id": "social-original-02",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "她要不要按下删除键",
+          "source_status": "user_original_project_sample",
+          "opening_hook": "只剩三秒，她删掉的是文件，还是唯一的证据？",
+          "beat_plan": ["倒计时", "删除键近景", "关系反转", "下集任务"],
+          "vertical_assets": ["手机近景", "三秒倒计时", "表情反打", "选择字幕"],
+          "risk_boundary": "界面、品牌和聊天内容均需使用项目自有或已授权设计。"
+        },
+        {
+          "sample_id": "social-original-03",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "三秒看懂谁动了项目文件",
+          "source_status": "user_original_project_sample",
+          "opening_hook": "文件没丢，但最后一页多了一句没人承认写过的话。",
+          "beat_plan": ["异常句高亮", "三人反应", "时间线快切", "评论猜测"],
+          "vertical_assets": ["文档局部", "人物三连屏", "时间戳动画", "评论问题卡"],
+          "risk_boundary": "不仿冒真实办公平台、机构文件或真实泄密事件。"
         }
       ]
     },
@@ -873,7 +968,7 @@
     {
       "video_type": "ai_comic_drama",
       "label": "AI漫剧",
-      "goal": "把文化材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
+      "goal": "把故事材料转成强钩子、角色稳定、对白冲突、表情动作、分镜提示和多镜头连续性的短剧生产包。",
       "material_template": {
         "required_fields": [
           "episode_hook",
@@ -918,7 +1013,7 @@
           "角色设定卡、场景设定卡、道具卡和镜头提示词已分开",
           "单镜头测试和多分镜测试各有验收点",
           "角色身份、运动方向、视线方向、道具位置和镜头转场都有连续性检查",
-          "真实人物/机构/历史素材的虚构边界已写清"
+          "真实人物/机构/历史素材或其他现实引用的虚构/权利边界已写清"
         ],
         "supplement_questions": [
           "第一格观众看到什么会停下？",
@@ -935,6 +1030,7 @@
       "sample_entries": [
         {
           "sample_id": "comic-01",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "周敦颐拒签冤案——案卷压到灯下",
           "source_status": "existing_material_adaptation",
           "episode_hook": "第一格：一只手把判词按在油灯下，差役低声逼签。",
@@ -945,6 +1041,7 @@
         },
         {
           "sample_id": "comic-02",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "柳毅传书——井口传来的求救声",
           "source_status": "legend_adaptation_with_boundary",
           "episode_hook": "第一格：雨夜井口泛出幽蓝水光，龙女的信从水面浮起。",
@@ -955,6 +1052,7 @@
         },
         {
           "sample_id": "comic-03",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "屈原投江前夜——江风里的最后一问",
           "source_status": "historical_legend_adaptation",
           "episode_hook": "第一格：汨罗江边，衣袖被风吹起，远处船火像退去的国都。",
@@ -965,6 +1063,7 @@
         },
         {
           "sample_id": "comic-04",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "贾谊长沙井边——少年太傅的孤独辩论",
           "source_status": "existing_or_candidate_material_adaptation",
           "episode_hook": "第一格：井水倒映出朝堂影子，年轻人握紧竹简。",
@@ -975,6 +1074,7 @@
         },
         {
           "sample_id": "comic-05",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "岳麓书院夜读——一块匾额下的争论",
           "source_status": "fictionalized_scene_inspired_by_site",
           "episode_hook": "第一格：夜里书院门额被雷光照亮，两个学生争抢一卷旧书。",
@@ -985,6 +1085,7 @@
         },
         {
           "sample_id": "comic-06",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "刘海砍樵——山路上多出来的脚印",
           "source_status": "folk_legend_adaptation",
           "episode_hook": "第一格：斧头刚落，雪地里出现一串不是人的脚印。",
@@ -995,6 +1096,7 @@
         },
         {
           "sample_id": "comic-07",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "月岩悟道——洞口漏下来的月光",
           "source_status": "legendary_scene_with_source_boundary",
           "episode_hook": "第一格：天然岩洞中，月光落在书页上，字忽然像水一样流动。",
@@ -1005,6 +1107,7 @@
         },
         {
           "sample_id": "comic-08",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "湘妃竹传说——竹节上的泪痕",
           "source_status": "legend_adaptation_with_boundary",
           "episode_hook": "第一格：竹林深处，一滴泪落下，竹节浮出斑痕。",
@@ -1015,6 +1118,7 @@
         },
         {
           "sample_id": "comic-09",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "苗族赶秋少年篇——秋千飞过鼓声",
           "source_status": "folk_activity_youth_drama",
           "episode_hook": "第一格：少年在秋千最高点看见人群外有一件失落银饰。",
@@ -1025,6 +1129,7 @@
         },
         {
           "sample_id": "comic-10",
+          "applicable_source_domains": ["china_culture"],
           "entry_name": "滩头年画夜市——画里的人眨了一下眼",
           "source_status": "fictional_original_inspired_by_heritage",
           "episode_hook": "第一格：夜市收摊时，年画门神突然眨眼。",
@@ -1032,6 +1137,39 @@
           "character_stability": ["学徒：围裙、染色手指", "师傅：刻刀/木版锚点", "年画门神：纸面角色，不冒充民俗事实"],
           "shot_prompt_focus": ["木版", "套色错位", "纸面角色", "惊吓表情", "悬疑钩子"],
           "ending_hook": "门神指向木版背面：那里藏着另一幅图。"
+        },
+        {
+          "sample_id": "comic-original-01",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "零号站台——只剩一分钟的列车",
+          "source_status": "user_original_project_sample",
+          "episode_hook": "第一格：废弃站台的倒计时从00:59亮起，无人列车突然开门。",
+          "core_conflict": "修理师必须在删除乘客记忆和追查失踪姐姐之间选择，并承担被系统追捕的后果。",
+          "character_stability": ["顾遥：短发修理师、橙色工具腰包", "管理员：无表情制服、银色检票钳", "列车：零号灯牌与冷白车门"],
+          "shot_prompt_focus": ["倒计时特写", "站台纵深", "删除键与检票钳", "表情反打", "列车启动连续性"],
+          "ending_hook": "隐藏广播说出下一座站台，管理员第一次露出恐惧。"
+        },
+        {
+          "sample_id": "comic-original-02",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "记忆修复店——顾客要求删掉真相",
+          "source_status": "user_original_project_sample",
+          "episode_hook": "第一格：一段破碎记忆从玻璃罐里伸出手，抓住修复师的袖口。",
+          "core_conflict": "修复师受雇抹去事故真相，却发现顾客正是记忆中的施害者。",
+          "character_stability": ["修复师：蓝灰围裙、裂纹护目镜", "顾客：黑伞、白手套", "记忆罐：紫色裂光"],
+          "shot_prompt_focus": ["玻璃罐微距", "记忆碎片转场", "手套动作", "对白气泡碰撞", "裂光连续"],
+          "ending_hook": "修复师锁上店门，记忆罐里传出第二名目击者的声音。"
+        },
+        {
+          "sample_id": "comic-original-03",
+          "applicable_source_domains": ["original_fiction"],
+          "entry_name": "镜中城市——替身先做了选择",
+          "source_status": "user_original_project_sample",
+          "episode_hook": "第一格：镜中的主角比现实中的她早一步按下警报。",
+          "core_conflict": "主角必须证明镜中替身不是敌人，同时阻止城市把所有替身格式化。",
+          "character_stability": ["主角：红围巾、左眉小痣", "镜中替身：同装束但动作方向相反", "巡查员：透明面罩、方形警灯"],
+          "shot_prompt_focus": ["镜像构图", "动作方向校验", "红围巾身份锚点", "警报红光", "跨镜转场"],
+          "ending_hook": "镜面裂开后，现实中的主角手腕上出现了替身的编号。"
         }
       ]
     }

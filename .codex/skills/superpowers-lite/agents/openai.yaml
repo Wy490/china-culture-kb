@@ -1,0 +1,7 @@
+interface:
+  display_name: "Superpowers Lite"
+  short_description: "Fast, risk-scaled engineering workflow"
+  default_prompt: "Use $superpowers-lite to advance this engineering task with the lightest safe workflow."
+
+policy:
+  allow_implicit_invocation: true

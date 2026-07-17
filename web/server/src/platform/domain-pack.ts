@@ -39,11 +39,88 @@ export interface DomainStoryPlanParams {
 
 export interface DomainStoryGenerateOptions {
   access_control?: ProductResourceOwnership;
+  transform_story_before_validation_and_persistence?: (
+    story: StoryGenerateResult,
+  ) => StoryGenerateResult | Promise<StoryGenerateResult>;
 }
 
 export interface DomainGearsConstraintInput {
   story: StoryGenerateResult;
   segment: GearsSegment;
+}
+
+export interface DomainStoryRevisionGuidance {
+  readonly schema_version: 'story-domain-revision-guidance/v1';
+  readonly writer_role: string;
+  readonly source_boundary_rules: readonly string[];
+  readonly human_review_requirement: string;
+}
+
+export interface DomainStorySupplementGuidance {
+  readonly schema_version: 'story-domain-supplement-guidance/v1';
+  readonly candidate_kind: 'domain_knowledge_candidate' | 'project_material_candidate';
+  readonly candidate_heading: string;
+  readonly writeback_draft_heading?: string;
+  readonly review_rules: readonly string[];
+  readonly human_review_requirement: string;
+}
+
+export interface DomainProductionMaterialGuidance {
+  readonly schema_version: 'story-domain-production-material-guidance/v1';
+  readonly audience_level_default: string;
+  readonly audience_level_comprehension_note: string;
+  readonly learner_profile_default: string;
+  readonly learner_profile_foundation_note: string;
+  readonly heritage_or_craft_type_label: string;
+  readonly heritage_or_craft_type_category: string;
+  readonly heritage_or_craft_type_review_note: string;
+  readonly speaker_position_role: string;
+  readonly speaker_position_boundary_note: string;
+  readonly speaker_position_expression_note: string;
+  readonly project_name_review_note: string;
+  readonly forbidden_claims_rule: string;
+  readonly forbidden_claims_default_boundary: string;
+  readonly documentation_assets_intro: string;
+  readonly documentation_assets_missing_source_note: string;
+  readonly documentation_assets_rights_note: string;
+  readonly source_cues_review_note: string;
+  readonly source_cues_missing_source_note: string;
+  readonly witness_or_expert_roles: string;
+  readonly witness_or_expert_role_note: string;
+  readonly what_must_not_be_claimed_rule: string;
+  readonly shot_prompt_style_boundary: string;
+  readonly parent_teacher_extension_question: string;
+  readonly single_shot_acceptance_boundary: string;
+  readonly knowledge_outline_progression: string;
+  readonly fact_boundary_card_rule: string;
+  readonly fact_boundary_card_fallback: string;
+  readonly source_cues_entry_label: string;
+  readonly source_cues_confirmed_label: string;
+  readonly source_cues_unverified_label: string;
+  readonly source_cues_default_review_scope: string;
+  readonly parent_teacher_review_boundary: string;
+  readonly share_trigger_frame: string;
+  readonly share_trigger_reason: string;
+  readonly diagram_or_caption_boundary: string;
+  readonly comment_prompt_focus: string;
+  readonly comment_prompt_boundary: string;
+  readonly misconception_boundary_rule: string;
+  readonly misconception_boundary_fallback: string;
+}
+
+export interface DomainKnowledgeWritebackPlan {
+  readonly schema_version: 'story-domain-knowledge-writeback-plan/v1';
+  readonly domain_id: string;
+  readonly target_kind: 'domain_document' | 'none';
+  readonly eligible: boolean;
+  readonly target_region?: string;
+  readonly suggested_file_path?: string;
+  readonly suggested_section_heading?: string;
+  readonly blockers: readonly string[];
+  readonly requires_human_review: true;
+  readonly direct_writeback_allowed: false;
+  readonly writeback_performed: false;
+  readonly real_credit_granted: false;
 }
 
 export type DomainPackCapability =
@@ -54,6 +131,10 @@ export type DomainPackCapability =
   | 'story_generate'
   | 'type_catalog'
   | 'story_safety'
+  | 'story_revision'
+  | 'story_supplement'
+  | 'production_material_draft'
+  | 'knowledge_writeback'
   | 'gears_mapping';
 
 export interface DomainPackMeta {
@@ -69,6 +150,9 @@ export interface DomainPack {
   readonly meta: DomainPackMeta;
   readonly entryTypes: readonly DomainEntryTypeDescriptor[];
   readonly generationTypes: readonly DomainGenerationTypeDescriptor[];
+  readonly revisionGuidance: DomainStoryRevisionGuidance;
+  readonly supplementGuidance: DomainStorySupplementGuidance;
+  readonly productionMaterialGuidance: DomainProductionMaterialGuidance;
   searchEntries(params: DomainEntrySearchParams): Promise<ApiResponse<EntrySearchResult[]>>;
   getEntryDetail(name: string): Promise<ApiResponse<EntryDetail>>;
   matchEntries(params: DomainEntryMatchParams): Promise<ApiResponse<EntryMatchResult>>;
@@ -78,6 +162,7 @@ export interface DomainPack {
     options?: DomainStoryGenerateOptions,
   ): Promise<ApiResponse<StoryGenerateResult>>;
   validateStoryContent(input: StoryDomainSafetyValidationInput): StoryDomainSafetyReport;
+  planKnowledgeWriteback(story: StoryGenerateResult): DomainKnowledgeWritebackPlan;
   mapGearsConstraints(input: DomainGearsConstraintInput): string[];
 }
 
@@ -139,7 +224,7 @@ export class DomainPackRegistry {
     const capabilitySet = new Set(capabilities);
     if (
       capabilitySet.size !== capabilities.length
-      || capabilitySet.size !== 8
+      || capabilitySet.size !== 12
       || !capabilitySet.has('entry_search')
       || !capabilitySet.has('entry_detail')
       || !capabilitySet.has('entry_match')
@@ -147,6 +232,10 @@ export class DomainPackRegistry {
       || !capabilitySet.has('story_generate')
       || !capabilitySet.has('type_catalog')
       || !capabilitySet.has('story_safety')
+      || !capabilitySet.has('story_revision')
+      || !capabilitySet.has('story_supplement')
+      || !capabilitySet.has('production_material_draft')
+      || !capabilitySet.has('knowledge_writeback')
       || !capabilitySet.has('gears_mapping')
     ) {
       throw new DomainPackRegistrationError(`Domain pack \"${domainId}\" has an invalid capability contract`);
@@ -158,6 +247,7 @@ export class DomainPackRegistry {
       'planStory',
       'generateStory',
       'validateStoryContent',
+      'planKnowledgeWriteback',
       'mapGearsConstraints',
     ];
     if (requiredMethods.some(method => typeof pack[method] !== 'function')) {
@@ -165,6 +255,130 @@ export class DomainPackRegistry {
     }
     if (!Array.isArray(pack.entryTypes) || !Array.isArray(pack.generationTypes)) {
       throw new DomainPackRegistrationError(`Domain pack \"${domainId}\" type catalogs must be arrays`);
+    }
+    if (
+      !pack.revisionGuidance
+      || pack.revisionGuidance.schema_version !== 'story-domain-revision-guidance/v1'
+      || typeof pack.revisionGuidance.writer_role !== 'string'
+      || !pack.revisionGuidance.writer_role.trim()
+      || !Array.isArray(pack.revisionGuidance.source_boundary_rules)
+      || pack.revisionGuidance.source_boundary_rules.length === 0
+      || pack.revisionGuidance.source_boundary_rules.some(rule => typeof rule !== 'string' || !rule.trim())
+      || typeof pack.revisionGuidance.human_review_requirement !== 'string'
+      || !pack.revisionGuidance.human_review_requirement.trim()
+    ) {
+      throw new DomainPackRegistrationError(`Domain pack \"${domainId}\" has invalid story revision guidance`);
+    }
+    const supplementGuidance = pack.supplementGuidance;
+    if (
+      !supplementGuidance
+      || supplementGuidance.schema_version !== 'story-domain-supplement-guidance/v1'
+      || !['domain_knowledge_candidate', 'project_material_candidate'].includes(supplementGuidance.candidate_kind)
+      || typeof supplementGuidance.candidate_heading !== 'string'
+      || !supplementGuidance.candidate_heading.trim()
+      || !Array.isArray(supplementGuidance.review_rules)
+      || supplementGuidance.review_rules.length === 0
+      || supplementGuidance.review_rules.some(rule => typeof rule !== 'string' || !rule.trim())
+      || typeof supplementGuidance.human_review_requirement !== 'string'
+      || !supplementGuidance.human_review_requirement.trim()
+      || (
+        supplementGuidance.candidate_kind === 'domain_knowledge_candidate'
+        && (
+          typeof supplementGuidance.writeback_draft_heading !== 'string'
+          || !supplementGuidance.writeback_draft_heading.trim()
+        )
+      )
+      || (
+        supplementGuidance.candidate_kind === 'project_material_candidate'
+        && supplementGuidance.writeback_draft_heading !== undefined
+      )
+    ) {
+      throw new DomainPackRegistrationError(`Domain pack \"${domainId}\" has invalid story supplement guidance`);
+    }
+    const productionMaterialGuidance = pack.productionMaterialGuidance;
+    if (
+      !productionMaterialGuidance
+      || productionMaterialGuidance.schema_version !== 'story-domain-production-material-guidance/v1'
+      || typeof productionMaterialGuidance.audience_level_default !== 'string'
+      || !productionMaterialGuidance.audience_level_default.trim()
+      || typeof productionMaterialGuidance.audience_level_comprehension_note !== 'string'
+      || !productionMaterialGuidance.audience_level_comprehension_note.trim()
+      || typeof productionMaterialGuidance.learner_profile_default !== 'string'
+      || !productionMaterialGuidance.learner_profile_default.trim()
+      || typeof productionMaterialGuidance.learner_profile_foundation_note !== 'string'
+      || !productionMaterialGuidance.learner_profile_foundation_note.trim()
+      || typeof productionMaterialGuidance.heritage_or_craft_type_label !== 'string'
+      || !productionMaterialGuidance.heritage_or_craft_type_label.trim()
+      || typeof productionMaterialGuidance.heritage_or_craft_type_category !== 'string'
+      || !productionMaterialGuidance.heritage_or_craft_type_category.trim()
+      || typeof productionMaterialGuidance.heritage_or_craft_type_review_note !== 'string'
+      || !productionMaterialGuidance.heritage_or_craft_type_review_note.trim()
+      || typeof productionMaterialGuidance.speaker_position_role !== 'string'
+      || !productionMaterialGuidance.speaker_position_role.trim()
+      || typeof productionMaterialGuidance.speaker_position_boundary_note !== 'string'
+      || !productionMaterialGuidance.speaker_position_boundary_note.trim()
+      || typeof productionMaterialGuidance.speaker_position_expression_note !== 'string'
+      || !productionMaterialGuidance.speaker_position_expression_note.trim()
+      || typeof productionMaterialGuidance.project_name_review_note !== 'string'
+      || !productionMaterialGuidance.project_name_review_note.trim()
+      || typeof productionMaterialGuidance.forbidden_claims_rule !== 'string'
+      || !productionMaterialGuidance.forbidden_claims_rule.trim()
+      || typeof productionMaterialGuidance.forbidden_claims_default_boundary !== 'string'
+      || !productionMaterialGuidance.forbidden_claims_default_boundary.trim()
+      || typeof productionMaterialGuidance.documentation_assets_intro !== 'string'
+      || !productionMaterialGuidance.documentation_assets_intro.trim()
+      || typeof productionMaterialGuidance.documentation_assets_missing_source_note !== 'string'
+      || !productionMaterialGuidance.documentation_assets_missing_source_note.trim()
+      || typeof productionMaterialGuidance.documentation_assets_rights_note !== 'string'
+      || !productionMaterialGuidance.documentation_assets_rights_note.trim()
+      || typeof productionMaterialGuidance.source_cues_review_note !== 'string'
+      || !productionMaterialGuidance.source_cues_review_note.trim()
+      || typeof productionMaterialGuidance.source_cues_missing_source_note !== 'string'
+      || !productionMaterialGuidance.source_cues_missing_source_note.trim()
+      || typeof productionMaterialGuidance.witness_or_expert_roles !== 'string'
+      || !productionMaterialGuidance.witness_or_expert_roles.trim()
+      || typeof productionMaterialGuidance.witness_or_expert_role_note !== 'string'
+      || !productionMaterialGuidance.witness_or_expert_role_note.trim()
+      || typeof productionMaterialGuidance.what_must_not_be_claimed_rule !== 'string'
+      || !productionMaterialGuidance.what_must_not_be_claimed_rule.trim()
+      || typeof productionMaterialGuidance.shot_prompt_style_boundary !== 'string'
+      || !productionMaterialGuidance.shot_prompt_style_boundary.trim()
+      || typeof productionMaterialGuidance.parent_teacher_extension_question !== 'string'
+      || !productionMaterialGuidance.parent_teacher_extension_question.trim()
+      || typeof productionMaterialGuidance.single_shot_acceptance_boundary !== 'string'
+      || !productionMaterialGuidance.single_shot_acceptance_boundary.trim()
+      || typeof productionMaterialGuidance.knowledge_outline_progression !== 'string'
+      || !productionMaterialGuidance.knowledge_outline_progression.trim()
+      || typeof productionMaterialGuidance.fact_boundary_card_rule !== 'string'
+      || !productionMaterialGuidance.fact_boundary_card_rule.trim()
+      || typeof productionMaterialGuidance.fact_boundary_card_fallback !== 'string'
+      || !productionMaterialGuidance.fact_boundary_card_fallback.trim()
+      || typeof productionMaterialGuidance.source_cues_entry_label !== 'string'
+      || !productionMaterialGuidance.source_cues_entry_label.trim()
+      || typeof productionMaterialGuidance.source_cues_confirmed_label !== 'string'
+      || !productionMaterialGuidance.source_cues_confirmed_label.trim()
+      || typeof productionMaterialGuidance.source_cues_unverified_label !== 'string'
+      || !productionMaterialGuidance.source_cues_unverified_label.trim()
+      || typeof productionMaterialGuidance.source_cues_default_review_scope !== 'string'
+      || !productionMaterialGuidance.source_cues_default_review_scope.trim()
+      || typeof productionMaterialGuidance.parent_teacher_review_boundary !== 'string'
+      || !productionMaterialGuidance.parent_teacher_review_boundary.trim()
+      || typeof productionMaterialGuidance.share_trigger_frame !== 'string'
+      || !productionMaterialGuidance.share_trigger_frame.trim()
+      || typeof productionMaterialGuidance.share_trigger_reason !== 'string'
+      || !productionMaterialGuidance.share_trigger_reason.trim()
+      || typeof productionMaterialGuidance.diagram_or_caption_boundary !== 'string'
+      || !productionMaterialGuidance.diagram_or_caption_boundary.trim()
+      || typeof productionMaterialGuidance.comment_prompt_focus !== 'string'
+      || !productionMaterialGuidance.comment_prompt_focus.trim()
+      || typeof productionMaterialGuidance.comment_prompt_boundary !== 'string'
+      || !productionMaterialGuidance.comment_prompt_boundary.trim()
+      || typeof productionMaterialGuidance.misconception_boundary_rule !== 'string'
+      || !productionMaterialGuidance.misconception_boundary_rule.trim()
+      || typeof productionMaterialGuidance.misconception_boundary_fallback !== 'string'
+      || !productionMaterialGuidance.misconception_boundary_fallback.trim()
+    ) {
+      throw new DomainPackRegistrationError(`Domain pack \"${domainId}\" has invalid production material guidance`);
     }
     if (
       pack.entryTypes.length === 0

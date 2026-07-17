@@ -12,6 +12,9 @@ import type {
   GearsJobStatusSyncResult,
   GearsJobSubmitRequest,
   GearsJobSubmitResult,
+  GearsWorkbenchImportResult,
+  GearsWorkbenchImportAuditLedger,
+  GearsWorkbenchProjectImportRequest,
   StoryProjectBatchDeleteResult,
   ProjectMaterialPackAddMaterialRequest,
   ProjectDraftProductionMaterialFieldsResult,
@@ -71,8 +74,8 @@ import type {
   StoryQualityRepairRequest,
 } from '@shared/types'
 
-export function listProjects() {
-  return apiGet<StoryProjectListItem[]>('/projects')
+export function listProjects(sourceDomain?: string) {
+  return apiGet<StoryProjectListItem[]>('/projects', sourceDomain ? { domain: sourceDomain } : undefined)
 }
 
 export function listSupplementTasks(filters: ProjectSupplementTaskListFilters = {}) {
@@ -88,6 +91,24 @@ export function listSupplementTasks(filters: ProjectSupplementTaskListFilters = 
 
 export function getProject(projectId: string) {
   return apiGet<StoryProjectDetail>(`/projects/${projectId}`)
+}
+
+export function dryRunProjectGearsWorkbenchImport(
+  projectId: string,
+  body: GearsWorkbenchProjectImportRequest,
+) {
+  return apiPost<GearsWorkbenchImportResult>(`/projects/${projectId}/gears-workbench-import/dry-run`, body)
+}
+
+export function executeProjectGearsWorkbenchImport(
+  projectId: string,
+  body: GearsWorkbenchProjectImportRequest,
+) {
+  return apiPost<GearsWorkbenchImportResult>(`/projects/${projectId}/gears-workbench-import`, body)
+}
+
+export function getProjectGearsWorkbenchImportAudit(projectId: string) {
+  return apiGet<GearsWorkbenchImportAuditLedger>(`/projects/${projectId}/gears-workbench-import-audit`)
 }
 
 export function regenerateProjectScene(projectId: string, body: StorySceneRegenerateRequest) {

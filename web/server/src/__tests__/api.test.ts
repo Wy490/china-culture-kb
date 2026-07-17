@@ -24,6 +24,7 @@ import { projectsRouter } from '../routes/projects.js';
 import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
 import { createProjectFromGeneratedStory } from '../services/project-service.js';
+import { storyDefaultGeneratedRoot } from '../platform/story-storage-root.js';
 import {
   GEARS_CALLBACK_BATCH_ITEM_LIMIT,
   GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
@@ -50,7 +51,7 @@ const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVID
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
-const DEFAULT_PROJECTS_ROOT = resolve(import.meta.dirname, '..', '..', '..', 'web', 'generated', 'projects');
+const DEFAULT_PROJECTS_ROOT = resolve(storyDefaultGeneratedRoot(), 'projects');
 let testWorkspaceRoot = '';
 let defaultProjectDirsBefore = new Set<string>();
 
@@ -132,6 +133,23 @@ async function runAcceptanceKitNodeCommand(command: string, evidenceDir: string)
         return;
       }
       reject(new Error(`Acceptance kit command failed with exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    });
+    child.stdin.end(script);
+  });
+}
+
+async function assertBashSyntax(script: string): Promise<void> {
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn('/bin/bash', ['-n'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stderr = '';
+    child.stderr.on('data', chunk => { stderr += String(chunk); });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+      reject(new Error(`Generated acceptance shell failed bash -n with exit ${code}\n${stderr}`));
     });
     child.stdin.end(script);
   });
@@ -414,6 +432,7 @@ function makeApiProductionRepairStory(): StoryGenerateResult {
     gears_delivery: {
       schema_version: 'gears-delivery/v1',
       storyId: '20260617-story-apr1',
+      sourceDomain: 'china_culture',
       title: 'API 生产修复测试故事',
       character_assets: [
         {
@@ -631,7 +650,11 @@ describe('System API', () => {
       expect(res.body.data).toMatchObject({
         schema_version: 'production-material-pack-health/v1',
         status: 'passed',
+        pack_file_valid: true,
+        pack_file_diagnostics: [],
         pack_count: expect.any(Number),
+        rejected_pack_count: 0,
+        rejected_pack_diagnostics: [],
         required_video_types: expect.arrayContaining([
           'heritage_promo',
           'documentary_short',
@@ -1336,18 +1359,20 @@ describe('System API', () => {
       const plannedSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-planned-series');
       const gapSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-gap-series');
       const relinkSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-relink-series');
+      const manifestGapSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-manifest-gap-series');
       const archiveSeriesDir = resolve(generatedRoot, 'ai-comic-series-projects', 'health-archive-series');
       const storyFileDir = resolve(generatedRoot, 'stories', 'ai_comic_drama');
       await mkdir(resolve(interruptedStoryDir, 'versions'), { recursive: true });
       await mkdir(plannedSeriesDir, { recursive: true });
       await mkdir(gapSeriesDir, { recursive: true });
       await mkdir(relinkSeriesDir, { recursive: true });
+      await mkdir(manifestGapSeriesDir, { recursive: true });
       await mkdir(archiveSeriesDir, { recursive: true });
       await mkdir(storyFileDir, { recursive: true });
       await writeFile(resolve(interruptedStoryDir, 'project.json'), JSON.stringify({
         project_id: 'health-interrupted-story',
         current_story_id: '20260622-story-health-missing',
-        current_version_id: 'v1',
+        current_version_id: 'health-interrupted-story-v1',
         title: 'Health Interrupted Story',
         source_domain: 'china_culture',
         status: 'draft',
@@ -1357,9 +1382,9 @@ describe('System API', () => {
         presentation_style: 'ai_comic',
         version_count: 1,
       }));
-      await writeFile(resolve(interruptedStoryDir, 'versions', 'v1.json'), JSON.stringify({
+      await writeFile(resolve(interruptedStoryDir, 'versions', 'health-interrupted-story-v1.json'), JSON.stringify({
         project_id: 'health-interrupted-story',
-        version_id: 'v1',
+        version_id: 'health-interrupted-story-v1',
         created_at: '2026-06-22T01:01:00.000Z',
         change_type: 'initial_generation',
         scene_ids_changed: [],
@@ -1507,6 +1532,94 @@ describe('System API', () => {
           }],
         },
       }));
+      await writeFile(resolve(manifestGapSeriesDir, 'project.json'), JSON.stringify({
+        project: {
+          series_project_id: 'health-manifest-gap-series',
+          title: 'Health Manifest Gap Series',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          logline: '已有装配计划但缺少发布 manifest。',
+          created_at: '2026-06-22T01:00:00.000Z',
+          updated_at: '2026-06-22T01:04:30.000Z',
+          generated_episode_count: 1,
+        },
+        plan: {
+          schema_version: 'ai-comic-series-plan/v1',
+          series_title: 'Health Manifest Gap Series',
+          episode_count: 1,
+          episode_duration_range_sec: { min: 60, max: 120 },
+          pacing_profile: 'balanced_drama',
+          generation_scope: 'full_planning',
+          premise: '已有装配计划但缺少发布 manifest。',
+          logline: '已有装配计划但缺少发布 manifest。',
+          core_theme: '交付完整性',
+          main_characters: [],
+          plot_threads: [],
+          phases: [],
+          episodes: [{
+            episode_no: 1,
+            title: '交付检查',
+            target_duration_sec: 90,
+            target_panel_count: 12,
+            story_phase: 'setup',
+            opening_hook: '最终装配计划已经生成。',
+            main_conflict: '发布 manifest 仍然缺失。',
+            midpoint_turn: '健康审计拒绝把 concat 当成交付。',
+            key_characters: [],
+            continuity_from_previous: [],
+            new_information: ['最终交付需要输出与 manifest 同时存在'],
+            foreshadowing: [],
+            payoff: ['生成明确修复动作'],
+            ending_hook: '是否在授权后重跑导出？',
+            ending_hook_type: 'emotional_question',
+            character_state_change: '从误判可发布转向待修复',
+            thread_action: '完成 manifest 完整性检查',
+            knowledge_focus: ['最终交付合同'],
+            continuity_state_after: ['等待人工确认或重导出'],
+          }],
+          continuity_rules: [],
+          recurring_motifs: [],
+          production_notes: [],
+        },
+        generated_episode_story_ids: {
+          '1': '20260622-story-health-series-1',
+        },
+        seedance_production: {
+          items: [{
+            shot_id: 'shot-1',
+            status: 'ready',
+            video_url: '/generated/manifest-gap/shot-1.mp4',
+            thumbnail: {
+              status: 'ready',
+              output_path: '/generated/manifest-gap/thumb-1.jpg',
+            },
+          }],
+        },
+        seedance_cut_assembly: {
+          status: 'ready',
+          output_path: '/generated/manifest-gap/cut.mp4',
+          concat_list_path: '/generated/manifest-gap/cut.concat.txt',
+        },
+        seedance_subtitle_render: {
+          status: 'ready',
+          output_path: '/generated/manifest-gap/subtitled.mp4',
+          srt_path: '/generated/manifest-gap/subtitles.srt',
+        },
+        seedance_final_delivery: {
+          status: 'planned',
+          dry_run: true,
+          output_path: '/generated/manifest-gap/final.mp4',
+          concat_list_path: '/generated/manifest-gap/final.concat.txt',
+        },
+        gears_job_ledger: {
+          jobs: [{
+            gears_job_id: 'gears-health-manifest-gap-job',
+            source_unit_id: 'shot-1',
+            status: 'ready',
+          }],
+        },
+      }));
       await writeFile(resolve(archiveSeriesDir, 'project.json'), JSON.stringify({
         project: {
           series_project_id: 'health-archive-series',
@@ -1581,6 +1694,7 @@ describe('System API', () => {
           series_seedance_failure_marker_project_count: expect.any(Number),
           series_seedance_test_fixture_failure_project_count: expect.any(Number),
           series_seedance_test_fixture_failure_item_count: expect.any(Number),
+          series_missing_final_delivery_manifest_count: expect.any(Number),
           story_quality_passed_with_issue_count: expect.any(Number),
           story_quality_passed_with_open_supplement_count: expect.any(Number),
           story_quality_passed_with_issue_and_open_supplement_count: expect.any(Number),
@@ -1601,6 +1715,7 @@ describe('System API', () => {
       expect(res.body.data.summary.series_seedance_failure_marker_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_test_fixture_failure_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_test_fixture_failure_item_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.series_missing_final_delivery_manifest_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.items).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -1632,6 +1747,16 @@ describe('System API', () => {
         }),
         expect.objectContaining({
           scope: 'ai_comic_series_project',
+          project_id: 'health-manifest-gap-series',
+          status: 'production_gap',
+          missing_contracts: expect.arrayContaining(['final_delivery_manifest']),
+          final_delivery_ready: false,
+          final_delivery_manifest_ready: false,
+          final_delivery_manifest_missing: true,
+          final_delivery_dry_run: true,
+        }),
+        expect.objectContaining({
+          scope: 'ai_comic_series_project',
           project_id: 'health-archive-series',
           signoff_eligible: false,
           governance_disposition: 'soft_archived_signoff_excluded',
@@ -1642,6 +1767,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('series_relink_candidates');
       expect(res.body.data.markdown).toContain('series_soft_archive_excluded');
       expect(res.body.data.markdown).toContain('series_seedance_test_fixture_failure_items');
+      expect(res.body.data.markdown).toContain('series_missing_final_delivery_manifest');
       expect(res.body.data.markdown).toContain('health-interrupted-story');
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
       expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
@@ -2070,6 +2196,8 @@ describe('System API', () => {
         'delivery_contract',
         'production_command',
       ]));
+      expect(res.body.data.lanes.find((lane: any) => lane.key === 'production_material_packs')?.evidence)
+        .toContain('domain_sample_ready=3/3');
       const storyQualityLane = res.body.data.lanes.find((lane: any) => lane.key === 'story_quality');
       expect(storyQualityLane.evidence).toEqual(expect.arrayContaining([
         expect.stringMatching(/^quality_passed=\d+/),
@@ -2219,6 +2347,11 @@ describe('System API', () => {
           key: 'production_material_packs',
           score: 100,
           status: 'ready',
+          evidence: expect.arrayContaining([
+            'pack_file_valid=true',
+            'rejected_pack_count=0',
+            'duplicate_pack_video_type_count=0',
+          ]),
         }),
         expect.objectContaining({
           key: 'domain_packs',
@@ -2297,6 +2430,7 @@ describe('System API', () => {
 
     it('does not count local callback URLs as real external GEARS callback readiness', async () => {
       const previous = {
+        preferredApiBaseUrl: process.env.GEARS_EXECUTION_WORKER_API_BASE_URL,
         apiBaseUrl: process.env.GEARS_API_BASE_URL,
         callbackSecret: process.env.GEARS_CALLBACK_SECRET,
         callbackBaseUrl: process.env.GEARS_CALLBACK_BASE_URL,
@@ -2304,7 +2438,8 @@ describe('System API', () => {
         appBaseUrl: process.env.APP_BASE_URL,
       };
       try {
-        process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+        process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://gears.example.test/api-root';
+        delete process.env.GEARS_API_BASE_URL;
         process.env.GEARS_CALLBACK_SECRET = 'private-callback-token';
         process.env.GEARS_CALLBACK_BASE_URL = 'http://127.0.0.1:3002';
         delete process.env.PUBLIC_API_BASE_URL;
@@ -2336,6 +2471,8 @@ describe('System API', () => {
           'local_acceptance_counts_as_real_external_callback=false',
         ]));
       } finally {
+        if (previous.preferredApiBaseUrl === undefined) delete process.env.GEARS_EXECUTION_WORKER_API_BASE_URL;
+        else process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = previous.preferredApiBaseUrl;
         if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
         else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
         if (previous.callbackSecret === undefined) delete process.env.GEARS_CALLBACK_SECRET;
@@ -2371,15 +2508,127 @@ describe('System API', () => {
 
       expect(res.status).toBe(200);
       expectSuccess(res.body);
-      expect(res.body.data).toEqual([expect.objectContaining({
-        meta: expect.objectContaining({
-          domain_id: 'china_culture',
-          capabilities: expect.arrayContaining(['entry_search', 'story_generate', 'type_catalog']),
+      expect(res.body.data).toEqual([
+        expect.objectContaining({
+          meta: expect.objectContaining({
+            domain_id: 'china_culture',
+            capabilities: expect.arrayContaining(['entry_search', 'story_generate', 'type_catalog']),
+          }),
+          entry_type_count: 12,
+          generation_type_count: 15,
         }),
-        entry_type_count: 12,
-        generation_type_count: 15,
-      })]);
+        expect.objectContaining({
+          meta: expect.objectContaining({
+            domain_id: 'original_fiction',
+            capabilities: expect.arrayContaining(['entry_search', 'story_generate', 'type_catalog']),
+          }),
+          entry_type_count: 1,
+          generation_type_count: 5,
+        }),
+      ]);
       expect(JSON.stringify(res.body)).not.toContain('searchEntries');
+    });
+  });
+
+  describe('GET /api/system/story-project-repository-config', () => {
+    it('reports the file provider boundary without claiming database or object storage readiness', async () => {
+      const previous = process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
+      try {
+        delete process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
+        const res = await request.get('/api/system/story-project-repository-config');
+
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          env: 'STORY_PROJECT_REPOSITORY_PROVIDER',
+          configured_provider: 'file',
+          active_provider: 'file',
+          supported_providers: ['file', 'sqlite'],
+          configuration_valid: true,
+          database_kind: 'none',
+          external_database: false,
+          object_storage: false,
+          same_host_atomic_locking: true,
+          transactional_multi_record_writes: true,
+          optimistic_concurrency_control: true,
+          content_integrity_hashes: false,
+          local_backup_verification_supported: false,
+          production_recovery_drill_completed: false,
+          production_persistence_ready: false,
+        });
+      } finally {
+        if (previous === undefined) delete process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
+        else process.env.STORY_PROJECT_REPOSITORY_PROVIDER = previous;
+      }
+    });
+  });
+
+  describe('GET /api/system/story-storage-root-config', () => {
+    it('reports explicit active roots and keeps the legacy root discovery-only', async () => {
+      const res = await request.get('/api/system/story-storage-root-config');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-storage-root-config/v1',
+        kb_root: process.env.KB_ROOT,
+        generated_root: process.env.WEB_GENERATED_ROOT,
+        kb_root_source: 'explicit_env',
+        generated_root_source: 'explicit_env',
+        configuration_valid: true,
+        legacy_policy: {
+          discovery_only: true,
+          included_in_active_read_roots: false,
+          automatic_migration_allowed: false,
+          automatic_merge_allowed: false,
+          automatic_delete_allowed: false,
+          automatic_writeback_allowed: false,
+        },
+        data_moved: false,
+        data_deleted: false,
+        data_overwritten: false,
+        provider_switched: false,
+        real_gears_seedance_delivery_credit_count: 0,
+        counts_as_real_gears_seedance_delivery: false,
+      });
+      expect(res.body.data.generated_root).not.toBe(
+        res.body.data.legacy_misresolved_generated_root,
+      );
+    });
+  });
+
+  describe('GET /api/system/story-storage-legacy-disposition-preflight', () => {
+    it('returns a read-only, zero-action disposition report', async () => {
+      const res = await request.get('/api/system/story-storage-legacy-disposition-preflight');
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-storage-legacy-disposition-preflight/v1',
+        read_only: true,
+        consistent_snapshot_guaranteed: false,
+        recheck_required_before_any_action: true,
+        automatic_action_count: 0,
+        migration_performed: false,
+        merge_performed: false,
+        deletion_performed: false,
+        overwrite_performed: false,
+        writeback_performed: false,
+        domain_safety_migration_performed: false,
+        provider_switched: false,
+        real_gears_seedance_delivery_credit_count: 0,
+        counts_as_real_gears_seedance_delivery: false,
+      });
+      expect(res.body.data.inventory_sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(res.body.data.items.every((item: {
+        requires_human_review: boolean;
+        automatic_action_allowed: boolean;
+        real_credit_granted: boolean;
+      }) => (
+        item.requires_human_review
+        && !item.automatic_action_allowed
+        && !item.real_credit_granted
+      ))).toBe(true);
     });
   });
 
@@ -2424,10 +2673,19 @@ describe('System API', () => {
         expectSuccess(res.body);
         expect(res.body.data).toMatchObject({
           provider: 'gears',
+          api_base_url_env: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
+          api_token_env: 'GEARS_EXECUTION_WORKER_API_TOKEN',
+          legacy_api_base_url_env: 'GEARS_API_BASE_URL',
+          legacy_api_token_env: 'GEARS_API_TOKEN',
+          api_base_url_source: 'legacy',
+          api_token_source: 'legacy',
+          legacy_execution_worker_envs_used: ['GEARS_API_BASE_URL', 'GEARS_API_TOKEN'],
           api_base_url_configured: true,
           api_token_configured: true,
           callback_secret_configured: true,
           callback_base_configured: true,
+          capability_endpoint_path: '/gears/capabilities',
+          capability_required_before_requests: true,
           submit_endpoint_path: '/gears/jobs',
           job_status_endpoint_path: '/gears/jobs/{gears_job_id}',
           project_callback_path_template: '/api/projects/:projectId/gears-callback',
@@ -2458,6 +2716,56 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/gears-execution-worker-capabilities', () => {
+    it('returns only a validated independent execution-worker capability response', async () => {
+      const previous = {
+        apiBaseUrl: process.env.GEARS_EXECUTION_WORKER_API_BASE_URL,
+        apiToken: process.env.GEARS_EXECUTION_WORKER_API_TOKEN,
+      };
+      try {
+        process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://worker.example.test/root';
+        process.env.GEARS_EXECUTION_WORKER_API_TOKEN = 'private-worker-token';
+        const capability = {
+          schema_version: 'gears-execution-worker-capabilities/v1',
+          service: 'gears-execution-worker',
+          execution_worker_supported: true,
+          workbench_import_supported: false,
+          bearer_auth_required: true,
+          idempotent_submit: true,
+          status_poll_supported: true,
+          callback_delivery_supported: true,
+          supported_job_types: ['seedance_video'],
+          endpoints: {
+            capabilities: { method: 'GET', path: '/gears/capabilities' },
+            submit: { method: 'POST', path: '/gears/jobs' },
+            job_status: { method: 'GET', path: '/gears/jobs/{gears_job_id}' },
+          },
+        };
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify(capability)));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const res = await request.get('/api/system/gears-execution-worker-capabilities');
+
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toEqual(capability);
+        expect(fetchMock).toHaveBeenCalledWith(
+          'https://worker.example.test/root/gears/capabilities',
+          expect.objectContaining({
+            method: 'GET',
+            headers: { authorization: 'Bearer private-worker-token' },
+          }),
+        );
+      } finally {
+        vi.unstubAllGlobals();
+        if (previous.apiBaseUrl === undefined) delete process.env.GEARS_EXECUTION_WORKER_API_BASE_URL;
+        else process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = previous.apiBaseUrl;
+        if (previous.apiToken === undefined) delete process.env.GEARS_EXECUTION_WORKER_API_TOKEN;
+        else process.env.GEARS_EXECUTION_WORKER_API_TOKEN = previous.apiToken;
+      }
+    });
+  });
+
   describe('GET /api/system/gears-execution-contract', () => {
     it('returns GEARS submit and callback contract metadata', async () => {
       const res = await request.get('/api/system/gears-execution-contract');
@@ -2467,10 +2775,18 @@ describe('System API', () => {
         provider: 'gears',
         schema_version: 'gears-execution-contract/v1',
         env: {
-          api_base_url: 'GEARS_API_BASE_URL',
-          api_token: 'GEARS_API_TOKEN',
+          api_base_url: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
+          api_token: 'GEARS_EXECUTION_WORKER_API_TOKEN',
+          legacy_api_base_url: 'GEARS_API_BASE_URL',
+          legacy_api_token: 'GEARS_API_TOKEN',
           callback_secret: 'GEARS_CALLBACK_SECRET',
           callback_base_url: 'GEARS_CALLBACK_BASE_URL',
+        },
+        capability: {
+          method: 'GET',
+          path: '/gears/capabilities',
+          schema_version: 'gears-execution-worker-capabilities/v1',
+          required_before_submit_and_poll: true,
         },
         submit: {
           method: 'POST',
@@ -2692,7 +3008,7 @@ describe('System API', () => {
       }
     });
 
-    it('marks GEARS readiness blocked when GEARS_API_BASE_URL is missing', async () => {
+    it('marks GEARS readiness blocked when the execution-worker API base URL is missing', async () => {
       const previous = process.env.GEARS_API_BASE_URL;
       try {
         delete process.env.GEARS_API_BASE_URL;
@@ -2727,13 +3043,13 @@ describe('System API', () => {
           }),
         ]));
         expect(res.body.data.live_e2e.blocked_by).toEqual(expect.arrayContaining([
-          'GEARS_API_BASE_URL',
+          'GEARS_EXECUTION_WORKER_API_BASE_URL',
         ]));
         expect(res.body.data.live_e2e.steps).toEqual(expect.arrayContaining([
           expect.objectContaining({
             id: 'submit_http',
             status: 'blocked',
-            blocked_by: expect.arrayContaining(['GEARS_API_BASE_URL']),
+            blocked_by: expect.arrayContaining(['GEARS_EXECUTION_WORKER_API_BASE_URL']),
           }),
         ]));
       } finally {
@@ -3007,7 +3323,7 @@ describe('System API', () => {
           generated_health_production_gap_count: expect.any(Number),
           generated_health_interrupted_count: expect.any(Number),
           acceptance_total_count: expect.any(Number),
-          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+          required_envs: expect.arrayContaining(['GEARS_EXECUTION_WORKER_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
         });
         expect(res.body.data.acceptance_passed_count).toBeLessThan(res.body.data.acceptance_total_count);
         expect(res.body.data.blocking_check_ids).toEqual(expect.arrayContaining([
@@ -3028,7 +3344,7 @@ describe('System API', () => {
         ]));
         expect(res.body.data.markdown).toContain('# GEARS v2 Worker Acceptance Report');
         expect(res.body.data.markdown).toContain('generated_health_status');
-        expect(res.body.data.markdown).toContain('GEARS_API_BASE_URL');
+        expect(res.body.data.markdown).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL');
       } finally {
         if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
         else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
@@ -3110,12 +3426,12 @@ describe('System API', () => {
           acceptance_status: 'blocked',
           local_smoke_passed_count: 5,
           local_smoke_total_count: 5,
-          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+          required_envs: expect.arrayContaining(['GEARS_EXECUTION_WORKER_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
           real_endpoint_readiness: expect.objectContaining({
             status: 'needs_env',
             ready_to_run_acceptance: false,
             missing_envs: expect.arrayContaining([
-              'GEARS_API_BASE_URL',
+              'GEARS_EXECUTION_WORKER_API_BASE_URL',
               'GEARS_CALLBACK_SECRET',
               'GEARS_CALLBACK_BASE_URL',
             ]),
@@ -3123,12 +3439,25 @@ describe('System API', () => {
             recommended_command: expect.stringContaining('run-gears-worker-acceptance.sh'),
           }),
         });
-        expect(res.body.data.env_template).toContain('GEARS_API_BASE_URL');
-        expect(res.body.data.real_endpoint_readiness.next_actions.join('\n')).toContain('GEARS_API_BASE_URL');
+        expect(res.body.data.env_template).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL');
+        expect(res.body.data.real_endpoint_readiness.next_actions.join('\n')).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL');
         expect(res.body.data.env_vars).toEqual(expect.arrayContaining([
           expect.objectContaining({
             name: 'STORY_AGENT_BASE_URL',
             required: true,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
+            required: true,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_EXECUTION_WORKER_API_TOKEN',
+            required: false,
+          }),
+          expect.objectContaining({
+            name: 'GEARS_API_BASE_URL',
+            required: false,
+            description: expect.stringContaining('Legacy'),
           }),
           expect.objectContaining({
             name: 'GEARS_CALLBACK_BASE_URL',
@@ -3219,6 +3548,7 @@ describe('System API', () => {
           'read_acceptance_report',
           'write_payload_files',
           'generate_large_project_pressure_payload',
+          'probe_execution_worker_capabilities',
           'submit_to_worker',
           'poll_worker_status',
           'audit_worker_response_shapes',
@@ -3241,6 +3571,10 @@ describe('System API', () => {
           'read_worker_evidence_signoff',
         ]);
         expect(res.body.data.commands).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            id: 'probe_execution_worker_capabilities',
+            phase: 'preflight',
+          }),
           expect.objectContaining({
             id: 'submit_to_worker',
             phase: 'worker_submit',
@@ -3336,6 +3670,10 @@ describe('System API', () => {
         expect(res.body.data.markdown).toContain('real_endpoint_status: needs_env');
         expect(res.body.data.shell_script).toContain('#!/usr/bin/env bash');
         expect(res.body.data.shell_script).toContain('GEARS_EVIDENCE_DIR');
+        expect(res.body.data.shell_script).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL="$GEARS_API_BASE_URL"');
+        expect(res.body.data.shell_script).toContain('GEARS_API_BASE_URL="$GEARS_EXECUTION_WORKER_API_BASE_URL"');
+        expect(res.body.data.shell_script).toContain('legacy execution-worker name');
+        expect(res.body.data.shell_script).toContain('for required_name in GEARS_EXECUTION_WORKER_API_BASE_URL');
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_AUTO_EXTRACT_JOB_ID');
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_RUN_LARGE_PRESSURE');
         expect(res.body.data.shell_script).toContain('GEARS_ACCEPTANCE_SEED_STORY_AGENT_LEDGER');
@@ -3356,6 +3694,11 @@ describe('System API', () => {
         expect(res.body.data.shell_script).not.toContain('GEARS_AUTH_ARGS');
         expect(res.body.data.shell_script).toContain('if is_placeholder "${GEARS_API_TOKEN:-}"; then');
         expect(res.body.data.shell_script).toContain('-H "authorization: Bearer $GEARS_API_TOKEN"');
+        expect(res.body.data.shell_script).toContain('Probing independent GEARS execution-worker capabilities');
+        expect(res.body.data.shell_script).toContain('$GEARS_API_BASE_URL/gears/capabilities');
+        expect(res.body.data.shell_script).toContain('gears-execution-worker-capabilities/v1');
+        expect(res.body.data.shell_script).toContain('workbench_import_supported === false');
+        expect(res.body.data.shell_script).toContain('/gears/jobs will not be called');
         expect(res.body.data.shell_script).toContain('gears-required-env-missing.txt');
         expect(res.body.data.shell_script).toContain('gears-submit-exit-code.txt');
         expect(res.body.data.shell_script).toContain('gears-submit-http-status.txt');
@@ -3752,6 +4095,7 @@ describe('System API', () => {
         }
         expect(res.body.data.markdown).toContain('## Shell Script');
         expect(res.body.data.markdown).toContain('## Commands');
+        await expect(assertBashSyntax(res.body.data.shell_script)).resolves.toBeUndefined();
       } finally {
         if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
         else process.env.GEARS_API_BASE_URL = previous.apiBaseUrl;
@@ -4045,7 +4389,7 @@ describe('System API', () => {
           schema_version: 'gears-execution-worker-evidence-bundle/v1',
           status: 'blocked',
           readiness_status: 'blocked',
-          command_count: 24,
+          command_count: 25,
           payload_count: 6,
           local_smoke_passed_count: 5,
           local_smoke_total_count: 5,
@@ -4069,7 +4413,7 @@ describe('System API', () => {
           domain_pack_issue_count: 0,
           domain_pack_ready_count: 8,
           domain_pack_required_count: 8,
-          required_envs: expect.arrayContaining(['GEARS_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
+          required_envs: expect.arrayContaining(['GEARS_EXECUTION_WORKER_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
         });
         expect(res.body.data.documents.map((doc: any) => doc.id)).toEqual([
           'acceptance_report',
@@ -4121,6 +4465,14 @@ describe('System API', () => {
             content: expect.stringContaining('# Domain Pack Production Health'),
           }),
         ]));
+    const productionMaterialHealthAttachment = res.body.data.documents.find(
+          (attachment: { filename?: string }) =>
+            attachment.filename === 'production-material-pack-health-report.md',
+        );
+        expect(productionMaterialHealthAttachment?.content).toContain('- pack_file_valid: true');
+        expect(productionMaterialHealthAttachment?.content).toContain('## Pack File Diagnostics');
+        expect(productionMaterialHealthAttachment?.content).toContain('- rejected_pack_count: 0');
+        expect(productionMaterialHealthAttachment?.content).toContain('## Rejected Packs');
         expect(res.body.data.operator_checklist).toEqual(expect.arrayContaining([
           'Attach gears-worker-response-audit.json to summarize worker ids, source ids, statuses, error codes, and failure categories.',
           'Attach gears-worker-acceptance-verdict.json and require acceptance_passed=true for sign-off.',
@@ -5589,7 +5941,7 @@ describe('System API', () => {
           failed_count: 0,
         });
         expect(res.body.data.blocked_by).toEqual(expect.arrayContaining([
-          'GEARS_API_BASE_URL',
+          'GEARS_EXECUTION_WORKER_API_BASE_URL',
         ]));
         expect(res.body.data.steps).toEqual(expect.arrayContaining([
           expect.objectContaining({
@@ -5622,6 +5974,24 @@ describe('System API', () => {
         process.env.GEARS_CALLBACK_BASE_URL = 'https://story-live.example.test/public';
         const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
           const method = init?.method ?? 'GET';
+          if (String(url).endsWith('/gears/capabilities')) {
+            return new Response(JSON.stringify({
+              schema_version: 'gears-execution-worker-capabilities/v1',
+              service: 'gears-execution-worker',
+              execution_worker_supported: true,
+              workbench_import_supported: false,
+              bearer_auth_required: true,
+              idempotent_submit: true,
+              status_poll_supported: true,
+              callback_delivery_supported: true,
+              supported_job_types: ['seedance_video'],
+              endpoints: {
+                capabilities: { method: 'GET', path: '/gears/capabilities' },
+                submit: { method: 'POST', path: '/gears/jobs' },
+                job_status: { method: 'GET', path: '/gears/jobs/{gears_job_id}' },
+              },
+            }));
+          }
           if (method === 'POST') {
             return new Response(JSON.stringify({
               data: {
@@ -5697,7 +6067,7 @@ describe('System API', () => {
         expect(res.body.data.markdown).toContain('gears-live-smoke-accepted-001');
         expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-api-token-123');
         expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-callback-token-456');
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(4);
       } finally {
         vi.unstubAllGlobals();
         if (previous.apiBaseUrl === undefined) delete process.env.GEARS_API_BASE_URL;
@@ -6117,6 +6487,26 @@ describe('Projects API', () => {
       }
     });
 
+    it('filters projects by a registered source domain', async () => {
+      const res = await request.get('/api/projects?domain=china_culture');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.every((project: { source_domain?: string }) => project.source_domain === 'china_culture'))
+        .toBe(true);
+    });
+
+    it('fails closed for an unregistered project list domain', async () => {
+      const res = await request.get('/api/projects?domain=unregistered_domain');
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
+    it('rejects an invalid project list domain identifier', async () => {
+      const res = await request.get('/api/projects?domain=INVALID-DOMAIN');
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
     it('hydrates creation contract fields for legacy project metadata through list and detail routes', async () => {
       const story: StoryGenerateResult = {
         ...makeApiStory(),
@@ -6524,7 +6914,7 @@ describe('Projects API', () => {
       expect(res.body.data.filters.task_key_count).toBe(1);
       expect(res.body.data.items[0].task_key).toBe(`${enriched.project_id}::${taskId}`);
       expect(res.body.data.markdown).toContain('Story Agent 素材补库候选包');
-      expect(res.body.data.markdown).toContain('不直接修改 data/provinces/*.md');
+      expect(res.body.data.markdown).toContain('不直接修改 Domain Pack 目标文件');
       expect(res.body.data.markdown).toContain('青石巷追问');
     });
   });
@@ -8690,6 +9080,14 @@ describe('Story Outline API', () => {
       expectSuccess(res.body);
       expect(res.body.data.video_type).toBe('ai_comic_drama');
       expect(res.body.data.presentation_style).toBe('ai_comic');
+      expect(res.body.data.sourceDomain).toBe('china_culture');
+      expect(res.body.data.domain_safety).toMatchObject({
+        domain: 'china_culture',
+        passed: true,
+        machine_validation_only: true,
+        human_review_complete: false,
+        real_credit_granted: false,
+      });
       expect(res.body.data.original_user_query).toContain('本集只写第1集');
       expect(res.body.data.original_user_query).toContain('本集主冲突');
       expect(res.body.data.original_user_query).not.toContain('连续性账本');
@@ -9531,6 +9929,8 @@ describe('Stories API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.every((item: { sourceDomain?: string }) => item.sourceDomain === 'china_culture'))
+        .toBe(true);
     });
 
     it('returns filtered list with generation_type query', async () => {
@@ -9538,6 +9938,26 @@ describe('Stories API', () => {
       expect(res.status).toBe(200);
       expectSuccess(res.body);
       expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('filters Story summaries by a registered source domain', async () => {
+      const res = await request.get('/api/stories?domain=china_culture');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data.every((item: { sourceDomain?: string }) => item.sourceDomain === 'china_culture'))
+        .toBe(true);
+    });
+
+    it('fails closed for an unregistered Story list domain', async () => {
+      const res = await request.get('/api/stories?domain=unregistered_domain');
+      expect(res.status).toBe(404);
+      expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+    });
+
+    it('rejects an invalid Story list domain identifier', async () => {
+      const res = await request.get('/api/stories?domain=INVALID-DOMAIN');
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
     });
   });
 
@@ -9620,6 +10040,7 @@ describe('Stories API', () => {
       const deliveryRes = await request.get(`/api/stories/${storyId}/gears-delivery`);
       expect(deliveryRes.status).toBe(200);
       expectSuccess(deliveryRes.body);
+      expect(deliveryRes.body.data.sourceDomain).toBe('china_culture');
       expect(deliveryRes.body.data.title).toBe('当前项目版本故事');
       expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).toContain('当前项目版本剧情');
       expect(deliveryRes.body.data.units.map((unit: any) => unit.script_text).join('\n')).not.toContain('旧快照剧情');

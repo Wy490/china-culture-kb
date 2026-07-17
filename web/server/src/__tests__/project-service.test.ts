@@ -99,6 +99,25 @@ const ORIGINAL_GEARS_API_BASE_URL = process.env.GEARS_API_BASE_URL;
 const ORIGINAL_GEARS_API_TOKEN = process.env.GEARS_API_TOKEN;
 const ORIGINAL_GEARS_CALLBACK_BASE_URL = process.env.GEARS_CALLBACK_BASE_URL;
 
+function gearsExecutionWorkerCapabilityResponse(): Response {
+  return new Response(JSON.stringify({
+    schema_version: 'gears-execution-worker-capabilities/v1',
+    service: 'gears-execution-worker',
+    execution_worker_supported: true,
+    workbench_import_supported: false,
+    bearer_auth_required: true,
+    idempotent_submit: true,
+    status_poll_supported: true,
+    callback_delivery_supported: true,
+    supported_job_types: ['seedance_video'],
+    endpoints: {
+      capabilities: { method: 'GET', path: '/gears/capabilities' },
+      submit: { method: 'POST', path: '/gears/jobs' },
+      job_status: { method: 'GET', path: '/gears/jobs/{gears_job_id}' },
+    },
+  }));
+}
+
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path);
@@ -390,6 +409,8 @@ describe('project-service', () => {
     const detail = await getProject(enriched.project_id!);
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.version_count).toBe(1);
+    expect(detail.data?.project.source_domain).toBe('china_culture');
+    expect(detail.data?.current_story.sourceDomain).toBe('china_culture');
     expect(detail.data?.project.open_supplement_task_count).toBe(0);
     expect(detail.data?.project.quality_passed).toBe(true);
     expect(detail.data?.project.genre_score).toBe(92);
@@ -412,6 +433,33 @@ describe('project-service', () => {
     const snapshot = JSON.parse(await readFile(versionPath, 'utf-8')) as StoryProjectVersionSnapshot;
     expect(snapshot.quality_report?.genre_score).toBe(92);
     expect(snapshot.quality_report?.passed).toBe(true);
+    expect(snapshot.story.sourceDomain).toBe('china_culture');
+  });
+
+  it('persists the producing Domain Pack instead of relabeling every project as china_culture', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = {
+      ...makeStory(),
+      storyId: '20260609-story-dom2',
+      sourceDomain: 'second_domain',
+      gears_segments_url: '/api/stories/20260609-story-dom2/gears-segments',
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:01:00.000Z');
+    const detail = await getProject(enriched.project_id!);
+    const list = await listProjects();
+    const customDomainList = await listProjects('second_domain');
+    const chinaCultureList = await listProjects('china_culture');
+
+    expect(enriched.sourceDomain).toBe('second_domain');
+    expect(detail.data?.project.source_domain).toBe('second_domain');
+    expect(detail.data?.current_story.sourceDomain).toBe('second_domain');
+    expect(list.data?.find(project => project.project_id === enriched.project_id)?.source_domain)
+      .toBe('second_domain');
+    expect(customDomainList.data?.map(project => project.project_id)).toEqual([enriched.project_id]);
+    expect(chinaCultureList.data).toEqual([]);
   });
 
   it('hydrates creation fields for legacy project metadata at read time', async () => {
@@ -583,6 +631,28 @@ describe('project-service', () => {
     const detail = await getProject(enriched.project_id!);
     expect(detail.ok).toBe(true);
     expect(detail.data?.project.status).toBe('exported');
+  });
+
+  it('fails closed instead of reading an old snapshot when current_version_id is missing', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const enriched = await createProjectFromGeneratedStory(makeStory(), '2026-06-09T10:00:00.000Z');
+    const projectPath = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'project.json');
+    const project = JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta;
+    project.current_version_id = `${enriched.project_id}-v9`;
+    await writeFile(projectPath, JSON.stringify(project, null, 2), 'utf-8');
+
+    const detail = await getProject(enriched.project_id!);
+    const readiness = await getProjectProductionReadiness(enriched.project_id!);
+    const exported = await exportProjectCurrentVersion(enriched.project_id!);
+
+    for (const result of [detail, readiness, exported]) {
+      expect(result.ok).toBe(false);
+      expect(result.error?.message).toContain(`current version "${enriched.project_id}-v9" is unavailable`);
+    }
+    expect((JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta).status).toBe('draft');
   });
 
   it('builds a production board from the current project version', async () => {
@@ -2187,6 +2257,11 @@ describe('project-service', () => {
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (String(_url).endsWith('/gears/capabilities')) {
+        expect(init?.method).toBe('GET');
+        expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
+        return gearsExecutionWorkerCapabilityResponse();
+      }
       expect(String(_url)).toBe('https://gears.example.test/api-root/gears/jobs');
       expect(init?.method).toBe('POST');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
@@ -2255,7 +2330,7 @@ describe('project-service', () => {
       note: 'GEARS HTTP submit smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(submitRes.ok).toBe(true);
     expect(submitRes.data).toMatchObject({
       submitted_count: 1,
@@ -2288,24 +2363,29 @@ describe('project-service', () => {
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
-      data: {
-        acceptedUnits: [{
-          taskId: 'gears-submit-accepted-shot-1',
-          externalId: 'shot-1',
-          taskStatus: 'QUEUED',
-          idempotencyKey: 'seedance_video:shot-1',
-        }],
-        rejectedUnits: [{
-          taskId: 'gears-submit-rejected-shot-2',
-          externalId: 'shot-2',
-          taskStatus: 'VALIDATION_ERROR',
-          idempotencyKey: 'seedance_video:shot-2',
-          errorCode: 'INVALID_PAYLOAD',
-          message: 'seedance_prompt is required',
-        }],
-      },
-    }))));
+    vi.stubGlobal('fetch', vi.fn(async (_url: string | URL | Request) => {
+      if (String(_url).endsWith('/gears/capabilities')) {
+        return gearsExecutionWorkerCapabilityResponse();
+      }
+      return new Response(JSON.stringify({
+        data: {
+          acceptedUnits: [{
+            taskId: 'gears-submit-accepted-shot-1',
+            externalId: 'shot-1',
+            taskStatus: 'QUEUED',
+            idempotencyKey: 'seedance_video:shot-1',
+          }],
+          rejectedUnits: [{
+            taskId: 'gears-submit-rejected-shot-2',
+            externalId: 'shot-2',
+            taskStatus: 'VALIDATION_ERROR',
+            idempotencyKey: 'seedance_video:shot-2',
+            errorCode: 'INVALID_PAYLOAD',
+            message: 'seedance_prompt is required',
+          }],
+        },
+      }));
+    }));
 
     const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
       job_type: 'seedance_video',
@@ -2371,6 +2451,7 @@ describe('project-service', () => {
       const url = String(_url);
       expect(init?.method).toBe('GET');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
+      if (url.endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       if (url === `https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(failedJob.gears_job_id)}`) {
         return new Response('temporary GEARS outage', { status: 503 });
       }
@@ -2402,7 +2483,7 @@ describe('project-service', () => {
       note: 'GEARS sync smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(syncRes.ok).toBe(true);
     expect(syncRes.data).toMatchObject({
       pollable_count: 2,
@@ -2454,7 +2535,7 @@ describe('project-service', () => {
       include_completed: true,
       note: 'GEARS sync smoke',
     });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(duplicateSyncRes.ok).toBe(true);
     expect(duplicateSyncRes.data).toMatchObject({
       pollable_count: 2,
@@ -2486,6 +2567,7 @@ describe('project-service', () => {
     const job = submitRes.data!.submitted_jobs[0]!;
 
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (String(_url).endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
       expect(init?.method).toBe('GET');
       expect((init?.headers as Record<string, string>).authorization).toBe('Bearer gears-token');
@@ -2506,7 +2588,7 @@ describe('project-service', () => {
       note: 'GEARS failed status sync smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(syncRes.ok).toBe(true);
     expect(syncRes.data).toMatchObject({
       pollable_count: 1,
@@ -2549,6 +2631,7 @@ describe('project-service', () => {
     const job = submitRes.data!.submitted_jobs[0]!;
 
     const fetchMock = vi.fn(async (_url: string | URL | Request) => {
+      if (String(_url).endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
       expect(String(_url)).toBe(`https://gears.example.test/api-root/gears/jobs/${encodeURIComponent(job.gears_job_id)}`);
       return new Response(JSON.stringify({
         taskId: job.gears_job_id,
@@ -3930,6 +4013,7 @@ describe('project-service', () => {
       gears_delivery: {
         schema_version: 'gears-delivery/v1',
         storyId: '20260609-story-abc1',
+        sourceDomain: 'china_culture',
         title: '拒签冤案',
         character_assets: [
           {
@@ -4008,6 +4092,7 @@ describe('project-service', () => {
       gears_delivery: {
         schema_version: 'gears-delivery/v1',
         storyId: baseStory.storyId,
+        sourceDomain: 'china_culture',
         title: baseStory.title,
         character_assets: [
           {
@@ -4080,6 +4165,7 @@ describe('project-service', () => {
       gears_delivery: {
         schema_version: 'gears-delivery/v1',
         storyId: '20260609-story-cat1',
+        sourceDomain: 'china_culture',
         title: baseStory.title,
         character_assets: [
           {
@@ -4572,6 +4658,12 @@ describe('project-service', () => {
     expect(queuedTasks.data?.map(item => item.task.task_id)).toEqual([taskId]);
     expect(queuedTasks.data?.[0].target_province).toBe('湖南');
     expect(queuedTasks.data?.[0].suggested_file_path).toBe('data/provinces/湖南.md');
+    expect(queuedTasks.data?.[0].suggested_section_heading).toBe('青石巷漫剧测试条目');
+    expect(queuedTasks.data?.[0]).toMatchObject({
+      source_domain: 'china_culture',
+      knowledge_writeback_eligible: true,
+      knowledge_writeback_blockers: [],
+    });
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(rawSource.production_material_readiness?.available_fields).toContain('reference_images_or_keyframes');
@@ -4608,7 +4700,7 @@ describe('project-service', () => {
     expect(supplementCandidatePackage.data?.filters.task_key_count).toBe(1);
     expect(supplementCandidatePackage.data?.items[0].task_key).toBe(`${enriched.project_id}::${taskId}`);
     expect(supplementCandidatePackage.data?.markdown).toContain('Story Agent 素材补库候选包');
-    expect(supplementCandidatePackage.data?.markdown).toContain('不直接修改 data/provinces/*.md');
+    expect(supplementCandidatePackage.data?.markdown).toContain('不直接修改 Domain Pack 目标文件');
     expect(supplementCandidatePackage.data?.markdown).toContain('项目：青石巷追问');
     expect(supplementCandidatePackage.data?.markdown).toContain('知识库候选稿：参考图或关键帧');
 
@@ -4661,6 +4753,121 @@ describe('project-service', () => {
     expect(hiddenByVisibleTaskKeys.data?.project_count).toBe(0);
     expect(hiddenByVisibleTaskKeys.data?.status_counts?.queued).toBe(0);
     expect(hiddenByVisibleTaskKeys.data?.markdown).toContain('可见任务键：1 条');
+  });
+
+  it('blocks original_fiction formal knowledge writeback without inventing a province target', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    const domainSourcePath = resolve(root, 'data', 'provinces', '湖南.md');
+    await mkdir(resolve(root, 'data', 'provinces'), { recursive: true });
+    await writeFile(domainSourcePath, '# sentinel domain source\n', 'utf-8');
+
+    const taskId = '20260609-original-story--supplement--visual_reference';
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260609-original-story',
+      sourceDomain: 'original_fiction',
+      source_entry: '用户原创：雨夜候车亭',
+      title: '雨夜候车亭',
+      knowledge_pack: {
+        primary_entries: [{
+          entry_name: '用户原创：雨夜候车亭',
+          province: '湖南',
+          region: '长沙',
+          type: '用户原创故事',
+          summary: '用户提供的原创剧情大纲。',
+          score: 1,
+          role_in_story: '唯一主素材',
+          match_reason: '用户原创输入',
+          keywords: ['雨夜', '候车亭'],
+        }],
+        supporting_entries: [],
+        missing_needs: [],
+        overall_confidence: 0.8,
+      },
+      supplement_tasks: [{
+        task_id: taskId,
+        need_id: 'visual_reference',
+        label: '原创角色视觉基准',
+        description: '补充用户原创角色的视觉基准。',
+        status: 'open',
+        source: 'knowledge_pack_missing_need',
+        created_at: '2026-06-09T10:00:00.000Z',
+      }],
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+
+    const reviewed = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      supplement_note: '角色穿深蓝雨衣，手持旧车票；仅作为本项目原创设定。',
+      knowledge_candidate_review_status: 'approved',
+      knowledge_candidate_review_note: '可保留为项目级素材，不进入正式知识库。',
+    });
+
+    expect(reviewed.ok).toBe(true);
+    expect(reviewed.data?.current_story.supplement_tasks?.[0]).toMatchObject({
+      knowledge_candidate_review_status: 'approved',
+    });
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('项目素材候选稿');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('project_material_candidate');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).toContain('domain_source_write_allowed=false');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).not.toContain('知识库候选稿');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_candidate_markdown).not.toContain('省份');
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_draft_markdown).toBeUndefined();
+    expect(reviewed.data?.current_story.supplement_tasks?.[0].knowledge_writeback_status).toBeUndefined();
+    expect(await readFile(domainSourcePath, 'utf-8')).toBe('# sentinel domain source\n');
+
+    const knowledgeCandidates = await exportProjectKnowledgeCandidates(enriched.project_id!);
+    expect(knowledgeCandidates.ok).toBe(false);
+    expect(knowledgeCandidates.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: {
+        supplement_guidance: { candidate_kind: 'project_material_candidate' },
+        persistence: {
+          domain_source_write_allowed: false,
+          knowledge_writeback_performed: false,
+          real_credit_granted: false,
+        },
+      },
+    });
+
+    const allTasks = await listProjectSupplementTasks({ project_id: enriched.project_id });
+    expect(allTasks.data?.[0]).toMatchObject({
+      source_domain: 'original_fiction',
+      knowledge_writeback_eligible: false,
+      knowledge_writeback_blockers: ['domain_does_not_support_formal_knowledge_writeback'],
+    });
+    expect(allTasks.data?.[0].target_province).toBeUndefined();
+    expect(allTasks.data?.[0].suggested_file_path).toBeUndefined();
+
+    const readyTasks = await listProjectSupplementTasks({
+      project_id: enriched.project_id,
+      knowledge_writeback_ready: true,
+    });
+    expect(readyTasks.data).toEqual([]);
+
+    const patch = await exportProjectKnowledgeWritebackPatch(enriched.project_id!);
+    expect(patch.ok).toBe(false);
+    expect(patch.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: {
+        domain_id: 'original_fiction',
+        eligible: false,
+        direct_writeback_allowed: false,
+        writeback_performed: false,
+        real_credit_granted: false,
+      },
+    });
+
+    const queued = await updateProjectSupplementTask(enriched.project_id!, taskId, {
+      status: 'resolved',
+      knowledge_candidate_review_status: 'approved',
+      knowledge_writeback_status: 'queued',
+    });
+    expect(queued.ok).toBe(false);
+    expect(queued.error?.message).toContain('original_fiction');
+    expect(queued.error?.message).toContain('domain_does_not_support_formal_knowledge_writeback');
   });
 
   it('drafts AI comic production material fields from scenes through readiness automation', async () => {
@@ -4839,14 +5046,20 @@ describe('project-service', () => {
     const cases: Array<{
       videoType: StoryGenerateResult['video_type'];
       style: StoryGenerateResult['presentation_style'];
-      targetAudience: string;
+      targetAudience?: string;
       communicationGoal: string;
       fieldIds: string[];
       expectedSnippet: string;
+      forbiddenSnippet?: string;
+      sourceDomain?: string;
       argumentPoints?: string[];
       knowledgeOutline?: string[];
       sourceQuotes?: string[];
       fieldNotes?: string[];
+      verifiedFacts?: string[];
+      uncertainClaims?: string[];
+      credibilityNote?: string;
+      culturalConstraints?: string[];
     }> = [
       {
         videoType: 'heritage_promo',
@@ -4946,9 +5159,202 @@ describe('project-service', () => {
         fieldIds: ['learning_objective', 'learner_profile', 'step_sequence', 'practice_task', 'assessment_check'],
         expectedSnippet: '学习目标',
       },
+      {
+        videoType: 'explainer_video',
+        style: 'host_narration',
+        communicationGoal: '让观众跟随原创人物的目标、阻力和选择理解故事结构。',
+        fieldIds: ['audience_level'],
+        expectedSnippet: '故事与影视叙事初学观众',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'heritage_promo',
+        style: 'documentary',
+        communicationGoal: '整理原创项目已有设定稿、角色小传与合法授权参考。',
+        fieldIds: ['documentation_assets'],
+        expectedSnippet: '用户素材、参考图、音乐、真实品牌/场地/作品引用',
+        forbiddenSnippet: '馆方说明',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'documentary_short',
+        style: 'documentary',
+        communicationGoal: '整理原创大纲版本、创作说明与权利来源记录。',
+        fieldIds: ['source_quotes_or_source_cues'],
+        expectedSnippet: '核对原创大纲版本、创作说明或权利来源记录',
+        forbiddenSnippet: '官方/馆方/出版物',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'documentary_short',
+        style: 'documentary',
+        communicationGoal: '确定原创项目可采访或出镜的创作与权利角色。',
+        fieldIds: ['witness_or_expert_roles'],
+        expectedSnippet: '创作者/编剧/角色设计者/项目执行者/权利顾问',
+        forbiddenSnippet: '传承人',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'documentary_short',
+        style: 'documentary',
+        communicationGoal: '声明未经创作者和权利确认的内容不可对外声称。',
+        fieldIds: ['what_must_not_be_claimed'],
+        expectedSnippet: '未经创作者或权利确认的人物原型、品牌、场地',
+        forbiddenSnippet: '馆藏真伪',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'heritage_promo',
+        style: 'documentary',
+        communicationGoal: '确认原创项目名称与作品权利边界。',
+        fieldIds: ['project_name'],
+        expectedSnippet: '由创作者确认项目名称、作品权利和发布口径',
+        forbiddenSnippet: '官方目录、馆方说明',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'documentary_short',
+        style: 'documentary',
+        communicationGoal: '区分原创设定与真实人物、品牌、场地和事实背书。',
+        fieldIds: ['forbidden_claims'],
+        expectedSnippet: '不得把原创设定包装为真实人物、品牌、场地、作品权利或事实背书',
+        forbiddenSnippet: '省份 Markdown',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'education_training',
+        style: 'host_narration',
+        communicationGoal: '让创作小组用人物目标、阻力、选择和结果检查原创故事。',
+        fieldIds: ['learner_profile'],
+        expectedSnippet: '原创故事学习者/创作小组',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'heritage_promo',
+        style: 'documentary',
+        communicationGoal: '梳理原创人物在虚构职业中的技能、工具与行动系统。',
+        fieldIds: ['heritage_or_craft_type'],
+        expectedSnippet: '原创项目中的虚构职业、技能或行动系统',
+        forbiddenSnippet: '国家/省/市级名录',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'lecture_video',
+        style: 'host_narration',
+        communicationGoal: '由创作讲述者拆解原创人物的目标、阻力与选择。',
+        fieldIds: ['speaker_position'],
+        expectedSnippet: '创作讲述者/课程主持人',
+        forbiddenSnippet: '文化讲述者',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'ai_comic_drama',
+        style: 'ai_comic',
+        communicationGoal: '把原创人物、场景和情绪节拍拆成可控漫画分镜提示词。',
+        fieldIds: ['shot_prompt_layers'],
+        expectedSnippet: '原创设定边界清晰',
+        forbiddenSnippet: '文化边界真实',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'children_story',
+        style: 'children_animation',
+        communicationGoal: '让孩子复述原创角色的目标、阻力和选择。',
+        fieldIds: ['parent_teacher_note'],
+        expectedSnippet: '故事线索',
+        forbiddenSnippet: '文化符号',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'ai_comic_drama',
+        style: 'ai_comic',
+        communicationGoal: '先用单镜头验证原创角色、动作与项目权利边界。',
+        fieldIds: ['single_shot_test'],
+        expectedSnippet: '原创设定与权利边界稳定',
+        forbiddenSnippet: '文化边界稳定',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'explainer_video',
+        style: 'host_narration',
+        communicationGoal: '用人物目标、阻力、选择和结果拆解原创故事。',
+        fieldIds: ['knowledge_outline'],
+        expectedSnippet: '人物目标、阻力、选择、行动结果',
+        forbiddenSnippet: '概念定义、具体例子、事实边界',
+        sourceDomain: 'original_fiction',
+        knowledgeOutline: ['人物目标', '核心阻力', '关键选择', '行动结果', '项目边界'],
+      },
+      {
+        videoType: 'social_short',
+        style: 'social_media_fastcut',
+        communicationGoal: '明确原创设定、现实引用与作品权利的项目边界。',
+        fieldIds: ['fact_boundary_card'],
+        expectedSnippet: '项目边界卡',
+        forbiddenSnippet: 'material_pack verified_facts',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'education_training',
+        style: 'host_narration',
+        communicationGoal: '整理原创大纲版本、项目素材与权利复核线索。',
+        fieldIds: ['source_cues'],
+        expectedSnippet: '项目素材入口',
+        forbiddenSnippet: 'source_entry=',
+        sourceDomain: 'original_fiction',
+        verifiedFacts: ['角色目标和世界观规则来自用户原创大纲 v3。'],
+        uncertainClaims: ['真实品牌引用与配乐授权待权利顾问确认。'],
+      },
+      {
+        videoType: 'children_story',
+        style: 'children_animation',
+        communicationGoal: '帮助孩子区分原创设定、戏剧化表达与现实权利边界。',
+        fieldIds: ['parent_teacher_note'],
+        expectedSnippet: '项目设定、戏剧化表达与现实/权利边界',
+        forbiddenSnippet: '故事改写与事实边界',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'social_short',
+        style: 'social_media_fastcut',
+        communicationGoal: '用人物选择和剧情反差形成原创故事分享点。',
+        fieldIds: ['share_trigger'],
+        expectedSnippet: '人物选择或剧情反差',
+        forbiddenSnippet: '冷知识或反差发现',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'social_short',
+        style: 'social_media_fastcut',
+        communicationGoal: '用字幕清楚标记原创设定、现实引用和权利复核状态。',
+        fieldIds: ['diagram_or_caption_plan'],
+        expectedSnippet: '创作者确认/权利待核',
+        forbiddenSnippet: '重要事实旁标',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'social_short',
+        style: 'social_media_fastcut',
+        communicationGoal: '引导观众讨论人物选择、故事版本和创作设定。',
+        fieldIds: ['comment_prompt'],
+        expectedSnippet: '人物选择、故事版本或创作设定',
+        forbiddenSnippet: '版本、地点或实物线索',
+        sourceDomain: 'original_fiction',
+      },
+      {
+        videoType: 'children_story',
+        style: 'children_animation',
+        communicationGoal: '帮助孩子区分原创设定、戏剧化表达、现实引用和权利状态。',
+        fieldIds: ['misconception_or_boundary'],
+        expectedSnippet: '外部事实或权利结论',
+        forbiddenSnippet: '正式入库',
+        sourceDomain: 'original_fiction',
+        credibilityNote: '',
+        culturalConstraints: [],
+      },
     ];
 
-    for (const item of cases) {
+    for (const [caseIndex, item] of cases.entries()) {
+      const caseId = `${item.sourceDomain ?? 'china-culture'}-${item.videoType}-${caseIndex + 1}`;
       const productionPack = getProductionMaterialPack(item.videoType);
       expect(productionPack).toBeTruthy();
       const materialPack: StoryGenerateResult['material_pack'] = {
@@ -4957,8 +5363,8 @@ describe('project-service', () => {
         supporting_materials: [],
         reference_materials: [],
         visual_assets: [],
-        verified_facts: ['已有来源线索：测试资料显示该素材与地方文化传播有关。'],
-        uncertain_claims: ['人物关系、年代和传说流传范围待核实。'],
+        verified_facts: item.verifiedFacts ?? ['已有来源线索：测试资料显示该素材与地方文化传播有关。'],
+        uncertain_claims: item.uncertainClaims ?? ['人物关系、年代和传说流传范围待核实。'],
         creative_space: ['可从分镜中抽取讲解例子和镜头节奏。'],
         missing_needs: [],
         overall_confidence: 0.62,
@@ -4973,7 +5379,8 @@ describe('project-service', () => {
       const baseStory = makeStory();
       const story: StoryGenerateResult = {
         ...baseStory,
-        storyId: `20260609-story-autodraft-${item.videoType}`,
+        storyId: `20260609-story-autodraft-${caseId}`,
+        sourceDomain: item.sourceDomain,
         title: `${productionPack!.label}自动草拟测试`,
         video_type: item.videoType,
         presentation_style: item.style,
@@ -4984,6 +5391,7 @@ describe('project-service', () => {
         knowledge_outline: item.knowledgeOutline,
         source_quotes: item.sourceQuotes,
         field_notes: item.fieldNotes,
+        credibility_note: item.credibilityNote ?? baseStory.credibility_note,
         material_pack: materialPack,
         production_material_pack: productionPack,
         production_material_readiness: initialReadiness,
@@ -5007,12 +5415,12 @@ describe('project-service', () => {
           visual_focus: ['旧街入口', '文化符号', '字幕关键词', '事实边界卡'],
           segment_prompt_hint: '9:16 vertical shot, presenter or child notices cultural symbol, caption-safe composition',
         })),
-        cultural_constraints: [
+        cultural_constraints: item.culturalConstraints ?? [
           '不得把传说和戏剧化表达写成已确认事实。',
           '待核实内容需保留来源线索和边界提示。',
         ],
         supplement_tasks: item.fieldIds.map(fieldId => ({
-          task_id: `20260609-story-autodraft-${item.videoType}--production-template--${fieldId}`,
+          task_id: `20260609-story-autodraft-${caseId}--production-template--${fieldId}`,
           need_id: `production_template_${fieldId}`,
           label: fieldId,
           description: `补齐「${productionPack!.label}」生产模板字段「${fieldId}」。`,
@@ -5048,11 +5456,17 @@ describe('project-service', () => {
       expect(afterDetail.ok).toBe(true);
       expect(afterDetail.data?.current_story.supplement_tasks?.map(task => task.status))
         .toEqual(item.fieldIds.map(() => 'resolved'));
-      const expectedAvailableFields = item.fieldIds.filter(fieldId => fieldId !== 'project_name');
+      const expectedAvailableFields = item.fieldIds.filter(fieldId => (
+        fieldId !== 'project_name'
+        && productionPack!.material_template.required_fields.includes(fieldId)
+      ));
       expect(afterDetail.data?.current_story.production_material_readiness?.available_fields)
         .toEqual(expect.arrayContaining(expectedAvailableFields));
-      expect(JSON.stringify(afterDetail.data?.current_story.supplement_tasks?.map(task => task.supplement_field_values)))
-        .toContain(item.expectedSnippet);
+      const draftedFieldValues = JSON.stringify(
+        afterDetail.data?.current_story.supplement_tasks?.map(task => task.supplement_field_values),
+      );
+      expect(draftedFieldValues).toContain(item.expectedSnippet);
+      if (item.forbiddenSnippet) expect(draftedFieldValues).not.toContain(item.forbiddenSnippet);
     }
   });
 

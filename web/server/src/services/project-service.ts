@@ -1,6 +1,7 @@
 import { dirname, extname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createHmac, randomUUID } from 'node:crypto';
+import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import {
   fail,
   success,
@@ -174,11 +175,24 @@ import { buildProductionReadinessAutomationPlan } from './production-readiness-a
 import { resolveStoryProjectWorkflow } from '@shared/project-workflow.js';
 import type { ProductResourceOwnership } from '@shared/product-access.js';
 import {
-  FileProjectRepository,
+  type ProjectRepository,
   type ProjectMetaExpectation,
   type ProjectVersionExpectation,
 } from '../repositories/project-repository.js';
 import { FileArtifactStore } from '../repositories/artifact-store.js';
+import { createStoryProjectRepository } from '../platform/project-repository-provider.js';
+import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
+import {
+  formatStoryDomainEditPersistenceBoundary,
+  getStoryDomainRevisionEditBoundary,
+  getStoryDomainSupplementEditBoundary,
+  isStoryDomainEditPersistenceBoundarySafe,
+  type StoryDomainSupplementEditBoundary,
+} from '../platform/story-domain-edit-boundary.js';
+import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
+import { planStoryDomainKnowledgeWriteback } from '../platform/story-domain-knowledge-writeback.js';
+import { getStoryDomainProductionMaterialGuidance } from '../platform/story-domain-production-material-guidance.js';
+import type { DomainProductionMaterialGuidance } from '../platform/domain-pack.js';
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 import {
   buildGearsLedgerItem,
@@ -239,11 +253,11 @@ type StoredStoryFile = StoryGenerateResult & {
 };
 
 function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
+  return storyKbRoot();
 }
 
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
+  return storyGeneratedRoot();
 }
 
 function storiesRoot(generatedRootOverride?: string): string {
@@ -254,8 +268,8 @@ function projectsRoot(generatedRootOverride?: string): string {
   return resolve(generatedRootOverride ?? generatedRoot(), 'projects');
 }
 
-function projectRepository(generatedRootOverride?: string): FileProjectRepository {
-  return new FileProjectRepository(projectsRoot(generatedRootOverride));
+function projectRepository(generatedRootOverride?: string): ProjectRepository {
+  return createStoryProjectRepository(projectsRoot(generatedRootOverride));
 }
 
 function projectVersionExpectation(project: StoryProjectMeta): ProjectVersionExpectation {
@@ -427,7 +441,7 @@ function buildProjectMeta(
     project_id: story.project_id ?? buildProjectId(story.storyId, story.video_type),
     current_story_id: story.storyId,
     title: story.title,
-    source_domain: 'china_culture',
+    source_domain: resolveStorySourceDomain(story),
     source_entry: story.source_entry,
     video_type: story.video_type,
     presentation_style: story.presentation_style,
@@ -2502,6 +2516,7 @@ function buildInitialProjectSnapshot(
   const versionId = story.current_version_id ?? buildVersionId(projectId, 1);
   const storyWithProject = {
     ...story,
+    sourceDomain: resolveStorySourceDomain(story),
     project_id: projectId,
     current_version_id: versionId,
   };
@@ -2589,6 +2604,7 @@ async function persistProjectVersion(
 
   const updatedMeta: StoryProjectMeta = {
     ...project,
+    source_domain: resolveStorySourceDomain(updatedStory),
     current_story_id: updatedStory.storyId,
     current_version_id: versionId,
     version_count: nextVersionNumber,
@@ -2635,12 +2651,13 @@ export async function createProjectFromGeneratedStory(
   const meta = await ensureProjectFromStory(story, createdAt, accessControl);
   return {
     ...story,
+    sourceDomain: meta.source_domain,
     project_id: meta.project_id,
     current_version_id: meta.current_version_id,
   };
 }
 
-export async function listProjects(): Promise<ApiResponse<StoryProjectListItem[]>> {
+export async function listProjects(sourceDomain?: string): Promise<ApiResponse<StoryProjectListItem[]>> {
   await ensureProjectsFromStories();
 
   let projectIds: string[];
@@ -2654,6 +2671,7 @@ export async function listProjects(): Promise<ApiResponse<StoryProjectListItem[]
   for (const projectId of projectIds) {
     const meta = await readProjectMeta(projectId);
     if (!meta) continue;
+    if (sourceDomain && meta.source_domain !== sourceDomain) continue;
     projects.push(await hydrateProjectMetaForCurrentStory(meta));
   }
 
@@ -2690,9 +2708,12 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
   }
 
   const versions = await readVersionSnapshots(projectId);
-  const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
-  if (!currentVersion) {
+  if (!versions.length) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
+  }
+  const currentVersion = versions.find(version => version.version_id === project.current_version_id);
+  if (!currentVersion) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version "${project.current_version_id}" is unavailable`);
   }
   if (!currentVersion.story) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version has no story snapshot`);
@@ -6257,8 +6278,15 @@ export async function getProjectProductionReadiness(
   const activeShotCount = shotStatusCounts.submitted + shotStatusCounts.processing;
   const shotCount = board.seedance_shot_ledger.items.length || board.shot_units.length;
   const seedancePlaceholderAssetCount = board.seedance_asset_report.placeholder_asset_count ?? 0;
-  const currentVersion = detail.versions.find(version => version.version_id === detail.project.current_version_id)
-    ?? detail.versions[0];
+  const currentVersion = detail.versions.find(
+      version => version.version_id === detail.project.current_version_id,
+    );
+  if (!currentVersion) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      `Project "${projectId}" current version "${detail.project.current_version_id}" summary is unavailable`,
+    );
+  }
   const issues: ProductionReadinessIssue[] = [];
   const nextActions: ProductionReadinessNextAction[] = [];
 
@@ -7432,9 +7460,12 @@ export async function exportProjectCurrentVersion(projectId: string): Promise<Ap
   }
 
   const versions = await readVersionSnapshots(projectId);
-  const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
-  if (!currentVersion) {
+  if (!versions.length) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
+  }
+  const currentVersion = versions.find(version => version.version_id === project.current_version_id);
+  if (!currentVersion) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version "${project.current_version_id}" is unavailable`);
   }
 
   const exportedAt = nextProjectUpdatedAt(project);
@@ -7462,6 +7493,17 @@ export async function exportProjectKnowledgeCandidates(
   }
 
   const { project, current_story } = detailResult.data;
+  const supplementBoundary = await getStoryDomainSupplementEditBoundary(current_story);
+  if (supplementBoundary.guidance.candidate_kind !== 'domain_knowledge_candidate') {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Domain pack \"${supplementBoundary.persistence.domain_id}\" exposes project-only supplement candidates, not formal knowledge candidates.`,
+      {
+        supplement_guidance: supplementBoundary.guidance,
+        persistence: supplementBoundary.persistence,
+      },
+    );
+  }
   const exportedAt = new Date().toISOString();
   const items = (current_story.supplement_tasks ?? [])
     .filter(task => Boolean(task.knowledge_candidate_markdown))
@@ -7481,7 +7523,7 @@ export async function exportProjectKnowledgeCandidates(
       writeback_note: task.knowledge_writeback_note,
     }));
   const markdown = [
-    `# ${project.title} 知识库候选稿`,
+    `# ${project.title} ${supplementBoundary.guidance.candidate_heading}`,
     '',
     `- 项目 ID：${project.project_id}`,
     `- 来源条目：${project.source_entry}`,
@@ -7489,7 +7531,7 @@ export async function exportProjectKnowledgeCandidates(
     `- 导出时间：${exportedAt}`,
     `- 候选稿数量：${items.length}`,
     '',
-    '> 这些内容来自项目补充任务，需人工核实来源、地点、核实方法和待核点后，才能写入省份 Markdown。',
+    `> ${supplementBoundary.guidance.human_review_requirement}`,
     '',
     ...items.flatMap((item, index) => [
       `---`,
@@ -7527,7 +7569,14 @@ export async function exportProjectKnowledgeWritebackPatch(
 
   const { project, current_story } = detailResult.data;
   const exportedAt = new Date().toISOString();
-  const target = inferKnowledgeWritebackTarget(current_story);
+  const target = await planStoryDomainKnowledgeWriteback(current_story);
+  if (!target.eligible || !target.suggested_file_path || !target.suggested_section_heading) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Domain pack "${target.domain_id}" does not expose an eligible knowledge writeback target for this story.`,
+      target,
+    );
+  }
   const items = (current_story.supplement_tasks ?? [])
     .filter(task => (
       task.knowledge_candidate_review_status === 'approved'
@@ -7539,8 +7588,8 @@ export async function exportProjectKnowledgeWritebackPatch(
         task_id: task.task_id,
         label: task.label,
         source_entry: current_story.source_entry,
-        suggested_file_path: target.filePath,
-        suggested_section_heading: target.sectionHeading,
+        suggested_file_path: target.suggested_file_path!,
+        suggested_section_heading: target.suggested_section_heading!,
         review_note: task.knowledge_candidate_review_note,
         writeback_status: task.knowledge_writeback_status,
         writeback_note: task.knowledge_writeback_note,
@@ -7563,10 +7612,10 @@ export async function exportProjectKnowledgeWritebackPatch(
     '',
     '- 补齐正式来源、地点、核实方法和待核点。',
     '- 确认内容适用于原始文化条目，而不只是当前项目。',
-    '- 只在人工审稿后复制 append_markdown 到省份 Markdown。',
+    '- 只在人工审稿且 Domain Pack 目标复核通过后复制 append_markdown。',
   ].join('\n');
   const markdown = [
-    `# ${project.title} 省份知识库写入 Patch 草案`,
+    `# ${project.title} 领域知识库写入 Patch 草案`,
     '',
     `- 项目 ID：${project.project_id}`,
     `- 来源条目：${project.source_entry}`,
@@ -7673,7 +7722,7 @@ export async function exportProjectSupplementCandidatePackage(
     `- 分级：当前阻断 ${blockingOpenCount} / 需核验 ${riskOpenCount} / 生产前补充 ${optionalOpenCount}`,
     `- 涉及项目：${projectCount}`,
     `- 涉及目标文件：${targetFiles.length > 0 ? targetFiles.join('、') : '待人工判定'}`,
-    '- 写回策略：只生成候选稿、审稿材料和人工写回草案；不直接修改 data/provinces/*.md。',
+    '- 写回策略：只生成候选稿、审稿材料和人工写回草案；不直接修改 Domain Pack 目标文件。',
     '',
     ...items.flatMap((item, index) => supplementCandidateMarkdownSection(item, index)),
   ].join('\n');
@@ -7717,6 +7766,26 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
 
   const detailCache = new Map<string, NonNullable<Awaited<ReturnType<typeof getProject>>['data']>>();
   const items: ProjectKnowledgeWritebackPatchPackage['items'] = [];
+  const explicitlyBlockedTask = filters.project_id
+    ? tasksResult.data.find(item => (
+        isKnowledgeWritebackReadyTask(item.task)
+        && !item.knowledge_writeback_eligible
+      ))
+    : undefined;
+  if (explicitlyBlockedTask) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Domain pack "${explicitlyBlockedTask.source_domain}" does not expose an eligible knowledge writeback target for project "${explicitlyBlockedTask.project_id}".`,
+      {
+        project_id: explicitlyBlockedTask.project_id,
+        source_domain: explicitlyBlockedTask.source_domain,
+        blockers: explicitlyBlockedTask.knowledge_writeback_blockers,
+        direct_writeback_allowed: false,
+        writeback_performed: false,
+        real_credit_granted: false,
+      },
+    );
+  }
   for (const item of tasksResult.data) {
     const task = item.task;
     const taskKey = knowledgeWritebackTaskKey(item.project_id, task.task_id);
@@ -7724,6 +7793,9 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     if (
       task.knowledge_candidate_review_status !== 'approved'
       || !task.knowledge_writeback_draft_markdown
+      || !item.knowledge_writeback_eligible
+      || !item.suggested_file_path
+      || !item.suggested_section_heading
     ) {
       continue;
     }
@@ -7736,19 +7808,18 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
       detailCache.set(item.project_id, detail);
     }
 
-    const target = inferKnowledgeWritebackTarget(detail.current_story);
     const appendMarkdown = buildKnowledgeWritebackAppendMarkdown(detail.current_story, task, exportedAt);
     items.push({
       task_key: taskKey,
       project_id: item.project_id,
       project_title: item.project_title,
       video_type: item.video_type,
-      target_province: target.province,
+      target_province: item.target_province,
       task_id: task.task_id,
       label: task.label,
       source_entry: detail.current_story.source_entry,
-      suggested_file_path: target.filePath,
-      suggested_section_heading: target.sectionHeading,
+      suggested_file_path: item.suggested_file_path,
+      suggested_section_heading: item.suggested_section_heading,
       review_note: task.knowledge_candidate_review_note,
       writeback_status: task.knowledge_writeback_status,
       writeback_note: task.knowledge_writeback_note,
@@ -7779,7 +7850,7 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
   const prBody = [
     `## 变更目的`,
     '',
-    '将 Story Agent 写回队列中已通过审稿的生产素材候选稿整理为省份知识库写入草案。',
+    '将 Story Agent 写回队列中已通过审稿且通过 Domain Pack 目标计划的生产素材候选稿整理为知识库写入草案。',
     '',
     `## 导出范围`,
     '',
@@ -7800,7 +7871,7 @@ export async function exportProjectKnowledgeWritebackQueuePatch(
     '',
     '- 补齐正式来源、地点、核实方法和待核点。',
     '- 确认内容适用于原始文化条目，而不只是当前项目。',
-    '- 只在人工审稿后复制 append_markdown 到省份 Markdown。',
+    '- 只在人工审稿且 Domain Pack 目标复核通过后复制 append_markdown。',
   ].join('\n');
   const markdown = [
     `# Story Agent 写回队列 Patch 草案`,
@@ -7882,10 +7953,14 @@ function supplementCandidateSearchText(
     item.task_key,
     item.project_id,
     item.project_title,
+    item.source_domain,
     item.source_entry,
     item.video_type,
+    item.knowledge_writeback_eligible ? 'writeback eligible' : 'writeback blocked',
+    ...item.knowledge_writeback_blockers,
     item.target_province ?? '',
     item.suggested_file_path ?? '',
+    item.suggested_section_heading ?? '',
     task.label,
     task.description,
     task.category ?? '',
@@ -7916,10 +7991,14 @@ function supplementCandidateMarkdownSection(
     `- task_key：${item.task_key}`,
     `- project_id：${item.project_id}`,
     `- 项目：${item.project_title}`,
+    `- Domain Pack：${item.source_domain}`,
     `- 来源条目：${item.source_entry}`,
     `- 类型：${item.video_type}`,
+    `- 正式知识写回：${item.knowledge_writeback_eligible ? '可进入人工复核' : '已阻断'}`,
+    `- 写回阻断：${item.knowledge_writeback_blockers.join('；') || '无'}`,
     `- 目标省份：${item.target_province ?? '待人工判定'}`,
     `- 建议目标文件：${item.suggested_file_path ?? '待人工判定'}`,
+    `- 建议目标位置：${item.suggested_section_heading ?? '待人工判定'}`,
     `- 来源类型：${task.source}`,
     `- 阶段：${task.stage ?? '未标注'}`,
     `- 分级：${task.blocking_level ?? '未标注'}`,
@@ -7951,7 +8030,7 @@ function supplementCandidateMarkdownSection(
         ]
       : []),
     ...(task.knowledge_candidate_markdown
-      ? ['### 现有知识库候选稿', '', task.knowledge_candidate_markdown, '']
+      ? ['### 现有补素材候选稿', '', task.knowledge_candidate_markdown, '']
       : []),
     ...(task.knowledge_writeback_draft_markdown
       ? ['### 现有正式写入草案', '', task.knowledge_writeback_draft_markdown, '']
@@ -8446,16 +8525,19 @@ export async function listProjectSupplementTasks(
     if (filters.video_type && project.video_type !== filters.video_type) continue;
     const detailResult = await getProject(project.project_id);
     if (!detailResult.ok || !detailResult.data) continue;
-    const writebackTarget = inferKnowledgeWritebackTarget(detailResult.data.current_story);
-    if (filters.province && writebackTarget.province !== filters.province) continue;
+    const writebackTarget = await planStoryDomainKnowledgeWriteback(detailResult.data.current_story);
+    if (filters.province && writebackTarget.target_region !== filters.province) continue;
     for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
       if (filters.status && task.status !== filters.status) continue;
       if (filters.stage && task.stage !== filters.stage) continue;
       if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
       if (filters.source && task.source !== filters.source) continue;
-      if (filters.knowledge_writeback_ready && !isKnowledgeWritebackReadyTask(task)) continue;
+      if (
+        filters.knowledge_writeback_ready
+        && (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task))
+      ) continue;
       if (filters.knowledge_writeback_status) {
-        if (!isKnowledgeWritebackReadyTask(task)) continue;
+        if (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task)) continue;
         const writebackStatus = task.knowledge_writeback_status
           ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
         if (writebackStatus !== filters.knowledge_writeback_status) continue;
@@ -8464,10 +8546,14 @@ export async function listProjectSupplementTasks(
         project_id: project.project_id,
         current_story_id: project.current_story_id,
         project_title: project.title,
+        source_domain: writebackTarget.domain_id,
         source_entry: project.source_entry,
         video_type: project.video_type,
-        target_province: writebackTarget.province,
-        suggested_file_path: writebackTarget.filePath,
+        knowledge_writeback_eligible: writebackTarget.eligible,
+        knowledge_writeback_blockers: [...writebackTarget.blockers],
+        target_province: writebackTarget.target_region,
+        suggested_file_path: writebackTarget.suggested_file_path,
+        suggested_section_heading: writebackTarget.suggested_section_heading,
         updated_at: project.updated_at,
         task,
       });
@@ -8634,7 +8720,7 @@ async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Pro
     return project;
   }
   const versions = await readVersionSnapshots(project.project_id);
-  const currentVersion = versions.find(version => version.version_id === project.current_version_id) ?? versions[0];
+  const currentVersion = versions.find(version => version.version_id === project.current_version_id);
   if (!currentVersion) return project;
   if (!currentVersion.story) return project;
   return hydrateProjectMetaForStory(project, normalizeStoryGenerationFields(currentVersion.story));
@@ -8643,6 +8729,7 @@ async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Pro
 function hydrateProjectMetaForStory(project: StoryProjectMeta, story: StoryGenerateResult): StoryProjectMeta {
   return {
     ...project,
+    source_domain: resolveStorySourceDomain(story),
     story_structure: project.story_structure ?? story.story_structure,
     creation_use_case: project.creation_use_case ?? story.creation_use_case,
     truth_mode: project.truth_mode ?? story.truth_mode,
@@ -8722,7 +8809,9 @@ export async function repairProjectQuality(
 const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
   'storyId',
   'project_id',
+  'sourceDomain',
   'source_entry',
+  'original_user_query',
   'video_type',
   'presentation_style',
   'story_structure',
@@ -8731,6 +8820,7 @@ const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
   'material_sufficiency',
   'material_pack',
   'credibility_note',
+  'domain_safety',
 ];
 
 const QUALITY_REPAIR_PROMPT_REQUIRED_FIELDS = [
@@ -8789,13 +8879,15 @@ function qualityRepairPromptTargetSceneIds(actions: QualityRepairAction[], story
   return unique.length > 0 ? unique : story.scene_breakdown.slice(0, 3).map(scene => scene.scene_id);
 }
 
-function buildQualityRepairPromptText(input: {
+async function buildQualityRepairPromptText(input: {
   story: StoryGenerateResult;
   actions: QualityRepairAction[];
   targetSceneIds: number[];
   request: StoryQualityRepairPromptRequest;
-}): string {
+}): Promise<string> {
   const { story, actions, targetSceneIds, request } = input;
+  const revisionBoundary = await getStoryDomainRevisionEditBoundary(story);
+  const revisionGuidance = revisionBoundary.guidance;
   const quality = story.quality_report;
   const targetScenes = story.scene_breakdown
     .filter(scene => targetSceneIds.includes(scene.scene_id))
@@ -8809,7 +8901,7 @@ function buildQualityRepairPromptText(input: {
       dialogue_or_narration: scene.dialogue_or_narration,
     }));
   return [
-    '你是 china-culture-kb Story Agent 的故事修复写手。请输出一个完整 repaired_story_json。',
+    `你是${revisionGuidance.writer_role}。请输出一个完整 repaired_story_json。`,
     '',
     '硬性输出规则：',
     '1. 只输出一个 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
@@ -8817,8 +8909,12 @@ function buildQualityRepairPromptText(input: {
     '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、story_blueprint.evidence_boundaries、creation_contract、material_sufficiency、material_pack 和 credibility_note，除非修复动作明确要求调整。',
     '4. 同步修复 full_text、scene_breakdown、gears_segments 和 quality_report，避免正文、分场和 GEARS 单元互相矛盾。',
     '5. script_text 只写观众可听/可见的剧本内容；visual_prompt 只写可见画面元素；camera_suggestion 只写镜头语言；validation_notes 不得混入提示词字段。',
-    '6. 不新增未经来源支持的硬事实；戏剧化内容要放在 fictionalized_elements、cultural_note 或 credibility_note 的边界中。',
-    '7. 不写入 data/provinces，也不要声称已经保存文件；保存只能由 Story Agent 项目版本接口完成。',
+    ...revisionGuidance.source_boundary_rules.map((rule, index) => `${index + 6}. ${rule}`),
+    `${revisionGuidance.source_boundary_rules.length + 6}. ${revisionGuidance.human_review_requirement}`,
+    '',
+    '持久化禁写合同：',
+    ...formatStoryDomainEditPersistenceBoundary(revisionBoundary.persistence).map(line => `- ${line}`),
+    '- 只输出修订 JSON；实际保存只能由 Story Agent 项目版本接口在合同允许范围内执行。',
     '',
     '创作合同边界：',
     JSON.stringify({
@@ -8909,7 +9005,7 @@ export async function generateProjectQualityRepairPrompt(
 
   const actions = selectQualityRepairPromptActions(current_story, request);
   const targetSceneIds = qualityRepairPromptTargetSceneIds(actions, current_story);
-  const prompt = buildQualityRepairPromptText({
+  const prompt = await buildQualityRepairPromptText({
     story: current_story,
     actions,
     targetSceneIds,
@@ -9040,7 +9136,9 @@ const QUALITY_REPAIR_SCENE_DIFF_FIELDS = [
 const QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS = [
   'storyId',
   'project_id',
+  'sourceDomain',
   'source_entry',
+  'original_user_query',
   'video_type',
   'presentation_style',
   'story_structure',
@@ -9048,6 +9146,7 @@ const QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS = [
   'material_pack',
   'creation_contract',
   'material_sufficiency',
+  'domain_safety',
 ] as const satisfies readonly (keyof StoryGenerateResult)[];
 
 function sameJsonValue(left: unknown, right: unknown): boolean {
@@ -9463,7 +9562,9 @@ function normalizeRepairedStoryCandidate(
     storyId: current.storyId,
     project_id: projectId,
     current_version_id: current.current_version_id,
+    sourceDomain: current.sourceDomain,
     source_entry: current.source_entry,
+    original_user_query: current.original_user_query,
     video_type: current.video_type,
     presentation_style: current.presentation_style,
     story_structure: current.story_structure,
@@ -9478,6 +9579,7 @@ function normalizeRepairedStoryCandidate(
     creation_contract: current.creation_contract,
     material_sufficiency: current.material_sufficiency,
     credibility_note: current.credibility_note,
+    domain_safety: current.domain_safety,
     generation_source: current.generation_source,
     generation_mode: current.generation_mode,
     generation_used_fallback: current.generation_used_fallback,
@@ -9535,6 +9637,7 @@ export async function applyProjectQualityRepairJson(
   }
 
   const { project, current_story } = detailResult.data;
+  const revisionBoundary = await getStoryDomainRevisionEditBoundary(current_story);
   let parsed: StoryGenerateResult;
   try {
     parsed = parseRepairedStoryJson(request.repaired_story_json);
@@ -9556,6 +9659,15 @@ export async function applyProjectQualityRepairJson(
   }
 
   const candidate = revalidateRepairedStory(normalizeRepairedStoryCandidate(current_story, parsed, project.project_id));
+  const domainSafety = await revalidateStoryDomainRevision(candidate);
+  if (domainSafety) candidate.domain_safety = domainSafety;
+  if (domainSafety && !domainSafety.passed) {
+    return fail(
+      ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED,
+      `Repaired story failed the ${domainSafety.domain} safety boundary`,
+      domainSafety,
+    );
+  }
   const beforeQuality = qualitySnapshotForApply(current_story.quality_report as StoryQualityReport | undefined);
   const afterQuality = qualitySnapshotForApply(candidate.quality_report as StoryQualityReport | undefined);
   const sceneIdsChanged = changedSceneIds(current_story, candidate);
@@ -9620,6 +9732,14 @@ export async function applyProjectQualityRepairJson(
       repair_trace: trace,
       ...repairBoundaryContext,
     }));
+  }
+
+  if (!isStoryDomainEditPersistenceBoundarySafe(revisionBoundary.persistence)) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `Domain pack \"${revisionBoundary.persistence.domain_id}\" exposed an unsafe story revision persistence boundary.`,
+      revisionBoundary.persistence,
+    );
   }
 
   const appliedTrace: StoryRepairTrace = {
@@ -9786,13 +9906,14 @@ export async function draftProjectProductionMaterialFields(
   }
 
   const story = detailResult.data.current_story;
+  const productionMaterialGuidance = await getStoryDomainProductionMaterialGuidance(story);
   const generatedAt = new Date().toISOString();
   const tasks = projectProductionMaterialDraftableTasks(story);
   const draftedTasks: ProjectDraftProductionMaterialFieldsResult['drafted_tasks'] = [];
   const skippedTasks: ProjectDraftProductionMaterialFieldsResult['skipped_tasks'] = [];
 
   for (const task of tasks) {
-    const fieldValues = productionMaterialDraftFieldValues(story, task);
+    const fieldValues = await productionMaterialDraftFieldValues(story, task, productionMaterialGuidance);
     const fieldIds = Object.keys(fieldValues);
     if (fieldIds.length === 0) {
       skippedTasks.push({
@@ -9925,84 +10046,89 @@ function projectProductionMaterialDraftableTasks(
   });
 }
 
-function productionMaterialDraftFieldValues(
+async function productionMaterialDraftFieldValues(
   story: StoryGenerateResult,
   task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
-): Record<string, string> {
+  guidance: DomainProductionMaterialGuidance,
+): Promise<Record<string, string>> {
   const values: Record<string, string> = {};
   for (const fieldId of task.recommended_fields ?? []) {
     if (!PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)) continue;
-    const value = draftProductionMaterialFieldValue(story, fieldId);
+    const value = draftProductionMaterialFieldValue(story, fieldId, guidance);
     if (value) values[fieldId] = value;
   }
   return values;
 }
 
-function draftProductionMaterialFieldValue(story: StoryGenerateResult, fieldId: string): string {
+function draftProductionMaterialFieldValue(
+  story: StoryGenerateResult,
+  fieldId: string,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   if (fieldId === 'reference_images_or_keyframes') return draftReferenceImagesOrKeyframes(story);
   if (fieldId === 'identity_motion_consistency_plan') return draftIdentityMotionConsistencyPlan(story);
-  if (fieldId === 'single_shot_test') return draftSingleShotTest(story);
+  if (fieldId === 'single_shot_test') return draftSingleShotTest(story, guidance);
   if (fieldId === 'multi_shot_continuity') return draftMultiShotContinuity(story);
   if (fieldId === 'transition_plan') return draftTransitionPlan(story);
-  if (fieldId === 'shot_prompt_layers') return draftShotPromptLayers(story);
+  if (fieldId === 'shot_prompt_layers') return draftShotPromptLayers(story, guidance);
   if (fieldId === 'character_stability_tags') return draftCharacterStabilityTags(story);
   if (fieldId === 'dialogue_bubbles') return draftDialogueBubbles(story);
   if (fieldId === 'emotion_beats') return draftEmotionBeats(story);
-  if (fieldId === 'project_name') return draftProjectName(story);
-  if (fieldId === 'heritage_or_craft_type') return draftHeritageOrCraftType(story);
+  if (fieldId === 'project_name') return draftProjectName(story, guidance);
+  if (fieldId === 'heritage_or_craft_type') return draftHeritageOrCraftType(story, guidance);
   if (fieldId === 'materials') return draftHeritageMaterials(story);
   if (fieldId === 'tools') return draftHeritageTools(story);
   if (fieldId === 'process_steps') return draftProcessSteps(story);
   if (fieldId === 'hand_actions') return draftHandActions(story);
-  if (fieldId === 'documentation_assets') return draftDocumentationAssets(story);
+  if (fieldId === 'documentation_assets') return draftDocumentationAssets(story, guidance);
   if (fieldId === 'visual_symbols') return draftVisualSymbols(story);
   if (fieldId === 'sound_or_texture_details') return draftSoundOrTextureDetails(story);
   if (fieldId === 'modern_connection') return draftModernConnection(story);
   if (fieldId === 'production_risks') return draftProductionRisks(story);
   if (fieldId === 'documentary_question') return draftDocumentaryQuestion(story);
   if (fieldId === 'real_world_site_or_object') return draftRealWorldSiteOrObject(story);
-  if (fieldId === 'source_quotes_or_source_cues') return draftSourceQuotesOrSourceCues(story);
+  if (fieldId === 'source_quotes_or_source_cues') return draftSourceQuotesOrSourceCues(story, guidance);
   if (fieldId === 'timeline') return draftTimeline(story);
-  if (fieldId === 'witness_or_expert_roles') return draftWitnessOrExpertRoles(story);
+  if (fieldId === 'witness_or_expert_roles') return draftWitnessOrExpertRoles(story, guidance);
   if (fieldId === 'interview_clip_selection') return draftInterviewClipSelection(story);
   if (fieldId === 'field_notes') return draftFieldNotes(story);
   if (fieldId === 'b_roll_plan') return draftBRollPlan(story);
   if (fieldId === 'reconstruction_boundary') return draftReconstructionBoundary(story);
   if (fieldId === 'present_day_trace') return draftPresentDayTrace(story);
   if (fieldId === 'ambient_sound') return draftAmbientSound(story);
-  if (fieldId === 'what_must_not_be_claimed') return draftWhatMustNotBeClaimed(story);
+  if (fieldId === 'what_must_not_be_claimed') return draftWhatMustNotBeClaimed(story, guidance);
   if (fieldId === 'audience_age_band') return draftAudienceAgeBand(story);
   if (fieldId === 'child_safe_conflict') return draftChildSafeConflict(story);
   if (fieldId === 'protagonist_choice') return draftProtagonistChoice(story);
   if (fieldId === 'concrete_examples') return draftConcreteExamples(story);
   if (fieldId === 'emotional_resolution') return draftEmotionalResolution(story);
-  if (fieldId === 'parent_teacher_note') return draftParentTeacherNote(story);
+  if (fieldId === 'parent_teacher_note') return draftParentTeacherNote(story, guidance);
   if (fieldId === 'core_question') return draftCoreQuestion(story);
-  if (fieldId === 'audience_level') return draftAudienceLevel(story);
+  if (fieldId === 'audience_level') return draftAudienceLevel(story, guidance);
   if (fieldId === 'argument_points') return draftArgumentPoints(story);
-  if (fieldId === 'knowledge_outline') return draftKnowledgeOutline(story);
+  if (fieldId === 'knowledge_outline') return draftKnowledgeOutline(story, guidance);
   if (fieldId === 'concept_definitions') return draftConceptDefinitions(story);
   if (fieldId === 'knowledge_steps') return draftKnowledgeSteps(story);
   if (fieldId === 'opening_hook') return draftOpeningHook(story);
-  if (fieldId === 'share_trigger') return draftShareTrigger(story);
+  if (fieldId === 'share_trigger') return draftShareTrigger(story, guidance);
   if (fieldId === 'beat_interval') return draftBeatInterval(story);
   if (fieldId === 'vertical_shot_plan') return draftVerticalShotPlan(story);
-  if (fieldId === 'diagram_or_caption_plan') return draftDiagramOrCaptionPlan(story);
-  if (fieldId === 'comment_prompt') return draftCommentPrompt(story);
-  if (fieldId === 'fact_boundary_card') return draftFactBoundaryCard(story);
-  if (fieldId === 'speaker_position') return draftSpeakerPosition(story);
+  if (fieldId === 'diagram_or_caption_plan') return draftDiagramOrCaptionPlan(story, guidance);
+  if (fieldId === 'comment_prompt') return draftCommentPrompt(story, guidance);
+  if (fieldId === 'fact_boundary_card') return draftFactBoundaryCard(story, guidance);
+  if (fieldId === 'speaker_position') return draftSpeakerPosition(story, guidance);
   if (fieldId === 'communication_goal') return draftCommunicationGoal(story);
   if (fieldId === 'case_examples') return draftCaseExamples(story);
   if (fieldId === 'slide_or_board_assets') return draftSlideOrBoardAssets(story);
   if (fieldId === 'audience_takeaway') return draftAudienceTakeaway(story);
   if (fieldId === 'learning_objective') return draftLearningObjective(story);
-  if (fieldId === 'learner_profile') return draftLearnerProfile(story);
+  if (fieldId === 'learner_profile') return draftLearnerProfile(story, guidance);
   if (fieldId === 'step_sequence') return draftStepSequence(story);
   if (fieldId === 'practice_task') return draftPracticeTask(story);
   if (fieldId === 'assessment_check') return draftAssessmentCheck(story);
-  if (fieldId === 'source_cues') return draftSourceCues(story);
-  if (fieldId === 'misconception_or_boundary') return draftMisconceptionOrBoundary(story);
-  if (fieldId === 'forbidden_claims') return draftForbiddenClaims(story);
+  if (fieldId === 'source_cues') return draftSourceCues(story, guidance);
+  if (fieldId === 'misconception_or_boundary') return draftMisconceptionOrBoundary(story, guidance);
+  if (fieldId === 'forbidden_claims') return draftForbiddenClaims(story, guidance);
   if (fieldId === 'analogy_or_visual_metaphor') return draftAnalogyOrVisualMetaphor(story);
   if (fieldId === 'recap_sentence') return draftRecapSentence(story);
   return '';
@@ -10034,14 +10160,17 @@ function draftIdentityMotionConsistencyPlan(story: StoryGenerateResult): string 
   ]);
 }
 
-function draftSingleShotTest(story: StoryGenerateResult): string {
+function draftSingleShotTest(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const scene = story.scene_breakdown[0];
   const segment = story.gears_segments.find(item => item.source_scene_id === scene?.scene_id) ?? story.gears_segments[0];
   return compactDraftLines([
     `单镜头测试：优先用 S${scene?.scene_id ?? 1}「${scene?.title ?? story.title}」做 3-5 秒单镜头测试。`,
     `单镜头测试画面：${shortText(scene?.visual_prompt || segment?.segment_prompt_hint || segment?.visual_focus.join('，') || story.logline, 220)}`,
     `单镜头测试运镜：${shortText(scene?.camera_suggestion || '轻微推进，人物表情和关键道具清晰可见。', 120)}`,
-    `验收标准：角色脸型、服饰、动作方向、字幕安全区和文化边界稳定后，再批量生成多分镜。`,
+    `验收标准：角色脸型、服饰、动作方向、字幕安全区和${guidance.single_shot_acceptance_boundary}后，再批量生成多分镜。`,
   ]);
 }
 
@@ -10070,12 +10199,15 @@ function draftTransitionPlan(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftShotPromptLayers(story: StoryGenerateResult): string {
+function draftShotPromptLayers(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const focus = story.gears_segments.flatMap(segment => segment.visual_focus).slice(0, 8);
   return compactDraftLines([
     `镜头提示词分层：基础设定=${story.title}；人物=${storyPrimaryCharacters(story).join('、') || story.source_entry}；场景=${story.scene_breakdown.map(scene => scene.location).filter(Boolean).slice(0, 4).join('、') || story.source_entry}。`,
     `画面内容层：${shortText(focus.join('；') || story.logline, 220)}`,
-    `风格层：AI 漫剧漫画分镜、清晰线条、表情夸张但文化边界真实；负面约束沿用项目 cultural_constraints。`,
+    `风格层：AI 漫剧漫画分镜、清晰线条、表情夸张但${guidance.shot_prompt_style_boundary}；负面约束沿用项目 cultural_constraints。`,
   ]);
 }
 
@@ -10105,17 +10237,23 @@ function draftEmotionBeats(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftProjectName(story: StoryGenerateResult): string {
+function draftProjectName(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
     `项目名称：草拟为「${story.source_entry || story.title}」。`,
-    `核实提醒：正式写入生产卡片前需确认该名称与官方目录、馆方说明或项目资料一致。`,
+    `核实提醒：${guidance.project_name_review_note}`,
   ]);
 }
 
-function draftHeritageOrCraftType(story: StoryGenerateResult): string {
+function draftHeritageOrCraftType(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `非遗/工艺类型：根据当前成片类型与条目名，暂按「${story.source_entry}」相关技艺、民俗或传统工艺处理。`,
-    `分类边界：国家/省/市级名录、传承人称谓和项目级别必须另补来源后确认。`,
+    `${guidance.heritage_or_craft_type_label}：根据当前成片类型与来源素材，暂按「${story.source_entry}」${guidance.heritage_or_craft_type_category}处理。`,
+    `分类边界：${guidance.heritage_or_craft_type_review_note}`,
   ]);
 }
 
@@ -10156,12 +10294,15 @@ function draftHandActions(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftDocumentationAssets(story: StoryGenerateResult): string {
+function draftDocumentationAssets(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
   return compactDraftLines([
-    `文献/影像资产：先以项目来源、现有事实线索和分镜场景作为待补清单，不替代正式授权。`,
-    ...(facts.length ? facts.map(item => `已有关联线索：${shortText(item, 110)}`) : [`来源入口：${story.source_entry}，待补官方目录、馆方说明、影音资源或出版物。`]),
-    `资产边界：图片、馆藏、曲目、歌词和传承人影像需确认授权或替代方案。`,
+    guidance.documentation_assets_intro,
+    ...(facts.length ? facts.map(item => `已有关联线索：${shortText(item, 110)}`) : [`来源入口：${story.source_entry}，${guidance.documentation_assets_missing_source_note}`]),
+    `资产边界：${guidance.documentation_assets_rights_note}`,
   ]);
 }
 
@@ -10220,13 +10361,16 @@ function draftRealWorldSiteOrObject(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftSourceQuotesOrSourceCues(story: StoryGenerateResult): string {
+function draftSourceQuotesOrSourceCues(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const quotes = story.source_quotes?.slice(0, 4) ?? [];
   const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
   return compactDraftLines([
-    `来源引文/线索：优先使用 source_quotes，其次使用 material_pack 已有事实线索；正式引用需补出处和授权。`,
+    `来源引文/线索：${guidance.source_cues_review_note}`,
     ...(quotes.length ? quotes.map(item => `引文候选：${shortText(item, 120)}`) : []),
-    ...(facts.length ? facts.map(item => `来源线索：${shortText(item, 120)}`) : [`来源线索：${story.source_entry}，待补官方/馆方/出版物来源。`]),
+    ...(facts.length ? facts.map(item => `来源线索：${shortText(item, 120)}`) : [`来源线索：${story.source_entry}，${guidance.source_cues_missing_source_note}`]),
   ]);
 }
 
@@ -10240,10 +10384,13 @@ function draftTimeline(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftWitnessOrExpertRoles(story: StoryGenerateResult): string {
+function draftWitnessOrExpertRoles(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `讲述人角色：可考虑馆员/研究者/传承人/当地居民/后人/项目执行者，但具体身份必须人工确认。`,
-    `角色分工：一人解释来源，一人连接现场，一人补充当代痕迹；不要让演员口吻冒充真实证言。`,
+    `讲述人角色：可考虑${guidance.witness_or_expert_roles}，但具体身份必须人工确认。`,
+    `角色分工：${guidance.witness_or_expert_role_note}`,
   ]);
 }
 
@@ -10303,9 +10450,12 @@ function draftAmbientSound(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftWhatMustNotBeClaimed(story: StoryGenerateResult): string {
+function draftWhatMustNotBeClaimed(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `不可声称：未经来源确认的年代、数据、人物对白、亲历关系、官方级别、传承谱系、馆藏真伪和因果结论。`,
+    `不可声称：${guidance.what_must_not_be_claimed_rule}`,
     `待核边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || story.cultural_constraints.join('；') || '需要补正式来源。', 240)}`,
   ]);
 }
@@ -10355,10 +10505,13 @@ function draftEmotionalResolution(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftParentTeacherNote(story: StoryGenerateResult): string {
+function draftParentTeacherNote(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `家长/教师提示：可引导孩子复述「${shortText(story.theme || story.logline, 120)}」，再区分故事改写与事实边界。`,
-    `延伸问题：你看到哪个文化符号？角色做了什么选择？哪些内容还需要查来源？`,
+    `家长/教师提示：可引导孩子复述「${shortText(story.theme || story.logline, 120)}」，${guidance.parent_teacher_review_boundary}`,
+    `延伸问题：${guidance.parent_teacher_extension_question}`,
   ]);
 }
 
@@ -10372,11 +10525,14 @@ function draftCoreQuestion(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftAudienceLevel(story: StoryGenerateResult): string {
-  const audience = story.target_audience || '零基础文化入门观众/馆内观众/研学团';
+function draftAudienceLevel(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
+  const audience = story.target_audience || guidance.audience_level_default;
   return compactDraftLines([
     `受众层级：草拟为 ${audience}；默认先给背景、定义和可视化例子，再进入延伸信息。`,
-    `理解门槛：不预设专业史学、工艺或民俗知识，术语需要先解释，再用地点、道具或动作举例。`,
+    `理解门槛：${guidance.audience_level_comprehension_note}`,
   ]);
 }
 
@@ -10394,7 +10550,10 @@ function draftArgumentPoints(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftKnowledgeOutline(story: StoryGenerateResult): string {
+function draftKnowledgeOutline(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const outline = story.knowledge_outline?.length
     ? story.knowledge_outline
     : story.scene_breakdown
@@ -10402,7 +10561,7 @@ function draftKnowledgeOutline(story: StoryGenerateResult): string {
       .filter(Boolean)
       .slice(0, 5);
   return compactDraftLines([
-    `知识层级：从问题入口、概念定义、具体例子、事实边界到一句复盘递进。`,
+    guidance.knowledge_outline_progression,
     ...outline.map((item, index) => `层级 ${index + 1}：${shortText(item, 120)}`),
   ]);
 }
@@ -10439,10 +10598,13 @@ function draftOpeningHook(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftShareTrigger(story: StoryGenerateResult): string {
+function draftShareTrigger(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `分享触发点：把「${shortText(story.theme || story.logline, 120)}」包装成“原来如此”的冷知识或反差发现。`,
-    `转发理由：观众能用一句话讲给别人听，并愿意补充自己的地方经验或记忆。`,
+    `分享触发点：把「${shortText(story.theme || story.logline, 120)}」包装成${guidance.share_trigger_frame}。`,
+    `转发理由：${guidance.share_trigger_reason}`,
   ]);
 }
 
@@ -10466,34 +10628,46 @@ function draftVerticalShotPlan(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftDiagramOrCaptionPlan(story: StoryGenerateResult): string {
+function draftDiagramOrCaptionPlan(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const captions = story.scene_breakdown.slice(0, 4).map(scene => (
     `字幕/图示 S${scene.scene_id}：关键词=${shortText(scene.title || scene.location || story.source_entry, 40)}；说明=${shortText(scene.dramatic_function || scene.plot, 80)}`
   ));
   return compactDraftLines([
-    `图示/字幕计划：每段只上 1 个关键词和 1 句解释，重要事实旁标“来源/待核”。`,
+    `图示/字幕计划：每段只上 1 个关键词和 1 句解释，${guidance.diagram_or_caption_boundary}`,
     ...captions,
   ]);
 }
 
-function draftCommentPrompt(story: StoryGenerateResult): string {
+function draftCommentPrompt(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `评论互动提示：你还知道 ${story.source_entry} 的哪个版本、地点或实物线索？`,
-    `评论边界：鼓励补充来源，不引导观众把传说、戏剧化表达或未核信息当作定论。`,
+    `评论互动提示：你还想讨论 ${story.source_entry} 的哪些${guidance.comment_prompt_focus}？`,
+    `评论边界：${guidance.comment_prompt_boundary}`,
   ]);
 }
 
-function draftFactBoundaryCard(story: StoryGenerateResult): string {
+function draftFactBoundaryCard(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `事实边界卡：已确认内容以项目来源和 material_pack verified_facts 为准；待核实内容只作线索，不作断言。`,
-    `边界提示：${shortText(story.credibility_note || story.cultural_constraints.join('；') || '来源、年代、人物关系需人工复核。', 220)}`,
+    guidance.fact_boundary_card_rule,
+    `边界提示：${shortText(story.credibility_note || story.cultural_constraints.join('；') || guidance.fact_boundary_card_fallback, 220)}`,
   ]);
 }
 
-function draftSpeakerPosition(story: StoryGenerateResult): string {
+function draftSpeakerPosition(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `主讲人定位：以“文化讲述者/课程主持人”口吻解释 ${story.source_entry}，不冒充亲历者或权威机构。`,
-    `表达方式：先提出问题，再用来源线索、场景例子和当代关联推进。`,
+    `主讲人定位：以“${guidance.speaker_position_role}”口吻解释 ${story.source_entry}，${guidance.speaker_position_boundary_note}`,
+    `表达方式：${guidance.speaker_position_expression_note}`,
   ]);
 }
 
@@ -10538,10 +10712,13 @@ function draftLearningObjective(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftLearnerProfile(story: StoryGenerateResult): string {
+function draftLearnerProfile(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `学习者画像：${story.target_audience || '文化入门学习者/课堂学员'}，默认需要先给背景，再给例子和练习。`,
-    `基础假设：不预设专业史学知识，用地点、人物、道具和动作建立理解。`,
+    `学习者画像：${story.target_audience || guidance.learner_profile_default}，默认需要先给背景，再给例子和练习。`,
+    `基础假设：${guidance.learner_profile_foundation_note}`,
   ]);
 }
 
@@ -10569,27 +10746,38 @@ function draftAssessmentCheck(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftSourceCues(story: StoryGenerateResult): string {
+function draftSourceCues(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
   const claims = story.material_pack?.uncertain_claims.slice(0, 4) ?? [];
   return compactDraftLines([
-    `来源线索：source_entry=${story.source_entry}；credibility_note=${shortText(story.credibility_note, 160) || '待补来源说明'}。`,
-    ...(facts.length ? facts.map(item => `已确认事实线索：${shortText(item, 100)}`) : []),
-    ...(claims.length ? claims.map(item => `待核实线索：${shortText(item, 100)}`) : ['待核实线索：来源、年代、人物关系和地点仍需人工复核。']),
+    `${guidance.source_cues_entry_label}：${story.source_entry}；复核提示：${shortText(story.credibility_note, 160) || guidance.source_cues_missing_source_note}。`,
+    ...(facts.length ? facts.map(item => `${guidance.source_cues_confirmed_label}：${shortText(item, 100)}`) : []),
+    ...(claims.length
+      ? claims.map(item => `${guidance.source_cues_unverified_label}：${shortText(item, 100)}`)
+      : [`${guidance.source_cues_unverified_label}：${guidance.source_cues_default_review_scope}`]),
   ]);
 }
 
-function draftMisconceptionOrBoundary(story: StoryGenerateResult): string {
+function draftMisconceptionOrBoundary(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `误区或边界：不要把戏剧化、传说、类比或示意镜头写成已确认事实。`,
-    `边界说明：${shortText(story.cultural_constraints.join('；') || story.credibility_note || '存在待核实信息，正式入库前需补核实方法。', 220)}`,
+    `误区或边界：${guidance.misconception_boundary_rule}`,
+    `边界说明：${shortText(story.cultural_constraints.join('；') || story.credibility_note || guidance.misconception_boundary_fallback, 220)}`,
   ]);
 }
 
-function draftForbiddenClaims(story: StoryGenerateResult): string {
+function draftForbiddenClaims(
+  story: StoryGenerateResult,
+  guidance: DomainProductionMaterialGuidance,
+): string {
   return compactDraftLines([
-    `禁用/不可声称内容：不得声称未经来源确认的年代、人物关系、官方身份、传承谱系或因果结论。`,
-    `待核实边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || '所有补录内容需人工审稿后才能进入省份 Markdown。', 220)}`,
+    `禁用/不可声称内容：${guidance.forbidden_claims_rule}`,
+    `待核实边界：${shortText(story.material_pack?.uncertain_claims.join('；') || story.credibility_note || guidance.forbidden_claims_default_boundary, 220)}`,
   ]);
 }
 
@@ -10662,6 +10850,32 @@ export async function updateProjectSupplementTask(
   }
 
   const { project, current_story } = detailResult.data;
+  const supplementBoundary = await getStoryDomainSupplementEditBoundary(current_story);
+  if (!isStoryDomainEditPersistenceBoundarySafe(supplementBoundary.persistence)) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `Domain pack \"${supplementBoundary.persistence.domain_id}\" exposed an unsafe story supplement persistence boundary.`,
+      supplementBoundary.persistence,
+    );
+  }
+  const writebackPlan = await planStoryDomainKnowledgeWriteback(current_story);
+  if (
+    writebackPlan.eligible
+    && (
+      supplementBoundary.guidance.candidate_kind !== 'domain_knowledge_candidate'
+      || !supplementBoundary.guidance.writeback_draft_heading
+    )
+  ) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `Domain pack \"${writebackPlan.domain_id}\" returned an eligible writeback plan without domain knowledge supplement guidance.`,
+      {
+        writeback_plan: writebackPlan,
+        supplement_guidance: supplementBoundary.guidance,
+        persistence: supplementBoundary.persistence,
+      },
+    );
+  }
   const tasks = current_story.supplement_tasks ?? [];
   const taskIndex = tasks.findIndex(task => task.task_id === taskId);
   if (taskIndex === -1) {
@@ -10677,7 +10891,14 @@ export async function updateProjectSupplementTask(
       || supplementNoteFromFieldValues(supplementFieldValues);
     const supplementNote = incomingSupplementNote || task.supplement_note;
     const knowledgeCandidateMarkdown = request.status === 'resolved' && supplementNote
-      ? buildKnowledgeCandidateMarkdown(current_story, task, supplementNote, supplementFieldValues, updatedAt)
+      ? buildSupplementCandidateMarkdown(
+          current_story,
+          task,
+          supplementNote,
+          supplementFieldValues,
+          updatedAt,
+          supplementBoundary,
+        )
       : undefined;
     const reviewStatus = request.knowledge_candidate_review_status
       ?? task.knowledge_candidate_review_status
@@ -10685,8 +10906,19 @@ export async function updateProjectSupplementTask(
     const reviewNote = request.knowledge_candidate_review_note?.trim()
       || task.knowledge_candidate_review_note;
     const reviewTouched = Boolean(request.knowledge_candidate_review_status);
-    const writebackDraft = reviewStatus === 'approved' && knowledgeCandidateMarkdown && supplementNote
-      ? buildKnowledgeWritebackDraftMarkdown(current_story, task, supplementNote, supplementFieldValues, updatedAt, reviewNote)
+    const writebackDraft = writebackPlan.eligible
+      && reviewStatus === 'approved'
+      && knowledgeCandidateMarkdown
+      && supplementNote
+      ? buildKnowledgeWritebackDraftMarkdown(
+          current_story,
+          task,
+          supplementNote,
+          supplementFieldValues,
+          updatedAt,
+          reviewNote,
+          supplementBoundary.guidance.writeback_draft_heading!,
+        )
       : undefined;
     const writebackStatus = request.status === 'resolved' && writebackDraft
       ? request.knowledge_writeback_status ?? task.knowledge_writeback_status ?? 'draft_ready'
@@ -10726,7 +10958,10 @@ export async function updateProjectSupplementTask(
   ) {
     return fail(
       ErrorCodes.VALIDATION_ERROR,
-      'Knowledge writeback status can only be changed after a candidate is approved and a writeback draft exists.',
+      writebackPlan.eligible
+        ? 'Knowledge writeback status can only be changed after a candidate is approved and a writeback draft exists.'
+        : `Domain pack "${writebackPlan.domain_id}" blocked knowledge writeback: ${writebackPlan.blockers.join(', ')}.`,
+      writebackPlan.eligible ? undefined : writebackPlan,
     );
   }
   const materialRefresh = applySupplementTaskMaterialUpdate(
@@ -10869,6 +11104,7 @@ function refreshStoryMaterialContract(
     productionMaterialPack: story.production_material_pack,
     materialPack,
     contextText: productionMaterialContextText(story),
+    sourceDomain: resolveStorySourceDomain(story),
   }) ?? story.production_material_readiness;
   const storyForQuality: StoryGenerateResult = {
     ...story,
@@ -11080,22 +11316,32 @@ function supplementNoteFromFieldValues(fieldValues: Record<string, string> | und
   return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
-function buildKnowledgeCandidateMarkdown(
+function buildSupplementCandidateMarkdown(
   story: StoryGenerateResult,
   task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
   supplementNote: string,
   fieldValues: Record<string, string> | undefined,
   updatedAt: string,
+  boundary: StoryDomainSupplementEditBoundary,
 ): string {
+  const { guidance, persistence } = boundary;
   const lines = [
-    `## 知识库候选稿：${task.label}`,
+    `## ${guidance.candidate_heading}：${task.label}`,
     '',
+    `- Domain Pack：${persistence.domain_id}`,
+    `- 候选类型：${guidance.candidate_kind}`,
     `- 来源项目：${story.title}`,
     `- 来源条目：${story.source_entry}`,
     `- 成片类型：${story.video_type}`,
     `- 补充任务：${task.task_id}`,
     `- 生成时间：${updatedAt}`,
-    `- 审稿状态：待人工核实后再写入省份知识库`,
+    `- 审稿状态：${guidance.human_review_requirement}`,
+    `- 持久化合同：${persistence.schema_version}`,
+    `- domain_source_write_allowed=${persistence.domain_source_write_allowed}`,
+    `- knowledge_writeback_performed=${persistence.knowledge_writeback_performed}`,
+    `- external_delivery_triggered=${persistence.external_delivery_triggered}`,
+    `- migration_action_performed=${persistence.migration_action_performed}`,
+    `- real_credit_granted=${persistence.real_credit_granted}`,
     '',
     '### 补充内容',
     supplementNote,
@@ -11113,9 +11359,7 @@ function buildKnowledgeCandidateMarkdown(
   lines.push(
     '',
     '### 审稿提示',
-    '- 不直接覆盖既有知识库事实。',
-    '- 需要补来源、地点、核实方法和待核点后，才能转为正式条目字段。',
-    '- 若该内容只适用于当前项目，应保留在项目素材包，不写入省份 Markdown。',
+    ...guidance.review_rules.map(rule => `- ${rule}`),
   );
   return lines.join('\n');
 }
@@ -11127,9 +11371,10 @@ function buildKnowledgeWritebackDraftMarkdown(
   fieldValues: Record<string, string> | undefined,
   updatedAt: string,
   reviewNote: string | undefined,
+  writebackDraftHeading: string,
 ): string {
   const lines = [
-    `## 正式知识库写入草案：${story.source_entry}｜${task.label}`,
+    `## ${writebackDraftHeading}：${story.source_entry}｜${task.label}`,
     '',
     `- 来源项目：${story.title}`,
     `- 来源条目：${story.source_entry}`,
@@ -11164,23 +11409,9 @@ function buildKnowledgeWritebackDraftMarkdown(
     '',
     '- 主体资产：按补录内容提取人物、地点、道具或画面基准。',
     '- 生产用途：先作为项目级素材；通过来源核验后再升级为知识库生产卡片字段。',
-    '- 审稿边界：本草案不能自动写入 `data/provinces/*.md`。',
+    '- 审稿边界：本草案不能自动写入任何 Domain Pack 目标文件。',
   );
   return lines.join('\n');
-}
-
-function inferKnowledgeWritebackTarget(story: StoryGenerateResult): { filePath: string; sectionHeading: string; province?: string } {
-  const entries = [
-    ...(story.knowledge_pack?.primary_entries ?? []),
-    ...(story.knowledge_pack?.supporting_entries ?? []),
-  ];
-  const matched = entries.find(entry => entry.entry_name === story.source_entry) ?? entries[0];
-  const province = matched?.province?.trim();
-  return {
-    province: province || undefined,
-    filePath: province ? `data/provinces/${province}.md` : 'data/provinces/待确认.md',
-    sectionHeading: story.source_entry,
-  };
 }
 
 function buildKnowledgeWritebackAppendMarkdown(

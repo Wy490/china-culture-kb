@@ -910,9 +910,15 @@ outlineRouter.post(
 // POST /api/story-outline/ai-comic-episode — generate one full episode from a series plan
 outlineRouter.post('/ai-comic-episode', validateBody(AiComicEpisodeGenerateRequestSchema), async (req, res, next) => {
   try {
-    const result = await generateAiComicEpisodeFromPlan(req.body);
+    const access = res.locals.productAccess as ProductAccessContext | undefined;
+    const accessControl = access?.mode === 'required' && access.actor
+      ? productResourceOwnershipForActor(access.actor)
+      : undefined;
+    const result = await generateAiComicEpisodeFromPlan(req.body, { access_control: accessControl });
     const status = result.ok
       ? 200
+      : result.error?.code === ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED
+        ? 422
       : result.error?.code === ErrorCodes.STORY_NOT_FOUND
         ? 404
         : 400;

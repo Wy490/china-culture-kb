@@ -53,6 +53,11 @@ const ENVIRONMENT_NAMES = [
   'STORY_AGENT_LOGIN_URL',
   'STORY_AGENT_RESOURCE_MIGRATION_WRITE_ENABLED',
   'STORY_AGENT_RESOURCE_MIGRATION_AUDIT_JSONL',
+  'STORY_AGENT_DOMAIN_SAFETY_MIGRATION_WRITE_ENABLED',
+  'STORY_AGENT_DOMAIN_SAFETY_MIGRATION_AUDIT_JSONL',
+  'STORY_PROJECT_FILE_TO_SQLITE_MIGRATION_TARGET_PATH',
+  'STORY_PROJECT_FILE_TO_SQLITE_MIGRATION_WRITE_ENABLED',
+  'STORY_PROJECT_FILE_TO_SQLITE_MIGRATION_AUDIT_JSONL',
   'WEB_GENERATED_ROOT',
 ] as const;
 const ORIGINAL_ENVIRONMENT = Object.fromEntries(ENVIRONMENT_NAMES.map(name => [name, process.env[name]]));
@@ -899,6 +904,183 @@ describe('project resource ownership', () => {
         .send({ ...requestBody, migration_id: 'migration-review-0002', dry_run: false });
       expect(overwrite.status).toBe(409);
       expect(overwrite.body.error.details.blockers).toContain('resource_ownership_overwrite_forbidden');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('exposes legacy domain-safety inventory and keeps migration dry-run protected by administrator access', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-domain-safety-route-'));
+    process.env.WEB_GENERATED_ROOT = root;
+    configureRequiredAccess([
+      {
+        token: 'admin-token',
+        actor_id: 'admin-1',
+        role: 'administrator',
+        enabled_feature_flags: ['internal_story_tools'],
+      },
+      { token: 'owner-token', actor_id: 'owner-1', role: 'creator' },
+    ]);
+    const app = express();
+    app.use(express.json());
+    app.use('/api/system', systemRouter);
+    app.use(errorHandler);
+    const request = supertest(app);
+    try {
+      expect((await request.get('/api/system/story-domain-safety-migrations')
+        .set('authorization', bearer('owner-token'))).status).toBe(403);
+      const inventory = await request.get('/api/system/story-domain-safety-migrations')
+        .set('authorization', bearer('admin-token'));
+      expect(inventory.status).toBe(200);
+      expect(inventory.body.data).toMatchObject({
+        schema_version: 'story-domain-safety-migration-audit/v1',
+        read_only: true,
+        discovered_project_count: 0,
+        writeback_performed: false,
+        real_credit_granted: false,
+      });
+
+      const body = {
+        schema_version: 'story-domain-safety-migration-request/v1',
+        migration_id: 'domain-safety-route-0001',
+        project_id: '20260716-story-missing1--character_story',
+        expected_current_version_id: '20260716-story-missing1--character_story-v1',
+        expected_story_sha256: '0'.repeat(64),
+        expected_source_domain: 'china_culture',
+        expected_source_entry: '周敦颐——理学开山鼻祖',
+        review_reference: 'OPS-DOMAIN-SAFETY-ROUTE-0001',
+        operator_confirmation: 'migration_scope_reviewed',
+      };
+      expect((await request.post('/api/system/story-domain-safety-migrations')
+        .set('authorization', bearer('owner-token'))
+        .send(body)).status).toBe(403);
+      const dryRun = await request.post('/api/system/story-domain-safety-migrations')
+        .set('authorization', bearer('admin-token'))
+        .send(body);
+      expect(dryRun.status).toBe(200);
+      expect(dryRun.body.data).toMatchObject({
+        schema_version: 'story-domain-safety-migration-result/v1',
+        dry_run: true,
+        applied: false,
+        preflight_ready: false,
+        real_credit_granted: false,
+      });
+      expect(dryRun.body.data.blockers).toEqual(expect.arrayContaining([
+        'project_not_found',
+        'domain_safety_migration_candidate_required',
+      ]));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('protects the legacy storage disposition preflight with audit access and internal tooling', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-storage-disposition-route-'));
+    process.env.WEB_GENERATED_ROOT = root;
+    await mkdir(resolve(root, 'projects'), { recursive: true });
+    configureRequiredAccess([
+      {
+        token: 'admin-token',
+        actor_id: 'admin-1',
+        role: 'administrator',
+        enabled_feature_flags: ['internal_story_tools'],
+      },
+      { token: 'owner-token', actor_id: 'owner-1', role: 'creator' },
+    ]);
+    const app = express();
+    app.use(express.json());
+    app.use('/api/system', systemRouter);
+    app.use(errorHandler);
+    const request = supertest(app);
+    try {
+      expect((await request.get('/api/system/story-storage-legacy-disposition-preflight')).status).toBe(401);
+      expect((await request.get('/api/system/story-storage-legacy-disposition-preflight')
+        .set('authorization', bearer('owner-token'))).status).toBe(403);
+      const preflight = await request.get('/api/system/story-storage-legacy-disposition-preflight')
+        .set('authorization', bearer('admin-token'));
+      expect(preflight.status).toBe(200);
+      expect(preflight.body.data).toMatchObject({
+        schema_version: 'story-storage-legacy-disposition-preflight/v1',
+        read_only: true,
+        automatic_action_count: 0,
+        migration_performed: false,
+        merge_performed: false,
+        deletion_performed: false,
+        writeback_performed: false,
+        domain_safety_migration_performed: false,
+        real_gears_seedance_delivery_credit_count: 0,
+        counts_as_real_gears_seedance_delivery: false,
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('protects file-to-SQLite repository preflight and defaults migration requests to dry-run', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-project-file-sqlite-route-'));
+    process.env.WEB_GENERATED_ROOT = resolve(root, 'generated');
+    process.env.STORY_PROJECT_FILE_TO_SQLITE_MIGRATION_TARGET_PATH = resolve(root, 'target.sqlite3');
+    configureRequiredAccess([
+      {
+        token: 'admin-token',
+        actor_id: 'admin-1',
+        role: 'administrator',
+        enabled_feature_flags: ['internal_story_tools'],
+      },
+      { token: 'owner-token', actor_id: 'owner-1', role: 'creator' },
+    ]);
+    const app = express();
+    app.use(express.json());
+    app.use('/api/system', systemRouter);
+    app.use(errorHandler);
+    const request = supertest(app);
+    try {
+      expect((await request.get('/api/system/story-project-file-to-sqlite-migration')
+        .set('authorization', bearer('owner-token'))).status).toBe(403);
+      const preflight = await request.get('/api/system/story-project-file-to-sqlite-migration')
+        .set('authorization', bearer('admin-token'));
+      expect(preflight.status).toBe(200);
+      expect(preflight.body.data).toMatchObject({
+        schema_version: 'story-project-file-to-sqlite-migration-preflight/v1',
+        source_provider: 'file',
+        target_provider: 'sqlite',
+        source_project_count: 0,
+        blockers: ['file_repository_source_empty'],
+        preflight_ready: false,
+        source_writeback_performed: false,
+        target_write_performed: false,
+        production_persistence_ready: false,
+        real_credit_granted: false,
+      });
+      const body = {
+        schema_version: 'story-project-file-to-sqlite-migration-request/v1',
+        migration_id: 'file-sqlite-route-0001',
+        expected_source_logical_sha256: '0'.repeat(64),
+        review_reference: 'OPS-FILE-SQLITE-ROUTE-0001',
+        operator_confirmation: 'file_repository_snapshot_reviewed',
+      };
+      expect((await request.post('/api/system/story-project-file-to-sqlite-migration')
+        .set('authorization', bearer('owner-token'))
+        .send(body)).status).toBe(403);
+      const dryRun = await request.post('/api/system/story-project-file-to-sqlite-migration')
+        .set('authorization', bearer('admin-token'))
+        .send(body);
+      expect(dryRun.status).toBe(200);
+      expect(dryRun.body.data).toMatchObject({
+        schema_version: 'story-project-file-to-sqlite-migration-result/v1',
+        dry_run: true,
+        applied: false,
+        idempotent_replay: false,
+        source_writeback_performed: false,
+        active_provider_changed: false,
+        production_persistence_ready: false,
+        real_credit_granted: false,
+      });
+      expect(dryRun.body.data.blockers).toEqual(expect.arrayContaining([
+        'file_repository_source_empty',
+        'file_repository_logical_sha256_conflict',
+      ]));
+      await expect(readFile(resolve(root, 'target.sqlite3'))).rejects.toMatchObject({ code: 'ENOENT' });
     } finally {
       await rm(root, { recursive: true, force: true });
     }

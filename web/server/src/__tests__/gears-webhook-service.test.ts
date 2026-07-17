@@ -60,6 +60,7 @@ function makeStory(): StoryGenerateResult {
     gears_delivery: {
       schema_version: 'gears-delivery/v1',
       storyId: '20260611-story-webhook',
+      sourceDomain: 'china_culture',
       title: 'Webhook 测试故事',
       markdown: 'markdown',
       character_assets: [],

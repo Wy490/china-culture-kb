@@ -53,6 +53,7 @@ describe('seedance-prompt-service', () => {
     const pkg = buildSeedancePromptPackage(makeStory());
 
     expect(pkg.schema_version).toBe('seedance-prompt-package/v1');
+    expect(pkg.sourceDomain).toBe('china_culture');
     expect(pkg.target_platform).toBe('seedance_2_0');
     expect(pkg.shot_units.length).toBeGreaterThan(0);
     expect(pkg.asset_reference_plan.some(item => item.includes('@图片1'))).toBe(true);
@@ -66,6 +67,7 @@ describe('seedance-prompt-service', () => {
     expect(pkg.material_validation.audio_count).toBe(1);
     expect(pkg.material_validation.image_count).toBeLessThanOrEqual(pkg.material_validation.max_image_files);
     expect(pkg.markdown).toContain('Seedance 2.0 镜头提示词包');
+    expect(pkg.markdown).toContain('> sourceDomain: china_culture');
     expect(pkg.markdown).toContain('素材 slot');
 
     for (const unit of pkg.shot_units) {

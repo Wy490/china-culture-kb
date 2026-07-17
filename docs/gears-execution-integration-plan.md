@@ -86,6 +86,15 @@ GEARS v2
 目标合同：
 
 ```text
+GET /gears/capabilities
+  output:
+    schema_version = gears-execution-worker-capabilities/v1
+    service = gears-execution-worker
+    execution_worker_supported = true
+    workbench_import_supported = false
+    supported_job_types
+    exact submit/status endpoints
+
 POST /gears/jobs
   input:
     schema_version
@@ -118,6 +127,8 @@ POST /api/.../gears-callback
     failure_category
     error_code
 ```
+
+Story Agent 在每次真实 submit/status 前必须先通过 capability 握手。仅配置 URL 不代表 execution worker ready；若 endpoint 返回 `gears-workbench-capabilities/v1`、路径或 job type 不匹配，必须在调用 `/gears/jobs` 前 fail closed。导出的 acceptance shell 同样先保存并验证 capability 证据。
 
 建议支持的 `job_type`：
 
@@ -340,3 +351,15 @@ P0 已完成首轮可运行闭环：
 ```text
 请继续 /Users/wuyu/Desktop/china-culture-kb 项目开发。先阅读 docs/gears-execution-integration-plan.md、docs/story-agent-next-development-plan.md、docs/story-agent-next-conversation-handoff.md。当前分支 codex-ai-comic-series-longform。先执行 git status --short --branch 和 git diff --stat，不要覆盖 data/provinces/湖南.md 的已有改动。新的方向是：china-culture-kb 只做内容与生产指挥层，图片/视频/后期实产全部交给 GEARS v2。优先实现 P0：GEARS execution config/contract、GEARS job ledger、提交 GEARS job、GEARS callback 归一化；暂停继续做真实 Seedance SDK、真实 ffmpeg 片头片尾、真实 final assemble。
 ```
+
+## 9. 2026-07-16 Workbench 与 execution worker 现行边界
+
+本地 `/Users/wuyu/Desktop/gears v2` 已确认是导演/分镜 workbench，不是本计划假定的异步 execution worker。两类连接必须永久分开：
+
+- Workbench 使用独立 `GEARS_WORKBENCH_API_BASE_URL/TOKEN` 与 `gears-workbench-capabilities/v1`，只接收 `gears-delivery/v1`，支持 dry-run、幂等导入、草稿查询与人工选择真实视觉版本后升级 Recipe。
+- Execution worker 使用 `GEARS_EXECUTION_WORKER_API_BASE_URL/TOKEN` 与 `gears-execution-worker-capabilities/v1`，必须明确支持幂等 `/gears/jobs` submit、status poll 和 callback；旧 `GEARS_API_*` 只作迁移兼容。
+- Story Agent 在两条连接上都先做 capability fail-closed 校验，workbench 地址不能进入 `/gears/jobs`，execution worker 也不能冒充 workbench import。
+
+当前跨仓真实本地 HTTP E2E 已有两条：既有中国文化 delivery，以及从 `original_fiction` Domain Pack 实际生成并版本化的 Story。原创域导入得到 1 Project、1 Character、3 个去重 Scene 和 6 个 StoryboardImportDraft，正式 Recipe、provider call、media artifact 与 real-delivery credit 均为 0。两条用例均使用隔离 SQLite、fake JWT/fake keys、无模型；它们只证明工作台合同和数据映射，不证明 execution worker 或 Seedance 实产。
+
+因此真实 GEARS/Seedance 计数继续严格为 0/5。只有独立 execution worker 的真实 capability、submit/status/callback、provider 证据和公共或可审计媒体 artifact 全链成立，才允许推进该真实计数。

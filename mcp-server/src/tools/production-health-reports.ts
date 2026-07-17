@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import { PRODUCTION_MATERIAL_SUPPORTED_VIDEO_TYPES } from '../lib/production-material-video-types.js';
 
 export type PackHealthStatus = 'passed' | 'warning' | 'failed';
 type IssueSeverity = 'warning' | 'error';
@@ -11,7 +12,7 @@ type JsonRecord = Record<string, unknown>;
 interface ProductionMaterialPack {
   video_type: string;
   label: string;
-  goal?: string;
+  goal: string;
   material_template: {
     required_fields: string[];
     prompt_layers?: string[];
@@ -23,17 +24,53 @@ interface ProductionMaterialPack {
   sample_entries: unknown[];
 }
 
+export type ProductionMaterialPackRejectionCode =
+  | 'required_non_blank_string'
+  | 'unsupported_video_type'
+  | 'duplicate_video_type'
+  | 'required_object'
+  | 'required_non_blank_string_array'
+  | 'optional_non_blank_string_array'
+  | 'required_array'
+  | 'optional_non_empty_unique_non_blank_string_array';
+
+export interface ProductionMaterialPackRejectionDiagnostic {
+  pack_index: number;
+  code: ProductionMaterialPackRejectionCode;
+  path: string;
+}
+
+export type ProductionMaterialPackFileDiagnosticCode =
+  | 'source_unavailable'
+  | 'required_object'
+  | 'required_non_blank_string'
+  | 'unsupported_schema_version'
+  | 'required_array';
+
+export interface ProductionMaterialPackFileDiagnostic {
+  code: ProductionMaterialPackFileDiagnosticCode;
+  path: string;
+}
+
 interface ProductionMaterialPackHealthIssue {
   severity: IssueSeverity;
   issue_type:
+    | 'missing_domain_sample_policy'
+    | 'invalid_domain_sample_policy'
+    | 'invalid_pack_file_structure'
+    | 'invalid_pack_structure'
+    | 'duplicate_pack_video_type'
     | 'missing_required_video_type'
     | 'unknown_required_field'
     | 'duplicate_required_field'
+    | 'duplicate_sample_entry'
     | 'underfilled_prompt_layers'
     | 'underfilled_sample_entries'
+    | 'underfilled_domain_sample_entries'
     | 'underfilled_supplement_questions'
     | 'underfilled_gate_items';
   video_type?: string;
+  source_domain?: string;
   message: string;
   details?: string[];
 }
@@ -44,6 +81,11 @@ interface ProductionMaterialPackHealthSummary {
   required_field_count: number;
   prompt_layer_count: number;
   sample_entry_count: number;
+  unique_sample_entry_count: number;
+  duplicate_sample_entry_ids: string[];
+  sample_entry_count_by_source_domain: Record<string, number>;
+  minimum_sample_entry_count_by_source_domain: Record<string, number>;
+  legacy_sample_entry_count: number;
   supplement_question_count: number;
   gate_item_counts: Record<MaterialSufficiencyStage, number>;
   unknown_required_fields: string[];
@@ -55,7 +97,13 @@ export interface ProductionMaterialPackHealthReport {
   schema_version: 'production-material-pack-health/v1';
   generated_at: string;
   status: PackHealthStatus;
+  domain_sample_policy_valid: boolean;
+  domain_sample_policy_video_types: string[];
+  pack_file_valid: boolean;
+  pack_file_diagnostics: ProductionMaterialPackFileDiagnostic[];
   pack_count: number;
+  rejected_pack_count: number;
+  rejected_pack_diagnostics: ProductionMaterialPackRejectionDiagnostic[];
   required_video_types: string[];
   covered_required_video_types: string[];
   missing_required_video_types: string[];
@@ -64,6 +112,13 @@ export interface ProductionMaterialPackHealthReport {
   high_frequency_video_types: string[];
   packs: ProductionMaterialPackHealthSummary[];
   issues: ProductionMaterialPackHealthIssue[];
+}
+
+interface ParsedDomainSamplePolicy {
+  valid: boolean;
+  videoTypes: string[];
+  minimums: Record<string, Record<string, number>>;
+  issue?: ProductionMaterialPackHealthIssue;
 }
 
 interface DomainPackSeed {
@@ -1154,11 +1209,19 @@ const HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES = [
   'education_training',
 ] as const;
 
+export const PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPES = PRODUCTION_MATERIAL_SUPPORTED_VIDEO_TYPES;
+
+const PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPE_SET = new Set<string>(
+  PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPES,
+);
+
 const PACK_HEALTH_GATE_STAGES: MaterialSufficiencyStage[] = [
   'minimum_viable_story',
   'script_ready',
   'production_ready',
 ];
+
+const LEGACY_SAMPLE_SOURCE_DOMAIN = 'china_culture';
 
 const KNOWN_PRODUCTION_MATERIAL_FIELD_IDS = new Set([
   'ambient_sound',
@@ -1341,6 +1404,16 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
 }
 
+function isNonBlankStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => Boolean(nonEmptyString(item)));
+}
+
+function isNonEmptyUniqueNonBlankStringArray(value: unknown): value is string[] {
+  if (!isNonBlankStringArray(value) || value.length === 0) return false;
+  const normalizedValues = value.map(item => item.trim());
+  return new Set(normalizedValues).size === normalizedValues.length;
+}
+
 function nonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
@@ -1379,28 +1452,253 @@ function readDataJsonRecord(...segments: string[]): JsonRecord | undefined {
   }
 }
 
-function isProductionMaterialPack(value: unknown): value is ProductionMaterialPack {
-  if (!isRecord(value)) return false;
-  const template = value.material_template;
-  return Boolean(
-    typeof value.video_type === 'string'
-    && typeof value.label === 'string'
-    && isRecord(template)
-    && isStringArray(template.required_fields)
-    && (!('prompt_layers' in template) || isStringArray(template.prompt_layers))
-    && isStringArray(template.minimum_viable_story_gate)
-    && isStringArray(template.script_ready_gate)
-    && isStringArray(template.production_ready_gate)
-    && isStringArray(template.supplement_questions)
-    && Array.isArray(value.sample_entries),
-  );
+function readDataJsonValue(...segments: string[]): { available: boolean; value?: unknown } {
+  try {
+    return {
+      available: true,
+      value: JSON.parse(readFileSync(path.join(getKbRoot(), ...segments), 'utf8')) as unknown,
+    };
+  } catch {
+    return { available: false };
+  }
 }
 
-function loadProductionMaterialPacks(): ProductionMaterialPack[] {
-  const file = readDataJsonRecord('production-packs', 'video-type-material-supplement-packs.json');
-  return Array.isArray(file?.packs)
-    ? file.packs.filter(isProductionMaterialPack)
+function diagnoseProductionMaterialPack(
+  value: unknown,
+  packIndex: number,
+): ProductionMaterialPackRejectionDiagnostic | undefined {
+  const root = `packs[${packIndex}]`;
+  const reject = (
+    code: ProductionMaterialPackRejectionCode,
+    pathValue: string,
+  ): ProductionMaterialPackRejectionDiagnostic => ({
+    pack_index: packIndex,
+    code,
+    path: pathValue,
+  });
+  if (!isRecord(value)) return reject('required_object', root);
+  if (!nonEmptyString(value.video_type)) return reject('required_non_blank_string', `${root}.video_type`);
+  if (!PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPE_SET.has(value.video_type as string)) {
+    return reject('unsupported_video_type', `${root}.video_type`);
+  }
+  if (!nonEmptyString(value.label)) return reject('required_non_blank_string', `${root}.label`);
+  if (!nonEmptyString(value.goal)) return reject('required_non_blank_string', `${root}.goal`);
+  const template = value.material_template;
+  if (!isRecord(template)) return reject('required_object', `${root}.material_template`);
+  if (!isNonBlankStringArray(template.required_fields)) {
+    return reject('required_non_blank_string_array', `${root}.material_template.required_fields`);
+  }
+  if ('prompt_layers' in template && !isNonBlankStringArray(template.prompt_layers)) {
+    return reject('optional_non_blank_string_array', `${root}.material_template.prompt_layers`);
+  }
+  for (const field of [
+    'minimum_viable_story_gate',
+    'script_ready_gate',
+    'production_ready_gate',
+    'supplement_questions',
+  ] as const) {
+    if (!isNonBlankStringArray(template[field])) {
+      return reject('required_non_blank_string_array', `${root}.material_template.${field}`);
+    }
+  }
+  if (!Array.isArray(value.sample_entries)) return reject('required_array', `${root}.sample_entries`);
+  for (let sampleIndex = 0; sampleIndex < value.sample_entries.length; sampleIndex += 1) {
+    const entry = value.sample_entries[sampleIndex];
+    const sampleRoot = `${root}.sample_entries[${sampleIndex}]`;
+    if (!isRecord(entry)) return reject('required_object', sampleRoot);
+    if (!nonEmptyString(entry.sample_id)) {
+      return reject('required_non_blank_string', `${sampleRoot}.sample_id`);
+    }
+    if (!nonEmptyString(entry.entry_name)) {
+      return reject('required_non_blank_string', `${sampleRoot}.entry_name`);
+    }
+    if ('applicable_source_domains' in entry
+      && !isNonEmptyUniqueNonBlankStringArray(entry.applicable_source_domains)) {
+      return reject(
+        'optional_non_empty_unique_non_blank_string_array',
+        `${sampleRoot}.applicable_source_domains`,
+      );
+    }
+  }
+  return undefined;
+}
+
+function parseDomainSamplePolicy(
+  value: unknown,
+  loadedVideoTypes: ReadonlySet<string>,
+): ParsedDomainSamplePolicy {
+  if (value === undefined) {
+    return {
+      valid: false,
+      videoTypes: [],
+      minimums: {},
+      issue: {
+        severity: 'error',
+        issue_type: 'missing_domain_sample_policy',
+        message: 'ProductionMaterialPack 缺少 health_policy 领域样例最低要求，健康检查已 fail closed。',
+      },
+    };
+  }
+
+  const details: string[] = [];
+  if (!isRecord(value)) {
+    details.push('health_policy must be an object');
+  }
+  const requiredValue = isRecord(value) ? value.required_domain_sample_video_types : undefined;
+  const minimumsValue = isRecord(value) ? value.domain_sample_minimums : undefined;
+  const requiredVideoTypes = isStringArray(requiredValue)
+    ? requiredValue.map(item => item.trim()).filter(Boolean)
     : [];
+
+  if (!isStringArray(requiredValue) || requiredVideoTypes.length === 0) {
+    details.push('required_domain_sample_video_types must be a non-empty string array');
+  }
+  if (isStringArray(requiredValue) && requiredValue.some(item => !item.trim())) {
+    details.push('required_domain_sample_video_types contains blank values');
+  }
+  if (new Set(requiredVideoTypes).size !== requiredVideoTypes.length) {
+    details.push('required_domain_sample_video_types contains duplicates');
+  }
+  for (const videoType of requiredVideoTypes) {
+    if (!PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPE_SET.has(videoType)) {
+      details.push(`unknown video_type=${videoType}`);
+    } else if (!loadedVideoTypes.has(videoType)) {
+      details.push(`policy video_type=${videoType} has no loaded ProductionMaterialPack`);
+    }
+  }
+  if (!isRecord(minimumsValue)) {
+    details.push('domain_sample_minimums must be an object');
+  }
+
+  const declaredKeys = [...new Set(requiredVideoTypes)].sort((a, b) => a.localeCompare(b));
+  const minimumKeys = isRecord(minimumsValue)
+    ? Object.keys(minimumsValue).sort((a, b) => a.localeCompare(b))
+    : [];
+  for (const missingVideoType of declaredKeys.filter(videoType => !minimumKeys.includes(videoType))) {
+    details.push(`missing domain minimums for video_type=${missingVideoType}`);
+  }
+  for (const unexpectedVideoType of minimumKeys.filter(videoType => !declaredKeys.includes(videoType))) {
+    details.push(`undeclared domain minimums for video_type=${unexpectedVideoType}`);
+  }
+
+  const minimums: Record<string, Record<string, number>> = {};
+  if (isRecord(minimumsValue)) {
+    for (const videoType of minimumKeys) {
+      const domainMinimums = minimumsValue[videoType];
+      if (!isRecord(domainMinimums) || Object.keys(domainMinimums).length === 0) {
+        details.push(`domain minimums for video_type=${videoType} must be a non-empty object`);
+        continue;
+      }
+      const parsedMinimums: Record<string, number> = {};
+      for (const [rawSourceDomain, minimumCount] of Object.entries(domainMinimums)) {
+        const sourceDomain = rawSourceDomain.trim();
+        if (!sourceDomain) {
+          details.push(`video_type=${videoType} contains an empty source_domain`);
+          continue;
+        }
+        if (!Number.isInteger(minimumCount) || (minimumCount as number) <= 0) {
+          details.push(`video_type=${videoType} source_domain=${sourceDomain} minimum must be a positive integer`);
+          continue;
+        }
+        parsedMinimums[sourceDomain] = minimumCount as number;
+      }
+      minimums[videoType] = parsedMinimums;
+    }
+  }
+
+  const videoTypes = declaredKeys.filter(videoType =>
+    PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPE_SET.has(videoType));
+  if (details.length > 0) {
+    return {
+      valid: false,
+      videoTypes,
+      minimums: {},
+      issue: {
+        severity: 'error',
+        issue_type: 'invalid_domain_sample_policy',
+        message: 'ProductionMaterialPack health_policy 非法，领域样例健康检查已 fail closed。',
+        details,
+      },
+    };
+  }
+  return { valid: true, videoTypes, minimums };
+}
+
+function parseProductionMaterialPacks(file: JsonRecord): {
+  packs: ProductionMaterialPack[];
+  rejectedPackDiagnostics: ProductionMaterialPackRejectionDiagnostic[];
+} {
+  const packs: ProductionMaterialPack[] = [];
+  const rejectedPackDiagnostics: ProductionMaterialPackRejectionDiagnostic[] = [];
+  const acceptedVideoTypes = new Set<string>();
+  const candidates = file.packs as unknown[];
+  candidates.forEach((candidate, packIndex) => {
+    const diagnostic = diagnoseProductionMaterialPack(candidate, packIndex);
+    if (diagnostic) rejectedPackDiagnostics.push(diagnostic);
+    else {
+      const pack = candidate as ProductionMaterialPack;
+      if (acceptedVideoTypes.has(pack.video_type)) {
+        rejectedPackDiagnostics.push({
+          pack_index: packIndex,
+          code: 'duplicate_video_type',
+          path: `packs[${packIndex}].video_type`,
+        });
+      } else {
+        acceptedVideoTypes.add(pack.video_type);
+        packs.push(pack);
+      }
+    }
+  });
+  return { packs, rejectedPackDiagnostics };
+}
+
+function parseProductionMaterialPackFile(
+  value: unknown,
+  sourceAvailable: boolean,
+): {
+  packFileValid: boolean;
+  packFileDiagnostics: ProductionMaterialPackFileDiagnostic[];
+  healthPolicy?: unknown;
+  packs: ProductionMaterialPack[];
+  rejectedPackDiagnostics: ProductionMaterialPackRejectionDiagnostic[];
+} {
+  const diagnostic = diagnoseProductionMaterialPackFile(value, sourceAvailable);
+  if (diagnostic) {
+    return {
+      packFileValid: false,
+      packFileDiagnostics: [diagnostic],
+      packs: [],
+      rejectedPackDiagnostics: [],
+    };
+  }
+  const file = value as JsonRecord;
+  const parsedPacks = parseProductionMaterialPacks(file);
+  return {
+    packFileValid: true,
+    packFileDiagnostics: [],
+    healthPolicy: file.health_policy,
+    ...parsedPacks,
+  };
+}
+
+function diagnoseProductionMaterialPackFile(
+  value: unknown,
+  sourceAvailable: boolean,
+): ProductionMaterialPackFileDiagnostic | undefined {
+  const reject = (
+    code: ProductionMaterialPackFileDiagnosticCode,
+    pathValue: string,
+  ): ProductionMaterialPackFileDiagnostic => ({ code, path: pathValue });
+  if (!sourceAvailable) return reject('source_unavailable', '$');
+  if (!isRecord(value)) return reject('required_object', '$');
+  if (!nonEmptyString(value.schema_version)) {
+    return reject('required_non_blank_string', 'schema_version');
+  }
+  if (value.schema_version !== 'video-type-material-supplement-packs/v1') {
+    return reject('unsupported_schema_version', 'schema_version');
+  }
+  if (!Array.isArray(value.packs)) return reject('required_array', 'packs');
+  return undefined;
 }
 
 function gateItemsForStage(pack: ProductionMaterialPack, stage: MaterialSufficiencyStage): string[] {
@@ -1409,12 +1707,101 @@ function gateItemsForStage(pack: ProductionMaterialPack, stage: MaterialSufficie
   return pack.material_template.production_ready_gate;
 }
 
+function summarizeProductionSampleDomainCoverage(
+  sampleEntries: unknown[],
+  videoType: string,
+  domainSampleMinimums: Record<string, Record<string, number>>,
+): {
+  counts: Record<string, number>;
+  minimums: Record<string, number>;
+  legacyCount: number;
+} {
+  const minimums = { ...(domainSampleMinimums[videoType] ?? {}) };
+  const counts: Record<string, number> = Object.fromEntries(
+    Object.keys(minimums).map(sourceDomain => [sourceDomain, 0]),
+  );
+  let legacyCount = 0;
+  for (const entry of sampleEntries) {
+    const explicitDomains = isRecord(entry) && isStringArray(entry.applicable_source_domains)
+      ? [...new Set(entry.applicable_source_domains.map(item => item.trim()).filter(Boolean))]
+      : [];
+    const sourceDomains = explicitDomains.length > 0
+      ? explicitDomains
+      : [LEGACY_SAMPLE_SOURCE_DOMAIN];
+    if (explicitDomains.length === 0) legacyCount += 1;
+    for (const sourceDomain of sourceDomains) {
+      counts[sourceDomain] = (counts[sourceDomain] ?? 0) + 1;
+    }
+  }
+  return { counts, minimums, legacyCount };
+}
+
+function productionSampleId(entry: unknown): string | undefined {
+  if (!isRecord(entry) || typeof entry.sample_id !== 'string') return undefined;
+  return entry.sample_id.trim() || undefined;
+}
+
+function deduplicateProductionSampleEntries(sampleEntries: unknown[]): unknown[] {
+  const seen = new Set<string>();
+  return sampleEntries.filter(entry => {
+    const sampleId = productionSampleId(entry);
+    if (!sampleId) return true;
+    if (seen.has(sampleId)) return false;
+    seen.add(sampleId);
+    return true;
+  });
+}
+
 export function getProductionMaterialPackHealthReport(): ProductionMaterialPackHealthReport {
   const requiredVideoTypes = [...HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES];
   const coreVideoTypes = [...CORE_PRODUCTION_READY_VIDEO_TYPES];
-  const packs = loadProductionMaterialPacks();
+  const sourceFile = readDataJsonValue(
+    'production-packs',
+    'video-type-material-supplement-packs.json',
+  );
+  const parsedFile = parseProductionMaterialPackFile(sourceFile.value, sourceFile.available);
+  const packs = parsedFile.packs;
+  const domainSamplePolicy = parseDomainSamplePolicy(
+    parsedFile.healthPolicy,
+    new Set(packs.map(pack => pack.video_type)),
+  );
   const packsByType = new Map(packs.map(pack => [pack.video_type, pack]));
-  const issues: ProductionMaterialPackHealthIssue[] = [];
+  const duplicateVideoTypeDiagnostics = parsedFile.rejectedPackDiagnostics.filter(
+    diagnostic => diagnostic.code === 'duplicate_video_type',
+  );
+  const invalidStructureDiagnostics = parsedFile.rejectedPackDiagnostics.filter(
+    diagnostic => diagnostic.code !== 'duplicate_video_type',
+  );
+  const issues: ProductionMaterialPackHealthIssue[] = [
+    ...(parsedFile.packFileDiagnostics.length > 0
+      ? [{
+          severity: 'error' as const,
+          issue_type: 'invalid_pack_file_structure' as const,
+          message: 'ProductionMaterialPack 源文件根合同非法，健康检查已 fail closed。',
+          details: parsedFile.packFileDiagnostics.map(diagnostic =>
+            `code=${diagnostic.code} path=${diagnostic.path}`),
+        }]
+      : []),
+    ...(invalidStructureDiagnostics.length > 0
+      ? [{
+          severity: 'error' as const,
+          issue_type: 'invalid_pack_structure' as const,
+          message: `${invalidStructureDiagnostics.length} 个 ProductionMaterialPack 因结构非法被拒绝。`,
+          details: invalidStructureDiagnostics.map(diagnostic =>
+            `pack_index=${diagnostic.pack_index} code=${diagnostic.code} path=${diagnostic.path}`),
+        }]
+      : []),
+    ...(duplicateVideoTypeDiagnostics.length > 0
+      ? [{
+          severity: 'error' as const,
+          issue_type: 'duplicate_pack_video_type' as const,
+          message: `${duplicateVideoTypeDiagnostics.length} 个 ProductionMaterialPack 因 video_type 重复被拒绝。`,
+          details: duplicateVideoTypeDiagnostics.map(diagnostic =>
+            `pack_index=${diagnostic.pack_index} code=${diagnostic.code} path=${diagnostic.path}`),
+        }]
+      : []),
+    ...(domainSamplePolicy.issue ? [domainSamplePolicy.issue] : []),
+  ];
 
   for (const videoType of requiredVideoTypes) {
     if (!packsByType.has(videoType)) {
@@ -1434,6 +1821,16 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
       const duplicateRequiredFields = duplicateStrings(fields);
       const promptLayerCount = pack.material_template.prompt_layers?.length ?? 0;
       const sampleEntryCount = pack.sample_entries.length;
+      const duplicateSampleEntryIds = duplicateStrings(
+        pack.sample_entries.map(productionSampleId).filter((item): item is string => Boolean(item)),
+      );
+      const uniqueSampleEntries = deduplicateProductionSampleEntries(pack.sample_entries);
+      const uniqueSampleEntryCount = uniqueSampleEntries.length;
+      const domainSampleCoverage = summarizeProductionSampleDomainCoverage(
+        uniqueSampleEntries,
+        pack.video_type,
+        domainSamplePolicy.minimums,
+      );
       const supplementQuestionCount = pack.material_template.supplement_questions.length;
       const gateItemCounts: Record<MaterialSufficiencyStage, number> = {
         minimum_viable_story: pack.material_template.minimum_viable_story_gate.length,
@@ -1460,6 +1857,15 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
           details: duplicateRequiredFields,
         });
       }
+      if (duplicateSampleEntryIds.length > 0) {
+        issues.push({
+          severity: 'error',
+          issue_type: 'duplicate_sample_entry',
+          video_type: pack.video_type,
+          message: `${pack.video_type} 包含重复 sample_id，样例门禁只按唯一 ID 计数。`,
+          details: duplicateSampleEntryIds,
+        });
+      }
       if (promptLayerCount < 4) {
         issues.push({
           severity: 'warning',
@@ -1484,14 +1890,28 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
         : requiredVideoTypes.includes(pack.video_type as typeof HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES[number])
           ? 2
           : 1;
-      if (sampleEntryCount < minimumSampleEntries) {
+      if (uniqueSampleEntryCount < minimumSampleEntries) {
         issues.push({
           severity: 'warning',
           issue_type: 'underfilled_sample_entries',
           video_type: pack.video_type,
           message: `${pack.video_type} 样板条目低于 ${minimumSampleEntries} 条。`,
-          details: [`current=${sampleEntryCount}`],
+          details: [`current=${uniqueSampleEntryCount}`, `raw=${sampleEntryCount}`],
         });
+      }
+
+      for (const [sourceDomain, minimumCount] of Object.entries(domainSampleCoverage.minimums)) {
+        const currentCount = domainSampleCoverage.counts[sourceDomain] ?? 0;
+        if (currentCount < minimumCount) {
+          issues.push({
+            severity: 'warning',
+            issue_type: 'underfilled_domain_sample_entries',
+            video_type: pack.video_type,
+            source_domain: sourceDomain,
+            message: `${pack.video_type} 的 ${sourceDomain} 样板条目低于 ${minimumCount} 条。`,
+            details: [`current=${currentCount}`, `minimum=${minimumCount}`],
+          });
+        }
       }
 
       for (const stage of PACK_HEALTH_GATE_STAGES) {
@@ -1513,6 +1933,11 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
         required_field_count: fields.length,
         prompt_layer_count: promptLayerCount,
         sample_entry_count: sampleEntryCount,
+        unique_sample_entry_count: uniqueSampleEntryCount,
+        duplicate_sample_entry_ids: duplicateSampleEntryIds,
+        sample_entry_count_by_source_domain: domainSampleCoverage.counts,
+        minimum_sample_entry_count_by_source_domain: domainSampleCoverage.minimums,
+        legacy_sample_entry_count: domainSampleCoverage.legacyCount,
         supplement_question_count: supplementQuestionCount,
         gate_item_counts: gateItemCounts,
         unknown_required_fields: unknownRequiredFields,
@@ -1526,14 +1951,22 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
     schema_version: 'production-material-pack-health/v1',
     generated_at: new Date().toISOString(),
     status: healthStatusFromIssues(issues),
+    domain_sample_policy_valid: domainSamplePolicy.valid,
+    domain_sample_policy_video_types: domainSamplePolicy.videoTypes,
+    pack_file_valid: parsedFile.packFileValid,
+    pack_file_diagnostics: parsedFile.packFileDiagnostics,
     pack_count: packs.length,
+    rejected_pack_count: parsedFile.rejectedPackDiagnostics.length,
+    rejected_pack_diagnostics: parsedFile.rejectedPackDiagnostics,
     required_video_types: requiredVideoTypes,
     covered_required_video_types: requiredVideoTypes.filter(videoType => packsByType.has(videoType)),
     missing_required_video_types: requiredVideoTypes.filter(videoType => !packsByType.has(videoType)),
     core_video_types: coreVideoTypes,
-    production_ready_core_video_types: coreVideoTypes.filter(videoType =>
-      summaries.some(summary => summary.video_type === videoType && summary.status === 'passed'),
-    ),
+    production_ready_core_video_types: domainSamplePolicy.valid
+      ? coreVideoTypes.filter(videoType =>
+          summaries.some(summary => summary.video_type === videoType && summary.status === 'passed'),
+        )
+      : [],
     high_frequency_video_types: [...HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES],
     packs: summaries,
     issues,
@@ -1543,12 +1976,27 @@ export function getProductionMaterialPackHealthReport(): ProductionMaterialPackH
 export function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPackHealthReport): string {
   const issueLines = report.issues.length
     ? report.issues.map(issue =>
-      `- ${issue.severity} · ${issue.issue_type}${issue.video_type ? ` · ${issue.video_type}` : ''}: ${issue.message}`,
+      `- ${issue.severity} · ${issue.issue_type}${issue.video_type ? ` · ${issue.video_type}` : ''}${issue.source_domain ? ` · ${issue.source_domain}` : ''}: ${issue.message}`,
     )
     : ['- none'];
   const packLines = report.packs.length
-    ? report.packs.map(pack =>
-      `- ${pack.status} · ${pack.video_type} · fields=${pack.required_field_count} prompts=${pack.prompt_layer_count} samples=${pack.sample_entry_count}`,
+    ? report.packs.map(pack => {
+        const domainCoverage = Object.entries(pack.minimum_sample_entry_count_by_source_domain)
+          .map(([sourceDomain, minimumCount]) =>
+            `${sourceDomain}=${pack.sample_entry_count_by_source_domain[sourceDomain] ?? 0}/${minimumCount}`,
+          )
+          .join(',') || 'not_required';
+        return `- ${pack.status} · ${pack.video_type} · fields=${pack.required_field_count} prompts=${pack.prompt_layer_count} samples=${pack.unique_sample_entry_count}/${pack.sample_entry_count} duplicate_sample_ids=${pack.duplicate_sample_entry_ids.length} domain_samples=${domainCoverage} legacy_samples=${pack.legacy_sample_entry_count}`;
+      })
+    : ['- none'];
+  const rejectedPackLines = report.rejected_pack_diagnostics.length
+    ? report.rejected_pack_diagnostics.map(diagnostic =>
+      `- pack_index=${diagnostic.pack_index} code=${diagnostic.code} path=${diagnostic.path}`,
+    )
+    : ['- none'];
+  const packFileDiagnosticLines = report.pack_file_diagnostics.length
+    ? report.pack_file_diagnostics.map(diagnostic =>
+      `- code=${diagnostic.code} path=${diagnostic.path}`,
     )
     : ['- none'];
 
@@ -1561,12 +2009,24 @@ export function renderProductionMaterialPackHealthMarkdown(report: ProductionMat
     '',
     '## Summary',
     '',
+    `- pack_file_valid: ${report.pack_file_valid}`,
     `- pack_count: ${report.pack_count}`,
+    `- rejected_pack_count: ${report.rejected_pack_count}`,
+    `- domain_sample_policy_valid: ${report.domain_sample_policy_valid}`,
+    `- domain_sample_policy_video_types: ${report.domain_sample_policy_video_types.join(', ') || 'none'}`,
     `- required_video_types: ${report.required_video_types.length}`,
     `- covered_required_video_types: ${report.covered_required_video_types.length}`,
     `- missing_required_video_types: ${report.missing_required_video_types.join(', ') || 'none'}`,
     `- core_ready: ${report.production_ready_core_video_types.length}/${report.core_video_types.length}`,
     `- issue_count: ${report.issues.length}`,
+    '',
+    '## Pack File Diagnostics',
+    '',
+    ...packFileDiagnosticLines,
+    '',
+    '## Rejected Packs',
+    '',
+    ...rejectedPackLines,
     '',
     '## Packs',
     '',

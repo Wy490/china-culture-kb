@@ -234,6 +234,14 @@ Project MCP setup notes live in `.codex/mcp-config.md`; the Story Agent MCP upgr
 
 > Note: this local skill is not installed on Windows; the **superpowers** plugin provides overlapping discipline (TDD, debugging, verification) and the **writing-plans** skill covers structured development workflow.
 
+## Project-local Codex Skills (Mac)
+
+| Skill | Path | Purpose |
+| --- | --- | --- |
+| `superpowers-lite` | `.codex/skills/superpowers-lite` | 默认 Lite、按风险升级到 Standard/Strict；保留比例化 TDD、根因调试和完成前验证，取消强制 brainstorming、worktree、subagent 与重复全量 CI |
+
+该项目 skill 不修改 Windows 的 Superpowers 5.1.0 插件，也不复制其 14 个子 skill。它用于 Codex 中的持续项目推进；明确项目需求优先直接执行一个可逆切片，高风险、付费外部动作、真实数据迁移和生产授权才升级严格流程。
+
 ## china-culture-kb MCP Server Tools (21)
 
 Project-level MCP server, available on Windows in the `china-culture-kb` project workspace.

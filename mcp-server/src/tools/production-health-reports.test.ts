@@ -9,6 +9,7 @@ import {
   getDomainPackProductionHealthReport,
   getDomainPackProductionHealthToolResult,
   getKnowledgeWritebackQueueExportToolResult,
+  PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPES,
   getProductionMaterialPackHealthReport,
   getProductionMaterialPackHealthToolResult,
   getStorySupplementCandidatePackageToolResult,
@@ -20,6 +21,144 @@ let tmpRoot = '';
 let dataRoot = '';
 const previousKbRoot = process.env.KB_ROOT;
 const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
+
+interface ProductionHealthConformanceCase {
+  case_id: string;
+  health_policy?: unknown;
+  loaded_video_types: string[];
+  sample_entries_by_video_type?: Record<string, unknown[]>;
+  expected: {
+    domain_sample_policy_valid: boolean;
+    policy_issue_type: 'missing_domain_sample_policy' | 'invalid_domain_sample_policy' | null;
+    duplicate_sample_entry_ids_by_video_type?: Record<string, string[]>;
+  };
+}
+
+interface ProductionPackStructureConformanceCase {
+  case_id: string;
+  omit_top_level_fields?: string[];
+  top_level_overrides?: Record<string, unknown>;
+  omit_material_template_fields?: string[];
+  material_template_overrides?: Record<string, unknown>;
+  sample_entries?: unknown[];
+  expected: {
+    loaded_pack_count: number;
+    domain_sample_policy_valid: boolean;
+  };
+}
+
+interface ProductionPackRejectionDiagnostic {
+  pack_index: number;
+  code: string;
+  path: string;
+}
+
+interface ProductionPackFileDiagnostic {
+  code: string;
+  path: string;
+}
+
+interface ProductionPackFileStructureConformanceCase {
+  case_id: string;
+  root_value?: unknown;
+  omit_fields?: string[];
+  overrides?: Record<string, unknown>;
+  expected: {
+    pack_file_valid: boolean;
+    loaded_pack_count: number;
+    diagnostic: ProductionPackFileDiagnostic | null;
+  };
+}
+
+interface ProductionPackCollectionConformanceCase {
+  case_id: string;
+  video_type: string;
+  first_label: string;
+  duplicate_label: string;
+  expected: {
+    loaded_pack_count: number;
+    selected_label: string;
+    diagnostic: ProductionPackRejectionDiagnostic;
+  };
+}
+
+interface ProductionHealthConformanceFixture {
+  schema_version: 'production-material-pack-health-conformance/v1';
+  supported_video_types: string[];
+  valid_domain_minimums: Record<string, number>;
+  standard_pack: Record<string, unknown>;
+  pack_file_structure_cases: ProductionPackFileStructureConformanceCase[];
+  pack_collection_cases: ProductionPackCollectionConformanceCase[];
+  pack_structure_cases: ProductionPackStructureConformanceCase[];
+  pack_structure_diagnostic_expectations: Record<string, ProductionPackRejectionDiagnostic | null>;
+  cases: ProductionHealthConformanceCase[];
+}
+
+const productionHealthConformance = JSON.parse(fs.readFileSync(path.resolve(
+  import.meta.dirname,
+  '..',
+  '..',
+  '..',
+  'data',
+  'production-packs',
+  'production-material-pack-health-conformance.json',
+), 'utf8')) as ProductionHealthConformanceFixture;
+
+function makeConformancePack(videoType: string, sampleEntries?: unknown[]): Record<string, unknown> {
+  return {
+    ...productionHealthConformance.standard_pack,
+    video_type: videoType,
+    sample_entries: sampleEntries ?? Object.keys(productionHealthConformance.valid_domain_minimums)
+      .map(sourceDomain => ({
+        sample_id: `${videoType}-${sourceDomain}`,
+        entry_name: `${videoType} ${sourceDomain}`,
+        applicable_source_domains: [sourceDomain],
+      })),
+  };
+}
+
+function makePackStructureConformancePack(
+  testCase: ProductionPackStructureConformanceCase,
+): Record<string, unknown> {
+  const pack: Record<string, unknown> = {
+    ...productionHealthConformance.standard_pack,
+    video_type: 'children_story',
+    material_template: {
+      ...(productionHealthConformance.standard_pack.material_template as Record<string, unknown>),
+    },
+    sample_entries: testCase.sample_entries ?? Object.keys(productionHealthConformance.valid_domain_minimums)
+      .map(sourceDomain => ({
+        sample_id: `children_story-${sourceDomain}`,
+        entry_name: `children_story ${sourceDomain}`,
+        applicable_source_domains: [sourceDomain],
+      })),
+  };
+  const template = pack.material_template as Record<string, unknown>;
+  for (const field of testCase.omit_material_template_fields ?? []) delete template[field];
+  Object.assign(template, testCase.material_template_overrides ?? {});
+  for (const field of testCase.omit_top_level_fields ?? []) delete pack[field];
+  Object.assign(pack, testCase.top_level_overrides ?? {});
+  return pack;
+}
+
+function makePackFileStructureConformanceValue(
+  testCase: ProductionPackFileStructureConformanceCase,
+): unknown {
+  if ('root_value' in testCase) return testCase.root_value;
+  const value: Record<string, unknown> = {
+    schema_version: 'video-type-material-supplement-packs/v1',
+    health_policy: {
+      required_domain_sample_video_types: ['children_story'],
+      domain_sample_minimums: {
+        children_story: productionHealthConformance.valid_domain_minimums,
+      },
+    },
+    packs: [makeConformancePack('children_story')],
+  };
+  for (const field of testCase.omit_fields ?? []) delete value[field];
+  Object.assign(value, testCase.overrides ?? {});
+  return value;
+}
 
 beforeEach(() => {
   tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-production-health-reports-'));
@@ -38,6 +177,183 @@ afterEach(() => {
 });
 
 describe('production health reports', () => {
+  it('matches the shared production health conformance matrix', () => {
+    expect(productionHealthConformance.schema_version)
+      .toBe('production-material-pack-health-conformance/v1');
+    expect([...PRODUCTION_HEALTH_SUPPORTED_VIDEO_TYPES].sort())
+      .toEqual([...productionHealthConformance.supported_video_types].sort());
+
+    for (const videoType of productionHealthConformance.supported_video_types) {
+      fs.mkdirSync(path.join(dataRoot, 'production-packs'), { recursive: true });
+      fs.writeFileSync(
+        path.join(dataRoot, 'production-packs', 'video-type-material-supplement-packs.json'),
+        JSON.stringify({
+          schema_version: 'video-type-material-supplement-packs/v1',
+          health_policy: {
+            required_domain_sample_video_types: [videoType],
+            domain_sample_minimums: {
+              [videoType]: productionHealthConformance.valid_domain_minimums,
+            },
+          },
+          packs: [makeConformancePack(videoType)],
+        }, null, 2),
+        'utf8',
+      );
+      expect(getProductionMaterialPackHealthReport().domain_sample_policy_valid, videoType).toBe(true);
+    }
+
+    for (const testCase of productionHealthConformance.cases) {
+      fs.mkdirSync(path.join(dataRoot, 'production-packs'), { recursive: true });
+      const packFile: Record<string, unknown> = {
+        schema_version: 'video-type-material-supplement-packs/v1',
+        packs: testCase.loaded_video_types.map(videoType => makeConformancePack(
+          videoType,
+          testCase.sample_entries_by_video_type?.[videoType],
+        )),
+      };
+      if ('health_policy' in testCase) packFile.health_policy = testCase.health_policy;
+      fs.writeFileSync(
+        path.join(dataRoot, 'production-packs', 'video-type-material-supplement-packs.json'),
+        JSON.stringify(packFile, null, 2),
+        'utf8',
+      );
+
+      const report = getProductionMaterialPackHealthReport();
+      const policyIssue = report.issues.find(issue =>
+        issue.issue_type === 'missing_domain_sample_policy'
+        || issue.issue_type === 'invalid_domain_sample_policy');
+      expect(report.domain_sample_policy_valid, testCase.case_id)
+        .toBe(testCase.expected.domain_sample_policy_valid);
+      expect(policyIssue?.issue_type ?? null, testCase.case_id)
+        .toBe(testCase.expected.policy_issue_type);
+      for (const [videoType, duplicateIds] of Object.entries(
+        testCase.expected.duplicate_sample_entry_ids_by_video_type ?? {},
+      )) {
+        expect(
+          report.packs.find(pack => pack.video_type === videoType)?.duplicate_sample_entry_ids,
+          testCase.case_id,
+        ).toEqual(duplicateIds);
+      }
+    }
+  });
+
+  it('filters malformed file packs using the shared structure matrix', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+
+    for (const testCase of productionHealthConformance.pack_structure_cases) {
+      fs.writeFileSync(
+        path.join(packsDir, 'video-type-material-supplement-packs.json'),
+        JSON.stringify({
+          schema_version: 'video-type-material-supplement-packs/v1',
+          health_policy: {
+            required_domain_sample_video_types: ['children_story'],
+            domain_sample_minimums: {
+              children_story: productionHealthConformance.valid_domain_minimums,
+            },
+          },
+          packs: [makePackStructureConformancePack(testCase)],
+        }, null, 2),
+        'utf8',
+      );
+
+      const report = getProductionMaterialPackHealthReport();
+      expect(report.pack_count, testCase.case_id).toBe(testCase.expected.loaded_pack_count);
+      expect(report.domain_sample_policy_valid, testCase.case_id)
+        .toBe(testCase.expected.domain_sample_policy_valid);
+      const expectedDiagnostic = productionHealthConformance
+        .pack_structure_diagnostic_expectations[testCase.case_id];
+      expect(report.rejected_pack_count, testCase.case_id).toBe(expectedDiagnostic ? 1 : 0);
+      expect(report.rejected_pack_diagnostics, testCase.case_id)
+        .toEqual(expectedDiagnostic ? [expectedDiagnostic] : []);
+
+      if (testCase.case_id === 'label_must_be_non_blank') {
+        const toolResult = getProductionMaterialPackHealthToolResult();
+        expect(toolResult.markdown).toContain('- rejected_pack_count: 1');
+        expect(toolResult.markdown).toContain(
+          'pack_index=0 code=required_non_blank_string path=packs[0].label',
+        );
+      }
+    }
+  });
+
+  it('fails closed with shared diagnostics for malformed pack file roots', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+
+    for (const testCase of productionHealthConformance.pack_file_structure_cases) {
+      fs.writeFileSync(
+        path.join(packsDir, 'video-type-material-supplement-packs.json'),
+        JSON.stringify(makePackFileStructureConformanceValue(testCase), null, 2),
+        'utf8',
+      );
+      const report = getProductionMaterialPackHealthReport();
+      expect(report.pack_file_valid, testCase.case_id)
+        .toBe(testCase.expected.pack_file_valid);
+      expect(report.pack_file_diagnostics, testCase.case_id)
+        .toEqual(testCase.expected.diagnostic ? [testCase.expected.diagnostic] : []);
+      expect(report.pack_count, testCase.case_id).toBe(testCase.expected.loaded_pack_count);
+      expect(
+        report.issues.some(issue => issue.issue_type === 'invalid_pack_file_structure'),
+        testCase.case_id,
+      ).toBe(!testCase.expected.pack_file_valid);
+      if (!testCase.expected.pack_file_valid) {
+        expect(report.covered_required_video_types, testCase.case_id).toEqual([]);
+        expect(report.domain_sample_policy_valid, testCase.case_id).toBe(false);
+      }
+      if (testCase.case_id === 'pack_file_schema_version_must_be_supported') {
+        const markdown = getProductionMaterialPackHealthToolResult().markdown;
+        expect(markdown).toContain('code=unsupported_schema_version path=schema_version');
+        expect(markdown).not.toContain('v2-sensitive-value');
+      }
+    }
+  });
+
+  it('keeps the first pack and rejects later duplicate video types', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+
+    for (const testCase of productionHealthConformance.pack_collection_cases) {
+      fs.writeFileSync(
+        path.join(packsDir, 'video-type-material-supplement-packs.json'),
+        JSON.stringify({
+          schema_version: 'video-type-material-supplement-packs/v1',
+          health_policy: {
+            required_domain_sample_video_types: [testCase.video_type],
+            domain_sample_minimums: {
+              [testCase.video_type]: productionHealthConformance.valid_domain_minimums,
+            },
+          },
+          packs: [
+            { ...makeConformancePack(testCase.video_type), label: testCase.first_label },
+            { ...makeConformancePack(testCase.video_type), label: testCase.duplicate_label },
+          ],
+        }, null, 2),
+        'utf8',
+      );
+
+      const report = getProductionMaterialPackHealthReport();
+      expect(report.pack_count, testCase.case_id).toBe(testCase.expected.loaded_pack_count);
+      expect(report.rejected_pack_count, testCase.case_id).toBe(1);
+      expect(report.rejected_pack_diagnostics, testCase.case_id)
+        .toEqual([testCase.expected.diagnostic]);
+      expect(report.packs.map(pack => pack.label), testCase.case_id)
+        .toEqual([testCase.expected.selected_label]);
+      expect(report.domain_sample_policy_valid, testCase.case_id).toBe(true);
+      expect(report.covered_required_video_types, testCase.case_id)
+        .toContain(testCase.video_type);
+      expect(report.issues, testCase.case_id).toEqual(expect.arrayContaining([
+        expect.objectContaining({ issue_type: 'duplicate_pack_video_type' }),
+      ]));
+
+      const markdown = getProductionMaterialPackHealthToolResult().markdown;
+      expect(markdown).toContain(
+        'pack_index=1 code=duplicate_video_type path=packs[1].video_type',
+      );
+      expect(markdown).not.toContain(testCase.duplicate_label);
+    }
+  });
+
   it('fails closed when production pack and Domain Pack files are missing', () => {
     const productionMaterialPackHealth = getProductionMaterialPackHealthReport();
     const domainPackHealth = getDomainPackProductionHealthReport();
@@ -46,14 +362,25 @@ describe('production health reports', () => {
     expect(productionMaterialPackHealth).toMatchObject({
       schema_version: 'production-material-pack-health/v1',
       status: 'failed',
+      pack_file_valid: false,
+      pack_file_diagnostics: [{ code: 'source_unavailable', path: '$' }],
       pack_count: 0,
       covered_required_video_types: [],
       production_ready_core_video_types: [],
     });
     expect(productionMaterialPackHealth.required_video_types).toHaveLength(8);
     expect(productionMaterialPackHealth.missing_required_video_types).toEqual(productionMaterialPackHealth.required_video_types);
-    expect(productionMaterialPackHealth.issues).toHaveLength(8);
+    expect(productionMaterialPackHealth.domain_sample_policy_valid).toBe(false);
+    expect(productionMaterialPackHealth.issues).toHaveLength(10);
     expect(productionMaterialPackHealth.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'invalid_pack_file_structure',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'missing_domain_sample_policy',
+      }),
       expect.objectContaining({
         severity: 'error',
         issue_type: 'missing_required_video_type',
@@ -122,6 +449,69 @@ describe('production health reports', () => {
     ]));
   });
 
+  it('fails closed when the canonical domain sample policy is invalid', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(packsDir, 'video-type-material-supplement-packs.json'),
+      JSON.stringify({
+        schema_version: 'video-type-material-supplement-packs/v1',
+        health_policy: {
+          required_domain_sample_video_types: ['children_story'],
+          domain_sample_minimums: {
+            children_story: { china_culture: 0, original_fiction: 2 },
+          },
+        },
+        packs: [],
+      }, null, 2),
+      'utf8',
+    );
+
+    const report = getProductionMaterialPackHealthReport();
+
+    expect(report.domain_sample_policy_valid).toBe(false);
+    expect(report.status).toBe('failed');
+    expect(report.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'invalid_domain_sample_policy',
+      }),
+    ]));
+  });
+
+  it('fails closed when the domain sample policy references a pack that was not loaded', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(packsDir, 'video-type-material-supplement-packs.json'),
+      JSON.stringify({
+        schema_version: 'video-type-material-supplement-packs/v1',
+        health_policy: {
+          required_domain_sample_video_types: ['children_story'],
+          domain_sample_minimums: {
+            children_story: { china_culture: 2, original_fiction: 2 },
+          },
+        },
+        packs: [],
+      }, null, 2),
+      'utf8',
+    );
+
+    const report = getProductionMaterialPackHealthReport();
+
+    expect(report.domain_sample_policy_valid).toBe(false);
+    expect(report.status).toBe('failed');
+    expect(report.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'invalid_domain_sample_policy',
+        details: expect.arrayContaining([
+          'policy video_type=children_story has no loaded ProductionMaterialPack',
+        ]),
+      }),
+    ]));
+  });
+
   it('renders markdown for standalone MCP health tool results by default', () => {
     const productionMaterialPackHealth = getProductionMaterialPackHealthToolResult();
     const domainPackHealth = getDomainPackProductionHealthToolResult();
@@ -153,6 +543,100 @@ describe('production health reports', () => {
     expect(getDomainPackExpansionCandidateToolResult({ include_markdown: false }).review_packet.markdown).toBeUndefined();
     expect(getDomainPackExpansionWritebackDraftToolResult().markdown).toContain('Domain Pack Expansion Writeback Draft');
     expect(getDomainPackExpansionWritebackDraftToolResult({ include_markdown: false }).markdown).toBeUndefined();
+  });
+
+  it('reports domain sample coverage and keeps legacy samples out of original coverage', () => {
+    const packsDir = path.join(dataRoot, 'production-packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(packsDir, 'video-type-material-supplement-packs.json'),
+      JSON.stringify({
+        schema_version: 'video-type-material-supplement-packs/v1',
+        health_policy: {
+          required_domain_sample_video_types: ['children_story'],
+          domain_sample_minimums: {
+            children_story: { china_culture: 2, original_fiction: 2 },
+          },
+        },
+        packs: [{
+          video_type: 'children_story',
+          label: 'legacy children pack',
+          goal: 'test domain coverage',
+          material_template: {
+            required_fields: [],
+            prompt_layers: ['one', 'two', 'three', 'four'],
+            minimum_viable_story_gate: ['one', 'two', 'three'],
+            script_ready_gate: ['one', 'two', 'three'],
+            production_ready_gate: ['one', 'two', 'three'],
+            supplement_questions: ['one', 'two', 'three', 'four'],
+          },
+          sample_entries: [
+            { sample_id: 'legacy-1', entry_name: 'legacy china sample' },
+            {
+              sample_id: 'original-1',
+              entry_name: 'explicit original sample',
+              applicable_source_domains: ['original_fiction'],
+            },
+            {
+              sample_id: 'original-1',
+              entry_name: 'duplicate original sample',
+              applicable_source_domains: ['original_fiction'],
+            },
+          ],
+        }],
+      }, null, 2),
+      'utf8',
+    );
+
+    const report = getProductionMaterialPackHealthToolResult();
+    const summary = report.packs.find(pack => pack.video_type === 'children_story');
+    expect(summary?.sample_entry_count_by_source_domain).toEqual({
+      china_culture: 1,
+      original_fiction: 1,
+    });
+    expect(summary?.sample_entry_count).toBe(3);
+    expect(summary?.unique_sample_entry_count).toBe(2);
+    expect(summary?.duplicate_sample_entry_ids).toEqual(['original-1']);
+    expect(summary?.legacy_sample_entry_count).toBe(1);
+    expect(report.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        issue_type: 'duplicate_sample_entry',
+        video_type: 'children_story',
+      }),
+      expect.objectContaining({
+        issue_type: 'underfilled_domain_sample_entries',
+        video_type: 'children_story',
+        source_domain: 'original_fiction',
+      }),
+    ]));
+    expect(report.markdown).toContain('original_fiction=1/2');
+  });
+
+  it('keeps canonical Web and MCP domain sample thresholds aligned', () => {
+    process.env.KB_ROOT = path.resolve(process.cwd(), '..', 'data');
+    const report = getProductionMaterialPackHealthReport();
+
+    expect(report.status).toBe('passed');
+    expect(report.domain_sample_policy_valid).toBe(true);
+    expect(report.pack_file_valid).toBe(true);
+    expect(report.pack_file_diagnostics).toEqual([]);
+    expect(report.rejected_pack_count).toBe(0);
+    expect(report.rejected_pack_diagnostics).toEqual([]);
+    expect(report.domain_sample_policy_video_types).toEqual([
+      'ai_comic_drama',
+      'children_story',
+      'social_short',
+    ]);
+    for (const videoType of ['children_story', 'social_short', 'ai_comic_drama']) {
+      const summary = report.packs.find(pack => pack.video_type === videoType);
+      expect(summary?.minimum_sample_entry_count_by_source_domain, videoType).toEqual({
+        china_culture: 2,
+        original_fiction: 2,
+      });
+      expect(summary?.sample_entry_count_by_source_domain.china_culture, videoType).toBeGreaterThanOrEqual(2);
+      expect(summary?.sample_entry_count_by_source_domain.original_fiction, videoType).toBeGreaterThanOrEqual(2);
+      expect(summary?.legacy_sample_entry_count, videoType).toBe(0);
+    }
   });
 
   it('reports review-gated Domain Pack expansion candidates', () => {

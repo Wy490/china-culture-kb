@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import type { Request } from 'express';
-import { validateBody, validateParams } from '../middleware/validate.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import { requireCallbackSecret } from '../middleware/callback-auth.js';
 import { requireProductAccess } from '../middleware/product-access.js';
-import { fail, ErrorCodes } from '@shared/types.js';
+import { fail, success, ErrorCodes } from '@shared/types.js';
 import type {
   KnowledgeSupplementTaskSource,
   KnowledgeWritebackStatus,
@@ -19,6 +19,7 @@ import {
   GearsJobLocalAcceptanceRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
+  GearsWorkbenchProjectImportRequestSchema,
   ProjectMaterialPackAddMaterialRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
@@ -45,6 +46,7 @@ import {
   StoryQualityRepairRequestSchema,
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
+  DomainPackQuerySchema,
 } from '@shared/schemas.js';
 import {
   deleteProject,
@@ -98,7 +100,10 @@ import {
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
 } from '../services/project-service.js';
+import { importProjectToGearsWorkbench } from '../services/gears-workbench-connector.js';
+import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
 import { filterProductResourcesForRequest } from '../services/product-resource-access-service.js';
+import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 
 export const projectsRouter = Router();
 
@@ -312,9 +317,11 @@ async function parseSeedanceAssetUpload(req: Request): Promise<{ fields: Record<
   return { fields, file };
 }
 
-projectsRouter.get('/', async (req, res, next) => {
+projectsRouter.get('/', validateQuery(DomainPackQuerySchema), async (req, res, next) => {
   try {
-    const result = await listProjects();
+    const domain = req.query.domain as string | undefined;
+    if (domain) storyAgentDomainRegistry.require(domain);
+    const result = await listProjects(domain);
     const data = result.data
       ? await filterProductResourcesForRequest(req, 'story_project', result.data, item => item.project_id)
       : result.data;
@@ -604,6 +611,65 @@ projectsRouter.post(
         },
       });
       res.status(result.ok ? 200 : result.error?.code === 'VALIDATION_ERROR' ? 400 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/gears-workbench-import/dry-run',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsWorkbenchProjectImportRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectToGearsWorkbench(projectId, req.body, 'dry_run');
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+            ? 404
+            : result.error?.code === ErrorCodes.VALIDATION_ERROR
+              ? 400
+              : 502,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.get(
+  '/:projectId/gears-workbench-import-audit',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      res.json(success(await getGearsWorkbenchImportAudit(projectId)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/gears-workbench-import',
+  validateParams(ProjectIdParamSchema),
+  validateBody(GearsWorkbenchProjectImportRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectToGearsWorkbench(projectId, req.body, 'execute');
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+            ? 404
+            : result.error?.code === ErrorCodes.VALIDATION_ERROR
+              ? 400
+              : 502,
+      ).json(result);
     } catch (err) {
       next(err);
     }

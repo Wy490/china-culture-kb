@@ -89,9 +89,9 @@ function actionPayloadHint(
 
 function actionPrerequisites(actionKey: string): string[] {
   if (actionKey === 'submit_gears_jobs') {
-    return ['GEARS_API_BASE_URL configured', 'GEARS_CALLBACK_BASE_URL configured', 'GEARS_CALLBACK_SECRET configured'];
+    return ['GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy GEARS_API_BASE_URL accepted)', 'GEARS_CALLBACK_BASE_URL configured', 'GEARS_CALLBACK_SECRET configured'];
   }
-  if (actionKey === 'sync_gears_jobs') return ['existing GEARS Job Ledger', 'GEARS_API_BASE_URL configured'];
+  if (actionKey === 'sync_gears_jobs') return ['existing GEARS Job Ledger', 'GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy accepted)'];
   if (actionKey === 'accept_local_gears_artifacts') return ['existing local GEARS Job Ledger', 'operator confirms mocked acceptance boundary'];
   if (actionKey === 'export_gears_external_callback_handoff') return ['ready GEARS jobs without external artifact', 'operator confirms local_acceptance is not final media'];
   if (actionKey === 'generate_next_episode') return ['series plan loaded', 'previous episode context reviewed'];

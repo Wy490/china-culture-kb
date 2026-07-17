@@ -1,0 +1,713 @@
+{
+  "schema_version": "production-material-pack-health-conformance/v1",
+  "supported_video_types": [
+    "character_story",
+    "historical_drama",
+    "legend_story",
+    "culture_promo",
+    "heritage_promo",
+    "city_brand_promo",
+    "scene_short",
+    "landscape_mood",
+    "documentary_short",
+    "explainer_video",
+    "lecture_video",
+    "education_training",
+    "children_story",
+    "social_short",
+    "ai_comic_drama"
+  ],
+  "valid_domain_minimums": {
+    "china_culture": 1,
+    "original_fiction": 1
+  },
+  "standard_pack": {
+    "label": "conformance pack",
+    "goal": "exercise the shared production material health contract",
+    "material_template": {
+      "required_fields": [],
+      "prompt_layers": ["one", "two", "three", "four"],
+      "minimum_viable_story_gate": ["one", "two", "three"],
+      "script_ready_gate": ["one", "two", "three"],
+      "production_ready_gate": ["one", "two", "three"],
+      "supplement_questions": ["one", "two", "three", "four"]
+    }
+  },
+  "pack_file_structure_cases": [
+    {
+      "case_id": "valid_pack_file_structure",
+      "expected": {
+        "pack_file_valid": true,
+        "loaded_pack_count": 1,
+        "diagnostic": null
+      }
+    },
+    {
+      "case_id": "pack_file_root_must_be_object",
+      "root_value": [],
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "required_object", "path": "$" }
+      }
+    },
+    {
+      "case_id": "pack_file_schema_version_is_required",
+      "omit_fields": ["schema_version"],
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "required_non_blank_string", "path": "schema_version" }
+      }
+    },
+    {
+      "case_id": "pack_file_schema_version_must_be_string",
+      "overrides": { "schema_version": 42 },
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "required_non_blank_string", "path": "schema_version" }
+      }
+    },
+    {
+      "case_id": "pack_file_schema_version_must_be_supported",
+      "overrides": { "schema_version": "video-type-material-supplement-packs/v2-sensitive-value" },
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "unsupported_schema_version", "path": "schema_version" }
+      }
+    },
+    {
+      "case_id": "pack_file_packs_is_required",
+      "omit_fields": ["packs"],
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "required_array", "path": "packs" }
+      }
+    },
+    {
+      "case_id": "pack_file_packs_must_be_array",
+      "overrides": { "packs": {} },
+      "expected": {
+        "pack_file_valid": false,
+        "loaded_pack_count": 0,
+        "diagnostic": { "code": "required_array", "path": "packs" }
+      }
+    }
+  ],
+  "pack_collection_cases": [
+    {
+      "case_id": "duplicate_video_type_rejects_later_pack",
+      "video_type": "children_story",
+      "first_label": "first canonical collection pack",
+      "duplicate_label": "sensitive duplicate collection pack",
+      "expected": {
+        "loaded_pack_count": 1,
+        "selected_label": "first canonical collection pack",
+        "diagnostic": {
+          "pack_index": 1,
+          "code": "duplicate_video_type",
+          "path": "packs[1].video_type"
+        }
+      }
+    }
+  ],
+  "pack_structure_cases": [
+    {
+      "case_id": "valid_pack_structure",
+      "expected": { "loaded_pack_count": 1, "domain_sample_policy_valid": true }
+    },
+    {
+      "case_id": "video_type_is_required",
+      "omit_top_level_fields": ["video_type"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "video_type_must_be_supported",
+      "top_level_overrides": { "video_type": "experimental_story" },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "label_is_required",
+      "omit_top_level_fields": ["label"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "label_must_be_non_blank",
+      "top_level_overrides": { "label": "   " },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "goal_is_required",
+      "omit_top_level_fields": ["goal"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "goal_must_be_non_blank",
+      "top_level_overrides": { "goal": "   " },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "material_template_is_required",
+      "omit_top_level_fields": ["material_template"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "material_template_must_be_object",
+      "top_level_overrides": { "material_template": [] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "required_fields_is_required",
+      "omit_material_template_fields": ["required_fields"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "required_fields_must_be_string_array",
+      "material_template_overrides": { "required_fields": [42] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "required_fields_must_not_contain_blank_values",
+      "material_template_overrides": { "required_fields": ["   "] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "prompt_layers_must_be_string_array_when_present",
+      "material_template_overrides": { "prompt_layers": "one" },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "prompt_layers_must_not_contain_blank_values",
+      "material_template_overrides": { "prompt_layers": ["one", "   "] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "minimum_viable_story_gate_is_required",
+      "omit_material_template_fields": ["minimum_viable_story_gate"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "minimum_viable_story_gate_must_not_contain_blank_values",
+      "material_template_overrides": { "minimum_viable_story_gate": ["one", "two", "   "] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "script_ready_gate_must_be_string_array",
+      "material_template_overrides": { "script_ready_gate": {} },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "production_ready_gate_must_not_contain_blank_values",
+      "material_template_overrides": { "production_ready_gate": ["one", "two", "   "] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "supplement_questions_must_not_contain_blank_values",
+      "material_template_overrides": { "supplement_questions": ["one", "two", "three", "   "] },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "sample_entries_is_required",
+      "omit_top_level_fields": ["sample_entries"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "sample_entries_must_be_array",
+      "top_level_overrides": { "sample_entries": {} },
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "sample_entry_must_be_object",
+      "sample_entries": ["not-an-object"],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "sample_id_is_required",
+      "sample_entries": [
+        { "entry_name": "sample", "applicable_source_domains": ["china_culture"] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "sample_id_must_be_non_blank",
+      "sample_entries": [
+        { "sample_id": "   ", "entry_name": "sample", "applicable_source_domains": ["china_culture"] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "entry_name_is_required",
+      "sample_entries": [
+        { "sample_id": "sample-1", "applicable_source_domains": ["china_culture"] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "entry_name_must_be_non_blank",
+      "sample_entries": [
+        { "sample_id": "sample-1", "entry_name": "   ", "applicable_source_domains": ["china_culture"] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "applicable_source_domains_must_be_array",
+      "sample_entries": [
+        { "sample_id": "sample-1", "entry_name": "sample", "applicable_source_domains": "china_culture" }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "applicable_source_domains_must_contain_strings",
+      "sample_entries": [
+        { "sample_id": "sample-1", "entry_name": "sample", "applicable_source_domains": [42] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "applicable_source_domains_must_be_non_empty_when_present",
+      "sample_entries": [
+        { "sample_id": "sample-1", "entry_name": "sample", "applicable_source_domains": [] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "applicable_source_domains_must_not_contain_blank_values",
+      "sample_entries": [
+        { "sample_id": "sample-1", "entry_name": "sample", "applicable_source_domains": ["   "] }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    },
+    {
+      "case_id": "applicable_source_domains_must_be_unique",
+      "sample_entries": [
+        {
+          "sample_id": "sample-1",
+          "entry_name": "sample",
+          "applicable_source_domains": ["china_culture", "china_culture"]
+        }
+      ],
+      "expected": { "loaded_pack_count": 0, "domain_sample_policy_valid": false }
+    }
+  ],
+  "pack_structure_diagnostic_expectations": {
+    "valid_pack_structure": null,
+    "video_type_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].video_type"
+    },
+    "video_type_must_be_supported": {
+      "pack_index": 0,
+      "code": "unsupported_video_type",
+      "path": "packs[0].video_type"
+    },
+    "label_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].label"
+    },
+    "label_must_be_non_blank": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].label"
+    },
+    "goal_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].goal"
+    },
+    "goal_must_be_non_blank": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].goal"
+    },
+    "material_template_is_required": {
+      "pack_index": 0,
+      "code": "required_object",
+      "path": "packs[0].material_template"
+    },
+    "material_template_must_be_object": {
+      "pack_index": 0,
+      "code": "required_object",
+      "path": "packs[0].material_template"
+    },
+    "required_fields_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.required_fields"
+    },
+    "required_fields_must_be_string_array": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.required_fields"
+    },
+    "required_fields_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.required_fields"
+    },
+    "prompt_layers_must_be_string_array_when_present": {
+      "pack_index": 0,
+      "code": "optional_non_blank_string_array",
+      "path": "packs[0].material_template.prompt_layers"
+    },
+    "prompt_layers_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "optional_non_blank_string_array",
+      "path": "packs[0].material_template.prompt_layers"
+    },
+    "minimum_viable_story_gate_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.minimum_viable_story_gate"
+    },
+    "minimum_viable_story_gate_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.minimum_viable_story_gate"
+    },
+    "script_ready_gate_must_be_string_array": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.script_ready_gate"
+    },
+    "production_ready_gate_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.production_ready_gate"
+    },
+    "supplement_questions_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "required_non_blank_string_array",
+      "path": "packs[0].material_template.supplement_questions"
+    },
+    "sample_entries_is_required": {
+      "pack_index": 0,
+      "code": "required_array",
+      "path": "packs[0].sample_entries"
+    },
+    "sample_entries_must_be_array": {
+      "pack_index": 0,
+      "code": "required_array",
+      "path": "packs[0].sample_entries"
+    },
+    "sample_entry_must_be_object": {
+      "pack_index": 0,
+      "code": "required_object",
+      "path": "packs[0].sample_entries[0]"
+    },
+    "sample_id_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].sample_entries[0].sample_id"
+    },
+    "sample_id_must_be_non_blank": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].sample_entries[0].sample_id"
+    },
+    "entry_name_is_required": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].sample_entries[0].entry_name"
+    },
+    "entry_name_must_be_non_blank": {
+      "pack_index": 0,
+      "code": "required_non_blank_string",
+      "path": "packs[0].sample_entries[0].entry_name"
+    },
+    "applicable_source_domains_must_be_array": {
+      "pack_index": 0,
+      "code": "optional_non_empty_unique_non_blank_string_array",
+      "path": "packs[0].sample_entries[0].applicable_source_domains"
+    },
+    "applicable_source_domains_must_contain_strings": {
+      "pack_index": 0,
+      "code": "optional_non_empty_unique_non_blank_string_array",
+      "path": "packs[0].sample_entries[0].applicable_source_domains"
+    },
+    "applicable_source_domains_must_be_non_empty_when_present": {
+      "pack_index": 0,
+      "code": "optional_non_empty_unique_non_blank_string_array",
+      "path": "packs[0].sample_entries[0].applicable_source_domains"
+    },
+    "applicable_source_domains_must_not_contain_blank_values": {
+      "pack_index": 0,
+      "code": "optional_non_empty_unique_non_blank_string_array",
+      "path": "packs[0].sample_entries[0].applicable_source_domains"
+    },
+    "applicable_source_domains_must_be_unique": {
+      "pack_index": 0,
+      "code": "optional_non_empty_unique_non_blank_string_array",
+      "path": "packs[0].sample_entries[0].applicable_source_domains"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "valid_single_pack_policy",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": true,
+        "policy_issue_type": null
+      }
+    },
+    {
+      "case_id": "missing_policy",
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "missing_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "policy_must_be_object",
+      "health_policy": [],
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "required_video_types_must_be_non_empty",
+      "health_policy": {
+        "required_domain_sample_video_types": [],
+        "domain_sample_minimums": {}
+      },
+      "loaded_video_types": [],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "required_video_types_must_not_contain_blank_values",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story", "   "],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "required_video_types_must_be_unique",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story", "children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "minimum_map_must_be_object",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": []
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "declared_video_type_must_have_minimum_map",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story", "social_short"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story", "social_short"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "minimum_map_must_not_have_undeclared_video_type",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          },
+          "social_short": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story", "social_short"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "domain_minimum_map_must_be_non_empty",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {}
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "source_domain_must_not_be_blank",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "   ": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "minimum_must_be_positive",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 0,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "minimum_must_be_integer",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1.5,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "declared_video_type_must_reference_loaded_pack",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": [],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "unknown_video_type_must_fail_even_when_pack_is_loaded",
+      "health_policy": {
+        "required_domain_sample_video_types": ["experimental_story"],
+        "domain_sample_minimums": {
+          "experimental_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["experimental_story"],
+      "expected": {
+        "domain_sample_policy_valid": false,
+        "policy_issue_type": "invalid_domain_sample_policy"
+      }
+    },
+    {
+      "case_id": "duplicate_sample_ids_fail_pack_health",
+      "health_policy": {
+        "required_domain_sample_video_types": ["children_story"],
+        "domain_sample_minimums": {
+          "children_story": {
+            "china_culture": 1,
+            "original_fiction": 1
+          }
+        }
+      },
+      "loaded_video_types": ["children_story"],
+      "sample_entries_by_video_type": {
+        "children_story": [
+          {
+            "sample_id": "duplicate-sample",
+            "entry_name": "first sample",
+            "applicable_source_domains": ["china_culture"]
+          },
+          {
+            "sample_id": "duplicate-sample",
+            "entry_name": "second sample",
+            "applicable_source_domains": ["original_fiction"]
+          }
+        ]
+      },
+      "expected": {
+        "domain_sample_policy_valid": true,
+        "policy_issue_type": null,
+        "duplicate_sample_entry_ids_by_video_type": {
+          "children_story": ["duplicate-sample"]
+        }
+      }
+    }
+  ]
+}

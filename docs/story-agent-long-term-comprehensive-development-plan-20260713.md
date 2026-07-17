@@ -60,6 +60,27 @@ professional pass：0
 当前可商用成熟度：约 35%
 ```
 
+### 2.4 2026-07-16 最新执行快照
+
+上述 68% 是本长期计划建立时的历史基线；当前统一机器报告与最新交接使用 78%。74% 的基础来自两个直接解除平台化阻塞、且已有完整回归的切片：
+
+- 第二个代码级生产 Domain Pack `original_fiction` 已注册，并贯通领域检索/详情/匹配、规划、StoryBlueprint、本地生成、领域安全、质量、Project/version、受保护修订、GEARS/Seedance 包和真实本地 GEARS workbench HTTP 导入。它不读取中国文化知识库，只接受 `fictional_original`，要求足量用户原创提案并保留权利未核验与来源追踪边界。
+- `ProjectRepository` 增加可选择的嵌入式 SQLite provider，具备 schema/version、JSON SHA-256、快照身份、三字段乐观 CAS、事务提交、完整性检查、非覆盖备份和恢复后 logical SHA 等价验证。`node:sqlite` 仅在选择该 provider 时加载，系统配置显式暴露运行时可用性；默认 file provider 不因构建仍兼容 Node 18 而被静态导入提前破坏。
+
+本轮再从 74% 推进到 75%：Domain Pack 合同新增第九项 `story_revision` capability，并要求每个领域提供 `story-domain-revision-guidance/v1` 的写手角色、来源边界和真人复核要求。Project repair prompt 现由对应 Domain Pack 决定，不再硬编码“中国传统文化故事修复写手”；带显式 `domain_safety` 的中国文化与原创 Story 都会在新版本持久化前重新加载本领域来源并重跑安全校验。缺失来源、删除文化约束或删除场景 source trace 都会 fail closed，且不产生新版本。没有显式 `domain_safety` 的 legacy snapshot 暂时保留原兼容路径，后续必须以可审计迁移补齐，不能把兼容视为已通过领域安全。
+
+随后从 75% 推进到 76%：系统新增只读 legacy `domain_safety` 盘点和默认禁写的管理员迁移接口。盘点通过仓储层无恢复、无写入的 current-state inspection 读取 file/SQLite，不会因普通 FileProjectRepository 读操作而触发 pending transaction recovery。apply 必须显式确认 source domain/entry、锁定 current version 与 Story SHA、重新加载本领域来源并通过安全校验，同时开启专用 write gate 和 durable JSONL intent/completion audit；成功时只追加 `domain_safety_migration` 版本，不覆盖旧 snapshot，重放不产生额外版本。真实工作区只读盘点为 22 个 Project：20 个机器可迁移候选、2 个因来源/可信边界阻断，实际 apply 0、历史覆盖 0。
+
+本轮从 76% 推进到 77%：FileProjectRepository 新增完整 meta/version 历史的 canonical logical-state 只读检查，发现 pending transaction 时直接阻断，不恢复、不写回；SQLite provider 新增仅允许空目标库的单事务逻辑导入并复验 Project 数、version 数和 logical SHA。管理员迁移 API 默认 dry-run，要求操作者确认 source logical SHA，真实执行还需专用 write gate、绝对目标路径和 durable intent/completion audit。发布采用同目录候选文件与非覆盖 hard-link，目标数据库和旁车 manifest 任一已存在都不能被覆盖；发布前再次检查源 SHA，完整性一致的相同请求可幂等重放。真实工作区只读 preflight 为 22 个 Project、52 个 version、logical SHA `b4cd2fcf2ad1812026bece49fad75573f1b810f87524ae985f79899f2532343f`，目标文件前后均不存在，apply 0、active provider change 0。
+
+本轮从 77% 推进到 78%：新增单一 `story-storage-root-config/v1` 平台边界，直接导入服务与正常 server 入口现在都解析到仓库 `/data` 和 `/web/generated`，不再因相对层级少一级而落入 `/web/web/generated`。显式路径必须为绝对路径，知识根与生成根必须互不包含；生产启动在同时获得显式 `KB_ROOT`、`WEB_GENERATED_ROOT` 前 fail closed。Project/Story、系列、generated health、workbench audit、GEARS execution 与资源访问等写读服务均委托同一解析器，legacy 路径只在 `/api/system/story-storage-root-config` 的只读审计中出现，不加入 active read/write roots。真实工作区审计显示 active 为 22 Projects / 52 versions / 927 series，legacy 为 26 Projects / 0 versions；没有自动迁移、合并、删除、覆盖或写回。
+
+本轮继续补齐 `story-storage-legacy-disposition-preflight/v1`：管理员只读接口逐目录检查结构、版本声明、来源解析、所有权形态、active Project/Story/元数据指纹碰撞、同来源标题候选和 legacy 元数据等价组；相对、相同、互相包含或不可完整索引的根一律 fail closed，Project/metadata 符号链接不跟随。真实 26 项结果为 22 个空目录、4 个仅元数据目录、0 个完整历史；4 个来源均可解析、所有权有效 0，active ID/Story/元数据指纹碰撞均为 0，但存在 4 个同来源同标题人工比较候选和 1 个四项元数据等价组。26/26 均要求人工处置，preflight 前后 legacy 树快照 SHA-256 同为 `eb0fde08cd88b421559937b8559a4f413eaff068da629eec8b6814a150bab5f4`；自动动作、迁移、合并、删除、覆盖和写回均为 0。由于三个真实端到端样板仍为 0/3，`5.3` 的 78% 上限生效，本轮不提高综合百分比。
+
+本轮继续抽离 Project 层领域硬编码：Domain Pack 合同新增第十项 `knowledge_writeback` capability，每个领域必须返回 `story-domain-knowledge-writeback-plan/v1`。`china_culture` 自有服务只把固定 34 省级名称映射到仓库相对路径 `data/provinces/<省份>.md`；缺失、非规范或路径型省份值一律无目标、无“待确认”fallback。`original_fiction` 明确返回不支持正式知识回写，即使其项目素材中出现“湖南”也不会生成省份目标、正式写回草案或可写回队列项。平台层还拒绝绝对路径、反斜杠和 `.`/`..` 路径段；未注册历史领域被归一为 `domain_pack_not_registered` blocker，不会让统一任务列表抛异常或获得目标。Project 补充任务响应显式携带 Domain Pack、资格和阻断原因。该切片只改变机器合同与 fail-closed 行为，不自动修改任何知识文件，不推进真实样板或真人审稿；三个真实端到端样板仍为 0/3，综合进度继续受 78% 上限约束。
+
+这些切片只完成“第二领域机器生产证明”“本地嵌入式持久化/恢复合同”“领域自有修订与知识写回边界”“legacy 安全迁移机制”“file→SQLite 本地迁移机制”和“storage-root 配置/逐项只读 preflight 边界”。20 个安全候选仍需逐项人工确认后才能执行，file→SQLite 也尚未获准切换真实目标，26 个 legacy-root Project 虽已有机器级来源/版本/所有权/碰撞清单，但仍没有人工保留、迁移或归档结论及处置授权。机器盘点不是来源/文化审稿；SQLite 不是外部生产数据库或对象存储，本地 backup/restore 也不等于真实进程 kill、断电或生产灾难恢复。原创故事、fake JWT/key、本地 GEARS 项目/角色/场景/draft、fixture、无模型测试均不计真实作品、真人审稿、真实 GEARS/Seedance 回片、signed release 或 professional pass。因此当前五套进度为：综合研发 78%、专业文本 47.5%、知识内容 262 条/960 来源且 M2 70/97、真实 GEARS/Seedance 0/5、发布运营 60%；商业成熟度仍估算为 35%。
+
 ## 3. 长期北极星
 
 把 `AI影视工作台` 建设为一套以中国文化可信知识为基础、覆盖 15 种片型、贯通专业文本创作到媒体交付和人工验收的生产系统：
@@ -237,7 +258,9 @@ professional pass：0
 
 主要任务：
 
-- 配置真实 `GEARS_API_BASE_URL`、callback base、secret 和 provider adapter。
+- 严格拆分 GEARS 导演 workbench 与异步 execution worker：workbench 使用独立 `GEARS_WORKBENCH_*`；execution worker 优先使用 `GEARS_EXECUTION_WORKER_API_BASE_URL/TOKEN`，旧 `GEARS_API_BASE_URL/TOKEN` 仅作迁移期 legacy alias。
+- execution worker 必须先通过 `gears-execution-worker-capabilities/v1` 握手，明确自身不是 workbench、支持幂等 submit/status/callback、声明精确 endpoint 与 job type；配置 URL、workbench capability 或 404 smoke 均不得记 ready。
+- 配置真实 execution worker endpoint、callback base、secret 和 Seedance/provider adapter；workbench capability、项目/资产导入和 Recipe 不得替代 `/gears/jobs` readiness。
 - 使用公共可达、已授权且非占位的 artifact URL。
 - 固定 `payload -> preflight -> safe import -> readiness` 路径。
 - 校验幂等 event、job 类型、项目绑定、artifact 类型、URL 可达性和来源身份。
@@ -605,3 +628,13 @@ professional pass：0
 - 给出 Phase 0 第一批“共享合同与核心”的具体文件清单、风险、验证命令和预计进度变化。
 
 完成以上内容后，再开始第一个最小开发切片。
+
+## 16. 2026-07-17 领域中性修订与补素材持久化边界检查点
+
+本轮把 `project-service` 中修订、补素材和候选稿的剩余中国文化领域假设进一步下沉到 Domain Pack。两个生产领域均升级到 1.3.0，并在既有 `story_revision`、`knowledge_writeback` 之外声明第十一项 `story_supplement` capability。`story-domain-supplement-guidance/v1` 由领域包决定候选稿类型、标题、复核规则及是否允许生成正式知识写回草案：`china_culture` 只生成待真人文化/来源复核的领域知识候选，`original_fiction` 只生成项目内素材候选且不得导出正式知识写回稿。
+
+平台新增 `story-domain-edit-persistence/v1`：修订只允许追加 Project version；补素材只允许更新当前 Project 状态并同步 generated story snapshot。两种操作都固定 `domain_source_write_allowed=false`、`knowledge_writeback_performed=false`、`external_delivery_triggered=false`、`migration_action_performed=false`、`real_credit_granted=false`，Project service 在持久化前 fail closed 校验。该合同没有修改正式 `data/provinces` 文件，没有执行 20 个 `domain_safety` candidate、legacy disposition、file→SQLite 迁移/切换或真实 GEARS/Seedance 调用。
+
+验证证据：定向 7 files / 293 tests；Story server 全量 129 files passed + 1 skipped、1089 tests passed + 2 skipped；隔离 SQLite、fake JWT/keys、无模型跨仓 HTTP E2E 2/2；GEARS `make check` 为 mypy 76 files、后端 291、前端 17、production build、Ruff format 96 files 全通过；Unified CI 21/21 全绿。所有本地准备证据继续排除于真实计分。
+
+三个真实端到端样板仍为 0/3，故综合研发保持 78%；专业文本保持 47.5%；知识内容保持 262 条正式条目、长期 960 来源目标且 M2 70/97；真实 GEARS/Seedance 严格保持 0/5；发布运营保持 60%，商业成熟度保持 35%。下一内部切片继续审计 production auto-draft 等剩余领域文案；下一真实增量仍必须来自已授权真实模型、真人复核和稳定公共 artifact。

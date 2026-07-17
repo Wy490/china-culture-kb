@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import { resolveStorySourceDomain } from '../lib/story-source-domain.js';
 
-type StoryProjectChangeType = 'initial_generation' | 'scene_regeneration' | 'quality_repair';
+type StoryProjectChangeType = 'initial_generation' | 'scene_regeneration' | 'quality_repair' | 'production_board_repair' | 'domain_safety_migration';
 type CreationUseCase =
   | 'original_ai_comic'
   | 'adapted_ai_comic'
@@ -104,6 +106,16 @@ interface StoryProjectVersionSummary {
   quality_issue_count?: number;
 }
 
+const VERSION_ID_PATTERN = /^[a-zA-Z0-9_-]{1,280}$/;
+
+type HydratedStory = Record<string, unknown> & {
+  sourceDomain: string;
+};
+
+type HydratedStoryProjectVersionSnapshot = Omit<StoryProjectVersionSnapshot, 'story'> & {
+  story: HydratedStory;
+};
+
 export interface GetProjectContextInput {
   project_id: string;
   include_versions?: boolean;
@@ -112,9 +124,9 @@ export interface GetProjectContextInput {
 
 export interface GetProjectContextResult {
   project: StoryProjectMeta;
-  current_story: Record<string, unknown>;
+  current_story: HydratedStory;
   versions: StoryProjectVersionSummary[];
-  version_snapshots?: StoryProjectVersionSnapshot[];
+  version_snapshots?: HydratedStoryProjectVersionSnapshot[];
   exports?: string[];
 }
 
@@ -137,12 +149,23 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 }
 
 async function listJsonFiles(dirPath: string): Promise<string[]> {
+  let entries: Dirent[];
   try {
-    const files = await fs.readdir(dirPath);
-    return files.filter(file => file.endsWith('.json')).sort();
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch {
     return [];
   }
+  const jsonEntries = entries.filter(entry => entry.name.endsWith('.json'));
+  for (const entry of jsonEntries) {
+    if (!entry.isFile()) {
+      throw new Error(`版本快照不是普通文件：${entry.name}`);
+    }
+  }
+  return jsonEntries.map(entry => entry.name).sort();
+}
+
+function validVersionId(projectId: string, versionId: string): boolean {
+  return VERSION_ID_PATTERN.test(versionId) && versionId.startsWith(`${projectId}-v`);
 }
 
 function toVersionSummary(snapshot: StoryProjectVersionSnapshot): StoryProjectVersionSummary {
@@ -159,13 +182,52 @@ function toVersionSummary(snapshot: StoryProjectVersionSnapshot): StoryProjectVe
   };
 }
 
+function hydrateSnapshotSourceDomain(
+  snapshot: StoryProjectVersionSnapshot,
+  projectSourceDomain: string,
+): HydratedStoryProjectVersionSnapshot {
+  const rawSourceDomain = snapshot.story.sourceDomain;
+  const storySourceDomain = typeof rawSourceDomain === 'string' ? rawSourceDomain.trim() : '';
+  if (storySourceDomain && storySourceDomain !== projectSourceDomain) {
+    throw new Error(
+      `版本快照 ${snapshot.version_id} 的 Story sourceDomain（${storySourceDomain}）与项目 source_domain（${projectSourceDomain}）不一致`,
+    );
+  }
+  return {
+    ...snapshot,
+    story: {
+      ...snapshot.story,
+      sourceDomain: projectSourceDomain,
+    },
+  };
+}
+
 async function readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]> {
   const versionsDir = path.join(projectDir(projectId), 'versions');
   const files = await listJsonFiles(versionsDir);
   const snapshots: StoryProjectVersionSnapshot[] = [];
+  const seenVersionIds = new Set<string>();
 
   for (const file of files) {
-    snapshots.push(await readJsonFile<StoryProjectVersionSnapshot>(path.join(versionsDir, file)));
+    const fileVersionId = file.slice(0, -'.json'.length);
+    if (!validVersionId(projectId, fileVersionId)) {
+      throw new Error(`非法版本快照文件名：${file}`);
+    }
+    const snapshot = await readJsonFile<StoryProjectVersionSnapshot>(path.join(versionsDir, file));
+    if (snapshot.project_id !== projectId) {
+      throw new Error(`版本快照 ${file} 的 project_id（${snapshot.project_id}）与项目（${projectId}）不一致`);
+    }
+    if (typeof snapshot.version_id !== 'string' || !validVersionId(projectId, snapshot.version_id)) {
+      throw new Error(`版本快照 ${file} 包含非法 version_id：${String(snapshot.version_id)}`);
+    }
+    if (seenVersionIds.has(snapshot.version_id)) {
+      throw new Error(`项目存在重复 version_id：${snapshot.version_id}`);
+    }
+    seenVersionIds.add(snapshot.version_id);
+    if (snapshot.version_id !== fileVersionId) {
+      throw new Error(`版本快照 ${file} 的 version_id（${snapshot.version_id}）与文件名不一致`);
+    }
+    snapshots.push(snapshot);
   }
 
   return snapshots.sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -192,15 +254,22 @@ export async function getProjectContext(input: GetProjectContextInput): Promise<
     return null;
   }
 
-  const versionSnapshots = await readVersionSnapshots(projectId);
-  const currentVersion = versionSnapshots.find(version => version.version_id === project.current_version_id)
-    ?? versionSnapshots[0];
-  if (!currentVersion) {
+  const projectSourceDomain = resolveStorySourceDomain({ sourceDomain: project.source_domain });
+  const versionSnapshots = (await readVersionSnapshots(projectId))
+    .map(snapshot => hydrateSnapshotSourceDomain(snapshot, projectSourceDomain));
+  if (!versionSnapshots.length) {
     throw new Error(`项目缺少版本快照：${projectId}`);
+  }
+  const currentVersion = versionSnapshots.find(version => version.version_id === project.current_version_id);
+  if (!currentVersion) {
+    throw new Error(`项目当前版本快照缺失：${project.current_version_id}`);
   }
 
   const result: GetProjectContextResult = {
-    project,
+    project: {
+      ...project,
+      source_domain: projectSourceDomain,
+    },
     current_story: currentVersion.story,
     versions: versionSnapshots.map(toVersionSummary),
   };

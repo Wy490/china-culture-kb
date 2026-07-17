@@ -12,12 +12,8 @@ import {
   FileSeriesProjectRepository,
   SeriesProjectRepositoryConflictError,
 } from '../repositories/series-project-repository.js';
-import { FileProjectRepository } from '../repositories/project-repository.js';
-import {
-  FileStoryRepository,
-  StoryRepositoryConflictError,
-} from '../repositories/story-repository.js';
 import { FileArtifactStore } from '../repositories/artifact-store.js';
+import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
@@ -207,7 +203,8 @@ import type {
   SupportedDuration,
 } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from './outline-service.js';
-import { generateAndStoreStory, getStory } from './story-service.js';
+import { getStory } from './story-service.js';
+import { generateAndStoreChinaCultureStory } from '../domains/china-culture/story-generation-service.js';
 import { validateDramaticStory } from './dramatic-story.js';
 import { buildProductionReadinessAutomationPlan } from './production-readiness-automation.js';
 import {
@@ -533,6 +530,7 @@ function inferAiComicRecommendationEntryType(text: string): string {
 
 export async function generateAiComicEpisodeFromPlan(
   request: AiComicEpisodeGenerateRequest,
+  options: { access_control?: ProductResourceOwnership } = {},
 ): Promise<ApiResponse<StoryGenerateResult>> {
   const existingProject = request.series_project_id
     ? await readSeriesProject(request.series_project_id)
@@ -566,7 +564,7 @@ export async function generateAiComicEpisodeFromPlan(
     episode,
     continuityLedger,
   );
-  return generateAndStoreStory({
+  return generateAndStoreChinaCultureStory({
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
     story_structure: 'single_event_drama',
@@ -581,36 +579,38 @@ export async function generateAiComicEpisodeFromPlan(
     character_hints: buildEpisodeCharacterHints(plan, episode),
     narrative_pattern_ids: narrativePatternIds.length > 0 ? narrativePatternIds : undefined,
     auto_repair: request.auto_repair_episode ?? false,
+  }, {
+    access_control: existingProject?.project.access_control ?? options.access_control,
+    transform_story_before_validation_and_persistence: story => {
+      const episodeStory = ensureAiComicEpisodeAudienceStory({
+        story,
+        plan,
+        episode,
+        ledger: continuityLedger,
+        outputGearsSegments: request.output_gears_segments ?? true,
+      });
+      return request.auto_audit_continuity === false
+        ? episodeStory
+        : attachAiComicEpisodeReports({
+            story: episodeStory,
+            plan,
+            episode,
+            ledger: continuityLedger,
+          });
+    },
   }).then(async result => {
     if (!result.ok || !result.data) return result;
-
-    const episodeStory = await ensureAiComicEpisodeAudienceStory({
-      story: result.data,
-      plan,
-      episode,
-      ledger: continuityLedger,
-      outputGearsSegments: request.output_gears_segments ?? true,
-    });
-    const enrichedStory = request.auto_audit_continuity === false
-      ? episodeStory
-      : attachAiComicEpisodeReports({
-          story: episodeStory,
-          plan,
-          episode,
-          ledger: continuityLedger,
-        });
-    await persistAiComicEpisodeStoryFile(enrichedStory);
 
     if (request.series_project_id) {
       await recordGeneratedEpisodeStory({
         seriesProjectId: request.series_project_id,
         plan,
         episode,
-        story: enrichedStory,
+        story: result.data,
       });
     }
 
-    return success(enrichedStory);
+    return result;
   });
 }
 
@@ -710,20 +710,18 @@ function attachAiComicEpisodeReports(params: {
   };
 }
 
-async function ensureAiComicEpisodeAudienceStory(params: {
+function ensureAiComicEpisodeAudienceStory(params: {
   story: StoryGenerateResult;
   plan: AiComicSeriesPlan;
   episode: AiComicEpisodePlan;
   ledger?: AiComicContinuityLedger;
   outputGearsSegments: boolean;
-}): Promise<StoryGenerateResult> {
+}): StoryGenerateResult {
   if (!shouldRewriteAiComicEpisodeStory(params.story, params.episode)) {
     return params.story;
   }
 
-  const rewritten = buildAiComicEpisodeAudienceStory(params);
-  await persistAiComicEpisodeStoryFile(rewritten);
-  return rewritten;
+  return buildAiComicEpisodeAudienceStory(params);
 }
 
 function shouldRewriteAiComicEpisodeStory(story: StoryGenerateResult, episode: AiComicEpisodePlan): boolean {
@@ -1416,58 +1414,6 @@ function buildAiComicEpisodeCredibilityNote(
     supports ? `辅助素材用于服饰、器物、地域氛围和创作边界：${supports}。` : '',
     '案情推进、证物、对白和分场节奏为虚构补足，不写成已验证史实。',
   ].filter(Boolean).join('');
-}
-
-async function persistAiComicEpisodeStoryFile(story: StoryGenerateResult): Promise<void> {
-  const storyRepository = new FileStoryRepository(resolve(generatedRoot(), 'stories'));
-  const currentDocument = await storyRepository.read(story.storyId);
-  const mergedStory = { ...(currentDocument?.story ?? {}), ...story } as StoryGenerateResult & {
-    project_id?: string;
-    current_version_id?: string;
-  };
-  if (currentDocument) {
-    await storyRepository.replace(mergedStory, currentDocument.revision);
-  } else if (await storyRepository.create(mergedStory) === 'exists') {
-    throw new StoryRepositoryConflictError(`Story "${story.storyId}" already exists`);
-  }
-
-  if (!mergedStory.project_id || !mergedStory.current_version_id) return;
-  const projectRepository = new FileProjectRepository(resolve(generatedRoot(), 'projects'));
-  const meta = await projectRepository.readMeta(mergedStory.project_id);
-  if (!meta || meta.current_version_id !== mergedStory.current_version_id) return;
-  const snapshot = await projectRepository.readVersion(
-    mergedStory.project_id,
-    mergedStory.current_version_id,
-  );
-  if (!snapshot) return;
-  const previousUpdatedAt = Date.parse(meta.updated_at);
-  const updatedAt = new Date(Math.max(
-    Date.now(),
-    Number.isFinite(previousUpdatedAt) ? previousUpdatedAt + 1 : Date.now(),
-  )).toISOString();
-  await projectRepository.writeCurrentState({
-    ...meta,
-    updated_at: updatedAt,
-    title: mergedStory.title,
-    logline: mergedStory.logline,
-    credibility_note: mergedStory.credibility_note,
-    scene_count: mergedStory.scene_breakdown.length,
-    has_gears_segments: mergedStory.gears_segments.length > 0,
-    quality_passed: mergedStory.quality_report?.passed ?? meta.quality_passed,
-    quality_issue_count: mergedStory.quality_report?.issues.length ?? meta.quality_issue_count,
-    genre_score: mergedStory.quality_report?.genre_score ?? meta.genre_score,
-  }, {
-    ...snapshot,
-    quality_report: mergedStory.quality_report,
-    story: {
-      ...snapshot.story,
-      ...mergedStory,
-    },
-  }, {
-    current_version_id: meta.current_version_id,
-    version_count: meta.version_count,
-    updated_at: meta.updated_at,
-  });
 }
 
 function buildAiComicEpisodeBlueprint(
@@ -9204,32 +9150,15 @@ function sameStringList(left: string[], right: string[]): boolean {
 }
 
 function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
+  return storyKbRoot();
 }
 
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
-}
-
-function repoWebGeneratedRoot(): string {
-  return resolve(import.meta.dirname, '..', '..', '..', '..', 'web', 'generated');
-}
-
-function uniquePaths(paths: string[]): string[] {
-  const seen = new Set<string>();
-  return paths.filter(item => {
-    if (seen.has(item)) return false;
-    seen.add(item);
-    return true;
-  });
+  return storyGeneratedRoot();
 }
 
 function generatedRoots(): string[] {
-  if (process.env.WEB_GENERATED_ROOT) return [generatedRoot()];
-  return uniquePaths([
-    generatedRoot(),
-    repoWebGeneratedRoot(),
-  ]);
+  return [generatedRoot()];
 }
 
 function seriesProjectsRoot(): string {
@@ -9242,11 +9171,7 @@ function seriesProjectsRoots(): string[] {
 
 function seriesProjectPath(seriesProjectId: string): string {
   const primaryPath = resolve(seriesProjectsRoot(), seriesProjectId, 'project.json');
-  if (process.env.WEB_GENERATED_ROOT || existsSync(primaryPath)) return primaryPath;
-  return seriesProjectsRoots()
-    .map(root => resolve(root, seriesProjectId, 'project.json'))
-    .find(item => item !== primaryPath && existsSync(item))
-    ?? primaryPath;
+  return primaryPath;
 }
 
 async function pathExists(targetPath: string): Promise<boolean> {

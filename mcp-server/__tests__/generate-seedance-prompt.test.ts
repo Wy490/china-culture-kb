@@ -91,7 +91,7 @@ beforeEach(() => {
     project_id: projectId,
     current_story_id: storyId,
     title: '雨夜拒签',
-    source_domain: 'china_culture',
+    source_domain: 'second_domain',
     source_entry: '测试条目',
     video_type: 'ai_comic_drama',
     presentation_style: 'ai_comic',
@@ -129,6 +129,7 @@ describe('kb_generate_seedance_prompt', () => {
     expect(result).not.toBeNull();
     expect(result!.source).toBe('project_id');
     expect(result!.package.schema_version).toBe('seedance-prompt-package/v1');
+    expect(result!.package.sourceDomain).toBe('second_domain');
     expect(result!.package.shot_units).toHaveLength(2);
     expect(result!.package.asset_references.some(item => item.reference_slot === '@图片1')).toBe(true);
     expect(result!.package.asset_references.some(item => item.reference_slot === '@视频1' && item.kind === 'camera')).toBe(true);
@@ -146,10 +147,14 @@ describe('kb_generate_seedance_prompt', () => {
   });
 
   it('accepts direct story_json and includes markdown by default', async () => {
-    const result = await generateSeedancePrompt({ story_json: JSON.stringify(baseStory()) });
+    const result = await generateSeedancePrompt({
+      story_json: JSON.stringify({ ...baseStory(), sourceDomain: 'second_domain' }),
+    });
 
     expect(result!.source).toBe('story_json');
+    expect(result!.package.sourceDomain).toBe('second_domain');
     expect(result!.package.markdown).toContain('Seedance 2.0 镜头提示词包');
+    expect(result!.package.markdown).toContain('> sourceDomain: second_domain');
     expect(result!.validation_summary.shot_count).toBe(2);
     expect(result!.package.shot_units[0].seedance_prompt).toContain('0-3秒');
     expect(result!.package.shot_units[0].seedance_prompt).toContain('音效/音乐：');
@@ -161,6 +166,7 @@ describe('kb_generate_seedance_prompt', () => {
 
     expect(result!.source).toBe('story_id');
     expect(result!.story_id).toBe(storyId);
+    expect(result!.package.sourceDomain).toBe('china_culture');
     expect(result!.validation_summary.asset_reference_count).toBeGreaterThan(0);
   });
 

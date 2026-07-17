@@ -537,9 +537,9 @@ function automationMode(actionKey: string): AutomationMode {
 
 function automationPrerequisites(actionKey: string): string[] {
   if (actionKey === 'submit_gears_jobs') {
-    return ['GEARS_API_BASE_URL configured', 'GEARS_CALLBACK_BASE_URL configured', 'GEARS_CALLBACK_SECRET configured'];
+    return ['GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy GEARS_API_BASE_URL accepted)', 'GEARS_CALLBACK_BASE_URL configured', 'GEARS_CALLBACK_SECRET configured'];
   }
-  if (actionKey === 'sync_gears_jobs') return ['GEARS_API_BASE_URL configured', 'existing GEARS Job Ledger'];
+  if (actionKey === 'sync_gears_jobs') return ['GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy accepted)', 'existing GEARS Job Ledger'];
   if (actionKey === 'generate_next_episode') return ['series plan loaded', 'previous episode context reviewed'];
   if (actionKey === 'export_review_repair_package') return ['open review ledger items reviewed'];
   if (actionKey === 'export_gears_external_callback_handoff') return ['existing GEARS Job Ledger', 'operator confirms local acceptance is not final media'];
@@ -716,8 +716,10 @@ async function buildStoryProjectReadiness(
   const project = context.project as unknown as JsonRecord;
   const story = context.current_story as JsonRecord;
   const currentVersion = asArray(context.version_snapshots)
-    .find(version => version.version_id === project.current_version_id)
-    ?? asRecord(context.version_snapshots?.[0]);
+    .find(version => version.version_id === project.current_version_id);
+  if (!currentVersion) {
+    throw new Error(`项目当前版本快照缺失：${asString(project.current_version_id)}`);
+  }
   const quality = asRecord(story.quality_report ?? currentVersion.quality_report);
   const qualityPassed = asBoolean(quality.passed) ?? asBoolean(project.quality_passed);
   const qualityScore = asNumber(quality.genre_score, asNumber(project.genre_score, qualityPassed ? 100 : 0));
@@ -1075,7 +1077,13 @@ async function buildSeriesReadiness(
   const openReviewCount = asNumber(reviewLedger.open_count, asArray(reviewLedger.items).filter(item => asString(item.status, 'open') === 'open').length);
   const blockingReviewCount = asNumber(reviewLedger.blocking_count, 0);
   const finalDelivery = asRecord(detail.seedance_final_delivery);
-  const finalReady = Boolean(finalDelivery.output_path || finalDelivery.manifest_path || asString(finalDelivery.status) === 'ready');
+  const finalDeliveryStatus = asString(finalDelivery.status);
+  const finalOutputDeclared = Boolean(asString(finalDelivery.output_path));
+  const finalManifestDeclared = Boolean(asString(finalDelivery.manifest_path));
+  const finalReady = (finalDeliveryStatus === 'ready' || finalDeliveryStatus === 'planned')
+    && finalOutputDeclared
+    && finalManifestDeclared;
+  const finalManifestMissing = finalOutputDeclared && !finalManifestDeclared;
   const gearsSummary = normalizeGearsSummary(detail.gears_job_ledger);
 
   const issues: ProductionReadinessIssue[] = [];
@@ -1220,9 +1228,19 @@ async function buildSeriesReadiness(
       label: 'Delivery Contract',
       status: finalReady ? 'ready' : 'needs_action',
       score: finalReady ? 100 : 45,
-      detail: finalReady ? '最终交付 manifest/输出已记录。' : '最终交付仍处于计划/账本阶段。',
+      detail: finalReady
+        ? '最终交付 manifest/输出已记录。'
+        : finalManifestMissing
+          ? '最终交付已有输出/concat 计划，但缺少 manifest，尚不可发布。'
+          : '最终交付仍处于计划/账本阶段。',
       count_text: finalReady ? 'final ready' : 'final pending',
-      evidence: [finalReady ? 'final_delivery ready' : 'no final output'],
+      evidence: [
+        finalReady
+          ? 'final_delivery ready'
+          : finalManifestMissing
+            ? 'final_delivery manifest missing'
+            : 'no final output',
+      ],
       action_key: finalReady ? undefined : 'export_editing_platform_package',
       action_label: finalReady ? undefined : '导出剪辑交付包',
     },

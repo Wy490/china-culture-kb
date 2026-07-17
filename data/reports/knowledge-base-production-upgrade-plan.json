@@ -1,10 +1,10 @@
 {
   "schema_version": "kb-production-material-upgrade-plan/v1",
-  "generated_at": "2026-07-14T16:04:11.195Z",
-  "source_audit_generated_at": "2026-07-14T16:04:11.188Z",
+  "generated_at": "2026-07-15T17:25:10.393Z",
+  "source_audit_generated_at": "2026-07-15T17:25:10.386Z",
   "summary": {
-    "total_entries": 247,
-    "high_priority_entries": 202,
+    "total_entries": 262,
+    "high_priority_entries": 204,
     "planned_batches": 13,
     "planned_entry_actions": 399,
     "format_only_actions": 0
@@ -85,6 +85,36 @@
           "issue_tags": [
             "存在待核点",
             "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "tools",
+            "process_steps",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--澳门--凉茶配制-澳门街坊生活中的草本饮品与配方边界",
+          "entry_name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
+          "province": "澳门",
+          "type": "传统技艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1479,34 +1509,6 @@
           "issue_tags": [
             "存在待核点",
             "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--新化山歌-湘中雪峰山的呜哇天籁",
-          "entry_name": "新化山歌——湘中雪峰山的呜哇天籁",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -4248,6 +4250,34 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "explainer_video-minimum-pack--澳门--凉茶配制-澳门街坊生活中的草本饮品与配方边界",
+          "entry_name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
+          "province": "澳门",
+          "type": "传统技艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "core_question",
+            "audience_level",
+            "argument_points",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "explainer_video-minimum-pack--湖南--毛泽东-从韶山冲走向天安门的农家革命者",
           "entry_name": "毛泽东——从韶山冲走向天安门的农家革命者",
           "province": "湖南",
@@ -4349,33 +4379,6 @@
             "knowledge_steps",
             "concrete_examples",
             "analogy_or_visual_metaphor",
-            "diagram_or_caption_plan",
-            "recap_sentence"
-          ],
-          "recommended_questions": [
-            "观众看完要解决的核心问题是什么？",
-            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
-            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "explainer_video-minimum-pack--广西--百色起义-左右江革命根据地的创建",
-          "entry_name": "百色起义——左右江革命根据地的创建",
-          "province": "广西",
-          "type": "地方掌故",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "audience_level",
-            "knowledge_outline",
-            "concept_definitions",
-            "knowledge_steps",
-            "concrete_examples",
             "diagram_or_caption_plan",
             "recap_sentence"
           ],
@@ -6117,6 +6120,33 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "social_short-minimum-pack--澳门--凉茶配制-澳门街坊生活中的草本饮品与配方边界",
+          "entry_name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
+          "province": "澳门",
+          "type": "传统技艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "opening_hook",
+            "platform_context",
+            "core_question",
+            "share_trigger",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "recommended_questions": [
+            "前三秒钩子、反差问题或冷知识入口是什么？",
+            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
+            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "social_short-minimum-pack--湖南--浏阳菊花石雕-长沙文人案头的石上之菊",
           "entry_name": "浏阳菊花石雕——长沙文人案头的石上之菊",
           "province": "湖南",
@@ -6234,33 +6264,6 @@
           "issue_tags": [
             "存在待核点",
             "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "opening_hook",
-            "platform_context",
-            "share_trigger",
-            "vertical_shot_plan",
-            "diagram_or_caption_plan",
-            "comment_prompt",
-            "fact_boundary_card"
-          ],
-          "recommended_questions": [
-            "前三秒钩子、反差问题或冷知识入口是什么？",
-            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
-            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "social_short-minimum-pack--湖南--湘潭龙舞-纸扎龙灯的火光与鼓声",
-          "entry_name": "湘潭龙舞——纸扎龙灯的火光与鼓声",
-          "province": "湖南",
-          "type": "民俗活动",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",

@@ -195,6 +195,8 @@
         </div>
       </section>
 
+      <GearsWorkbenchPanel :project-id="detail.project.project_id" />
+
       <GearsWebhookStatus :status="detail.current_story.gears_webhook" />
       <GearsVideoStatus :video="detail.current_story.gears_video" />
 
@@ -2125,6 +2127,7 @@ import {
 import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
+import GearsWorkbenchPanel from '@/components/GearsWorkbenchPanel.vue'
 import type {
   AIModelProfile,
   GearsJobCallbackRequest,
@@ -3353,6 +3356,7 @@ function versionLabel(type: StoryProjectVersionChangeType): string {
   if (type === 'initial_generation') return '初次生成'
   if (type === 'quality_repair') return '质量修复'
   if (type === 'production_board_repair') return '生产修复'
+  if (type === 'domain_safety_migration') return '领域安全迁移'
   return '局部重写'
 }
 

@@ -20,6 +20,7 @@ import {
 import { buildSeedancePromptPackage } from '../services/seedance-prompt-service.js';
 import { getStory } from './story-read-service.js';
 import { createStoryRepository } from './story-storage.js';
+import { resolveStorySourceDomain } from './story-source-domain.js';
 
 interface GearsSegmentsDomainAdapter {
   mapGearsConstraints(input: DomainGearsConstraintInput): string[];
@@ -28,8 +29,6 @@ interface GearsSegmentsDomainAdapter {
 interface GetGearsSegmentsOptions {
   resolve_domain_pack?: (domain: string) => GearsSegmentsDomainAdapter;
 }
-
-const LEGACY_STORY_SOURCE_DOMAIN = 'china_culture';
 
 export async function getGearsSegments(
   storyId: string,
@@ -41,7 +40,7 @@ export async function getGearsSegments(
   }
 
   const story = storyResult.data;
-  const sourceDomain = story.sourceDomain?.trim() || LEGACY_STORY_SOURCE_DOMAIN;
+  const sourceDomain = resolveStorySourceDomain(story);
   const domainPack = options.resolve_domain_pack?.(sourceDomain);
   const segments: GearsV2Segment[] = (story.gears_segments || []).map(segment => {
     const constraintNote = domainPack

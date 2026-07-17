@@ -16,6 +16,8 @@ describe('story delivery platform boundary', () => {
     expect(source).not.toContain('export async function updateGearsDeliveryMarkdown(');
     expect(source).not.toContain('export async function updateGearsVideoReady(');
     expect(deliverySource).toContain("schema_version: 'gears-segments/v2'");
+    expect(deliverySource).toContain('resolveStorySourceDomain(story)');
+    expect(deliverySource).not.toContain("const LEGACY_STORY_SOURCE_DOMAIN = 'china_culture'");
     expect(deliverySource).toContain('updateProjectCurrentGearsDelivery(');
     expect(deliverySource).toContain('updateProjectCurrentGearsVideo(');
   });

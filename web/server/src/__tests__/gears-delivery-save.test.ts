@@ -12,6 +12,7 @@ function makeDelivery(markdown: string): GearsDeliveryPackage {
   return {
     schema_version: 'gears-delivery/v1',
     storyId: '20260610-story-save',
+    sourceDomain: 'china_culture',
     title: '保存供稿测试',
     character_assets: [],
     character_gender_summary: {

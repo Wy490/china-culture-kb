@@ -11,6 +11,7 @@ import type {
   StoryScene,
 } from '@shared/types.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
 
 const PROMPT_NOISE_WORDS = [
   '质量信号',
@@ -79,6 +80,7 @@ export function buildSeedancePromptPackage(story: StoryGenerateResult): Seedance
   const basePackage: Omit<SeedancePromptPackage, 'markdown'> = {
     schema_version: 'seedance-prompt-package/v1',
     storyId: story.storyId,
+    sourceDomain: resolveStorySourceDomain(story),
     title: story.title,
     target_platform: 'seedance_2_0',
     prompt_language: 'zh',
@@ -637,6 +639,7 @@ function renderSeedanceMarkdown(pkg: Omit<SeedancePromptPackage, 'markdown'>): s
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    `> sourceDomain: ${pkg.sourceDomain}`,
     `> 总时长: ${pkg.total_duration_sec} 秒`,
     `> 素材: ${pkg.material_validation.total_file_count}/${pkg.material_validation.max_total_files} 个文件（图片 ${pkg.material_validation.image_count}/${pkg.material_validation.max_image_files}，视频 ${pkg.material_validation.video_count}/${pkg.material_validation.max_video_files}，音频 ${pkg.material_validation.audio_count}/${pkg.material_validation.max_audio_files}）`,
     '',

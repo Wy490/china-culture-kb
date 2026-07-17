@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import { resolveStorySourceDomain } from '../lib/story-source-domain.js';
 import { getProjectContext } from './get-project-context.js';
 
 type SourceKind = 'project_id' | 'story_id' | 'story_json';
@@ -53,6 +54,7 @@ interface GearsSegmentLike {
 type StoryLike = Record<string, unknown> & {
   storyId?: string;
   project_id?: string;
+  sourceDomain?: string;
   title?: string;
   logline?: string;
   theme?: string;
@@ -111,6 +113,7 @@ interface GearsDeliveryUnitLite {
 interface GearsDeliveryPackageLite {
   schema_version: 'gears-delivery/v1';
   storyId: string;
+  sourceDomain: string;
   title: string;
   character_assets: GearsCharacterAssetLite[];
   character_gender_summary: GearsCharacterGenderSummaryLite;
@@ -536,6 +539,7 @@ function renderMarkdown(pkg: Omit<GearsDeliveryPackageLite, 'markdown'>): string
     '',
     `> schema: ${pkg.schema_version}`,
     `> storyId: ${pkg.storyId}`,
+    `> sourceDomain: ${pkg.sourceDomain}`,
     `> 单元: ${pkg.units.length}`,
     `> 人物资产: ${pkg.character_assets.length}`,
     `> 场景资产: ${pkg.scene_assets.length}`,
@@ -578,6 +582,7 @@ function buildGearsDeliveryPackage(story: StoryLike, includeMarkdown: boolean): 
   const pkgWithoutMarkdown: Omit<GearsDeliveryPackageLite, 'markdown'> = {
     schema_version: 'gears-delivery/v1',
     storyId: asString(story.storyId) || asString(story.story_id) || 'unknown-story',
+    sourceDomain: resolveStorySourceDomain(story),
     title: asString(story.title) || '未命名故事',
     character_assets: characterAssets,
     character_gender_summary: summarizeCharacterGenders(characterAssets),

@@ -14,6 +14,8 @@ import {
   GearsExecutionLiveSmokeRunRequestSchema,
   ProductionReadinessPortfolioRunRequestSchema,
   ProductResourceOwnershipMigrationRequestSchema,
+  StoryDomainSafetyMigrationRequestSchema,
+  StoryProjectFileToSqliteMigrationRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
 } from '@shared/schemas.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
@@ -26,6 +28,8 @@ import type {
   SeedanceProviderAdapterContractInfo,
   SeedanceProviderAdapterConfigInfo,
   VideoType,
+  StoryDomainSafetyMigrationRequest,
+  StoryProjectFileToSqliteMigrationRequest,
 } from '@shared/types.js';
 import type { ProductResourceOwnershipMigrationRequest } from '@shared/product-access.js';
 import { listModelProfiles } from '../services/model-catalog.js';
@@ -39,10 +43,15 @@ import {
   getGearsExecutionReadinessReport,
   getGearsExecutionSmokePackage,
   getGearsExecutionWorkerAcceptanceKit,
+  getGearsExecutionWorkerCapabilities,
   getGearsExecutionWorkerEvidenceBundle,
   getGearsExecutionWorkerEvidenceSignoffReport,
   runGearsExecutionLiveSmoke,
 } from '../services/gears-execution-service.js';
+import {
+  getGearsWorkbenchCapabilities,
+  getGearsWorkbenchConfigInfo,
+} from '../services/gears-workbench-connector.js';
 import {
   getGearsExternalCallbackHandoffQueue,
   getProductionReadinessPortfolio,
@@ -79,6 +88,17 @@ import {
   migrateProductResourceOwnership,
 } from '../services/product-resource-access-service.js';
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
+import { getStoryProjectRepositoryConfigInfo } from '../platform/project-repository-provider.js';
+import { getStoryStorageRootConfigInfo } from '../platform/story-storage-root.js';
+import { getStoryStorageLegacyDispositionPreflight } from '../services/story-storage-legacy-disposition-service.js';
+import {
+  getStoryDomainSafetyMigrationAuditReport,
+  migrateStoryDomainSafety,
+} from '../services/story-domain-safety-migration-service.js';
+import {
+  getStoryProjectFileToSqliteMigrationPreflight,
+  migrateStoryProjectFileToSqlite,
+} from '../services/story-project-file-to-sqlite-migration-service.js';
 
 export const systemRouter = Router();
 
@@ -145,6 +165,90 @@ systemRouter.get(
   async (_req, res, next) => {
     try {
       res.json(success(await getProductResourceOwnershipAuditReport()));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+systemRouter.get(
+  '/story-domain-safety-migrations',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  async (_req, res, next) => {
+    try {
+      res.json(success(await getStoryDomainSafetyMigrationAuditReport()));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+systemRouter.post(
+  '/story-domain-safety-migrations',
+  requireProductAccess('system:operate', { feature_flag: 'internal_story_tools' }),
+  validateBody(StoryDomainSafetyMigrationRequestSchema),
+  async (req, res, next) => {
+    try {
+      const actor = getProductAccessContext(req).actor;
+      if (!actor) {
+        res.status(401).json(fail(ErrorCodes.ACCESS_UNAUTHENTICATED, 'Authenticated migration operator is required'));
+        return;
+      }
+      const result = await migrateStoryDomainSafety({
+        request: req.body as StoryDomainSafetyMigrationRequest,
+        actor,
+      });
+      if (!result.dry_run && result.blockers.length > 0) {
+        res.status(409).json(fail(
+          ErrorCodes.DOMAIN_SAFETY_MIGRATION_BLOCKED,
+          'Story domain safety migration was not completed safely',
+          result,
+        ));
+        return;
+      }
+      res.json(success(result));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+systemRouter.get(
+  '/story-project-file-to-sqlite-migration',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  async (_req, res, next) => {
+    try {
+      res.json(success(await getStoryProjectFileToSqliteMigrationPreflight()));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+systemRouter.post(
+  '/story-project-file-to-sqlite-migration',
+  requireProductAccess('system:operate', { feature_flag: 'internal_story_tools' }),
+  validateBody(StoryProjectFileToSqliteMigrationRequestSchema),
+  async (req, res, next) => {
+    try {
+      const actor = getProductAccessContext(req).actor;
+      if (!actor) {
+        res.status(401).json(fail(ErrorCodes.ACCESS_UNAUTHENTICATED, 'Authenticated migration operator is required'));
+        return;
+      }
+      const result = await migrateStoryProjectFileToSqlite({
+        request: req.body as StoryProjectFileToSqliteMigrationRequest,
+        actor,
+      });
+      if (!result.dry_run && result.blockers.length > 0) {
+        res.status(409).json(fail(
+          ErrorCodes.PROJECT_REPOSITORY_MIGRATION_BLOCKED,
+          'Story project file-to-SQLite migration was not completed safely',
+          result,
+        ));
+        return;
+      }
+      res.json(success(result));
     } catch (error) {
       next(error);
     }
@@ -225,6 +329,30 @@ systemRouter.get('/provinces', async (_req, res, next) => {
 systemRouter.get('/domain-packs', (_req, res) => {
   res.json(success(storyAgentDomainRegistry.describe()));
 });
+
+systemRouter.get('/story-project-repository-config', (_req, res) => {
+  res.json(success(getStoryProjectRepositoryConfigInfo()));
+});
+
+systemRouter.get('/story-storage-root-config', async (_req, res, next) => {
+  try {
+    res.json(success(await getStoryStorageRootConfigInfo()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+systemRouter.get(
+  '/story-storage-legacy-disposition-preflight',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  async (_req, res, next) => {
+    try {
+      res.json(success(await getStoryStorageLegacyDispositionPreflight()));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 systemRouter.get('/types', validateQuery(DomainPackQuerySchema), (req, res, next) => {
   try {
@@ -546,6 +674,32 @@ systemRouter.get('/story-agent-mvp-status', async (req, res, next) => {
 
 systemRouter.get('/gears-execution-config', (_req, res) => {
   res.json(success(getGearsExecutionConfigInfo()));
+});
+
+systemRouter.get('/gears-execution-worker-capabilities', async (_req, res, next) => {
+  try {
+    const result = await getGearsExecutionWorkerCapabilities();
+    res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 502)
+      .json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Workbench is a separate authenticated data-import service. It never reuses
+// execution-worker envs, /gears/jobs, callbacks, or real-delivery evidence.
+systemRouter.get('/gears-workbench-config', (_req, res) => {
+  res.json(success(getGearsWorkbenchConfigInfo()));
+});
+
+systemRouter.get('/gears-workbench-capabilities', async (_req, res, next) => {
+  try {
+    const result = await getGearsWorkbenchCapabilities();
+    res.status(result.ok ? 200 : result.error?.code === ErrorCodes.VALIDATION_ERROR ? 400 : 502)
+      .json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ---------------------------------------------------------------------------

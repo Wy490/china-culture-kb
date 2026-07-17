@@ -5,6 +5,7 @@ import type { GearsDeliveryPackage, ProductionMaterialReadinessReport, StoryGene
 function makeStory(): StoryGenerateResult {
   return {
     storyId: '20260610-story-gears',
+    sourceDomain: 'second_domain',
     title: '少年毛泽东的求索',
     generation_type: 'character_story',
     video_type: 'character_story',
@@ -360,22 +361,58 @@ describe('gears-delivery-service', () => {
     const pkg = buildGearsDeliveryPackage(makeStory());
 
     expect(pkg.schema_version).toBe('gears-delivery/v1');
+    expect(pkg.sourceDomain).toBe('second_domain');
     expect(pkg.character_assets[0].name).toBe('毛泽东');
     expect(pkg.scene_assets[0].name).toBe('韶山私塾');
     expect(pkg.units.length).toBeGreaterThan(1);
     expect(pkg.units.every(unit => unit.suggested_duration_sec <= 15)).toBe(true);
     expect(pkg.units.every(unit => unit.scene_name === '韶山私塾')).toBe(true);
     expect(pkg.units.every(unit => unit.character_names.includes('毛泽东'))).toBe(true);
+    expect(pkg.units.every(unit => unit.visual_prompt === '韶山乡土，私塾，少年读书')).toBe(true);
+    expect(pkg.units.every(unit => unit.camera_suggestion === '中景推近')).toBe(true);
+    expect(pkg.units.every(unit => unit.constraint_note?.length === 0)).toBe(true);
     expect(pkg.delivery_status).toBe('ready');
     expect(pkg.validation_notes).toEqual([]);
     expect(pkg.character_gender_summary.male).toBe(1);
     expect(pkg.character_assets[0].gender).toBe('男');
     expect(pkg.markdown).toContain('> delivery_status: ready');
+    expect(pkg.markdown).toContain('> sourceDomain: second_domain');
     expect(pkg.markdown).toContain('# 人物性别统计');
     expect(pkg.markdown).toContain('# 资产清单');
     expect(pkg.markdown).toContain('### 毛泽东');
     expect(pkg.markdown).toContain('- 场景: 韶山私塾');
     expect(pkg.markdown).toContain('- 出场人物: 毛泽东');
+    expect(pkg.markdown).toContain('- 视觉提示: 韶山乡土，私塾，少年读书');
+    expect(pkg.markdown).toContain('- 运镜建议: 中景推近');
+  });
+
+  it('keeps segment prompt and constraint fields separate for workbench import', () => {
+    const story = makeStory();
+    story.cultural_constraints = ['服饰保持民国早期语境'];
+    story.gears_segments = [{
+      segment_id: 1,
+      source_scene_id: 1,
+      duration_sec: 15,
+      panel_count: 6,
+      script_text: story.scene_breakdown[0].plot,
+      purpose: '建立人物选择',
+      visual_focus: ['私塾', '报刊'],
+      cultural_constraints: ['不出现现代电器'],
+      video_type: story.video_type,
+      presentation_style: story.presentation_style,
+      segment_prompt_hint: '保持人物衣着、书桌与窗外田垄连续',
+    }];
+
+    const pkg = buildGearsDeliveryPackage(story);
+
+    expect(pkg.units[0]).toMatchObject({
+      visual_prompt: '韶山乡土，私塾，少年读书',
+      camera_suggestion: '中景推近',
+      segment_prompt_hint: '保持人物衣着、书桌与窗外田垄连续',
+      constraint_note: ['不出现现代电器', '服饰保持民国早期语境'],
+    });
+    expect(pkg.markdown).toContain('- 段落生成提示: 保持人物衣着、书桌与窗外田垄连续');
+    expect(pkg.markdown).toContain('- 约束: 不出现现代电器；服饰保持民国早期语境');
   });
 
   it('downgrades delivery status when production material readiness needs input', () => {

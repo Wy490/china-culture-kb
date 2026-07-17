@@ -230,6 +230,12 @@ beforeEach(() => {
       final_reassemble_required: true,
       items: [],
     },
+    seedance_final_delivery: {
+      status: 'planned',
+      dry_run: true,
+      output_path: 'delivery/final.mp4',
+      concat_list_path: 'delivery/final.concat.txt',
+    },
     production_readiness_automation_ledger: {
       schema_version: 'production-readiness-automation-run-ledger/v1',
       updated_at: '2026-06-22T02:06:00.000Z',
@@ -376,7 +382,7 @@ describe('kb_get_production_readiness', () => {
     const syncStep = result!.automation_plan.steps.find(step => step.action_key === 'sync_gears_jobs');
     expect(syncStep?.runner).toBe('gears_worker');
     expect(syncStep?.can_auto_execute).toBe(false);
-    expect(syncStep?.prerequisites).toContain('GEARS_API_BASE_URL configured');
+    expect(syncStep?.prerequisites).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy accepted)');
     expect(result!.latest_automation_run).toMatchObject({
       run_id: 'production-readiness-run-story-1',
       executed_step_count: 1,
@@ -387,6 +393,16 @@ describe('kb_get_production_readiness', () => {
     expect(result!.markdown).toContain('Seedance placeholder assets: 2');
     expect(result!.markdown).toContain('Automation Plan');
     expect(result!.markdown).toContain('Latest Automation Run');
+  });
+
+  it('fails closed when the current project version snapshot is missing', async () => {
+    const projectPath = path.join(tmpDir, 'web', 'generated', 'projects', projectId, 'project.json');
+    const project = JSON.parse(fs.readFileSync(projectPath, 'utf-8')) as Record<string, unknown>;
+    project.current_version_id = `${projectId}-v9`;
+    fs.writeFileSync(projectPath, JSON.stringify(project, null, 2));
+
+    await expect(getProductionReadiness({ project_id: projectId }))
+      .rejects.toThrow(`项目当前版本快照缺失：${projectId}-v9`);
   });
 
   it('keeps local acceptance artifacts out of external GEARS readiness', async () => {
@@ -453,6 +469,11 @@ describe('kb_get_production_readiness', () => {
     expect(result!.scope).toBe('ai_comic_series');
     expect(result!.summary.generated_episode_count).toBe(2);
     expect(result!.summary.total_episode_count).toBe(3);
+    expect(result!.lanes.find(lane => lane.key === 'delivery_contract')).toMatchObject({
+      status: 'needs_action',
+      detail: expect.stringContaining('manifest'),
+      evidence: expect.arrayContaining(['final_delivery manifest missing']),
+    });
     expect(result!.issues.map(issue => issue.issue_id)).toEqual(expect.arrayContaining([
       'series-quality-needs-attention',
       'episodes-not-complete',
@@ -478,7 +499,7 @@ describe('kb_get_production_readiness', () => {
       method: 'POST',
       path: `/api/story-outline/ai-comic-series-projects/${seriesProjectId}/gears-jobs/submit`,
     });
-    expect(submitStep?.prerequisites).toContain('GEARS_API_BASE_URL configured');
+    expect(submitStep?.prerequisites).toContain('GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy GEARS_API_BASE_URL accepted)');
     const reviewStep = result!.automation_plan.steps.find(step => step.action_key === 'export_review_repair_package');
     expect(reviewStep?.status).toBe('manual');
     expect(reviewStep?.can_auto_execute).toBe(false);
@@ -596,6 +617,32 @@ describe('kb_get_production_readiness', () => {
     expect(result.markdown).toContain('series_seedance_test_fixture_failure_items');
     expect(result.notes.join('\n')).toContain('Series relink candidates');
     expect(result.notes.join('\n')).toContain('explicitly test-marked fixtures');
+  });
+
+  it('marks a current Story ID mismatch as an interrupted project instead of trusting the snapshot', async () => {
+    const versionPath = path.join(
+      tmpDir,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'versions',
+      `${projectId}-v1.json`,
+    );
+    const snapshot = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as Record<string, any>;
+    snapshot.story.storyId = '20260622-story-wrong-current';
+    fs.writeFileSync(versionPath, JSON.stringify(snapshot, null, 2));
+
+    const result = await getStoryAgentGeneratedHealth({ limit: 10 });
+    const item = result.items.find(candidate => candidate.project_id === projectId);
+
+    expect(item).toMatchObject({
+      status: 'interrupted',
+      missing_contracts: expect.arrayContaining(['current_story']),
+    });
+    expect(item?.evidence).toContain(
+      'current_story_id=20260622-story-ready but version storyId=20260622-story-wrong-current',
+    );
   });
 
   it('reversibly excludes manifest-listed historical series from GEARS signoff', async () => {

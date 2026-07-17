@@ -520,6 +520,7 @@ export const ErrorCodes = {
   CALLBACK_AUTH_UNAVAILABLE: 'CALLBACK_AUTH_UNAVAILABLE',
   PROJECT_WRITE_CONFLICT: 'PROJECT_WRITE_CONFLICT',
   PROJECT_REPOSITORY_IDENTIFIER_INVALID: 'PROJECT_REPOSITORY_IDENTIFIER_INVALID',
+  PROJECT_REPOSITORY_MIGRATION_BLOCKED: 'PROJECT_REPOSITORY_MIGRATION_BLOCKED',
   ARTIFACT_WRITE_CONFLICT: 'ARTIFACT_WRITE_CONFLICT',
   ARTIFACT_PATH_INVALID: 'ARTIFACT_PATH_INVALID',
   ARTIFACT_STORAGE_UNAVAILABLE: 'ARTIFACT_STORAGE_UNAVAILABLE',
@@ -538,6 +539,7 @@ export const ErrorCodes = {
   DOMAIN_PACK_NOT_FOUND: 'DOMAIN_PACK_NOT_FOUND',
   DOMAIN_PACK_REGISTRY_INVALID: 'DOMAIN_PACK_REGISTRY_INVALID',
   DOMAIN_SAFETY_VALIDATION_FAILED: 'DOMAIN_SAFETY_VALIDATION_FAILED',
+  DOMAIN_SAFETY_MIGRATION_BLOCKED: 'DOMAIN_SAFETY_MIGRATION_BLOCKED',
   ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
   INVALID_GENERATION_TYPE: 'INVALID_GENERATION_TYPE',
   INVALID_VIDEO_TYPE: 'INVALID_VIDEO_TYPE',
@@ -749,6 +751,8 @@ export interface StoryScene extends BaseStoryScene {
 
 export interface StoryListItem {
   storyId: string;
+  /** Domain Pack that produced the Story. */
+  sourceDomain: string;
   title: string;
   generation_type: string;
   video_type: string;
@@ -806,7 +810,8 @@ export interface StoryProjectListItem {
   project_id: string;
   current_story_id: string;
   title: string;
-  source_domain: 'china_culture';
+  /** Domain Pack that owns the current Story version. */
+  source_domain: string;
   source_entry: string;
   video_type: VideoType;
   presentation_style: PresentationStyle;
@@ -838,7 +843,8 @@ export type StoryProjectVersionChangeType =
   | 'initial_generation'
   | 'scene_regeneration'
   | 'quality_repair'
-  | 'production_board_repair';
+  | 'production_board_repair'
+  | 'domain_safety_migration';
 
 export interface StoryProjectVersionSummary {
   version_id: string;
@@ -881,6 +887,270 @@ export interface StoryProjectDetail {
   project: StoryProjectMeta;
   current_story: StoryGenerateResult;
   versions: StoryProjectVersionSummary[];
+}
+
+export interface StoryProjectRepositoryConfigInfo {
+  env: 'STORY_PROJECT_REPOSITORY_PROVIDER';
+  sqlite_path_env: 'STORY_PROJECT_SQLITE_PATH';
+  configured_provider: string;
+  active_provider: 'file' | 'sqlite' | null;
+  supported_providers: ['file', 'sqlite'];
+  configuration_valid: boolean;
+  database_kind: 'none' | 'embedded_sqlite';
+  sqlite_runtime_available: boolean;
+  sqlite_runtime_requirement: string;
+  external_database: false;
+  object_storage: false;
+  same_host_atomic_locking: true;
+  transactional_multi_record_writes: true;
+  optimistic_concurrency_control: true;
+  content_integrity_hashes: boolean;
+  local_backup_verification_supported: boolean;
+  production_recovery_drill_completed: false;
+  production_persistence_ready: false;
+  warnings: string[];
+  next_actions: string[];
+  generated_at: string;
+}
+
+export interface StoryStorageRootInventory {
+  role: 'active' | 'legacy_misresolved';
+  root: string;
+  exists: boolean;
+  readable: boolean;
+  symbolic_link: boolean;
+  project_count: number;
+  project_version_count: number;
+  story_count: number;
+  ai_comic_series_project_count: number;
+  inspection_error: string | null;
+  read_only_inspection: true;
+}
+
+export interface StoryStorageRootConfigInfo {
+  schema_version: 'story-storage-root-config/v1';
+  kb_root_env: 'KB_ROOT';
+  generated_root_env: 'WEB_GENERATED_ROOT';
+  runtime_environment: string;
+  kb_root: string;
+  generated_root: string;
+  kb_root_source: 'explicit_env' | 'default_derived';
+  generated_root_source: 'explicit_env' | 'default_derived';
+  default_kb_root: string;
+  default_generated_root: string;
+  legacy_misresolved_generated_root: string;
+  paths_absolute: boolean;
+  roots_disjoint: boolean;
+  active_matches_legacy_misresolved_root: boolean;
+  production_explicit_config_required: boolean;
+  production_explicit_config_satisfied: boolean;
+  configuration_valid: boolean;
+  blockers: string[];
+  warnings: string[];
+  inventory: {
+    active: StoryStorageRootInventory;
+    legacy_misresolved: StoryStorageRootInventory;
+  };
+  legacy_policy: {
+    discovery_only: true;
+    included_in_active_read_roots: false;
+    automatic_migration_allowed: false;
+    automatic_merge_allowed: false;
+    automatic_delete_allowed: false;
+    automatic_writeback_allowed: false;
+  };
+  data_moved: false;
+  data_deleted: false;
+  data_overwritten: false;
+  provider_switched: false;
+  real_gears_seedance_delivery_credit_count: 0;
+  counts_as_real_gears_seedance_delivery: false;
+  generated_at: string;
+}
+
+export type StoryStorageLegacyStructureStatus =
+  | 'empty_directory'
+  | 'metadata_without_history'
+  | 'complete_history'
+  | 'invalid_metadata'
+  | 'unsupported_directory';
+
+export type StoryStorageLegacySourceStatus =
+  | 'resolved'
+  | 'domain_unregistered'
+  | 'entry_not_found'
+  | 'unavailable';
+
+export type StoryStorageLegacyOwnershipStatus = 'valid' | 'missing' | 'invalid';
+
+export interface StoryStorageLegacyDispositionItem {
+  legacy_project_id: string;
+  structure_status: StoryStorageLegacyStructureStatus;
+  directory_entry_count: number;
+  metadata_file_present: boolean;
+  metadata_file_regular: boolean;
+  metadata_sha256: string | null;
+  metadata_semantic_fingerprint_sha256: string | null;
+  metadata_identity_valid: boolean;
+  declared_project_id: string | null;
+  declared_story_id: string | null;
+  declared_current_version_id: string | null;
+  declared_version_count: number | null;
+  source_domain: string | null;
+  source_entry: string | null;
+  source_status: StoryStorageLegacySourceStatus;
+  ownership_status: StoryStorageLegacyOwnershipStatus;
+  versions_directory_present: boolean;
+  version_file_count: number;
+  current_version_file_present: boolean;
+  active_project_id_collision: boolean;
+  active_story_id_collision_project_ids: string[];
+  active_metadata_fingerprint_collision_project_ids: string[];
+  active_same_source_title_candidate_project_ids: string[];
+  legacy_equivalent_metadata_project_ids: string[];
+  blockers: string[];
+  requires_human_review: true;
+  automatic_duplicate_inference: false;
+  automatic_action_allowed: false;
+  migration_planned: false;
+  merge_planned: false;
+  deletion_planned: false;
+  writeback_performed: false;
+  real_credit_granted: false;
+}
+
+export interface StoryStorageLegacyDispositionPreflight {
+  schema_version: 'story-storage-legacy-disposition-preflight/v1';
+  generated_at: string;
+  active_root: string;
+  legacy_root: string;
+  read_only: true;
+  preflight_complete: boolean;
+  global_blockers: string[];
+  consistent_snapshot_guaranteed: false;
+  recheck_required_before_any_action: true;
+  legacy_directory_count: number;
+  empty_directory_count: number;
+  metadata_file_count: number;
+  valid_metadata_count: number;
+  invalid_metadata_count: number;
+  complete_history_count: number;
+  metadata_without_history_count: number;
+  active_project_id_collision_count: number;
+  active_story_id_collision_count: number;
+  active_metadata_fingerprint_collision_count: number;
+  active_same_source_title_candidate_count: number;
+  legacy_equivalent_metadata_item_count: number;
+  legacy_equivalent_metadata_group_count: number;
+  source_resolved_count: number;
+  ownership_valid_count: number;
+  blocked_item_count: number;
+  human_review_required_count: number;
+  automatic_action_count: 0;
+  inventory_sha256: string;
+  items: StoryStorageLegacyDispositionItem[];
+  migration_performed: false;
+  merge_performed: false;
+  deletion_performed: false;
+  overwrite_performed: false;
+  writeback_performed: false;
+  domain_safety_migration_performed: false;
+  provider_switched: false;
+  real_gears_seedance_delivery_credit_count: 0;
+  counts_as_real_gears_seedance_delivery: false;
+}
+
+export interface StoryProjectFileToSqliteMigrationRequest {
+  schema_version: 'story-project-file-to-sqlite-migration-request/v1';
+  migration_id: string;
+  expected_source_logical_sha256: string;
+  review_reference: string;
+  operator_confirmation: 'file_repository_snapshot_reviewed';
+  dry_run: boolean;
+}
+
+export interface StoryProjectFileToSqliteMigrationPreflight {
+  schema_version: 'story-project-file-to-sqlite-migration-preflight/v1';
+  evaluated_at: string;
+  source_provider: 'file';
+  target_provider: 'sqlite';
+  target_path_env: 'STORY_PROJECT_FILE_TO_SQLITE_MIGRATION_TARGET_PATH';
+  target_path_configured: boolean;
+  target_path: string | null;
+  target_exists: boolean;
+  source_project_count: number;
+  source_version_count: number;
+  source_logical_sha256: string | null;
+  blockers: string[];
+  preflight_ready: boolean;
+  source_pending_transactions_recovered: false;
+  source_writeback_performed: false;
+  target_write_performed: false;
+  external_database: false;
+  object_storage: false;
+  production_recovery_drill_completed: false;
+  production_persistence_ready: false;
+  real_credit_granted: false;
+}
+
+export interface StoryProjectFileToSqliteMigrationManifest {
+  schema_version: 'story-project-file-to-sqlite-migration-manifest/v1';
+  migration_id: string;
+  created_at: string;
+  requested_by_actor_id: string;
+  requested_by_organization_id: string;
+  review_reference: string;
+  source_project_count: number;
+  source_version_count: number;
+  source_logical_sha256: string;
+  target_logical_sha256: string;
+  target_database_sha256: string;
+  source_unchanged: true;
+  destination_was_empty: true;
+  history_overwrite_performed: false;
+  active_provider_changed: false;
+  external_database: false;
+  object_storage: false;
+  production_recovery_drill_completed: false;
+  production_persistence_ready: false;
+  real_credit_granted: false;
+}
+
+export interface StoryProjectFileToSqliteMigrationResult {
+  schema_version: 'story-project-file-to-sqlite-migration-result/v1';
+  evaluated_at: string;
+  migration_id: string;
+  requested_by_actor_id: string;
+  dry_run: boolean;
+  write_enabled: boolean;
+  expected_source_logical_sha256: string;
+  actual_source_logical_sha256: string | null;
+  source_project_count: number;
+  source_version_count: number;
+  target_path_configured: boolean;
+  target_path: string | null;
+  target_existed_before: boolean;
+  blockers: string[];
+  preflight_ready: boolean;
+  applied: boolean;
+  idempotent_replay: boolean;
+  target_logical_sha256: string | null;
+  target_database_sha256: string | null;
+  manifest_path: string | null;
+  manifest: StoryProjectFileToSqliteMigrationManifest | null;
+  durable_intent_written: boolean;
+  durable_completion_written: boolean;
+  source_pending_transactions_recovered: false;
+  source_writeback_performed: false;
+  source_unchanged: true;
+  destination_was_empty: boolean;
+  history_overwrite_performed: false;
+  active_provider_changed: false;
+  external_database: false;
+  object_storage: false;
+  production_recovery_drill_completed: false;
+  production_persistence_ready: false;
+  real_credit_granted: false;
 }
 
 export interface StoryProductionBoardExportRecord {
@@ -998,10 +1268,14 @@ export interface ProjectSupplementTaskListItem {
   project_id: string;
   current_story_id: string;
   project_title: string;
+  source_domain: string;
   source_entry: string;
   video_type: VideoType;
+  knowledge_writeback_eligible: boolean;
+  knowledge_writeback_blockers: string[];
   target_province?: string;
   suggested_file_path?: string;
+  suggested_section_heading?: string;
   updated_at: string;
   task: KnowledgeSupplementTask;
 }
@@ -1233,6 +1507,11 @@ export interface GearsDeliveryUnit {
   time_of_day?: GearsTimeOfDay;
   beat_count: number;
   script_text: string;
+  /** Workbench fields stay separate so operators can revise them independently. */
+  visual_prompt?: string;
+  camera_suggestion?: string;
+  segment_prompt_hint?: string;
+  constraint_note?: string[];
 }
 
 export type GearsDeliveryStatus = 'ready' | 'needs_input';
@@ -1240,6 +1519,7 @@ export type GearsDeliveryStatus = 'ready' | 'needs_input';
 export interface GearsDeliveryPackage {
   schema_version: string;
   storyId: string;
+  sourceDomain: string;
   title: string;
   delivery_status?: GearsDeliveryStatus;
   character_assets: GearsCharacterAsset[];
@@ -1248,6 +1528,179 @@ export interface GearsDeliveryPackage {
   units: GearsDeliveryUnit[];
   markdown: string;
   validation_notes: string[];
+}
+
+// ---------------------------------------------------------------------------
+// GEARS workbench bridge (data import only; never execution-worker credit)
+// ---------------------------------------------------------------------------
+
+export interface GearsWorkbenchMappingOptions {
+  character_style_pack_id: string;
+  scene_style_pack_id: string;
+  staging_pack_id: string;
+  visual_pack_id: string;
+}
+
+export interface GearsWorkbenchProjectImportRequest {
+  idempotency_key?: string;
+  expected_source_version_id?: string;
+  expected_payload_sha256?: string;
+  mapping: GearsWorkbenchMappingOptions;
+}
+
+export interface GearsWorkbenchCreditBoundary {
+  workbench_data_only: true;
+  provider_invoked: false;
+  media_generated: false;
+  public_artifact_url_count: 0;
+  counts_as_real_gears_seedance_delivery: false;
+}
+
+export interface GearsWorkbenchConfigInfo {
+  service: 'gears-workbench';
+  api_base_url_env: 'GEARS_WORKBENCH_API_BASE_URL';
+  api_token_env: 'GEARS_WORKBENCH_API_TOKEN';
+  api_base_url_configured: boolean;
+  api_token_configured: boolean;
+  capability_endpoint_path: '/integrations/story-agent/capabilities';
+  dry_run_endpoint_path: '/integrations/story-agent/imports/dry-run';
+  execute_endpoint_path: '/integrations/story-agent/imports';
+  ready_for_capability_probe: boolean;
+  missing_requirements: string[];
+  configuration_warnings: string[];
+  execution_worker_envs_used: false;
+  credit_boundary: GearsWorkbenchCreditBoundary;
+  generated_at: string;
+}
+
+export interface GearsWorkbenchCapabilities {
+  schema_version: 'gears-workbench-capabilities/v1';
+  service: 'gears-workbench';
+  supported_delivery_schemas: string[];
+  workbench_import_supported: true;
+  execution_worker_supported: false;
+  bearer_auth_required: true;
+  dry_run_default: true;
+  atomic_execute: true;
+  idempotent_execute: true;
+  operator_recipe_promotion_supported: true;
+  promotion_requires_real_asset_versions: true;
+  promotion_invokes_provider: false;
+  entity_types: Array<'project' | 'character' | 'scene' | 'storyboard_draft'>;
+  endpoints: Record<string, { method: 'GET' | 'POST'; path: string }>;
+  available_character_style_pack_ids: string[];
+  available_scene_style_pack_ids: string[];
+  available_staging_pack_ids: string[];
+  available_visual_pack_ids: string[];
+  unsupported_worker_paths: string[];
+  credit_boundary: GearsWorkbenchCreditBoundary;
+}
+
+export interface GearsWorkbenchImportSource {
+  source_system: 'story-agent';
+  project_id: string;
+  story_id: string;
+  version_id: string;
+  source_domain: string;
+}
+
+export interface GearsWorkbenchImportEntityPlan {
+  entity_type: 'project' | 'character' | 'scene' | 'storyboard_draft';
+  source_key: string;
+  display_name: string;
+  action: 'create' | 'update' | 'reuse' | 'blocked';
+  target_entity_id?: string;
+  payload_sha256: string;
+  blocker?: string;
+}
+
+export interface GearsWorkbenchImportSummary {
+  entity_count: number;
+  project_count: number;
+  character_count: number;
+  scene_count: number;
+  storyboard_draft_count: number;
+  create_count: number;
+  update_count: number;
+  reuse_count: number;
+  blocked_count: number;
+  provider_call_count: 0;
+  media_artifact_count: 0;
+  real_delivery_credit_count: 0;
+}
+
+export interface GearsWorkbenchImportResult {
+  schema_version: 'gears-workbench-import-result/v1';
+  mode: 'dry_run' | 'execute';
+  status: 'planned' | 'blocked' | 'applied';
+  import_id?: string | null;
+  idempotency_key: string;
+  replayed: boolean;
+  atomic: true;
+  source: GearsWorkbenchImportSource;
+  payload_sha256: string;
+  entities: GearsWorkbenchImportEntityPlan[];
+  blockers: string[];
+  warnings: string[];
+  summary: GearsWorkbenchImportSummary;
+  credit_boundary: GearsWorkbenchCreditBoundary;
+  created_at?: string | null;
+  local_audit?: GearsWorkbenchImportAuditReceipt;
+}
+
+export interface GearsWorkbenchImportAuditReceipt {
+  schema_version: 'gears-workbench-import-audit-receipt/v1';
+  audit_event_id: string;
+  ledger_revision: string;
+  ledger_event_count: number;
+  recorded_at: string;
+  separate_from_execution_worker_ledger: true;
+  counts_as_real_gears_seedance_delivery: false;
+}
+
+export interface GearsWorkbenchImportAuditEvent {
+  schema_version: 'gears-workbench-import-audit-event/v1';
+  audit_event_id: string;
+  project_id: string;
+  story_id: string;
+  version_id: string;
+  source_domain: string;
+  mode: 'dry_run' | 'execute';
+  status: 'planned' | 'blocked' | 'applied';
+  import_id?: string;
+  idempotency_key: string;
+  replayed: boolean;
+  payload_sha256: string;
+  entity_count: number;
+  create_count: number;
+  update_count: number;
+  reuse_count: number;
+  blocked_count: number;
+  storyboard_draft_count: number;
+  provider_call_count: 0;
+  media_artifact_count: 0;
+  real_delivery_credit_count: 0;
+  separate_from_execution_worker_ledger: true;
+  counts_as_real_gears_seedance_delivery: false;
+  recorded_at: string;
+}
+
+export interface GearsWorkbenchImportAuditLedger {
+  schema_version: 'gears-workbench-import-audit-ledger/v1';
+  project_id: string;
+  ledger_revision: string | null;
+  ledger_event_count: number;
+  separate_from_execution_worker_ledger: true;
+  real_delivery_credit_count: 0;
+  items: GearsWorkbenchImportAuditEvent[];
+}
+
+export interface GearsWorkbenchImportEnvelope {
+  schema_version: 'gears-workbench-import/v1';
+  idempotency_key: string;
+  source: GearsWorkbenchImportSource;
+  delivery: GearsDeliveryPackage;
+  mapping: GearsWorkbenchMappingOptions;
 }
 
 export type GearsExecutionJobType =
@@ -1830,6 +2283,9 @@ export interface StoryAgentGeneratedHealthItem {
   subtitle_ready?: boolean;
   thumbnail_ready_count?: number;
   final_delivery_ready?: boolean;
+  final_delivery_manifest_ready?: boolean;
+  final_delivery_manifest_missing?: boolean;
+  final_delivery_dry_run?: boolean;
 }
 
 export interface StoryAgentGeneratedHealthReport {
@@ -1857,6 +2313,7 @@ export interface StoryAgentGeneratedHealthReport {
     missing_episode_story_id_count: number;
     series_missing_delivery_count: number;
     series_missing_postproduction_count: number;
+    series_missing_final_delivery_manifest_count?: number;
     series_ready_count?: number;
     series_planned_only_count?: number;
     series_production_gap_count?: number;
@@ -2730,11 +3187,20 @@ export interface GearsExternalCallbackImportResult {
 
 export interface GearsExecutionConfigInfo {
   provider: 'gears';
+  api_base_url_env: 'GEARS_EXECUTION_WORKER_API_BASE_URL';
+  api_token_env: 'GEARS_EXECUTION_WORKER_API_TOKEN';
+  legacy_api_base_url_env: 'GEARS_API_BASE_URL';
+  legacy_api_token_env: 'GEARS_API_TOKEN';
+  api_base_url_source: 'preferred' | 'legacy' | null;
+  api_token_source: 'preferred' | 'legacy' | null;
+  legacy_execution_worker_envs_used: string[];
   api_base_url_configured: boolean;
   api_token_configured: boolean;
   callback_secret_configured: boolean;
   callback_base_configured: boolean;
   callback_base_envs: string[];
+  capability_endpoint_path: string;
+  capability_required_before_requests: boolean;
   submit_endpoint_path: string;
   job_status_endpoint_path: string;
   project_callback_path_template: string;
@@ -2750,16 +3216,51 @@ export interface GearsExecutionConfigInfo {
   generated_at: string;
 }
 
+export interface GearsExecutionWorkerCapabilities {
+  schema_version: 'gears-execution-worker-capabilities/v1';
+  service: 'gears-execution-worker';
+  execution_worker_supported: true;
+  workbench_import_supported: false;
+  bearer_auth_required: boolean;
+  idempotent_submit: true;
+  status_poll_supported: true;
+  callback_delivery_supported: true;
+  supported_job_types: GearsExecutionJobType[];
+  endpoints: {
+    capabilities: {
+      method: 'GET';
+      path: '/gears/capabilities';
+    };
+    submit: {
+      method: 'POST';
+      path: '/gears/jobs';
+    };
+    job_status: {
+      method: 'GET';
+      path: '/gears/jobs/{gears_job_id}';
+    };
+  };
+}
+
 export interface GearsExecutionContractInfo {
   provider: 'gears';
   schema_version: 'gears-execution-contract/v1';
   env: {
-    api_base_url: 'GEARS_API_BASE_URL';
-    api_token: 'GEARS_API_TOKEN';
+    api_base_url: 'GEARS_EXECUTION_WORKER_API_BASE_URL';
+    api_token: 'GEARS_EXECUTION_WORKER_API_TOKEN';
+    legacy_api_base_url: 'GEARS_API_BASE_URL';
+    legacy_api_token: 'GEARS_API_TOKEN';
     callback_secret: 'GEARS_CALLBACK_SECRET';
     callback_base_url: 'GEARS_CALLBACK_BASE_URL';
   };
   supported_job_types: GearsExecutionJobType[];
+  capability: {
+    method: 'GET';
+    path: '/gears/capabilities';
+    schema_version: 'gears-execution-worker-capabilities/v1';
+    required_before_submit_and_poll: true;
+    response_fields: string[];
+  };
   submit: {
     method: 'POST';
     path: '/gears/jobs';
@@ -4311,6 +4812,7 @@ export interface SeedancePromptShotUnit {
 export interface SeedancePromptPackage {
   schema_version: 'seedance-prompt-package/v1';
   storyId: string;
+  sourceDomain: string;
   title: string;
   target_platform: 'seedance_2_0';
   prompt_language: 'zh';
@@ -7162,6 +7664,7 @@ export interface ProductionMaterialTemplate {
 export interface ProductionMaterialSampleEntry {
   sample_id: string;
   entry_name: string;
+  applicable_source_domains?: string[];
   source_status?: string;
   core_story_engine?: string;
   must_collect?: string[];
@@ -7184,18 +7687,53 @@ export interface ProductionMaterialPack {
 
 export type ProductionMaterialPackHealthStatus = 'passed' | 'warning' | 'failed';
 export type ProductionMaterialPackIssueSeverity = 'warning' | 'error';
+export type ProductionMaterialPackRejectionCode =
+  | 'required_non_blank_string'
+  | 'unsupported_video_type'
+  | 'duplicate_video_type'
+  | 'required_object'
+  | 'required_non_blank_string_array'
+  | 'optional_non_blank_string_array'
+  | 'required_array'
+  | 'optional_non_empty_unique_non_blank_string_array';
+
+export interface ProductionMaterialPackRejectionDiagnostic {
+  pack_index: number;
+  code: ProductionMaterialPackRejectionCode;
+  path: string;
+}
+
+export type ProductionMaterialPackFileDiagnosticCode =
+  | 'source_unavailable'
+  | 'required_object'
+  | 'required_non_blank_string'
+  | 'unsupported_schema_version'
+  | 'required_array';
+
+export interface ProductionMaterialPackFileDiagnostic {
+  code: ProductionMaterialPackFileDiagnosticCode;
+  path: string;
+}
 
 export interface ProductionMaterialPackHealthIssue {
   severity: ProductionMaterialPackIssueSeverity;
   issue_type:
+    | 'missing_domain_sample_policy'
+    | 'invalid_domain_sample_policy'
+    | 'invalid_pack_file_structure'
+    | 'invalid_pack_structure'
+    | 'duplicate_pack_video_type'
     | 'missing_required_video_type'
     | 'unknown_required_field'
     | 'duplicate_required_field'
+    | 'duplicate_sample_entry'
     | 'underfilled_prompt_layers'
     | 'underfilled_sample_entries'
+    | 'underfilled_domain_sample_entries'
     | 'underfilled_supplement_questions'
     | 'underfilled_gate_items';
   video_type?: VideoType;
+  source_domain?: string;
   message: string;
   details?: string[];
 }
@@ -7206,6 +7744,11 @@ export interface ProductionMaterialPackHealthSummary {
   required_field_count: number;
   prompt_layer_count: number;
   sample_entry_count: number;
+  unique_sample_entry_count: number;
+  duplicate_sample_entry_ids: string[];
+  sample_entry_count_by_source_domain: Record<string, number>;
+  minimum_sample_entry_count_by_source_domain: Record<string, number>;
+  legacy_sample_entry_count: number;
   supplement_question_count: number;
   gate_item_counts: Record<MaterialSufficiencyStage, number>;
   unknown_required_fields: string[];
@@ -7217,7 +7760,13 @@ export interface ProductionMaterialPackHealthReport {
   schema_version: 'production-material-pack-health/v1';
   generated_at: string;
   status: ProductionMaterialPackHealthStatus;
+  domain_sample_policy_valid: boolean;
+  domain_sample_policy_video_types: VideoType[];
+  pack_file_valid: boolean;
+  pack_file_diagnostics: ProductionMaterialPackFileDiagnostic[];
   pack_count: number;
+  rejected_pack_count: number;
+  rejected_pack_diagnostics: ProductionMaterialPackRejectionDiagnostic[];
   required_video_types: VideoType[];
   covered_required_video_types: VideoType[];
   missing_required_video_types: VideoType[];
@@ -10426,6 +10975,107 @@ export interface StoryDomainSafetyReport {
   real_credit_granted: false;
 }
 
+export interface StoryDomainSafetyMigrationRecord {
+  schema_version: 'story-domain-safety-migration-record/v1';
+  migration_id: string;
+  migrated_at: string;
+  migrated_by_actor_id: string;
+  review_reference: string;
+  previous_version_id: string;
+  previous_story_sha256: string;
+  source_domain: string;
+  source_entry: string;
+  source_identity_confirmed_by_operator: true;
+  history_overwrite_performed: false;
+  machine_validation_only: true;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
+export interface StoryDomainSafetyMigrationRequest {
+  schema_version: 'story-domain-safety-migration-request/v1';
+  migration_id: string;
+  project_id: string;
+  expected_current_version_id: string;
+  expected_story_sha256: string;
+  expected_source_domain: string;
+  expected_source_entry: string;
+  review_reference: string;
+  operator_confirmation: 'migration_scope_reviewed';
+  dry_run: boolean;
+}
+
+export type StoryDomainSafetyMigrationAuditStatus =
+  | 'migration_candidate'
+  | 'already_governed'
+  | 'migrated'
+  | 'blocked';
+
+export interface StoryDomainSafetyMigrationAuditItem {
+  project_id: string;
+  current_version_id: string | null;
+  version_count: number;
+  story_id: string | null;
+  story_sha256: string | null;
+  source_domain: string | null;
+  source_entry: string | null;
+  domain_resolution: 'explicit' | 'project_metadata' | 'legacy_default' | 'unavailable';
+  status: StoryDomainSafetyMigrationAuditStatus;
+  blockers: string[];
+  evaluated_safety: StoryDomainSafetyReport | null;
+  requires_explicit_apply: boolean;
+  history_overwrite_planned: false;
+  writeback_performed: false;
+  real_credit_granted: false;
+}
+
+export interface StoryDomainSafetyMigrationAuditReport {
+  schema_version: 'story-domain-safety-migration-audit/v1';
+  generated_at: string;
+  read_only: true;
+  repository_provider: string;
+  discovered_project_count: number;
+  migration_candidate_count: number;
+  already_governed_count: number;
+  migrated_count: number;
+  blocked_count: number;
+  items: StoryDomainSafetyMigrationAuditItem[];
+  automatic_source_assignment: false;
+  history_overwrite_performed: false;
+  writeback_performed: false;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
+export interface StoryDomainSafetyMigrationResult {
+  schema_version: 'story-domain-safety-migration-result/v1';
+  evaluated_at: string;
+  migration_id: string;
+  project_id: string;
+  requested_by_actor_id: string;
+  dry_run: boolean;
+  write_enabled: boolean;
+  status_before: StoryDomainSafetyMigrationAuditStatus;
+  expected_current_version_id: string;
+  actual_current_version_id: string | null;
+  expected_story_sha256: string;
+  actual_story_sha256: string | null;
+  source_domain: string | null;
+  source_entry: string | null;
+  safety_report: StoryDomainSafetyReport | null;
+  blockers: string[];
+  preflight_ready: boolean;
+  applied: boolean;
+  idempotent_replay: boolean;
+  resulting_version_id: string | null;
+  durable_intent_written: boolean;
+  durable_completion_written: boolean;
+  automatic_source_assignment: false;
+  history_overwrite_performed: false;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
 export interface StoryDomainSafetyValidationInput {
   story: StoryGenerateResult;
   source_entry: EntryDetail;
@@ -10471,6 +11121,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   cultural_constraints: string[];
   credibility_note: string;
   domain_safety?: StoryDomainSafetyReport;
+  domain_safety_migration?: StoryDomainSafetyMigrationRecord;
   // New fields for multi-knowledge matching
   knowledge_pack?: KnowledgePack;
   material_pack?: MaterialPack;

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildRejectedGearsLedgerItem,
+  getGearsExecutionConfigInfo,
   getGearsExecutionContractInfo,
+  getGearsExecutionWorkerCapabilities,
   mergeGearsCallbackEvents,
   normalizeGearsJobCallback,
   submitGearsExecutionJobs,
@@ -11,13 +13,142 @@ import {
   type GearsJobLedgerEvent,
 } from '@shared/types.js';
 
+function executionWorkerCapabilities() {
+  return {
+    schema_version: 'gears-execution-worker-capabilities/v1',
+    service: 'gears-execution-worker',
+    execution_worker_supported: true,
+    workbench_import_supported: false,
+    bearer_auth_required: false,
+    idempotent_submit: true,
+    status_poll_supported: true,
+    callback_delivery_supported: true,
+    supported_job_types: [
+      'storyboard_image',
+      'character_image',
+      'scene_image',
+      'seedance_video',
+      'subtitle_render',
+      'audio_mix',
+      'title_card_render',
+      'final_assemble',
+    ],
+    endpoints: {
+      capabilities: { method: 'GET', path: '/gears/capabilities' },
+      submit: { method: 'POST', path: '/gears/jobs' },
+      job_status: { method: 'GET', path: '/gears/jobs/{gears_job_id}' },
+    },
+  };
+}
+
+function stubExecutionWorkerFetch(submitPayload: unknown) {
+  const fetchMock = vi.fn(async (input: string | URL | Request) => {
+    const url = String(input);
+    const payload = url.endsWith('/gears/capabilities')
+      ? executionWorkerCapabilities()
+      : submitPayload;
+    return new Response(JSON.stringify(payload));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 afterEach(() => {
+  delete process.env.GEARS_EXECUTION_WORKER_API_BASE_URL;
+  delete process.env.GEARS_EXECUTION_WORKER_API_TOKEN;
   delete process.env.GEARS_API_BASE_URL;
   delete process.env.GEARS_API_TOKEN;
   vi.unstubAllGlobals();
 });
 
 describe('gears-execution-service', () => {
+  it('prefers explicit execution-worker envs and reports legacy fallback without exposing values', () => {
+    process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://worker.example.test/new';
+    process.env.GEARS_EXECUTION_WORKER_API_TOKEN = 'preferred-secret';
+    process.env.GEARS_API_BASE_URL = 'https://worker.example.test/legacy';
+    process.env.GEARS_API_TOKEN = 'legacy-secret';
+
+    const preferred = getGearsExecutionConfigInfo();
+
+    expect(preferred).toMatchObject({
+      api_base_url_env: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
+      api_token_env: 'GEARS_EXECUTION_WORKER_API_TOKEN',
+      api_base_url_source: 'preferred',
+      api_token_source: 'preferred',
+      legacy_execution_worker_envs_used: [],
+      ready_for_submit: true,
+    });
+    expect(JSON.stringify(preferred)).not.toContain('preferred-secret');
+    expect(JSON.stringify(preferred)).not.toContain('worker.example.test');
+
+    delete process.env.GEARS_EXECUTION_WORKER_API_BASE_URL;
+    delete process.env.GEARS_EXECUTION_WORKER_API_TOKEN;
+    const legacy = getGearsExecutionConfigInfo();
+
+    expect(legacy).toMatchObject({
+      api_base_url_source: 'legacy',
+      api_token_source: 'legacy',
+      legacy_execution_worker_envs_used: ['GEARS_API_BASE_URL', 'GEARS_API_TOKEN'],
+      ready_for_submit: true,
+    });
+    expect(legacy.configuration_warnings.join('\n')).toContain('legacy');
+  });
+
+  it('probes the independent execution-worker capability contract with worker auth', async () => {
+    process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://worker.example.test/root';
+    process.env.GEARS_EXECUTION_WORKER_API_TOKEN = 'worker-secret';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(executionWorkerCapabilities())));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getGearsExecutionWorkerCapabilities();
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toMatchObject({
+      schema_version: 'gears-execution-worker-capabilities/v1',
+      service: 'gears-execution-worker',
+      execution_worker_supported: true,
+      workbench_import_supported: false,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://worker.example.test/root/gears/capabilities',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { authorization: 'Bearer worker-secret' },
+      }),
+    );
+  });
+
+  it('fails closed before submit when the configured endpoint is a workbench', async () => {
+    process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://workbench.example.test';
+    const fetchMock = vi.fn(async (_input: string | URL | Request) => new Response(JSON.stringify({
+      schema_version: 'gears-workbench-capabilities/v1',
+      service: 'gears-workbench',
+      workbench_import_supported: true,
+      execution_worker_supported: false,
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await submitGearsExecutionJobs({
+      title: 'must not reach submit',
+      jobType: 'seedance_video',
+      callbackPath: '/api/projects/demo/gears-callback',
+      useGearsApi: true,
+      units: [{
+        source_unit_id: 'shot-1',
+        payload: { seedance_prompt: '少年站在门口。' },
+        local_gears_job_id: 'local-gears-shot-1',
+      }],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: expect.stringContaining('gears-execution-worker capability contract'),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://workbench.example.test/gears/capabilities');
+  });
+
   it.each([
     ['ACCESS_DENIED', 'failed', 'provider_auth'],
     ['TOKEN_EXPIRED', 'failed', 'provider_auth'],
@@ -54,6 +185,12 @@ describe('gears-execution-service', () => {
   it('publishes expanded GEARS status aliases in the worker contract', () => {
     const contract = getGearsExecutionContractInfo();
 
+    expect(contract.capability).toMatchObject({
+      method: 'GET',
+      path: '/gears/capabilities',
+      schema_version: 'gears-execution-worker-capabilities/v1',
+      required_before_submit_and_poll: true,
+    });
     expect(contract.callback.accepted_status_fields).toEqual(expect.arrayContaining([
       'failed aliases: failed | error | timed_out | timeout | expired | deadline_exceeded | quota_exceeded | no_credit | access_denied | token_expired | rate_limited | network_error | service_unavailable | provider_error | render_failed | artifact_upload_failed | callback_delivery_failed | output_missing | artifact_invalid | worker_unavailable',
       'rejected aliases: rejected | blocked | policy_blocked | moderation_failed | content_policy | safety_blocked | risk_control | invalid_prompt | invalid_payload | validation_failed | asset_missing | unsupported_media | invalid_asset',
@@ -70,7 +207,7 @@ describe('gears-execution-service', () => {
 
   it('accepts nested GEARS submit acceptedUnits responses', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    stubExecutionWorkerFetch({
       status: 'ACCEPTED',
       data: {
         acceptedUnits: [{
@@ -80,7 +217,7 @@ describe('gears-execution-service', () => {
           idempotencyKey: 'seedance_video:shot-1',
         }],
       },
-    }))));
+    });
 
     const res = await submitGearsExecutionJobs({
       title: 'GEARS nested submit smoke',
@@ -110,7 +247,7 @@ describe('gears-execution-service', () => {
 
   it('preserves nested GEARS submit rejectedUnits failure context', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    stubExecutionWorkerFetch({
       status: 'ACCEPTED',
       data: {
         acceptedUnits: [{
@@ -129,7 +266,7 @@ describe('gears-execution-service', () => {
           message: 'prompt contains blocked material',
         }],
       },
-    }))));
+    });
 
     const res = await submitGearsExecutionJobs({
       title: 'GEARS mixed submit smoke',
@@ -171,7 +308,7 @@ describe('gears-execution-service', () => {
 
   it('accepts deep GEARS submit envelopes with mixed accepted and rejected records', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    stubExecutionWorkerFetch({
       response: {
         payload: {
           result: {
@@ -193,7 +330,7 @@ describe('gears-execution-service', () => {
           },
         },
       },
-    }))));
+    });
 
     const res = await submitGearsExecutionJobs({
       title: 'GEARS deep envelope submit smoke',
@@ -237,7 +374,7 @@ describe('gears-execution-service', () => {
 
   it('accepts rejected-only GEARS submit responses as structured failures', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    stubExecutionWorkerFetch({
       data: {
         rejectedUnits: [{
           externalId: 'shot-1',
@@ -246,7 +383,7 @@ describe('gears-execution-service', () => {
           message: 'seedance_prompt is required',
         }],
       },
-    }))));
+    });
 
     const res = await submitGearsExecutionJobs({
       title: 'GEARS rejected-only submit smoke',
@@ -317,7 +454,7 @@ describe('gears-execution-service', () => {
 
   it('accepts nested GEARS submit single task responses', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    stubExecutionWorkerFetch({
       data: {
         task: {
           taskId: 'gears-submit-task-001',
@@ -325,7 +462,7 @@ describe('gears-execution-service', () => {
           taskStatus: 'PROCESSING',
         },
       },
-    }))));
+    });
 
     const res = await submitGearsExecutionJobs({
       title: 'GEARS nested single task smoke',

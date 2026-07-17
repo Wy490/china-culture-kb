@@ -47,6 +47,7 @@ import type {
   GearsExecutionWorkerRealEndpointReadiness,
   GearsExecutionWorkerAcceptanceSmokeTarget,
   GearsExecutionWorkerAcceptanceSmokeTargets,
+  GearsExecutionWorkerCapabilities,
   GearsExecutionWorkerEvidenceBundle,
   GearsExecutionWorkerEvidenceDocument,
   GearsExecutionWorkerEvidenceDocumentKind,
@@ -72,6 +73,7 @@ import {
 import { getStoryAgentMvpStatus } from './story-agent-mvp-status-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 import { getChinaCultureDomainPackProductionHealthReport } from '../domains/china-culture/domain-pack-production-service.js';
+import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 
 export const GEARS_EXECUTION_JOB_TYPES: GearsExecutionJobType[] = [
   'storyboard_image',
@@ -184,6 +186,12 @@ const GEARS_CALLBACK_BASE_ENVS = [
   'APP_BASE_URL',
 ];
 
+const GEARS_EXECUTION_WORKER_API_BASE_URL_ENV = 'GEARS_EXECUTION_WORKER_API_BASE_URL';
+const GEARS_EXECUTION_WORKER_API_TOKEN_ENV = 'GEARS_EXECUTION_WORKER_API_TOKEN';
+const GEARS_EXECUTION_WORKER_CAPABILITY_PATH = '/gears/capabilities';
+const LEGACY_GEARS_API_BASE_URL_ENV = 'GEARS_API_BASE_URL';
+const LEGACY_GEARS_API_TOKEN_ENV = 'GEARS_API_TOKEN';
+
 const LEGACY_SEEDANCE_PROVIDER_ENVS = [
   'SEEDANCE_PROVIDER_SUBMIT_ENDPOINT',
   'SEEDANCE_PROVIDER_POLL_ENDPOINT',
@@ -197,11 +205,24 @@ function envFlag(name: string): boolean {
 }
 
 function configuredGearsApiBaseUrl(): string | undefined {
-  return process.env.GEARS_API_BASE_URL?.trim() || undefined;
+  return process.env[GEARS_EXECUTION_WORKER_API_BASE_URL_ENV]?.trim()
+    || process.env[LEGACY_GEARS_API_BASE_URL_ENV]?.trim()
+    || undefined;
 }
 
 function configuredGearsApiToken(): string | undefined {
-  return process.env.GEARS_API_TOKEN?.trim() || undefined;
+  return process.env[GEARS_EXECUTION_WORKER_API_TOKEN_ENV]?.trim()
+    || process.env[LEGACY_GEARS_API_TOKEN_ENV]?.trim()
+    || undefined;
+}
+
+function executionWorkerEnvSource(
+  preferredEnv: string,
+  legacyEnv: string,
+): 'preferred' | 'legacy' | null {
+  if (envFlag(preferredEnv)) return 'preferred';
+  if (envFlag(legacyEnv)) return 'legacy';
+  return null;
 }
 
 function configuredGearsCallbackBaseUrl(): string | undefined {
@@ -235,14 +256,31 @@ export function gearsSeriesCallbackUrl(seriesProjectId: string): string | undefi
 }
 
 export function getGearsExecutionConfigInfo(): GearsExecutionConfigInfo {
-  const apiBaseConfigured = envFlag('GEARS_API_BASE_URL');
-  const apiTokenConfigured = envFlag('GEARS_API_TOKEN');
+  const apiBaseSource = executionWorkerEnvSource(
+    GEARS_EXECUTION_WORKER_API_BASE_URL_ENV,
+    LEGACY_GEARS_API_BASE_URL_ENV,
+  );
+  const apiTokenSource = executionWorkerEnvSource(
+    GEARS_EXECUTION_WORKER_API_TOKEN_ENV,
+    LEGACY_GEARS_API_TOKEN_ENV,
+  );
+  const apiBaseConfigured = apiBaseSource !== null;
+  const apiTokenConfigured = apiTokenSource !== null;
   const callbackSecretConfigured = envFlag('GEARS_CALLBACK_SECRET');
   const callbackBaseConfigured = GEARS_CALLBACK_BASE_ENVS.some(envFlag);
-  const missingSubmitRequirements = apiBaseConfigured ? [] : ['GEARS_API_BASE_URL'];
+  const legacyExecutionWorkerEnvsUsed = [
+    ...(apiBaseSource === 'legacy' ? [LEGACY_GEARS_API_BASE_URL_ENV] : []),
+    ...(apiTokenSource === 'legacy' ? [LEGACY_GEARS_API_TOKEN_ENV] : []),
+  ];
+  const missingSubmitRequirements = apiBaseConfigured
+    ? []
+    : [GEARS_EXECUTION_WORKER_API_BASE_URL_ENV];
   const configurationWarnings = [
     ...(!apiTokenConfigured
-      ? ['GEARS_API_TOKEN 未配置；仅适用于 GEARS 本地无鉴权或 mock 提交。']
+      ? [`${GEARS_EXECUTION_WORKER_API_TOKEN_ENV} 未配置；仅适用于 execution worker 本地无鉴权或 mock 提交。`]
+      : []),
+    ...(legacyExecutionWorkerEnvsUsed.length
+      ? [`检测到 execution worker legacy 配置 ${legacyExecutionWorkerEnvsUsed.join('、')}；当前仍兼容，迁移后请删除旧变量。`]
       : []),
     ...(!callbackSecretConfigured
       ? ['GEARS_CALLBACK_SECRET 未配置；GEARS 回调不会启用共享密钥保护。']
@@ -256,11 +294,20 @@ export function getGearsExecutionConfigInfo(): GearsExecutionConfigInfo {
   ];
   return {
     provider: 'gears',
+    api_base_url_env: GEARS_EXECUTION_WORKER_API_BASE_URL_ENV,
+    api_token_env: GEARS_EXECUTION_WORKER_API_TOKEN_ENV,
+    legacy_api_base_url_env: LEGACY_GEARS_API_BASE_URL_ENV,
+    legacy_api_token_env: LEGACY_GEARS_API_TOKEN_ENV,
+    api_base_url_source: apiBaseSource,
+    api_token_source: apiTokenSource,
+    legacy_execution_worker_envs_used: legacyExecutionWorkerEnvsUsed,
     api_base_url_configured: apiBaseConfigured,
     api_token_configured: apiTokenConfigured,
     callback_secret_configured: callbackSecretConfigured,
     callback_base_configured: callbackBaseConfigured,
     callback_base_envs: GEARS_CALLBACK_BASE_ENVS,
+    capability_endpoint_path: GEARS_EXECUTION_WORKER_CAPABILITY_PATH,
+    capability_required_before_requests: true,
     submit_endpoint_path: '/gears/jobs',
     job_status_endpoint_path: '/gears/jobs/{gears_job_id}',
     project_callback_path_template: '/api/projects/:projectId/gears-callback',
@@ -273,12 +320,144 @@ export function getGearsExecutionConfigInfo(): GearsExecutionConfigInfo {
     missing_submit_requirements: missingSubmitRequirements,
     configuration_warnings: configurationWarnings,
     next_actions: [
-      ...(apiBaseConfigured ? [] : ['配置 GEARS_API_BASE_URL 后可启用 use_gears_api=true 的真实 HTTP 提交。']),
+      ...(apiBaseConfigured ? [] : [`配置 ${GEARS_EXECUTION_WORKER_API_BASE_URL_ENV} 后可启用 use_gears_api=true 的真实 HTTP 提交。`]),
+      ...(legacyExecutionWorkerEnvsUsed.length
+        ? [`将 ${legacyExecutionWorkerEnvsUsed.join('、')} 迁移到 GEARS_EXECUTION_WORKER_*。`]
+        : []),
       ...(callbackSecretConfigured ? [] : ['配置 GEARS_CALLBACK_SECRET 以保护 GEARS 回调入口。']),
       ...(apiBaseConfigured ? ['GEARS HTTP 合同已可 smoke；未设置 use_gears_api 时仍只写本地 ledger。'] : []),
     ],
     generated_at: new Date().toISOString(),
   };
+}
+
+function isGearsExecutionWorkerCapabilities(
+  value: unknown,
+): value is GearsExecutionWorkerCapabilities {
+  if (!isObjectRecord(value)
+    || value.schema_version !== 'gears-execution-worker-capabilities/v1'
+    || value.service !== 'gears-execution-worker'
+    || value.execution_worker_supported !== true
+    || value.workbench_import_supported !== false
+    || typeof value.bearer_auth_required !== 'boolean'
+    || value.idempotent_submit !== true
+    || value.status_poll_supported !== true
+    || value.callback_delivery_supported !== true
+    || !Array.isArray(value.supported_job_types)
+    || value.supported_job_types.length === 0
+    || !value.supported_job_types.every(jobType =>
+      typeof jobType === 'string'
+      && GEARS_EXECUTION_JOB_TYPES.includes(jobType as GearsExecutionJobType)
+    )
+    || !isObjectRecord(value.endpoints)) return false;
+
+  const capabilities = value.endpoints.capabilities;
+  const submit = value.endpoints.submit;
+  const jobStatus = value.endpoints.job_status;
+  return isObjectRecord(capabilities)
+    && capabilities.method === 'GET'
+    && capabilities.path === GEARS_EXECUTION_WORKER_CAPABILITY_PATH
+    && isObjectRecord(submit)
+    && submit.method === 'POST'
+    && submit.path === '/gears/jobs'
+    && isObjectRecord(jobStatus)
+    && jobStatus.method === 'GET'
+    && jobStatus.path === '/gears/jobs/{gears_job_id}';
+}
+
+function forwardExecutionWorkerFailure<T>(
+  response: ApiResponse<unknown>,
+): ApiResponse<T> {
+  return {
+    ok: false,
+    data: null,
+    error: response.error ?? {
+      code: ErrorCodes.INTERNAL_ERROR,
+      message: 'GEARS execution worker capability probe returned an empty failure',
+    },
+  };
+}
+
+export async function getGearsExecutionWorkerCapabilities(): Promise<
+  ApiResponse<GearsExecutionWorkerCapabilities>
+> {
+  const baseUrl = configuredGearsApiBaseUrl();
+  if (!baseUrl) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS_EXECUTION_WORKER_API_BASE_URL is required to probe execution worker capabilities',
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const headers: Record<string, string> = {};
+    const token = configuredGearsApiToken();
+    if (token) headers.authorization = `Bearer ${token}`;
+    const response = await fetch(joinPublicUrl(baseUrl, GEARS_EXECUTION_WORKER_CAPABILITY_PATH), {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let payload: unknown;
+    if (text.trim()) {
+      try {
+        payload = JSON.parse(text) as unknown;
+      } catch {
+        return fail(
+          ErrorCodes.VALIDATION_ERROR,
+          `GEARS execution worker capability probe returned non-JSON HTTP ${response.status}`,
+          { status: response.status, body: text.slice(0, 500) },
+        );
+      }
+    }
+    if (!response.ok) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `GEARS execution worker capability probe returned HTTP ${response.status}`,
+        payload ?? text.slice(0, 500),
+      );
+    }
+    if (!isGearsExecutionWorkerCapabilities(payload)) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'GEARS endpoint does not satisfy the gears-execution-worker capability contract',
+        payload,
+      );
+    }
+    return success(payload);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return fail(ErrorCodes.INTERNAL_ERROR, `GEARS execution worker capability probe failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function requireGearsExecutionWorkerCapabilities(
+  jobTypes: GearsExecutionJobType[],
+): Promise<ApiResponse<GearsExecutionWorkerCapabilities>> {
+  const result = await getGearsExecutionWorkerCapabilities();
+  if (!result.ok || !result.data) return result;
+  if (result.data.bearer_auth_required && !configuredGearsApiToken()) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS execution worker requires GEARS_EXECUTION_WORKER_API_TOKEN',
+    );
+  }
+  const unsupportedJobTypes = [...new Set(jobTypes)].filter(
+    jobType => !result.data?.supported_job_types.includes(jobType),
+  );
+  if (unsupportedJobTypes.length) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `GEARS execution worker does not support requested job types: ${unsupportedJobTypes.join(', ')}`,
+      { unsupported_job_types: unsupportedJobTypes },
+    );
+  }
+  return result;
 }
 
 function readinessCheck(input: GearsExecutionReadinessCheck): GearsExecutionReadinessCheck {
@@ -305,7 +484,7 @@ function liveE2EBlockedBy(input: {
   callbackSecret?: boolean;
 }): string[] {
   return [
-    ...(input.apiBase === false ? ['GEARS_API_BASE_URL'] : []),
+    ...(input.apiBase === false ? ['GEARS_EXECUTION_WORKER_API_BASE_URL'] : []),
     ...(input.callbackBase === false ? ['GEARS_CALLBACK_BASE_URL | PUBLIC_API_BASE_URL | APP_BASE_URL'] : []),
     ...(input.callbackSecret === false ? ['GEARS_CALLBACK_SECRET'] : []),
   ];
@@ -502,32 +681,15 @@ export function getGearsExecutionPressureReport(): GearsExecutionPressureReport 
 }
 
 function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', 'data');
+  return storyKbRoot();
 }
 
 function generatedRoot(): string {
-  return process.env.WEB_GENERATED_ROOT || resolve(kbRoot(), '..', 'web', 'generated');
-}
-
-function repoWebGeneratedRoot(): string {
-  return resolve(import.meta.dirname, '..', '..', '..', '..', 'web', 'generated');
-}
-
-function uniquePaths(paths: string[]): string[] {
-  const seen = new Set<string>();
-  return paths.filter(item => {
-    if (seen.has(item)) return false;
-    seen.add(item);
-    return true;
-  });
+  return storyGeneratedRoot();
 }
 
 function generatedRoots(): string[] {
-  if (process.env.WEB_GENERATED_ROOT) return [generatedRoot()];
-  return uniquePaths([
-    generatedRoot(),
-    repoWebGeneratedRoot(),
-  ]);
+  return [generatedRoot()];
 }
 
 function generatedStoryProjectsRoots(): string[] {
@@ -1057,22 +1219,22 @@ export function getGearsExecutionReadinessReport(): GearsExecutionReadinessRepor
       label: 'GEARS API base',
       status: config.api_base_url_configured ? 'pass' : 'fail',
       message: config.api_base_url_configured
-        ? 'GEARS_API_BASE_URL 已配置，可执行 use_gears_api=true 的真实 HTTP submit/status smoke。'
-        : 'GEARS_API_BASE_URL 未配置，当前只能执行本地合同冒烟与 mock ledger 写回。',
+        ? `${config.api_base_url_env} 已配置或由 legacy fallback 提供，可执行 use_gears_api=true 的真实 HTTP submit/status smoke。`
+        : `${config.api_base_url_env} 未配置，当前只能执行本地合同冒烟与 mock ledger 写回。`,
       next_action: config.api_base_url_configured
         ? undefined
-        : '配置 GEARS_API_BASE_URL。',
+        : `配置 ${config.api_base_url_env}。`,
     }),
     readinessCheck({
       id: 'api_token',
       label: 'GEARS API token',
       status: config.api_token_configured ? 'pass' : 'warn',
       message: config.api_token_configured
-        ? 'GEARS_API_TOKEN 已配置，请求会携带 Bearer token。'
-        : 'GEARS_API_TOKEN 未配置，仅适用于本地无鉴权或 mock GEARS 服务。',
+        ? `${config.api_token_env} 已配置或由 legacy fallback 提供，请求会携带 Bearer token。`
+        : `${config.api_token_env} 未配置，仅适用于本地无鉴权或 mock execution worker。`,
       next_action: config.api_token_configured
         ? undefined
-        : '若真实 GEARS worker 需要鉴权，请配置 GEARS_API_TOKEN。',
+        : `若真实 GEARS execution worker 需要鉴权，请配置 ${config.api_token_env}。`,
     }),
     readinessCheck({
       id: 'callback_secret',
@@ -1676,13 +1838,13 @@ export async function getGearsExecutionAcceptanceReport(): Promise<GearsExecutio
       label: 'GEARS API config',
       status: config.ready_for_submit ? 'pass' : 'blocked',
       message: config.ready_for_submit
-        ? 'GEARS_API_BASE_URL 已配置，可以执行真实 submit/status smoke。'
-        : 'GEARS_API_BASE_URL 未配置，无法执行真实 GEARS worker E2E。',
+        ? `${config.api_base_url_env} 已配置或由 legacy fallback 提供，可以执行真实 submit/status smoke。`
+        : `${config.api_base_url_env} 未配置，无法执行真实 GEARS execution worker E2E。`,
       evidence: {
         ready_for_submit: config.ready_for_submit,
         missing_submit_requirements: config.missing_submit_requirements,
       },
-      next_action: config.ready_for_submit ? undefined : '配置 GEARS_API_BASE_URL。',
+      next_action: config.ready_for_submit ? undefined : `配置 ${config.api_base_url_env}。`,
     }),
     acceptanceCheck({
       id: 'gears_callback_security',
@@ -1987,12 +2149,23 @@ function getWorkerRealEndpointReadiness(
   smokeTargets: GearsExecutionWorkerAcceptanceSmokeTargets,
 ): GearsExecutionWorkerRealEndpointReadiness {
   const requiredEnvNames = [
-    'GEARS_API_BASE_URL',
+    GEARS_EXECUTION_WORKER_API_BASE_URL_ENV,
     'GEARS_CALLBACK_SECRET',
     'GEARS_CALLBACK_BASE_URL',
   ];
-  const configuredEnvNames = requiredEnvNames.filter(envFlag);
-  const missingEnvNames = requiredEnvNames.filter(name => !envFlag(name));
+  const apiBaseConfiguredEnv = envFlag(GEARS_EXECUTION_WORKER_API_BASE_URL_ENV)
+    ? GEARS_EXECUTION_WORKER_API_BASE_URL_ENV
+    : envFlag(LEGACY_GEARS_API_BASE_URL_ENV)
+      ? LEGACY_GEARS_API_BASE_URL_ENV
+      : undefined;
+  const configuredEnvNames = [
+    ...(apiBaseConfiguredEnv ? [apiBaseConfiguredEnv] : []),
+    ...requiredEnvNames.slice(1).filter(envFlag),
+  ];
+  const missingEnvNames = [
+    ...(apiBaseConfiguredEnv ? [] : [GEARS_EXECUTION_WORKER_API_BASE_URL_ENV]),
+    ...requiredEnvNames.slice(1).filter(name => !envFlag(name)),
+  ];
   const smokeTargetReady = Boolean(smokeTargets.story_project && smokeTargets.series_project);
   const status: GearsExecutionWorkerRealEndpointReadiness['status'] = missingEnvNames.length > 0
     ? 'needs_env'
@@ -3251,6 +3424,7 @@ function renderStoryAgentGeneratedHealthAuditCommand(targetDirExpression: string
     '    missing_episode_story_id_count: numberValue(summary.missing_episode_story_id_count),',
     '    series_missing_delivery_count: numberValue(summary.series_missing_delivery_count),',
     '    series_missing_postproduction_count: numberValue(summary.series_missing_postproduction_count),',
+    '    series_missing_final_delivery_manifest_count: numberValue(summary.series_missing_final_delivery_manifest_count),',
     '  }',
     '}',
     'function snapshot(filename) {',
@@ -3284,6 +3458,7 @@ function renderStoryAgentGeneratedHealthAuditCommand(targetDirExpression: string
     '  missing_current_story_count: delta(after, before, "missing_current_story_count"),',
     '  missing_episode_story_id_count: delta(after, before, "missing_episode_story_id_count"),',
     '  series_missing_delivery_count: delta(after, before, "series_missing_delivery_count"),',
+    '  series_missing_final_delivery_manifest_count: delta(after, before, "series_missing_final_delivery_manifest_count"),',
     '}',
     'const compatibility_notes = []',
     'const recommended_actions = []',
@@ -3297,8 +3472,10 @@ function renderStoryAgentGeneratedHealthAuditCommand(targetDirExpression: string
     'if (before.parse_ok && after.parse_ok && deltas.ready_count < 0) recommended_actions.push(action("P0", "Story Agent", "Generated health ready_count decreased during smoke; inspect project writes before signing off.", "generated_health_ready_regressed", [beforeFilename, afterFilename]))',
     'if (before.parse_ok && after.parse_ok && deltas.interrupted_count > 0) recommended_actions.push(action("P0", "Story Agent", "Generated health interrupted_count increased during smoke; inspect project/version references before signing off.", "generated_health_interrupted_regressed", [beforeFilename, afterFilename]))',
     'if (before.parse_ok && after.parse_ok && deltas.production_gap_count > 0) recommended_actions.push(action("P1", "Story Agent", "Generated health production_gap_count increased during smoke; inspect delivery contracts before larger rollout.", "generated_health_production_gap_regressed", [beforeFilename, afterFilename]))',
+    'if (before.parse_ok && after.parse_ok && deltas.series_missing_final_delivery_manifest_count > 0) recommended_actions.push(action("P1", "Story Agent", "Final-delivery manifest gaps increased during smoke; regenerate manifests before treating concat plans as publishable delivery.", "generated_health_final_manifest_regressed", [beforeFilename, afterFilename]))',
     'if (before.parse_ok && after.parse_ok && deltas.total_target_count < 0) recommended_actions.push(action("P1", "Story Agent", "Generated health target count decreased during smoke; confirm no generated project was deleted unexpectedly.", "generated_health_target_count_decreased", [beforeFilename, afterFilename]))',
     'if (before.parse_ok && before.summary.interrupted_count > 0) compatibility_notes.push("Historical generated directories still contain interrupted targets; this is acceptable only when smoke target selection uses a ready project.")',
+    'if (before.parse_ok && before.summary.series_missing_final_delivery_manifest_count > 0) compatibility_notes.push("Historical generated directories contain concat/output plans without final manifests; these targets are excluded from publishable delivery readiness.")',
     'if (before.parse_ok && before.summary.ready_count > 0) compatibility_notes.push("At least one ready generated project exists for GEARS smoke target selection.")',
     'if (before.parse_ok && after.parse_ok && !recommended_actions.length) compatibility_notes.push("Generated health did not regress across the worker smoke run.")',
     'const status = recommended_actions.length ? "failed" : "passed"',
@@ -3328,6 +3505,7 @@ function renderStoryAgentGeneratedHealthAuditCommand(targetDirExpression: string
     '  `- ready_count_delta: ${audit.deltas.ready_count}` ,',
     '  `- interrupted_count_delta: ${audit.deltas.interrupted_count}` ,',
     '  `- production_gap_count_delta: ${audit.deltas.production_gap_count}` ,',
+    '  `- final_delivery_manifest_gap_delta: ${audit.deltas.series_missing_final_delivery_manifest_count}` ,',
     '  "",',
     '  "## Compatibility Notes",',
     '  "",',
@@ -4806,6 +4984,19 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     ': "${GEARS_ACCEPTANCE_STATUS_POLL_INTERVAL_SECONDS:=5}"',
     `: "\${GEARS_LARGE_PRESSURE_EPISODE_COUNT:=${GEARS_WORKER_PRESSURE_DEFAULT_EPISODE_COUNT}}"`,
     `: "\${GEARS_LARGE_PRESSURE_SHOTS_PER_EPISODE:=${GEARS_WORKER_PRESSURE_DEFAULT_SHOTS_PER_EPISODE}}"`,
+    'if [ -n "${GEARS_EXECUTION_WORKER_API_BASE_URL:-}" ]; then',
+    '  GEARS_API_BASE_URL="$GEARS_EXECUTION_WORKER_API_BASE_URL"',
+    'elif [ -n "${GEARS_API_BASE_URL:-}" ]; then',
+    '  GEARS_EXECUTION_WORKER_API_BASE_URL="$GEARS_API_BASE_URL"',
+    '  echo "Warning: GEARS_API_BASE_URL is a legacy execution-worker name; migrate to GEARS_EXECUTION_WORKER_API_BASE_URL." >&2',
+    'fi',
+    'if [ -n "${GEARS_EXECUTION_WORKER_API_TOKEN:-}" ]; then',
+    '  GEARS_API_TOKEN="$GEARS_EXECUTION_WORKER_API_TOKEN"',
+    'elif [ -n "${GEARS_API_TOKEN:-}" ]; then',
+    '  GEARS_EXECUTION_WORKER_API_TOKEN="$GEARS_API_TOKEN"',
+    '  echo "Warning: GEARS_API_TOKEN is a legacy execution-worker name; migrate to GEARS_EXECUTION_WORKER_API_TOKEN." >&2',
+    'fi',
+    'export GEARS_EXECUTION_WORKER_API_BASE_URL GEARS_EXECUTION_WORKER_API_TOKEN GEARS_API_BASE_URL GEARS_API_TOKEN',
     'EVIDENCE_DIR="$GEARS_EVIDENCE_DIR"',
     'mkdir -p "$EVIDENCE_DIR"',
     'case "$GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS" in ""|*[!0-9]*) GEARS_ACCEPTANCE_STATUS_POLL_ATTEMPTS=1 ;; esac',
@@ -5406,7 +5597,7 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     '',
     'echo "Checking required GEARS env values..."',
     'missing_envs=()',
-    'for required_name in GEARS_API_BASE_URL GEARS_CALLBACK_SECRET GEARS_CALLBACK_BASE_URL GEARS_SMOKE_PROJECT_ID GEARS_SMOKE_SERIES_PROJECT_ID; do',
+    'for required_name in GEARS_EXECUTION_WORKER_API_BASE_URL GEARS_CALLBACK_SECRET GEARS_CALLBACK_BASE_URL GEARS_SMOKE_PROJECT_ID GEARS_SMOKE_SERIES_PROJECT_ID; do',
     '  required_value="${!required_name:-}"',
     '  if is_placeholder "$required_value"; then',
     '    missing_envs+=("$required_name")',
@@ -5440,6 +5631,58 @@ function renderGearsExecutionWorkerAcceptanceShellScript(
     'echo "Checking Story Agent callback id formats..."',
     ...renderStoryAgentCallbackIdPreflightCommand('"$EVIDENCE_DIR"').split('\n'),
     'print_json_summary "$EVIDENCE_DIR/story-agent-callback-id-preflight.json" "Story Agent callback id preflight"',
+    '',
+    'echo "Probing independent GEARS execution-worker capabilities..."',
+    'set +e',
+    'if is_placeholder "${GEARS_API_TOKEN:-}"; then',
+    '  capability_http_status="$(curl -sS -w "%{http_code}" -o "$EVIDENCE_DIR/gears-execution-worker-capabilities.json" "$GEARS_API_BASE_URL/gears/capabilities")"',
+    '  capability_exit_code=$?',
+    'else',
+    '  capability_http_status="$(curl -sS -w "%{http_code}" -o "$EVIDENCE_DIR/gears-execution-worker-capabilities.json" "$GEARS_API_BASE_URL/gears/capabilities" \\',
+    '    -H "authorization: Bearer $GEARS_API_TOKEN")"',
+    '  capability_exit_code=$?',
+    'fi',
+    'set -e',
+    'record_http_metadata "$EVIDENCE_DIR/gears-execution-worker-capabilities.json" "$capability_http_status" "$capability_exit_code"',
+    'printf "%s\\n" "$capability_exit_code" | tee "$EVIDENCE_DIR/gears-execution-worker-capabilities-exit-code.txt"',
+    'printf "%s\\n" "$capability_http_status" | tee "$EVIDENCE_DIR/gears-execution-worker-capabilities-http-status.txt"',
+    'if [ "$capability_exit_code" -ne 0 ] || ! is_success_http_status "$capability_http_status"; then',
+    '  echo "GEARS execution-worker capability probe failed; /gears/jobs will not be called." | tee "$EVIDENCE_DIR/gears-execution-worker-capability-failed.txt"',
+    '  write_early_exit_audits "execution-worker capability transport failure"',
+    '  write_manifest',
+    '  exit 3',
+    'fi',
+    'set +e',
+    'node - "$EVIDENCE_DIR/gears-execution-worker-capabilities.json" <<\'NODE\'',
+    'const fs = require("fs")',
+    'const capability = JSON.parse(fs.readFileSync(process.argv[2], "utf8"))',
+    'const valid = capability?.schema_version === "gears-execution-worker-capabilities/v1"',
+    '  && capability?.service === "gears-execution-worker"',
+    '  && capability?.execution_worker_supported === true',
+    '  && capability?.workbench_import_supported === false',
+    '  && capability?.idempotent_submit === true',
+    '  && capability?.status_poll_supported === true',
+    '  && capability?.callback_delivery_supported === true',
+    '  && Array.isArray(capability?.supported_job_types)',
+    '  && capability.supported_job_types.includes("seedance_video")',
+    '  && capability?.endpoints?.capabilities?.method === "GET"',
+    '  && capability?.endpoints?.capabilities?.path === "/gears/capabilities"',
+    '  && capability?.endpoints?.submit?.method === "POST"',
+    '  && capability?.endpoints?.submit?.path === "/gears/jobs"',
+    '  && capability?.endpoints?.job_status?.method === "GET"',
+    '  && capability?.endpoints?.job_status?.path === "/gears/jobs/{gears_job_id}"',
+    'if (!valid) process.exit(1)',
+    'NODE',
+    'capability_contract_exit_code=$?',
+    'set -e',
+    'printf "%s\\n" "$capability_contract_exit_code" | tee "$EVIDENCE_DIR/gears-execution-worker-capability-contract-exit-code.txt"',
+    'if [ "$capability_contract_exit_code" -ne 0 ]; then',
+    '  echo "Configured GEARS endpoint is not an independent gears-execution-worker; /gears/jobs will not be called." | tee "$EVIDENCE_DIR/gears-execution-worker-capability-contract-failed.txt"',
+    '  write_early_exit_audits "execution-worker capability contract failure"',
+    '  write_manifest',
+    '  exit 3',
+    'fi',
+    'echo "GEARS execution-worker capability contract passed."',
     '',
     'echo "Submitting smoke units to GEARS worker..."',
     'set +e',
@@ -5897,16 +6140,28 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
       description: 'Story Agent API base URL.',
     },
     {
-      name: 'GEARS_API_BASE_URL',
+      name: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
       required: true,
       value_placeholder: 'https://gears.example.test',
       description: 'GEARS v2 worker API base URL.',
     },
     {
-      name: 'GEARS_API_TOKEN',
+      name: 'GEARS_EXECUTION_WORKER_API_TOKEN',
       required: false,
       value_placeholder: '<gears-api-token>',
       description: 'Bearer token for GEARS submit/status endpoints when required.',
+    },
+    {
+      name: 'GEARS_API_BASE_URL',
+      required: false,
+      value_placeholder: '<legacy-gears-worker-api-base-url>',
+      description: 'Legacy execution-worker alias; supported during migration only.',
+    },
+    {
+      name: 'GEARS_API_TOKEN',
+      required: false,
+      value_placeholder: '<legacy-gears-worker-api-token>',
+      description: 'Legacy execution-worker token alias; supported during migration only.',
     },
     {
       name: 'GEARS_CALLBACK_SECRET',
@@ -6066,6 +6321,20 @@ export async function getGearsExecutionWorkerAcceptanceKit(): Promise<GearsExecu
         'Every unit includes source_unit_id, external_id, custom_id, idempotency_key, callback_url, and metadata.',
       ],
     }] : []),
+    {
+      id: 'probe_execution_worker_capabilities',
+      label: 'Validate independent GEARS execution-worker capabilities',
+      phase: 'preflight',
+      command: [
+        'curl -sS "$GEARS_API_BASE_URL/gears/capabilities" -H "authorization: Bearer $GEARS_API_TOKEN" -o gears-execution-worker-capabilities.json',
+        'node -e \'const fs=require("fs");const c=JSON.parse(fs.readFileSync("gears-execution-worker-capabilities.json","utf8"));if(c.schema_version!=="gears-execution-worker-capabilities/v1"||c.service!=="gears-execution-worker"||c.execution_worker_supported!==true||c.workbench_import_supported!==false||c.idempotent_submit!==true||c.status_poll_supported!==true||c.callback_delivery_supported!==true||!Array.isArray(c.supported_job_types)||!c.supported_job_types.includes("seedance_video")||c.endpoints?.submit?.method!=="POST"||c.endpoints?.submit?.path!=="/gears/jobs"||c.endpoints?.job_status?.method!=="GET"||c.endpoints?.job_status?.path!=="/gears/jobs/{gears_job_id}"){process.exit(1)}\'',
+      ].join('\n'),
+      expected_assertions: [
+        'Capability schema is gears-execution-worker-capabilities/v1 and service is gears-execution-worker.',
+        'execution_worker_supported=true and workbench_import_supported=false.',
+        'idempotent submit, status poll, callback delivery, seedance_video, and exact /gears/jobs paths are declared before submit.',
+      ],
+    },
     ...(submitPayload ? [{
       id: 'submit_to_worker',
       label: 'Submit smoke units to GEARS worker',
@@ -6407,12 +6676,30 @@ function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPa
     '## Summary',
     '',
     `- status: ${report.status}`,
+    `- pack_file_valid: ${report.pack_file_valid}`,
     `- pack_count: ${report.pack_count}`,
+    `- rejected_pack_count: ${report.rejected_pack_count}`,
+    `- domain_sample_policy_valid: ${report.domain_sample_policy_valid}`,
+    `- domain_sample_policy_video_types: ${report.domain_sample_policy_video_types.join(', ') || 'none'}`,
     `- required_video_types: ${report.required_video_types.length}`,
     `- covered_required_video_types: ${report.covered_required_video_types.length}`,
     `- missing_required_video_types: ${report.missing_required_video_types.join(', ') || 'none'}`,
     `- core_ready: ${report.production_ready_core_video_types.length}/${report.core_video_types.length}`,
     `- issue_count: ${report.issues.length}`,
+    '',
+    '## Pack File Diagnostics',
+    '',
+    ...(report.pack_file_diagnostics.length
+      ? report.pack_file_diagnostics.map(diagnostic =>
+        `- code=${diagnostic.code} path=${diagnostic.path}`)
+      : ['- none']),
+    '',
+    '## Rejected Packs',
+    '',
+    ...(report.rejected_pack_diagnostics.length
+      ? report.rejected_pack_diagnostics.map(diagnostic =>
+        `- pack_index=${diagnostic.pack_index} code=${diagnostic.code} path=${diagnostic.path}`)
+      : ['- none']),
     '',
     '## Core Video Types',
     '',
@@ -6420,14 +6707,19 @@ function renderProductionMaterialPackHealthMarkdown(report: ProductionMaterialPa
     '',
     '## Pack Summaries',
     '',
-    ...report.packs.map(pack =>
-      `- ${pack.video_type}: ${pack.status}; fields=${pack.required_field_count}; samples=${pack.sample_entry_count}; layers=${pack.prompt_layer_count}; issues=${pack.unknown_required_fields.length + pack.duplicate_required_fields.length}`,
-    ),
+    ...report.packs.map(pack => {
+      const domainCoverage = Object.entries(pack.minimum_sample_entry_count_by_source_domain)
+        .map(([sourceDomain, minimumCount]) =>
+          `${sourceDomain}=${pack.sample_entry_count_by_source_domain[sourceDomain] ?? 0}/${minimumCount}`,
+        )
+        .join(',') || 'not_required';
+      return `- ${pack.video_type}: ${pack.status}; fields=${pack.required_field_count}; samples=${pack.unique_sample_entry_count}/${pack.sample_entry_count}; duplicate_sample_ids=${pack.duplicate_sample_entry_ids.length}; domain_samples=${domainCoverage}; legacy_samples=${pack.legacy_sample_entry_count}; layers=${pack.prompt_layer_count}; issues=${pack.unknown_required_fields.length + pack.duplicate_required_fields.length}`;
+    }),
     '',
     '## Issues',
     '',
     ...(report.issues.length
-      ? report.issues.map(issue => `- [${issue.severity}] ${issue.video_type ?? 'portfolio'} · ${issue.issue_type}: ${issue.message}`)
+      ? report.issues.map(issue => `- [${issue.severity}] ${issue.video_type ?? 'portfolio'}${issue.source_domain ? ` · ${issue.source_domain}` : ''} · ${issue.issue_type}: ${issue.message}`)
       : ['- none']),
   ].join('\n').trim() + '\n';
 }
@@ -8196,12 +8488,33 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
     provider: 'gears',
     schema_version: 'gears-execution-contract/v1',
     env: {
-      api_base_url: 'GEARS_API_BASE_URL',
-      api_token: 'GEARS_API_TOKEN',
+      api_base_url: 'GEARS_EXECUTION_WORKER_API_BASE_URL',
+      api_token: 'GEARS_EXECUTION_WORKER_API_TOKEN',
+      legacy_api_base_url: 'GEARS_API_BASE_URL',
+      legacy_api_token: 'GEARS_API_TOKEN',
       callback_secret: 'GEARS_CALLBACK_SECRET',
       callback_base_url: 'GEARS_CALLBACK_BASE_URL',
     },
     supported_job_types: GEARS_EXECUTION_JOB_TYPES,
+    capability: {
+      method: 'GET',
+      path: GEARS_EXECUTION_WORKER_CAPABILITY_PATH,
+      schema_version: 'gears-execution-worker-capabilities/v1',
+      required_before_submit_and_poll: true,
+      response_fields: [
+        'schema_version = gears-execution-worker-capabilities/v1',
+        'service = gears-execution-worker',
+        'execution_worker_supported = true',
+        'workbench_import_supported = false',
+        'idempotent_submit = true',
+        'status_poll_supported = true',
+        'callback_delivery_supported = true',
+        'supported_job_types[]',
+        'endpoints.capabilities = GET /gears/capabilities',
+        'endpoints.submit = POST /gears/jobs',
+        'endpoints.job_status = GET /gears/jobs/{gears_job_id}',
+      ],
+    },
     submit: {
       method: 'POST',
       path: '/gears/jobs',
@@ -9704,8 +10017,11 @@ export async function submitGearsExecutionJobs(input: {
 
   const baseUrl = configuredGearsApiBaseUrl();
   if (!baseUrl) {
-    return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS_API_BASE_URL is required when use_gears_api=true');
+    return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS_EXECUTION_WORKER_API_BASE_URL is required when use_gears_api=true');
   }
+
+  const capabilities = await requireGearsExecutionWorkerCapabilities([input.jobType]);
+  if (!capabilities.ok) return forwardExecutionWorkerFailure(capabilities);
 
   const endpoint = joinPublicUrl(baseUrl, '/gears/jobs');
   const body = {
@@ -9988,8 +10304,13 @@ export async function pollGearsExecutionJobStatuses(input: {
 
   const baseUrl = configuredGearsApiBaseUrl();
   if (!baseUrl) {
-    return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS_API_BASE_URL is required to sync GEARS job status');
+    return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS_EXECUTION_WORKER_API_BASE_URL is required to sync GEARS job status');
   }
+
+  const capabilities = await requireGearsExecutionWorkerCapabilities(
+    input.items.map(item => item.job_type),
+  );
+  if (!capabilities.ok) return forwardExecutionWorkerFailure(capabilities);
 
   const callbacks: GearsExecutionPolledJob[] = [];
   const failures: GearsJobSubmitFailure[] = [];
