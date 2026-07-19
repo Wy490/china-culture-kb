@@ -35,9 +35,12 @@ import type {
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedGovernanceRunRequest,
   StoryAgentGeneratedGovernanceRunResult,
+  StoryAgentFinalDeliveryManifestPreflightRequest,
+  StoryAgentFinalDeliveryManifestPreflightResult,
   StoryAgentGeneratedHealthReport,
   StoryAgentBacklogHandoffPackage,
   StoryAgentMvpStatusReport,
+  StoryGenerationCapabilities,
   TypeInfo,
 } from '@shared/types'
 import type { ProductAccessContext, ProductAccessReadiness, ProductLoginHandoff } from '@shared/product-access'
@@ -68,6 +71,10 @@ export function getRegions(province: string) {
 
 export function getModelProfiles() {
   return apiGet<AIModelProfile[]>('/system/models')
+}
+
+export function getStoryGenerationCapabilities() {
+  return apiGet<StoryGenerationCapabilities>('/system/story-generation-capabilities')
 }
 
 export function getNarrativePatternCatalog() {
@@ -124,6 +131,13 @@ export function getStoryAgentGeneratedGovernancePlan(options: { limit?: number }
 
 export function runStoryAgentGeneratedGovernance(req: StoryAgentGeneratedGovernanceRunRequest = { dry_run: true }) {
   return apiPost<StoryAgentGeneratedGovernanceRunResult>('/system/story-agent-generated-governance-plan/run', req)
+}
+
+export function preflightStoryAgentFinalDeliveryManifest(req: StoryAgentFinalDeliveryManifestPreflightRequest) {
+  return apiPost<StoryAgentFinalDeliveryManifestPreflightResult>(
+    '/system/story-agent-final-delivery-manifest-preflight',
+    req,
+  )
 }
 
 export function getStoryAgentMvpStatus(options: {

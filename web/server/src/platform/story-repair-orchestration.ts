@@ -24,6 +24,7 @@ import {
   mergeModelOutputOntoLocalSkeleton,
   type StoryAssembly,
 } from './story-model-output-merge.js';
+import { compareStoryRevision } from '../services/story-revision-comparator.js';
 
 type RepairAdapter = (input: {
   pkg: StoryGenerationPromptPackage;
@@ -120,8 +121,34 @@ export async function orchestrateStoryRepair(input: {
   input.applyStoryAssembly(repairedResult, repairAdapterResult.output);
   const repairedQualityReport = input.evaluateStoryQuality(repairedResult);
   trace.after_genre_score = repairedQualityReport.genre_score;
+  const comparison = compareStoryRevision({
+    before: input.storyResult,
+    after: repairedResult,
+    beforeQuality: input.qualityReport,
+    afterQuality: repairedQualityReport,
+  });
 
-  if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0)) {
+  if (!comparison.content_changed) {
+    input.applyStoryAssembly(input.storyResult, input.sourceModelOutput);
+    trace.reason = 'repair_no_content_change';
+    return {
+      storyResult: input.storyResult,
+      qualityReport: input.qualityReport,
+      repairTrace: [trace],
+    };
+  }
+
+  if (comparison.protected_quality_regressed) {
+    input.applyStoryAssembly(input.storyResult, input.sourceModelOutput);
+    trace.reason = 'repair_protected_quality_regressed';
+    return {
+      storyResult: input.storyResult,
+      qualityReport: input.qualityReport,
+      repairTrace: [trace],
+    };
+  }
+
+  if (comparison.genre_score_improved || comparison.target_issue_count_reduced) {
     trace.applied = true;
     trace.reason = 'repair_applied';
     return {

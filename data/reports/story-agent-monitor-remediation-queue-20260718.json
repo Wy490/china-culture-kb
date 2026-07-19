@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-monitor-remediation-queue/v1",
-  "generated_at": "2026-07-17T18:24:14.695Z",
+  "generated_at": "2026-07-18T03:59:50.110Z",
   "source": "web/generated read-only local scan",
   "safety": {
     "generated_project_records_modified": false,
@@ -8,7 +8,9 @@
     "province_markdown_modified": false,
     "domain_pack_modified": false,
     "automatic_relink_performed": false,
-    "automatic_archive_performed": false
+    "automatic_archive_performed": false,
+    "automatic_manifest_generation_performed": false,
+    "publishable_delivery_credit_granted": false
   },
   "summary": {
     "scanned_story_file_count": 22,
@@ -29,7 +31,8 @@
     "seedance_test_fixture_failure_project_count": 87,
     "seedance_test_fixture_failure_item_count": 91,
     "seedance_unmarked_failure_item_count": 0,
-    "series_missing_final_delivery_manifest_count": 10
+    "series_missing_final_delivery_manifest_count": 10,
+    "final_delivery_manifest_operator_decision_pending_count": 10
   },
   "relink_candidates": [
     {
@@ -32113,70 +32116,260 @@
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T06:01:59.103Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-0nf0gc2q",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-0so7mqbg",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T04:56:46.126Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-0so7mqbg",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-1rfi5mzq",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:38:29.626Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-1rfi5mzq",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-3e9ga2oj",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:02:22.916Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-3e9ga2oj",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-6uokxeln",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:03:43.937Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-6uokxeln",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-a4tgicqe",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:03:27.239Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-a4tgicqe",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-acyqrolx",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:51:33.431Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-acyqrolx",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-mbmlccz0",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:36:27.356Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-mbmlccz0",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-ulkublp4",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:37:22.331Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-ulkublp4",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     },
     {
       "project_id": "20260619-series-vw8eg21m",
       "title": "濂溪少年志",
       "updated_at": "2026-06-19T05:38:49.698Z",
       "final_delivery_dry_run": true,
-      "remediation": "rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence"
+      "operator_disposition_status": "awaiting_operator_decision",
+      "allowed_operator_dispositions": [
+        "preserve_fixture_exclude_from_publishable_delivery",
+        "reexport_after_authorized_dependencies"
+      ],
+      "preflight_checks": [
+        "verify_authorized_media_inputs",
+        "verify_cut_subtitle_audio_title_card_dependencies",
+        "verify_output_and_manifest_paths_are_project_scoped"
+      ],
+      "preflight_api": {
+        "method": "POST",
+        "path": "/api/system/story-agent-final-delivery-manifest-preflight",
+        "request_template": {
+          "series_project_id": "20260619-series-vw8eg21m",
+          "disposition": "preserve_fixture_exclude_from_publishable_delivery",
+          "authorized_media_inputs_attested": false
+        }
+      },
+      "publishable_delivery_credit_granted": false
     }
   ],
   "duplicate_missing_story_ids": [

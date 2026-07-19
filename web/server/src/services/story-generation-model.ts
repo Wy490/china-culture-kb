@@ -247,6 +247,15 @@ export async function generateStoryWithAdapter(input: {
   const provider = process.env.STORY_GEN_PROVIDER?.trim() || 'command_json';
   const modelProfile = getModelProfileById(input.modelProfileId);
 
+  if (modelProfile?.runtime === 'local') {
+    return {
+      provider: 'local_only',
+      output: null,
+      used_fallback: false,
+      reason: '已显式选择本地故事引擎',
+    };
+  }
+
   if (provider === 'command_json' && modelProfile) {
     return runCommandAdapter({ pkg: input.pkg, modelProfile });
   }

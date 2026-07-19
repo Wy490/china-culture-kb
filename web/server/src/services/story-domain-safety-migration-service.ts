@@ -21,6 +21,7 @@ import { storyGeneratedRoot } from '../platform/story-storage.js';
 import { LEGACY_STORY_SOURCE_DOMAIN } from '../platform/story-source-domain.js';
 import { validateStoryAgainstRegisteredDomain } from '../platform/story-domain-revision-safety.js';
 import { inspectDurableAuditPath } from './product-access-service.js';
+import { rebuildDerivedStoryState } from './derived-story-state-service.js';
 
 const WRITE_ENABLED_ENV = 'STORY_AGENT_DOMAIN_SAFETY_MIGRATION_WRITE_ENABLED';
 const AUDIT_JSONL_ENV = 'STORY_AGENT_DOMAIN_SAFETY_MIGRATION_AUDIT_JSONL';
@@ -375,13 +376,18 @@ export async function migrateStoryDomainSafety(input: {
     human_review_complete: false,
     real_credit_granted: false,
   };
-  const story: StoryGenerateResult = {
+  const storyWithSafety: StoryGenerateResult = {
     ...snapshot.story,
     sourceDomain: request.expected_source_domain,
     current_version_id: nextVersionId,
     domain_safety: item.evaluated_safety,
     domain_safety_migration: migrationRecord,
   };
+  const story = await rebuildDerivedStoryState(storyWithSafety, {
+    // The exact report was evaluated during migration preflight and is part of
+    // the operator-authorized request. Reuse it while rebuilding all derivatives.
+    revalidateDomainSafety: false,
+  });
   const migratedSnapshot: StoryProjectVersionSnapshot = {
     project_id: meta.project_id,
     version_id: nextVersionId,

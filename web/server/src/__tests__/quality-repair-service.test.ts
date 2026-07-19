@@ -193,6 +193,30 @@ function makeAiComicStory(): StoryGenerateResult {
 }
 
 describe('quality-repair-service', () => {
+  it('marks a quality-only recomputation as not repaired when story content is unchanged', async () => {
+    const base = makeAiComicStory();
+    const story: StoryGenerateResult = {
+      ...base,
+      generation_type: 'character_story',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      story_blueprint: base.story_blueprint
+        ? {
+            ...base.story_blueprint,
+            video_type: 'character_story',
+            presentation_style: 'cinematic',
+          }
+        : undefined,
+    };
+
+    const result = await repairStoryWithQualityWorkflow(story, {});
+
+    expect(result.trace.applied).toBe(false);
+    expect(result.trace.reason).toBe('quality_recomputed_not_repaired');
+    expect(result.story.full_text).toBe(story.full_text);
+    expect(result.story.scene_breakdown).toEqual(story.scene_breakdown);
+  });
+
   it('locally repairs AI comic genre signals without leaking quality labels', async () => {
     const { story, trace } = await repairStoryWithQualityWorkflow(makeAiComicStory(), {});
 

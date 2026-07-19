@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildGearsExecutionOperationalMetrics,
+  buildGearsExecutionRecoveryPlan,
   buildRejectedGearsLedgerItem,
   getGearsExecutionConfigInfo,
   getGearsExecutionContractInfo,
   getGearsExecutionWorkerCapabilities,
   mergeGearsCallbackEvents,
   normalizeGearsJobCallback,
+  reconcileGearsLedgerExecutionCosts,
   submitGearsExecutionJobs,
+  summarizeGearsExecutionCostGovernance,
 } from '../services/gears-execution-service.js';
 import {
   GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
@@ -27,6 +31,7 @@ function executionWorkerCapabilities() {
       'storyboard_image',
       'character_image',
       'scene_image',
+      'prop_image',
       'seedance_video',
       'subtitle_render',
       'audio_mix',
@@ -51,6 +56,16 @@ function stubExecutionWorkerFetch(submitPayload: unknown) {
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
+}
+
+function externalCallAuthorization(reference: string) {
+  return {
+    authorized: true as const,
+    authorization_reference: `test-approval://${reference}`,
+    max_cost_amount: 10,
+    cost_currency: 'CNY',
+    data_transfer_acknowledged: true as const,
+  };
 }
 
 afterEach(() => {
@@ -133,6 +148,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('workbench-capability-guard'),
       units: [{
         source_unit_id: 'shot-1',
         payload: { seedance_prompt: '少年站在门口。' },
@@ -147,6 +163,48 @@ describe('gears-execution-service', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://workbench.example.test/gears/capabilities');
+  });
+
+  it('does not send provider asset inputs to a replacement worker that has not attested handoff support', async () => {
+    process.env.GEARS_EXECUTION_WORKER_API_BASE_URL = 'https://worker.example.test/root';
+    const fetchMock = stubExecutionWorkerFetch({
+      jobs: [{ source_unit_id: 'shot-1', gears_job_id: 'must-not-submit', status: 'queued' }],
+    });
+
+    const result = await submitGearsExecutionJobs({
+      title: 'provider asset capability guard',
+      jobType: 'seedance_video',
+      callbackPath: '/api/projects/demo/gears-callback',
+      useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('provider-asset-capability-guard'),
+      units: [{
+        source_unit_id: 'shot-1',
+        payload: {
+          seedance_prompt: '少年站在门口。',
+          provider_asset_inputs: [{
+            schema_version: 'gears-provider-asset-input/v1',
+            asset_id: 'character-zhou',
+          }],
+        },
+        local_gears_job_id: 'local-gears-shot-1',
+        provider_asset_handoffs: [{
+          schema_version: 'gears-provider-asset-handoff-audit/v1',
+          asset_id: 'character-zhou',
+          content_sha256: 'a'.repeat(64),
+          reference_slot: 'character_1',
+          transport_kind: 'https_url',
+          url_origin: 'https://assets.culture-production.cn',
+          verified_at: '2026-07-19T12:00:00.000Z',
+        }],
+      }],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: expect.stringContaining('provider_asset_handoff_supported=true'),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -224,6 +282,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('nested-accepted-units'),
       units: [{
         source_unit_id: 'shot-1',
         payload: { seedance_prompt: '0-3秒：少年站在门口。' },
@@ -273,6 +332,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('mixed-submit-response'),
       units: [
         {
           source_unit_id: 'shot-1',
@@ -337,6 +397,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('deep-submit-envelope'),
       units: [
         {
           source_unit_id: 'shot-1',
@@ -390,6 +451,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('rejected-only-response'),
       units: [{
         source_unit_id: 'shot-1',
         payload: { seedance_prompt: '' },
@@ -469,6 +531,7 @@ describe('gears-execution-service', () => {
       jobType: 'seedance_video',
       callbackPath: '/api/projects/demo/gears-callback',
       useGearsApi: true,
+      externalCallAuthorization: externalCallAuthorization('nested-single-task'),
       units: [{
         source_unit_id: 'shot-1',
         payload: { seedance_prompt: '0-3秒：少年站在门口。' },
@@ -511,5 +574,281 @@ describe('gears-execution-service', () => {
       event_id: `gears-event-${GEARS_CALLBACK_EVENT_RETENTION_LIMIT + 4}`,
       progress_percent: GEARS_CALLBACK_EVENT_RETENTION_LIMIT + 4,
     });
+  });
+
+  it('normalizes provider-reported execution cost aliases', () => {
+    const callback = normalizeGearsJobCallback({
+      jobId: 'gears-cost-report-001',
+      sourceUnitId: 'shot-cost-1',
+      taskStatus: 'SUCCEEDED',
+      costAmount: 6.25,
+      currency: 'cny',
+    });
+
+    expect(callback).toMatchObject({
+      actual_cost_amount: 6.25,
+      cost_currency: 'CNY',
+    });
+  });
+
+  it('reconciles the aggregate actual cost for every job sharing one authorization', () => {
+    const authorization = {
+      ...externalCallAuthorization('aggregate-cost-boundary'),
+      confirmed_at: '2026-07-19T00:00:00.000Z',
+    };
+    const items = [
+      {
+        ledger_id: 'ledger-cost-1',
+        gears_job_id: 'gears-cost-1',
+        job_type: 'seedance_video' as const,
+        source_unit_id: 'shot-cost-1',
+        external_call_authorization: authorization,
+        status: 'ready' as const,
+        artifact_urls: ['https://cdn.example.test/shot-cost-1.mp4'],
+        submitted_at: '2026-07-19T00:00:00.000Z',
+        updated_at: '2026-07-19T00:01:00.000Z',
+        execution_cost: {
+          actual_cost_amount: 6,
+          cost_currency: 'CNY',
+          provider_reported_at: '2026-07-19T00:01:00.000Z',
+          reporting_channel: 'callback_or_poll' as const,
+          boundary_status: 'within_authorization' as const,
+        },
+      },
+      {
+        ledger_id: 'ledger-cost-2',
+        gears_job_id: 'gears-cost-2',
+        job_type: 'seedance_video' as const,
+        source_unit_id: 'shot-cost-2',
+        external_call_authorization: authorization,
+        status: 'ready' as const,
+        artifact_urls: ['https://cdn.example.test/shot-cost-2.mp4'],
+        submitted_at: '2026-07-19T00:00:00.000Z',
+        updated_at: '2026-07-19T00:02:00.000Z',
+        execution_cost: {
+          actual_cost_amount: 5,
+          cost_currency: 'CNY',
+          provider_reported_at: '2026-07-19T00:02:00.000Z',
+          reporting_channel: 'callback_or_poll' as const,
+          boundary_status: 'within_authorization' as const,
+        },
+      },
+    ];
+
+    const reconciled = reconcileGearsLedgerExecutionCosts(items);
+
+    expect(reconciled).toHaveLength(2);
+    expect(reconciled.every(item => item.execution_cost?.boundary_status === 'exceeded_authorization')).toBe(true);
+    expect(reconciled.map(item => item.execution_cost?.authorization_total_actual_cost_amount)).toEqual([11, 11]);
+    expect(reconciled[0]?.execution_cost).toMatchObject({
+      authorization_reference: 'test-approval://aggregate-cost-boundary',
+      authorized_max_cost_amount: 10,
+      cost_currency: 'CNY',
+    });
+  });
+
+  it('flags authorized terminal jobs whose actual provider cost has not settled', () => {
+    const summary = summarizeGearsExecutionCostGovernance({
+      schema_version: 'gears-job-ledger/v1',
+      items: [{
+        ledger_id: 'ledger-cost-pending',
+        gears_job_id: 'gears-cost-pending',
+        job_type: 'seedance_video',
+        source_unit_id: 'shot-cost-pending',
+        external_call_authorization: {
+          ...externalCallAuthorization('pending-settlement'),
+          confirmed_at: '2026-07-19T00:00:00.000Z',
+        },
+        status: 'ready',
+        artifact_urls: ['https://cdn.example.test/shot-cost-pending.mp4'],
+        submitted_at: '2026-07-19T00:00:00.000Z',
+        updated_at: '2026-07-19T00:01:00.000Z',
+      }],
+    });
+
+    expect(summary).toMatchObject({
+      authorized_job_count: 1,
+      reported_cost_count: 0,
+      pending_terminal_cost_report_count: 1,
+      boundary_violation_count: 0,
+    });
+  });
+
+  it('derives external execution latency, output rate, failure, and cost metrics without local acceptance credit', () => {
+    const authorization = {
+      ...externalCallAuthorization('operational-metrics'),
+      confirmed_at: '2026-07-19T00:00:00.000Z',
+    };
+    const metrics = buildGearsExecutionOperationalMetrics({
+      schema_version: 'gears-job-ledger/v1',
+      updated_at: '2026-07-19T00:04:00.000Z',
+      items: [
+        {
+          ledger_id: 'ledger-metrics-ready',
+          gears_job_id: 'gears-metrics-ready',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-metrics-ready',
+          external_call_authorization: authorization,
+          status: 'ready',
+          artifact_urls: ['https://cdn.example.test/metrics-ready.mp4'],
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:01:00.000Z',
+          completed_at: '2026-07-19T00:01:00.000Z',
+          callback_events: [{
+            received_at: '2026-07-19T00:01:05.000Z',
+            provider_event_at: '2026-07-19T00:01:00.000Z',
+            status: 'ready',
+          }],
+          execution_cost: {
+            actual_cost_amount: 4,
+            cost_currency: 'CNY',
+            provider_reported_at: '2026-07-19T00:01:00.000Z',
+            reporting_channel: 'callback_or_poll',
+            boundary_status: 'within_authorization',
+          },
+        },
+        {
+          ledger_id: 'ledger-metrics-failed',
+          gears_job_id: 'gears-metrics-failed',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-metrics-failed',
+          external_call_authorization: authorization,
+          status: 'failed',
+          artifact_urls: [],
+          failure_category: 'provider_timeout',
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:02:00.000Z',
+          completed_at: '2026-07-19T00:02:00.000Z',
+          callback_events: [{
+            received_at: '2026-07-19T00:02:10.000Z',
+            provider_event_at: '2026-07-19T00:02:00.000Z',
+            status: 'failed',
+          }],
+          execution_cost: {
+            actual_cost_amount: 1,
+            cost_currency: 'CNY',
+            provider_reported_at: '2026-07-19T00:02:00.000Z',
+            reporting_channel: 'callback_or_poll',
+            boundary_status: 'within_authorization',
+          },
+        },
+        {
+          ledger_id: 'ledger-metrics-local',
+          gears_job_id: 'local-gears-metrics-ready',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-metrics-local',
+          status: 'ready',
+          artifact_urls: ['https://local.story-agent.invalid/gears-acceptance/local.mp4'],
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:00:01.000Z',
+          completed_at: '2026-07-19T00:00:01.000Z',
+        },
+      ],
+    });
+
+    expect(metrics).toMatchObject({
+      measured_at: '2026-07-19T00:04:00.000Z',
+      all_job_count: 3,
+      authorized_external_job_count: 2,
+      terminal_job_count: 2,
+      ready_external_output_count: 1,
+      actual_output_rate_percent: 50,
+      terminal_failure_count: 1,
+      failure_rate_percent: 50,
+      failure_category_counts: { provider_timeout: 1 },
+      execution_duration_ms: { sample_count: 2, p50: 60000, p95: 120000, max: 120000 },
+      callback_delivery_latency_ms: { sample_count: 2, p50: 5000, p95: 10000, max: 10000 },
+      actual_cost_by_currency: { CNY: 5 },
+    });
+  });
+
+  it('builds fail-closed recovery actions from stable failure categories', () => {
+    const plan = buildGearsExecutionRecoveryPlan({
+      schema_version: 'gears-job-ledger/v1',
+      updated_at: '2026-07-19T00:05:00.000Z',
+      items: [
+        {
+          ledger_id: 'ledger-recovery-timeout',
+          gears_job_id: 'gears-recovery-timeout',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-recovery-timeout',
+          status: 'failed',
+          failure_category: 'provider_timeout',
+          artifact_urls: [],
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:01:00.000Z',
+        },
+        {
+          ledger_id: 'ledger-recovery-payload',
+          gears_job_id: 'gears-recovery-payload',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-recovery-payload',
+          status: 'rejected',
+          failure_category: 'payload_invalid',
+          artifact_urls: [],
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:02:00.000Z',
+        },
+        {
+          ledger_id: 'ledger-recovery-policy',
+          gears_job_id: 'gears-recovery-policy',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-recovery-policy',
+          status: 'failed',
+          failure_category: 'content_policy',
+          artifact_urls: [],
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:03:00.000Z',
+        },
+        {
+          ledger_id: 'ledger-recovery-poll',
+          gears_job_id: 'gears-recovery-poll',
+          job_type: 'seedance_video',
+          source_unit_id: 'shot-recovery-poll',
+          status: 'processing',
+          artifact_urls: [],
+          last_poll_error: 'GEARS status request failed: connection reset',
+          last_poll_failure_category: 'network_error',
+          submitted_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:04:00.000Z',
+        },
+      ],
+    });
+
+    expect(plan).toMatchObject({
+      generated_at: '2026-07-19T00:05:00.000Z',
+      item_count: 4,
+      retry_eligible_count: 2,
+      status_resync_count: 1,
+      operator_intervention_count: 3,
+      auto_executable_count: 1,
+    });
+    expect(plan.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        gears_job_id: 'gears-recovery-timeout',
+        strategy: 'retry_transient_failure',
+        retry_eligible: true,
+        can_auto_execute: false,
+        requires_new_external_call_authorization: true,
+      }),
+      expect.objectContaining({
+        gears_job_id: 'gears-recovery-payload',
+        strategy: 'repair_input_then_retry',
+        retry_eligible: true,
+        can_auto_execute: false,
+      }),
+      expect.objectContaining({
+        gears_job_id: 'gears-recovery-policy',
+        strategy: 'manual_content_policy_review',
+        retry_eligible: false,
+      }),
+      expect.objectContaining({
+        gears_job_id: 'gears-recovery-poll',
+        strategy: 'status_resync',
+        retry_eligible: false,
+        can_auto_execute: true,
+        requires_new_external_call_authorization: false,
+      }),
+    ]));
   });
 });

@@ -65,13 +65,14 @@ describe('validateDramaticStory', () => {
       type: '历史人物',
       summary: '周敦颐，北宋思想家，曾任南安军司理参军。',
       story: [
-        '拒签死刑文书：周敦颐任南安军司理参军时，发现疑案证据不足，囚犯依法不该死。知军催他签字，他拒绝草草画押。',
-        '他对知军说："为上官杀人，以媚于人，吾不为也。"后来囚犯免死。',
+        '拒签死刑文书：周敦颐任南安军司理参军时，发现疑案证据不足，囚犯依法不该死。知军王逵催他签字，他拒绝草草画押。',
+        '他对知军王逵说："杀人以媚人，吾不为也！"后来囚犯免死。',
+        '另有后世学术争议讨论陈抟与理学思想来源，不属于拒签事件人物。',
         '父母爱之如子，为之命名，教之读书。',
       ].join('\n\n'),
       culturalSignificance: '周敦颐的选择体现公正、廉洁与良知。',
       relatedLocations: [{ name: '道县濂溪', description: '周敦颐相关地点' }],
-      keywords: ['周敦颐', '南安军', '拒签', '案卷'],
+      keywords: ['周敦颐', '通书', '慎动', '王逵', '陈抟', '南安军', '拒签', '案卷'],
       sources: ['知识库测试条目'],
       credibility: 'medium',
       unverifiedPoints: [],
@@ -93,7 +94,92 @@ describe('validateDramaticStory', () => {
     expect(story.full_text).toContain('囚犯因此免死');
     expect(story.full_text).not.toContain('永州→道县');
     expect(story.full_text).not.toContain('爱之如子');
+    expect(story.logline).not.toMatch(/永州→道县|籍贯\/出生地|少年成长地/);
+    expect(story.full_text).toContain('知军王逵');
+    expect(story.full_text).not.toContain('通书');
+    expect(story.full_text).toContain('"杀人以媚人，吾不为也！"');
+    expect(story.full_text).not.toMatch(/为上官杀人|以媚于人/);
+    expect(story.characters.map(character => character.name)).toEqual(['周敦颐', '王逵']);
+
+    const validReport = validateDramaticStory({
+      ...story,
+      selectedEvent: '拒签死刑文书',
+      videoType: 'character_story',
+    });
+    expect(validReport.passed).toBe(true);
+
+    const pollutedReport = validateDramaticStory({
+      ...story,
+      full_text: story.full_text.replace('杀人以媚人，吾不为也！', '为上官杀人，以媚于人，吾不为也。'),
+      scene_breakdown: story.scene_breakdown.map((scene, index) => index === 2
+        ? { ...scene, plot: scene.plot.replaceAll('知军王逵', '通书'), characters: ['周敦颐', '通书', '慎动'] }
+        : scene),
+      selectedEvent: '拒签死刑文书',
+      videoType: 'character_story',
+    });
+    expect(pollutedReport.passed).toBe(false);
+    expect(pollutedReport.issues).toContain('拒签史实失真——著作或概念被误作人物，或可证原句遭改写');
+  });
+
+  it('does not split a protagonist into a duplicate shorter character asset', () => {
+    const entry: EntryDetail = {
+      name: '周敦颐拒绝签押——用户项目素材',
+      province: '用户素材',
+      region: '用户素材',
+      type: '用户素材',
+      summary: '周敦颐发现案卷疑点并拒绝签押。',
+      story: '北宋南安的刑狱压力下，周敦颐发现案卷疑点，拒绝签押并承担后果。',
+      culturalSignificance: '用户项目素材，需要核验。',
+      relatedLocations: [],
+      keywords: ['周敦颐', '周敦', '拒绝', '签押', '案卷'],
+      sources: ['用户提供素材'],
+      credibility: '用户提供',
+      unverifiedPoints: [],
+    };
+
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '周敦颐拒绝签押',
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      targetDuration: '3分钟',
+      tone: '',
+    });
+
     expect(story.characters.map(character => character.name)).toEqual(['周敦颐']);
+    expect(story.scene_breakdown.flatMap(scene => scene.characters)).not.toContain('周敦');
+    expect(new Set(story.scene_breakdown.map(scene => scene.location))).toEqual(new Set(['南安军衙']));
+    expect(story.full_text).toContain('案卷');
+    expect(story.full_text).not.toContain('用户素材，时代风云激荡');
+  });
+
+  it('does not duplicate the subject when documentary and lecture titles already equal the central event', () => {
+    const entry: EntryDetail = {
+      name: '岳阳楼的一天——用户项目素材',
+      province: '用户素材',
+      region: '岳阳',
+      type: '用户素材',
+      summary: '跟随讲解员观察岳阳楼的一天。',
+      story: '清晨开门，白天讲解，黄昏闭馆。',
+      culturalSignificance: '现场观察需要文献和实景互证。',
+      relatedLocations: [],
+      keywords: ['岳阳楼', '讲解员'],
+      sources: ['用户提供素材'],
+      credibility: '用户提供',
+      unverifiedPoints: [],
+    };
+
+    for (const videoType of ['documentary_short', 'lecture_video'] as const) {
+      const story = generateDramaticContent({
+        entry,
+        centralEvent: '岳阳楼的一天',
+        videoType,
+        presentationStyle: videoType === 'documentary_short' ? 'documentary' : 'host_narration',
+        targetDuration: '3分钟',
+        tone: '',
+      });
+      expect(story.title).toBe('岳阳楼的一天');
+    }
   });
 
   it('does not inject case-signing dialogue or unrelated locations into a Mao Zedong awakening story', () => {

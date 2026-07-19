@@ -2,6 +2,14 @@ import type { AIModelProfile } from '@shared/types.js';
 
 const MODEL_PROFILES: AIModelProfile[] = [
   {
+    id: 'local_story_engine',
+    label: '本地故事引擎',
+    description: '不外发素材、不调用外部模型的确定性 Story Agent 组装引擎',
+    runtime: 'local',
+    model: 'deterministic_v1',
+    capabilities: ['story_generation', 'scene_regeneration'],
+  },
+  {
     id: 'claude_sonnet',
     label: 'Claude Sonnet',
     description: '平衡速度和质感，适合大多数故事生成与局部重写场景',
@@ -43,4 +51,11 @@ export function getModelProfileById(id: string | undefined): AIModelProfile | un
 
 export function resolveModelProfile(id: string | undefined): AIModelProfile {
   return getModelProfileById(id) ?? getRecommendedModelProfile();
+}
+
+export function resolveStoryGenerationModelProfile(id: string | undefined): AIModelProfile {
+  if (!id) return getModelProfileById('local_story_engine')!;
+  const profile = getModelProfileById(id);
+  if (!profile) throw new Error(`Unknown story generation model profile "${id}"`);
+  return profile;
 }

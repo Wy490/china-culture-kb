@@ -130,6 +130,11 @@ describe('kb_generate_script', () => {
     expect(result.material_sufficiency?.active_stage).toBe('minimum_viable_story');
     expect(result.material_sufficiency?.stage_reports?.find(report => report.stage === 'script_ready')?.status).toBe('blocked');
     expect(result.material_sufficiency?.recommended_next_questions.join('\n')).toContain('完整故事正文');
+    expect(result).toMatchObject({
+      legacy_writer: true,
+      canonical_tool: 'kb_story_agent_generate',
+      counts_as_canonical_generation: false,
+    });
 
     // Verify file was written
     const scriptPath = path.join(tmpDir, '..', 'scripts', '纪录片', '白蛇传.md');

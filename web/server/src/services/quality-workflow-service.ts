@@ -12,10 +12,14 @@ import type {
   ProductionMaterialReadinessReport,
   QualityRepairAction,
   StoryGenerateResult,
+  StoryQualityGateResult,
+  StoryQualityGatesV2,
   StoryQualityReport,
 } from '@shared/types.js';
 import { getGenreSampleGuidance, getGenreStoryProfile } from './genre-story-profiles.js';
 import { getNarrativePatternDiagnostics, getNarrativePatternRepairActions } from './narrative-pattern-library.js';
+import { getStoryFamilyRepairGuidance } from './story-family-quality-service.js';
+import { buildStoryHumanReviewAlignment } from './story-human-review-alignment-service.js';
 
 export function enrichStoryQualityReport(input: {
   story: StoryGenerateResult;
@@ -32,7 +36,15 @@ export function enrichStoryQualityReport(input: {
   const gearsReport = buildGearsReadinessReport(input.story, input.gearsDelivery);
   const productionMaterialReport = buildProductionMaterialQualityReport(input.story.production_material_readiness);
   const audienceReport = buildAudienceTextReport(input.story);
-  const repairActionItems = buildRepairActionItems(outlineReport, patternReport, gearsReport, productionMaterialReport, audienceReport);
+  const repairActionItems = buildRepairActionItems(
+    input.story,
+    input.qualityReport,
+    outlineReport,
+    patternReport,
+    gearsReport,
+    productionMaterialReport,
+    audienceReport,
+  );
   const mergedRepairActions = [
     ...(input.qualityReport.repair_actions ?? []),
     ...repairActionItems.map(item => item.prompt),
@@ -48,8 +60,17 @@ export function enrichStoryQualityReport(input: {
     ...input.qualityReport.issues,
     ...buildWorkflowBlockingIssues(outlineReport, patternReport, gearsReport, productionMaterialReport, audienceReport),
   ].filter((item, index, arr) => arr.indexOf(item) === index);
+  const qualityGates = buildQualityGates({
+    story: input.story,
+    qualityReport: input.qualityReport,
+    outlineReport,
+    gearsReport,
+    productionMaterialReport,
+    audienceReport,
+    legacyPassed: passed,
+  });
 
-  return {
+  const enrichedReport: StoryQualityReport = {
     ...input.qualityReport,
     passed,
     issues,
@@ -59,6 +80,7 @@ export function enrichStoryQualityReport(input: {
     gears_readiness_report: gearsReport,
     production_material_readiness_report: productionMaterialReport,
     audience_text_report: audienceReport,
+    quality_gates: qualityGates,
     repair_action_items: repairActionItems,
     repair_preview: buildCombinedPreview(
       outlineReport.preview,
@@ -67,6 +89,186 @@ export function enrichStoryQualityReport(input: {
       productionMaterialReport?.preview ?? '',
       audienceReport.preview,
     ),
+  };
+  return {
+    ...enrichedReport,
+    human_review_alignment: buildStoryHumanReviewAlignment({
+      story: input.story,
+      qualityReport: enrichedReport,
+    }),
+  };
+}
+
+function buildQualityGates(input: {
+  story: StoryGenerateResult;
+  qualityReport: StoryQualityReport;
+  outlineReport: OutlineCoverageReport;
+  gearsReport: ReturnType<typeof buildGearsReadinessReport>;
+  productionMaterialReport: ProductionMaterialQualityReport | undefined;
+  audienceReport: AudienceTextReport;
+  legacyPassed: boolean;
+}): StoryQualityGatesV2 {
+  const narrativeIssues = buildNarrativeGateIssues(input.qualityReport);
+  const narrativeGate = gateResult({
+    gateId: 'narrative_gate',
+    scope: 'story',
+    passed: narrativeIssues.length === 0,
+    score: input.qualityReport.genre_score,
+    passedSummary: '故事结构、冲突、行动与主题闭环通过。',
+    failedSummary: '故事叙事仍有阻断项，需修订后发布。',
+    issues: narrativeIssues,
+  });
+
+  const domainSafety = input.story.domain_safety;
+  const factualCulturalGate: StoryQualityGateResult = !domainSafety
+    ? {
+        gate_id: 'factual_cultural_gate',
+        scope: 'story',
+        status: 'not_evaluated',
+        // Legacy stories may not have an independent domain-safety snapshot. Keep
+        // publication backward compatible while clearly exposing the missing audit.
+        passed: true,
+        summary: '尚无独立事实文化安全报告；沿用当前正文证据边界，建议补做机器校验。',
+        issues: [],
+      }
+    : gateResult({
+        gateId: 'factual_cultural_gate',
+        scope: 'story',
+        passed: domainSafety.passed,
+        passedSummary: '事实与文化边界机器校验通过。',
+        failedSummary: '事实或文化边界存在阻断项。',
+        issues: domainSafety.blockers.map(finding => finding.message),
+      });
+
+  const outlineGate = gateResult({
+    gateId: 'outline_gate',
+    scope: 'story',
+    passed: input.outlineReport.coverage_score >= 70,
+    score: input.outlineReport.coverage_score,
+    passedSummary: '故事对用户大纲的覆盖达到发布线。',
+    failedSummary: '故事对用户大纲的覆盖不足。',
+    issues: input.outlineReport.coverage_score >= 70 ? [] : [input.outlineReport.preview],
+  });
+
+  const audienceTextGate = gateResult({
+    gateId: 'audience_text_gate',
+    scope: 'story',
+    passed: input.audienceReport.clean,
+    passedSummary: '观众可见文本未发现创作指令污染。',
+    failedSummary: '观众可见文本包含创作指令或质量标签。',
+    issues: input.audienceReport.issue_items.map(issue => `${issue.label}：${issue.excerpt}`),
+  });
+
+  const productionMaterialGate: StoryQualityGateResult = input.productionMaterialReport
+    ? gateResult({
+        gateId: 'production_material_gate',
+        scope: 'production',
+        passed: input.productionMaterialReport.passed,
+        score: input.productionMaterialReport.score,
+        passedSummary: '生产素材包达到当前模板要求。',
+        failedSummary: '生产素材包尚未达到当前模板要求。',
+        issues: [
+          ...input.productionMaterialReport.missing_blocking_fields,
+          ...input.productionMaterialReport.missing_risk_fields,
+        ].map(field => `${field.label}：${field.reason}`),
+      })
+    : notEvaluatedProductionGate(
+        'production_material_gate',
+        '尚无生产素材就绪报告，需先建立素材包。',
+      );
+
+  const gearsContractGate = gateResult({
+    gateId: 'gears_contract_gate',
+    scope: 'production',
+    passed: input.gearsReport.ready,
+    score: input.gearsReport.readiness_score,
+    passedSummary: 'GEARS 分段与提示合同达到生产要求。',
+    failedSummary: 'GEARS 分段或提示合同尚未达到生产要求。',
+    issues: input.gearsReport.issue_items,
+  });
+
+  const assetGate = notEvaluatedProductionGate(
+    'asset_gate',
+    '待 Production Board 完成真实资产绑定评估。',
+  );
+  const externalProviderGate = notEvaluatedProductionGate(
+    'external_provider_gate',
+    '待外部 Provider preflight 与真实回执验收。',
+  );
+
+  const storyGates = [narrativeGate, factualCulturalGate, outlineGate, audienceTextGate];
+  const productionGates = [productionMaterialGate, gearsContractGate, assetGate, externalProviderGate];
+  const storyPublishable = storyGates.every(gate => gate.passed);
+  const productionReady = storyPublishable && productionGates.every(gate => gate.passed);
+
+  return {
+    schema_version: 'quality-gates/v2',
+    narrative_gate: narrativeGate,
+    factual_cultural_gate: factualCulturalGate,
+    outline_gate: outlineGate,
+    audience_text_gate: audienceTextGate,
+    production_material_gate: productionMaterialGate,
+    gears_contract_gate: gearsContractGate,
+    asset_gate: assetGate,
+    external_provider_gate: externalProviderGate,
+    story_publishable: storyPublishable,
+    production_ready: productionReady,
+    story_blocking_gate_ids: storyGates.filter(gate => !gate.passed).map(gate => gate.gate_id),
+    production_blocking_gate_ids: productionGates.filter(gate => !gate.passed).map(gate => gate.gate_id),
+    legacy_passed: input.legacyPassed,
+  };
+}
+
+function buildNarrativeGateIssues(report: StoryQualityReport): string[] {
+  const checks: Array<[boolean, string]> = [
+    [report.hasCentralEvent, '缺少中心事件'],
+    [report.hasConflict, '缺少可见冲突'],
+    [report.hasProtagonistChoice, '缺少主角选择'],
+    [report.hasSceneAction, '缺少场景行动'],
+    [report.hasClimax, '缺少高潮或关键转折'],
+    [report.hasEndingTheme, '结尾未形成主题闭环'],
+    [report.isNotBiographySummary, '正文仍偏人物履历摘要'],
+  ];
+  const issues = checks.filter(([passed]) => !passed).map(([, issue]) => issue);
+  if (typeof report.genre_score === 'number' && report.genre_score < 70) {
+    issues.push(`流派叙事分 ${report.genre_score}/100，低于发布线 70`);
+  }
+  issues.push(...(report.missing_required_elements ?? []).map(item => `缺少必需元素：${item}`));
+  issues.push(...(report.forbidden_patterns_found ?? []).map(item => `命中禁用模式：${item}`));
+  return issues.filter((item, index, all) => all.indexOf(item) === index);
+}
+
+function gateResult(input: {
+  gateId: StoryQualityGateResult['gate_id'];
+  scope: StoryQualityGateResult['scope'];
+  passed: boolean;
+  score?: number;
+  passedSummary: string;
+  failedSummary: string;
+  issues: string[];
+}): StoryQualityGateResult {
+  return {
+    gate_id: input.gateId,
+    scope: input.scope,
+    status: input.passed ? 'passed' : 'failed',
+    passed: input.passed,
+    ...(typeof input.score === 'number' ? { score: input.score } : {}),
+    summary: input.passed ? input.passedSummary : input.failedSummary,
+    issues: input.passed ? [] : input.issues,
+  };
+}
+
+function notEvaluatedProductionGate(
+  gateId: StoryQualityGateResult['gate_id'],
+  summary: string,
+): StoryQualityGateResult {
+  return {
+    gate_id: gateId,
+    scope: 'production',
+    status: 'not_evaluated',
+    passed: false,
+    summary,
+    issues: [],
   };
 }
 
@@ -195,12 +397,11 @@ function buildPatternQualityReport(input: {
     videoType: input.story.video_type,
     selectedPatternIds: input.narrativePatternIds,
   });
-  const text = storyText(input.story);
   const signals: PatternQualitySignal[] = [];
 
   for (const field of profile.required_fields) {
     const missing = input.qualityReport.missing_required_elements?.includes(field) ?? false;
-    signals.push({
+    signals.push(createPatternSignal({
       signal_id: `required-${field}`,
       label: `类型字段：${field}`,
       status: missing ? 'missing' : 'satisfied',
@@ -209,7 +410,13 @@ function buildPatternQualityReport(input: {
       gap: missing ? `缺少 ${field}。` : '已填写。',
       suggested_scene_ids: [],
       repair_hint: missing ? `补充 ${field}，并让它和正文场景一致。` : '保持一致即可。',
-    });
+    }, {
+      evidenceSceneIds: [],
+      observableEvidence: missing ? [] : [`story.${field} 已填写。`],
+      counterEvidence: missing ? [`story.${field} 为空。`] : [],
+      confidence: 1,
+      repairTarget: { scope: 'story_field', scene_ids: [], fields: [field] },
+    }));
   }
 
   for (const weakBeat of input.qualityReport.weak_beats ?? []) {
@@ -217,7 +424,8 @@ function buildPatternQualityReport(input: {
     const beat = Number.isFinite(order)
       ? input.story.story_blueprint?.genre_beats.find(item => item.order === order)
       : undefined;
-    signals.push({
+    const beatSceneIds = beat?.scene_id ? [beat.scene_id] : [];
+    signals.push(createPatternSignal({
       signal_id: `weak-beat-${signals.length + 1}`,
       label: beat?.function_label ?? weakBeat,
       status: 'weak',
@@ -228,25 +436,46 @@ function buildPatternQualityReport(input: {
       repair_hint: beat?.scene_id
         ? `强化场景 ${beat.scene_id}：${beat.content_requirement}`
         : `按类型蓝图补强：${weakBeat}`,
-    });
+    }, {
+      evidenceSceneIds: beatSceneIds,
+      observableEvidence: beatSceneIds.flatMap(sceneId => observableSceneEvidence(input.story, sceneId)),
+      counterEvidence: [weakBeat],
+      confidence: 0.9,
+      repairTarget: { scope: 'scene', scene_ids: beatSceneIds, fields: ['plot', 'key_action', 'conflict'] },
+    }));
   }
 
   for (const diagnostic of narrativeDiagnostics) {
-    signals.push({
+    const evaluation = evaluateSceneSignalEvidence(input.story, diagnostic.signal, {
+      diagnosticEvidence: diagnostic.evidence,
+      diagnosticStatus: diagnostic.status,
+    });
+    signals.push(createPatternSignal({
       signal_id: `pattern-${diagnostic.diagnostic_id}`,
       label: `${diagnostic.pattern_label}：${diagnostic.signal}`,
-      status: diagnostic.status,
+      status: evaluation.status,
       source: 'narrative_pattern',
       impact: diagnostic.impact,
-      gap: diagnostic.gap,
-      suggested_scene_ids: diagnostic.suggested_scene_ids,
-      repair_hint: diagnostic.repair_hint,
-    });
+      gap: evaluation.status === 'satisfied' ? diagnostic.gap : diagnostic.gap,
+      suggested_scene_ids: evaluation.repairTarget.scene_ids.length > 0
+        ? evaluation.repairTarget.scene_ids
+        : diagnostic.suggested_scene_ids,
+      repair_hint: evaluation.status === 'satisfied'
+        ? '保持现有机制表达，并避免后续修复时删除证据场景。'
+        : diagnostic.repair_hint,
+    }, {
+      evidenceSceneIds: evaluation.evidenceSceneIds,
+      observableEvidence: evaluation.observableEvidence,
+      counterEvidence: evaluation.counterEvidence,
+      confidence: evaluation.confidence,
+      repairTarget: evaluation.repairTarget,
+    }));
   }
 
   for (const signal of [...sampleGuidance.quality_signals, ...profile.quality_rules]) {
-    const status = hasSignalText(text, signal) ? 'satisfied' : 'weak';
-    signals.push({
+    const evaluation = evaluateSceneSignalEvidence(input.story, signal);
+    const status = evaluation.status;
+    signals.push(createPatternSignal({
       signal_id: `signal-${signals.length + 1}`,
       label: signal,
       status,
@@ -254,12 +483,18 @@ function buildPatternQualityReport(input: {
         ? 'sample_signal'
         : 'genre_rule',
       impact: '流派信号决定用户选择的叙事机制是否被看见。',
-      gap: status === 'satisfied' ? '已在正文中出现相关表达。' : `缺少可感知的「${signal}」。`,
-      suggested_scene_ids: suggestedSceneIdsForSignal(input.story, signal),
+      gap: status === 'satisfied' ? '已由场景中的动作、对白、后果或画面提供证据。' : `缺少可感知的「${signal}」。`,
+      suggested_scene_ids: evaluation.repairTarget.scene_ids,
       repair_hint: status === 'satisfied'
         ? '保持当前表达。'
         : `把「${signal}」写进动作、冲突、选择或镜头，不要只加标签。`,
-    });
+    }, {
+      evidenceSceneIds: evaluation.evidenceSceneIds,
+      observableEvidence: evaluation.observableEvidence,
+      counterEvidence: evaluation.counterEvidence,
+      confidence: evaluation.confidence,
+      repairTarget: evaluation.repairTarget,
+    }));
   }
 
   const satisfied = signals.filter(signal => signal.status === 'satisfied');
@@ -274,7 +509,7 @@ function buildPatternQualityReport(input: {
   ].filter((item, index, arr) => arr.indexOf(item) === index);
 
   return {
-    schema_version: 'pattern-quality/v1',
+    schema_version: 'pattern-quality/v2',
     pattern_score: patternScore,
     satisfied_signals: satisfied,
     weak_signals: weak,
@@ -286,6 +521,172 @@ function buildPatternQualityReport(input: {
   };
 }
 
+type PatternQualitySignalDraft = Omit<
+  PatternQualitySignal,
+  'evidence_scene_ids' | 'observable_evidence' | 'counter_evidence' | 'confidence' | 'repair_target'
+>;
+
+function createPatternSignal(
+  draft: PatternQualitySignalDraft,
+  evidence: {
+    evidenceSceneIds: number[];
+    observableEvidence: string[];
+    counterEvidence: string[];
+    confidence: number;
+    repairTarget: PatternQualitySignal['repair_target'];
+  },
+): PatternQualitySignal {
+  return {
+    ...draft,
+    evidence_scene_ids: uniqueNumbers(evidence.evidenceSceneIds),
+    observable_evidence: uniqueStrings(evidence.observableEvidence).slice(0, 4),
+    counter_evidence: uniqueStrings(evidence.counterEvidence).slice(0, 4),
+    confidence: Math.max(0, Math.min(1, evidence.confidence)),
+    repair_target: {
+      ...evidence.repairTarget,
+      scene_ids: uniqueNumbers(evidence.repairTarget.scene_ids),
+      fields: uniqueStrings(evidence.repairTarget.fields),
+    },
+  };
+}
+
+function evaluateSceneSignalEvidence(
+  story: StoryGenerateResult,
+  signal: string,
+  diagnostic?: {
+    diagnosticEvidence: string[];
+    diagnosticStatus: PatternQualitySignal['status'];
+  },
+): {
+  status: PatternQualitySignal['status'];
+  evidenceSceneIds: number[];
+  observableEvidence: string[];
+  counterEvidence: string[];
+  confidence: number;
+  repairTarget: PatternQualitySignal['repair_target'];
+} {
+  const directlyMatchedSceneIds = story.scene_breakdown
+    .filter((scene) => {
+      const text = observableSignalSceneText(scene, signal);
+      if (!hasSignalText(text, signal)) return false;
+      if (!text.includes(signal)) return true;
+      const withoutLeakedLabel = text.replaceAll(signal, '');
+      return hasSignalText(withoutLeakedLabel, signal);
+    })
+    .map(scene => scene.scene_id);
+  const diagnosticMatchedSceneIds = diagnostic?.diagnosticEvidence.length
+    ? story.scene_breakdown
+        .filter((scene) => {
+          const text = observableSignalSceneText(scene, signal);
+          return diagnostic.diagnosticEvidence.some(term => term.length >= 2 && text.includes(term));
+        })
+        .map(scene => scene.scene_id)
+    : [];
+  let evidenceSceneIds = uniqueNumbers([...directlyMatchedSceneIds, ...diagnosticMatchedSceneIds]);
+
+  // A structural pattern probe can pass without lexical terms (for example,
+  // all scenes having both visible action and a usable visual prompt). In
+  // that case its deterministic target scenes are valid observable evidence.
+  if (
+    evidenceSceneIds.length === 0
+    && diagnostic?.diagnosticStatus === 'satisfied'
+    && diagnostic.diagnosticEvidence.length === 0
+  ) {
+    evidenceSceneIds = suggestedSceneIdsForSignal(story, signal);
+  }
+
+  const topLevelText = [
+    story.title,
+    story.logline,
+    story.theme,
+    story.full_text,
+    story.core_message ?? '',
+    story.slogan_or_key_sentence ?? '',
+  ].join('\n');
+  const leakedLabel = topLevelText.includes(signal);
+  const topLevelOnlySignal = hasSignalText(topLevelText, signal);
+  const status: PatternQualitySignal['status'] = evidenceSceneIds.length > 0
+    ? 'satisfied'
+    : topLevelOnlySignal || diagnostic?.diagnosticStatus === 'weak' || diagnostic?.diagnosticStatus === 'satisfied'
+      ? 'weak'
+      : 'missing';
+  const observableEvidence = evidenceSceneIds.flatMap(sceneId => observableSceneEvidence(story, sceneId, signal));
+  const counterEvidence = status === 'satisfied'
+    ? []
+    : leakedLabel
+      ? [`仅出现质量标签「${signal}」，没有落实为场景动作、对白、后果或可见画面。`]
+      : topLevelOnlySignal
+        ? [`「${signal}」只在标题、梗概、主题或正文概括中出现，缺少对应场景证据。`]
+        : [`未找到支持「${signal}」的场景动作、对白、后果或可见画面。`];
+  const repairSceneIds = evidenceSceneIds.length > 0
+    ? evidenceSceneIds
+    : suggestedSceneIdsForSignal(story, signal);
+
+  return {
+    status,
+    evidenceSceneIds,
+    observableEvidence,
+    counterEvidence,
+    confidence: evidenceSceneIds.length >= 2
+      ? 0.92
+      : evidenceSceneIds.length === 1
+        ? 0.82
+        : leakedLabel
+          ? 0.35
+          : status === 'weak'
+            ? 0.48
+            : 0.22,
+    repairTarget: {
+      scope: 'scene',
+      scene_ids: repairSceneIds,
+      fields: signalRepairFields(signal),
+    },
+  };
+}
+
+function observableSignalSceneText(
+  scene: StoryGenerateResult['scene_breakdown'][number],
+  signal: string,
+): string {
+  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现/.test(signal)
+    ? [
+        scene.cultural_note,
+        scene.factual_basis ?? '',
+        ...(scene.fictionalized_elements ?? []),
+        ...(scene.source_entries ?? []),
+      ]
+    : [];
+  return [
+    scene.plot,
+    scene.key_action,
+    scene.conflict ?? '',
+    scene.dialogue_or_narration ?? '',
+    scene.visual_prompt,
+    scene.camera_suggestion,
+    ...boundaryEvidence,
+  ].join(' ');
+}
+
+function observableSceneEvidence(story: StoryGenerateResult, sceneId: number, signal = ''): string[] {
+  const scene = story.scene_breakdown.find(item => item.scene_id === sceneId);
+  if (!scene) return [];
+  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现/.test(signal)
+    ? [scene.cultural_note, scene.factual_basis ?? '', ...(scene.fictionalized_elements ?? [])]
+    : [];
+  const evidence = [scene.plot, scene.key_action, scene.conflict ?? '', scene.dialogue_or_narration ?? '', ...boundaryEvidence]
+    .map(item => item.trim())
+    .filter(Boolean)
+    .join('；');
+  return evidence ? [`场景 ${scene.scene_id}「${scene.title || scene.dramatic_function}」：${evidence.slice(0, 160)}`] : [];
+}
+
+function signalRepairFields(signal: string): string[] {
+  if (/画面|视觉|光影|空间|路线|表情/.test(signal)) return ['visual_prompt', 'camera_suggestion', 'key_action'];
+  if (/对白|潜台词|旁白|字幕|记忆句|口号/.test(signal)) return ['dialogue_or_narration', 'plot'];
+  if (/来源|史实|事实|边界|证据|现场/.test(signal)) return ['factual_basis', 'cultural_note', 'plot'];
+  return ['plot', 'key_action', 'conflict', 'dialogue_or_narration'];
+}
+
 function buildGearsReadinessReport(
   story: StoryGenerateResult,
   delivery: GearsDeliveryPackage | undefined,
@@ -295,8 +696,17 @@ function buildGearsReadinessReport(
   const assetGaps: string[] = [];
   const unitGaps: string[] = [];
   const promptGaps: string[] = [];
+  const requiresCharacterAssets = [
+    'character_story',
+    'historical_drama',
+    'legend_story',
+    'ai_comic_drama',
+    'children_story',
+  ].includes(story.video_type);
 
-  if ((story.characters?.length ?? 0) > 0 || (delivery?.character_assets.length ?? 0) > 0) {
+  if (!requiresCharacterAssets) {
+    satisfied.push('该成片类型允许以空间、工艺、讲解或氛围为主体，不强制角色资产。');
+  } else if ((story.characters?.length ?? 0) > 0 || (delivery?.character_assets.length ?? 0) > 0) {
     satisfied.push('已派生角色资产。');
   } else {
     assetGaps.push('缺少角色资产，至少需要主角、关键配角或群像说明。');
@@ -312,7 +722,7 @@ function buildGearsReadinessReport(
     const sceneLabel = `场景 ${scene.scene_id}「${scene.title || scene.dramatic_function}」`;
     if (countContentChars(scene.plot) < 35) unitGaps.push(`${sceneLabel}剧情过薄，需写出地点、动作、冲突/发现和情绪变化。`);
     if (!scene.key_action?.trim()) unitGaps.push(`${sceneLabel}缺少关键动作。`);
-    if (!scene.characters?.length) assetGaps.push(`${sceneLabel}缺少角色列表。`);
+    if (requiresCharacterAssets && !scene.characters?.length) assetGaps.push(`${sceneLabel}缺少角色列表。`);
     if (!scene.visual_prompt?.trim()) promptGaps.push(`${sceneLabel}缺少画面提示。`);
     else if (hasPromptNoise(scene.visual_prompt)) promptGaps.push(`${sceneLabel}画面提示混入说明性内容，应只保留空间、人物、道具、光线和构图。`);
   }
@@ -347,6 +757,8 @@ function buildGearsReadinessReport(
 }
 
 function buildRepairActionItems(
+  story: StoryGenerateResult,
+  qualityReport: StoryQualityReport,
   outlineReport: OutlineCoverageReport,
   patternReport: PatternQualityReport,
   gearsReport: ReturnType<typeof buildGearsReadinessReport>,
@@ -354,6 +766,29 @@ function buildRepairActionItems(
   audienceReport: AudienceTextReport,
 ): QualityRepairAction[] {
   const actions: QualityRepairAction[] = [];
+  const familyReport = qualityReport.family_quality_report;
+  if (familyReport && !familyReport.passed) {
+    const guidance = getStoryFamilyRepairGuidance(story.video_type);
+    const failedChecks = familyReport.checks.filter(check => check.status === 'failed');
+    const evidenceSceneIds = failedChecks.flatMap(check => check.evidence_scene_ids).filter(uniqueNumber);
+    const repairSceneIds = evidenceSceneIds.length > 0
+      ? evidenceSceneIds
+      : story.scene_breakdown.slice(0, 3).map(scene => scene.scene_id);
+    actions.push({
+      action_id: 'repair-family-quality',
+      label: `修复${familyReport.family_label}家族门禁`,
+      target_report: 'family',
+      severity: failedChecks.length >= 2 ? 'high' : 'medium',
+      scene_ids: repairSceneIds,
+      prompt: [
+        `按「${familyReport.family_label}」片型家族修复，不套用其他家族的叙事义务。`,
+        ...failedChecks.map(check => `补齐「${check.label}」：${check.summary}`),
+        ...guidance.instructions,
+        `优先修改字段：${guidance.focus_fields.join('、')}。`,
+      ].join('\n'),
+      expected_effect: `${familyReport.family_label}家族的 ${failedChecks.map(check => check.label).join('、')} 由场景可观察证据支持。`,
+    });
+  }
   if (outlineReport.coverage_score < 90) {
     const sceneIds = outlineReport.nodes
       .filter(node => node.status !== 'covered')
@@ -584,6 +1019,8 @@ function audienceTextPollutionTerms(): string[] {
     '必须有主角目标',
     '必须有阻力',
     '必须有选择和代价',
+    '籍贯/出生地',
+    '少年成长地',
   ];
 }
 
@@ -794,6 +1231,17 @@ function shortText(text: string, maxLength: number): string {
 
 function uniqueNumber(value: number, index: number, arr: number[]): boolean {
   return Number.isFinite(value) && arr.indexOf(value) === index;
+}
+
+function uniqueNumbers(values: number[]): number[] {
+  return values.filter(uniqueNumber).sort((left, right) => left - right);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return values
+    .map(value => value.trim())
+    .filter(Boolean)
+    .filter((value, index, all) => all.indexOf(value) === index);
 }
 
 function sceneIdsFromMessages(items: string[]): number[] {

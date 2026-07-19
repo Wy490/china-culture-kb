@@ -15,6 +15,7 @@ import { ingestVideo } from './tools/ingest-video.js';
 import { collect } from './tools/collect.js';
 import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
+import { storyAgentGenerate } from './tools/story-agent-generate.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
@@ -32,6 +33,7 @@ import {
 } from './tools/get-generated-governance-plan.js';
 import { getStoryAgentBacklogHandoff } from './tools/get-story-agent-backlog-handoff.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
+import { preflightStoryAgentFinalDeliveryManifest } from './tools/preflight-final-delivery-manifest.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
   getDomainPackExpansionCandidateToolResult,
@@ -213,10 +215,10 @@ server.tool(
   }
 );
 
-// kb_generate_script
+// kb_generate_script — legacy Markdown skeleton writer; not canonical Story Agent generation
 server.tool(
   'kb_generate_script',
-  '从素材条目生成脚本骨架（纪录片/短剧/动画/文化解说），供Claude Code填充内容',
+  '[LEGACY WRITER] 从素材条目生成并写入 Markdown 脚本骨架；不调用 Story Agent canonical 生成链。正式生成请用 kb_story_agent_generate。',
   {
     entry_names: z.string().describe('条目名称列表，逗号或顿号分隔'),
     script_type: z.string().describe('脚本类型：纪录片/短剧/动画/文化解说'),
@@ -242,6 +244,91 @@ server.tool(
     });
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   }
+);
+
+// kb_story_agent_generate — canonical Web/MCP Story Agent generation entry
+server.tool(
+  'kb_story_agent_generate',
+  '通过与 Web 前端相同的 Story Agent application service 生成并持久化故事。共用 StoryGenerateRequestSchema、domain pack、quality gates、revision comparator 和 derived-state rebuild；未配置 STORY_AGENT_BASE_URL 时 fail closed，不回退到 legacy writer。',
+  {
+    domain: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/).optional().describe('来源域，默认 china_culture'),
+    entry_name: z.string().optional().describe('素材条目名称'),
+    original_user_query: z.string().optional().describe('用户原始创作要求'),
+    generation_type: z.enum(['character_story', 'culture_promo', 'scene_short']).optional().describe('兼容的三类生成模式'),
+    video_type: z.enum([
+      'character_story',
+      'historical_drama',
+      'legend_story',
+      'culture_promo',
+      'heritage_promo',
+      'city_brand_promo',
+      'scene_short',
+      'landscape_mood',
+      'documentary_short',
+      'explainer_video',
+      'lecture_video',
+      'education_training',
+      'children_story',
+      'social_short',
+      'ai_comic_drama',
+    ]).optional().describe('15 种成片类型'),
+    model_profile_id: z.enum([
+      'local_story_engine',
+      'claude_sonnet',
+      'claude_opus',
+      'codex_gpt55',
+    ]).optional().describe('请求的模型 profile ID；不传时使用本地故事引擎，实际引擎以返回的 effective_engine/generation_mode 为准'),
+    selected_event: z.string().optional().describe('选定的故事事件'),
+    target_video_duration: z.enum(['30秒', '1分钟', '3分钟', '5分钟', '8分钟', '10分钟', '15分钟', '20分钟']).optional().describe('目标时长'),
+    tone: z.string().optional().describe('叙事语气'),
+    presentation_style: z.enum([
+      'cinematic',
+      'documentary',
+      'host_narration',
+      'voiceover_montage',
+      'vertical_drama',
+      'ai_comic',
+      'animation_2d',
+      'ink_style',
+      'children_animation',
+      'museum_exhibit',
+      'social_media_fastcut',
+    ]).optional().describe('表现形式'),
+    output_gears_segments: z.boolean().optional().describe('是否输出 GEARS segments，Web schema 默认 true'),
+    outline: z.string().optional().describe('用户大纲或原作文本'),
+    knowledge_pack: z.record(z.unknown()).optional().describe('兼容的知识包对象，由 Web schema 终审'),
+    material_pack: z.record(z.unknown()).optional().describe('素材包对象，由 Web schema 终审'),
+    creation_use_case: z.string().optional().describe('创作场景'),
+    truth_mode: z.string().optional().describe('真实度模式'),
+    client_type: z.string().optional().describe('客户或机构类型'),
+    target_audience: z.string().optional().describe('目标受众'),
+    communication_goal: z.string().optional().describe('传播或创作目标'),
+    character_hints: z.array(z.record(z.unknown())).optional().describe('结构化角色提示'),
+    story_structure: z.enum([
+      'single_event_drama',
+      'three_act_drama',
+      'memory_mosaic_biography',
+      'witness_testimony',
+      'object_clue_journey',
+      'before_after_transformation',
+      'case_reconstruction',
+      'lecture_argument',
+    ]).optional().describe('叙事结构'),
+    creative_reference_ids: z.array(z.string()).optional().describe('创意参考 ID'),
+    style_pack_ids: z.array(z.string()).optional().describe('风格包 ID'),
+    narrative_pattern_ids: z.array(z.string()).max(6).optional().describe('叙事模式 ID'),
+    reference_strength: z.enum(['light', 'medium', 'strong']).optional().describe('参考强度'),
+    genre_strictness: z.enum(['loose', 'balanced', 'strict']).optional().describe('流派严格度'),
+    auto_repair: z.boolean().optional().describe('是否启用 canonical 自动修复'),
+    story_priority: z.enum(['balanced', 'plot_first', 'knowledge_first']).optional().describe('生成优先级'),
+    source_material_mode: z.enum(['generate_from_knowledge', 'adapt_user_novel']).optional().describe('素材来源模式'),
+    localized_target_region: z.string().optional().describe('地方化目标地区'),
+    localization_mode: z.enum(['allow_related_influence', 'strict_direct_events']).optional().describe('地方化边界'),
+  },
+  async (input) => {
+    const result = await storyAgentGenerate(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
 );
 
 // kb_query_index
@@ -422,10 +509,10 @@ server.tool(
   }
 );
 
-// kb_generate_story — write Claude Code generated story_text to file
+// kb_generate_story — legacy Markdown writer; not canonical Story Agent generation
 server.tool(
   'kb_generate_story',
-  '将Claude Code生成的故事文本写入文件。包含故事核心、主角、冲突、转折、结尾、文化元素、不可误写、可信度边界8个元素。',
+  '[LEGACY WRITER] 将已在外部生成的 story_text 写入 Markdown；不执行 Story Agent canonical 生成、质量门禁或项目版本链。正式生成请用 kb_story_agent_generate。',
   {
     title: z.string().describe('故事标题'),
     story_text: z.string().describe('Claude Code生成的完整故事文本（自然语言叙述，包含8个故事元素）'),
@@ -585,7 +672,7 @@ server.tool(
 // kb_get_story_agent_generated_governance_plan — read generated cleanup/relink plan
 server.tool(
   'kb_get_story_agent_generated_governance_plan',
-  '读取本地 Story Agent generated 治理计划。只读分桶 relink、archive/rebuild、补合同、单故事引用修复和 GEARS signoff 候选，不修改 generated 文件。',
+  '读取本地 Story Agent generated 治理计划。只读分桶 manifest 缺口人工处置、relink、archive/rebuild、补合同、单故事引用修复和 GEARS signoff 候选，不修改 generated 文件。',
   {
     limit: z.number().int().positive().max(100).optional().describe('每类动作最多返回多少个样本目标，默认 20'),
     include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
@@ -604,17 +691,18 @@ server.tool(
 // kb_run_story_agent_generated_governance — build dry-run generated governance manifest
 server.tool(
   'kb_run_story_agent_generated_governance',
-  '生成 Story Agent generated 治理 dry-run manifest。只读输出预期操作和文件变化；dry_run=false 会被阻断，不修改 generated 文件。',
+  '生成 Story Agent generated 治理 dry-run manifest。只读输出 manifest 缺口人工 disposition、preflight、预期操作和文件变化；dry_run=false 会被阻断，不修改 generated 文件。',
   {
     dry_run: z.boolean().optional().describe('默认 true；false 会返回 blocked，不执行写入'),
     action_keys: z.array(z.enum([
+      'review_final_delivery_manifest_gaps',
       'restore_or_relink_series_story_refs',
       'archive_or_rebuild_series_fixtures',
       'generate_first_series_episode',
       'repair_series_command_contracts',
       'repair_story_project_refs',
       'promote_ready_targets_for_gears_signoff',
-    ])).max(6).optional().describe('限定要生成 manifest 的动作分桶'),
+    ])).max(7).optional().describe('限定要生成 manifest 的动作分桶'),
     project_ids: z.array(z.string().min(1).max(160)).max(100).optional().describe('限定项目 ID 或系列项目 ID 列表'),
     max_targets: z.number().int().positive().max(100).optional().describe('最多返回多少个 manifest 目标，默认 20'),
     include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
@@ -628,6 +716,29 @@ server.tool(
       }],
     };
   }
+);
+
+// kb_preflight_story_agent_final_delivery_manifest — read-only operator disposition preflight
+server.tool(
+  'kb_preflight_story_agent_final_delivery_manifest',
+  '只读检查最终交付 manifest 缺口的人工处置资格。preserve 仅给出 signoff 排除建议；reexport 必须验证显式媒体授权、cut/字幕/音频/片头卡真实文件和项目内路径。不会执行最终合成，不写 project.json 或 manifest，也不授予可发布交付信用。',
+  {
+    series_project_id: z.string().trim().min(1).max(160).describe('AI 漫剧系列项目 ID'),
+    disposition: z.enum([
+      'preserve_fixture_exclude_from_publishable_delivery',
+      'reexport_after_authorized_dependencies',
+    ]).describe('人工选择的 manifest 缺口处置方式'),
+    authorized_media_inputs_attested: z.boolean().optional().describe('仅 reexport 使用；操作员是否明确证明媒体输入已获授权，默认 false'),
+  },
+  async (input) => {
+    const result = await preflightStoryAgentFinalDeliveryManifest(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  },
 );
 
 // kb_get_production_material_pack_health — read production material pack portfolio health
@@ -1042,10 +1153,10 @@ server.tool(
 // kb_update_project_version — append a new Story Agent project version
 server.tool(
   'kb_update_project_version',
-  '将 Agent 产出的 story snapshot 保存为项目新版本。只写 web/generated/projects/<projectId>/versions 和 project.json，不覆盖旧版本，不写底层素材省份文件。',
+  '通过 Story Agent canonical application service 校验并保存质量修复版本。MCP 不直接写 project.json 或版本文件。',
   {
     project_id: z.string().describe('故事项目 ID，例如 20260614-story-5xim--ai_comic_drama'),
-    change_type: z.enum(['scene_regeneration', 'quality_repair', 'production_board_repair']).describe('版本变更类型'),
+    change_type: z.literal('quality_repair').describe('当前只允许质量修复；其它变更必须调用各自 canonical endpoint'),
     change_target: z.object({
       scene_ids: z.array(z.number().int().positive()).optional().describe('本次变更涉及的场景 ID；不传时会根据场景快照差异推断'),
     }).optional().describe('变更目标范围'),

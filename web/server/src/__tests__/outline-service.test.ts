@@ -39,8 +39,10 @@ import {
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   previewAiComicEpisodeContext,
+  readAiComicSeriesMediaAssetPreview,
   recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
+  rollbackAiComicSeriesSeedanceFinalDelivery,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   resolveAiComicSeriesSeedanceReview,
@@ -52,11 +54,18 @@ import {
   submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
   syncAiComicSeriesGearsJobStatuses,
+  uploadAiComicSeriesSeedanceAssetFile,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
+  updateAiComicSeriesMediaAssetReview,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
+
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
@@ -74,6 +83,7 @@ function gearsExecutionWorkerCapabilityResponse(): Response {
     idempotent_submit: true,
     status_poll_supported: true,
     callback_delivery_supported: true,
+    provider_asset_handoff_supported: true,
     supported_job_types: ['seedance_video'],
     endpoints: {
       capabilities: { method: 'GET', path: '/gears/capabilities' },
@@ -1574,6 +1584,52 @@ describe('outline-service', () => {
     });
     expect(failedUpdateRes.ok).toBe(true);
 
+    const retryPlanRes = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
+    expect(retryPlanRes.ok).toBe(true);
+    const retryCandidate = retryPlanRes.data?.episodes
+      .flatMap(episode => episode.candidates)
+      .find(candidate => candidate.production_id === sourceItem.production_id);
+    expect(retryCandidate).toBeTruthy();
+    const requiredSlots = retryCandidate?.prompt.asset_slots.filter(slot => slot.required) ?? [];
+    expect(requiredSlots.length).toBeGreaterThan(0);
+    for (const [index, slot] of requiredSlots.entries()) {
+      const kind = slot.kind === 'character' || slot.kind === 'location' ? slot.kind : 'unknown';
+      const upload = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId, {
+        asset_id: slot.asset_id,
+        label: slot.label,
+        kind,
+        reference_slot: slot.reference_slot,
+        file: {
+          original_filename: `series-gears-provider-input-${index + 1}.png`,
+          mime_type: 'image/png',
+          buffer: ONE_PIXEL_PNG,
+        },
+      });
+      expect(upload.ok).toBe(true);
+      const review = await updateAiComicSeriesMediaAssetReview(seriesProjectId, {
+        asset_id: slot.asset_id,
+        expected_content_sha256: upload.data!.content_sha256,
+        rights_status: 'authorized',
+        authorization_reference: `contract://series-gears-provider-assets/${index + 1}`,
+        human_review_status: 'approved',
+        review_note: '已核对不可变原图，可交付外部视频生成服务。',
+      }, {
+        actor_id: 'series-gears-provider-reviewer-001',
+        authentication_method: 'signed_session',
+      });
+      expect(review.ok).toBe(true);
+      const bindPublicUrl = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId, {
+        items: [{
+          asset_id: slot.asset_id,
+          kind,
+          label: slot.label,
+          reference_slot: slot.reference_slot,
+          file_url: `https://assets.culture-production.cn/series/${index + 1}.png?signature=test-only`,
+        }],
+      });
+      expect(bindPublicUrl.ok).toBe(true);
+    }
+
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       if (String(_url).endsWith('/gears/capabilities')) {
         expect(init?.method).toBe('GET');
@@ -1601,6 +1657,11 @@ describe('outline-service', () => {
             source_retry_execution_plan_exported_at?: string;
             source_retry_package_exported_at?: string;
             request_payload?: Record<string, unknown>;
+            provider_asset_inputs?: Array<{
+              asset_id?: string;
+              content_sha256?: string;
+              transport?: { kind?: string; url?: string };
+            }>;
             metadata?: Record<string, unknown>;
           }>;
         };
@@ -1612,6 +1673,15 @@ describe('outline-service', () => {
       });
       expect(body.payload?.units).toHaveLength(1);
       const unit = body.payload?.units?.[0];
+      expect(unit?.provider_asset_inputs).toHaveLength(requiredSlots.length);
+      expect(unit?.provider_asset_inputs?.[0]).toMatchObject({
+        asset_id: requiredSlots[0]!.asset_id,
+        content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        transport: {
+          kind: 'https_url',
+          url: expect.stringContaining('signature=test-only'),
+        },
+      });
       expect(unit).toMatchObject({
         schema_version: 'gears-series-seedance-video-retry-payload/v1',
         source_unit_id: sourceItem.production_id,
@@ -1647,6 +1717,13 @@ describe('outline-service', () => {
       job_type: 'seedance_video',
       source_unit_id: sourceItem.production_id,
       use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'test-approval://series-gears-retry-001',
+        max_cost_amount: 15,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
       payload: {
         retry_batch_id: 'batch-001',
       },
@@ -1666,12 +1743,27 @@ describe('outline-service', () => {
         status: 'submitted',
         requested_count: 1,
         accepted_count: 1,
+        provider_asset_input_count: requiredSlots.length,
       },
       submitted_jobs: [{
         source_unit_id: sourceItem.production_id,
         gears_job_id: 'gears-retry-real-job-001',
+        external_call_authorization: {
+          authorization_reference: 'test-approval://series-gears-retry-001',
+          max_cost_amount: 15,
+          cost_currency: 'CNY',
+          data_transfer_acknowledged: true,
+        },
+        provider_asset_handoffs: expect.arrayContaining([
+          expect.objectContaining({
+            asset_id: requiredSlots[0]!.asset_id,
+            transport_kind: 'https_url',
+            url_origin: 'https://assets.culture-production.cn',
+          }),
+        ]),
       }],
     });
+    expect(JSON.stringify(submitRes.data?.submitted_jobs)).not.toContain('signature=test-only');
     expect(submitRes.data?.markdown).toContain('submit_intent: 从 AI 漫剧 Seedance 重试执行计划提交 GEARS v2 视频返修/重试任务');
     expect(submitRes.data?.markdown).toContain('## GEARS Adapter');
     expect(submitRes.data?.markdown).toContain('- accepted_count: 1');
@@ -1681,6 +1773,47 @@ describe('outline-service', () => {
       status: 'submitted',
       provider_job_id: 'gears-retry-real-job-001',
       retry_count: 2,
+    });
+
+    const callbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      jobId: 'gears-retry-real-job-001',
+      sourceUnitId: sourceItem.production_id,
+      jobType: 'seedance_video',
+      taskStatus: 'COMPLETED',
+      outputUrl: 'https://gears.example.test/output/series-retry-shot-1.mp4',
+      actual_cost_amount: 10,
+      cost_currency: 'CNY',
+      eventId: 'series-gears-real-cost-event-001',
+      completedAt: '2026-07-19T11:01:00.000Z',
+    });
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item =>
+      item.gears_job_id === 'gears-retry-real-job-001'
+    )).toMatchObject({
+      execution_cost: {
+        actual_cost_amount: 10,
+        cost_currency: 'CNY',
+        authorization_reference: 'test-approval://series-gears-retry-001',
+        authorized_max_cost_amount: 15,
+        authorization_total_actual_cost_amount: 10,
+        boundary_status: 'within_authorization',
+      },
+    });
+    const readinessRes = await getAiComicSeriesProductionReadiness(seriesProjectId);
+    expect(readinessRes.ok).toBe(true);
+    expect(readinessRes.data?.issues.some(issue =>
+      issue.issue_id === 'series-gears-execution-cost-boundary-violated'
+      || issue.issue_id === 'series-gears-execution-cost-settlement-pending'
+    )).toBe(false);
+    expect(readinessRes.data?.gears_operational_metrics).toMatchObject({
+      scope: 'authorized_external_jobs_only',
+      authorized_external_job_count: 1,
+      terminal_job_count: 1,
+      ready_external_output_count: 1,
+      actual_output_rate_percent: 100,
+      failure_rate_percent: 0,
+      actual_cost_by_currency: { CNY: 10 },
+      local_acceptance_excluded: true,
     });
   });
 
@@ -2291,6 +2424,128 @@ describe('outline-service', () => {
     expect(ledgerItems.some(item => item.job_type === 'storyboard_image')).toBe(true);
     expect(ledgerItems.some(item => item.job_type === 'character_image')).toBe(true);
     expect(ledgerItems.some(item => item.job_type === 'scene_image')).toBe(true);
+
+    const characterJob = characterRes.data!.submitted_jobs[0];
+    const imageCallback = {
+      gears_job_id: characterJob.gears_job_id,
+      source_unit_id: characterJob.source_unit_id,
+      job_type: 'character_image' as const,
+      status: 'ready',
+      event_id: 'series-character-image-ready-001',
+      artifacts: [{
+        artifact_id: 'series-character-image-v1',
+        kind: 'image',
+        role: 'character_reference',
+        mime_type: 'image/png',
+        source_unit_id: characterJob.source_unit_id,
+        url: 'https://media.vendor-cdn.net/series/character-v1.png',
+        metadata: { model: 'vendor-series-image-v2' },
+      }],
+    };
+    const callbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, imageCallback);
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data?.updated_count).toBe(1);
+
+    const beforeImageAssetReport = await exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId);
+    const locationTarget = beforeImageAssetReport.data?.assets.find(item => item.kind === 'location');
+    expect(locationTarget).toBeTruthy();
+    const sceneJob = sceneRes.data!.submitted_jobs.find(job => (
+      locationTarget && job.source_unit_id.endsWith(`:scene:${locationTarget.label}`)
+    ));
+    expect(sceneJob, JSON.stringify({
+      location: locationTarget?.label,
+      source_unit_ids: sceneRes.data!.submitted_jobs.map(job => job.source_unit_id),
+    })).toBeTruthy();
+    const sceneCallback = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      gears_job_id: sceneJob!.gears_job_id,
+      source_unit_id: sceneJob!.source_unit_id,
+      job_type: 'scene_image',
+      status: 'ready',
+      event_id: 'series-scene-image-ready-001',
+      artifacts: [{
+        artifact_id: 'series-scene-image-v1',
+        kind: 'image',
+        role: 'location_reference',
+        mime_type: 'image/webp',
+        source_unit_id: sceneJob!.source_unit_id,
+        url: 'https://media.vendor-cdn.net/series/scene-v1.webp',
+      }],
+    });
+    expect(sceneCallback.data?.updated_count).toBe(1);
+
+    const storyboardJob = storyboardRes.data!.submitted_jobs[0];
+    const storyboardCallback = await importAiComicSeriesGearsCallback(seriesProjectId, {
+      gears_job_id: storyboardJob.gears_job_id,
+      source_unit_id: storyboardJob.source_unit_id,
+      job_type: 'storyboard_image',
+      status: 'ready',
+      event_id: 'series-storyboard-image-ready-001',
+      artifacts: [{
+        artifact_id: 'series-storyboard-image-v1',
+        kind: 'image',
+        role: 'storyboard',
+        mime_type: 'image/jpeg',
+        source_unit_id: storyboardJob.source_unit_id,
+        url: 'https://media.vendor-cdn.net/series/storyboard-v1.jpg',
+      }],
+    });
+    expect(storyboardCallback.data?.updated_count).toBe(1);
+
+    const afterCallback = await getAiComicSeriesProject(seriesProjectId);
+    const archivedAsset = afterCallback.data?.seedance_asset_library?.items.find(item => (
+      item.provider_asset_id === 'series-character-image-v1'
+    ));
+    expect(archivedAsset).toMatchObject({
+      kind: 'character',
+      file_url: 'https://media.vendor-cdn.net/series/character-v1.png',
+      provider: 'gears',
+      provider_asset_id: 'series-character-image-v1',
+      mime_type: 'image/png',
+      model: 'vendor-series-image-v2',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+    });
+    expect(archivedAsset?.content_sha256).toBeUndefined();
+    expect(archivedAsset?.history?.at(-1)?.event_type).toBe('provider_callback');
+    expect(afterCallback.data?.seedance_asset_library?.items.find(item => (
+      item.provider_asset_id === 'series-scene-image-v1'
+    ))).toMatchObject({
+      kind: 'location',
+      file_url: 'https://media.vendor-cdn.net/series/scene-v1.webp',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+    });
+    expect(afterCallback.data?.seedance_asset_library?.items.find(item => (
+      item.provider_asset_id === 'series-storyboard-image-v1'
+    ))).toMatchObject({
+      kind: 'unknown',
+      file_url: 'https://media.vendor-cdn.net/series/storyboard-v1.jpg',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+    });
+
+    const afterAssetReport = await exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId);
+    expect(afterAssetReport.data?.assets.find(item => item.asset_id === archivedAsset?.asset_id)).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+    });
+    expect(afterAssetReport.data?.assets.find(item => (
+      item.asset_id === afterCallback.data?.seedance_asset_library?.items.find(asset => (
+        asset.provider_asset_id === 'series-scene-image-v1'
+      ))?.asset_id
+    ))).toMatchObject({
+      status: 'bound',
+      is_bound: true,
+      needs_upload: false,
+    });
+
+    const duplicateCallback = await importAiComicSeriesGearsCallback(seriesProjectId, imageCallback);
+    expect(duplicateCallback.data?.duplicate_count).toBe(1);
+    const afterDuplicate = await getAiComicSeriesProject(seriesProjectId);
+    expect(afterDuplicate.data?.seedance_asset_library?.items.find(item => (
+      item.asset_id === archivedAsset?.asset_id
+    ))?.history?.filter(event => event.event_type === 'provider_callback')).toHaveLength(1);
   });
 
   it('reports unbound episode foreshadowing in the AI comic series quality audit', async () => {
@@ -2498,6 +2753,96 @@ describe('outline-service', () => {
       status: 'bound',
       file_url: 'https://example.com/seedance-assets/asset-001.png',
     });
+
+    const immutableUploadRes = await uploadAiComicSeriesSeedanceAssetFile(
+      saveRes.data!.project.series_project_id,
+      {
+        asset_id: bindableAsset!.asset_id,
+        file: {
+          original_filename: 'series-reference.png',
+          mime_type: 'image/png',
+          buffer: ONE_PIXEL_PNG,
+        },
+      },
+    );
+    expect(immutableUploadRes.ok).toBe(true);
+    expect(immutableUploadRes.data?.asset).toMatchObject({
+      asset_id: bindableAsset!.asset_id,
+      provider: 'local_upload',
+      mime_type: 'image/png',
+      size_bytes: ONE_PIXEL_PNG.length,
+      rights_status: 'pending',
+      human_review_status: 'pending',
+    });
+    expect(immutableUploadRes.data?.asset.file_url).toBeUndefined();
+    expect(immutableUploadRes.data?.content_sha256).toMatch(/^[a-f0-9]{64}$/);
+    const artifactId = `media-sha256-${immutableUploadRes.data!.content_sha256}`;
+    expect(immutableUploadRes.data?.preview_url).toContain(artifactId);
+    expect(await readFile(resolve(
+      outlineGeneratedRoot(),
+      immutableUploadRes.data!.local_path,
+    ))).toEqual(ONE_PIXEL_PNG);
+
+    const previewRes = await readAiComicSeriesMediaAssetPreview(
+      saveRes.data!.project.series_project_id,
+      artifactId,
+    );
+    expect(previewRes.ok).toBe(true);
+    if (previewRes.ok) expect(previewRes.data.buffer).toEqual(ONE_PIXEL_PNG);
+
+    const mismatchedReviewRes = await updateAiComicSeriesMediaAssetReview(
+      saveRes.data!.project.series_project_id,
+      {
+        asset_id: bindableAsset!.asset_id,
+        expected_content_sha256: '0'.repeat(64),
+        human_review_status: 'approved',
+        review_note: '不应接受过期内容摘要。',
+      },
+      { actor_id: 'reviewer-series-001', authentication_method: 'signed_session' },
+    );
+    expect(mismatchedReviewRes.ok).toBe(false);
+
+    const reviewedAssetRes = await updateAiComicSeriesMediaAssetReview(
+      saveRes.data!.project.series_project_id,
+      {
+        asset_id: bindableAsset!.asset_id,
+        expected_content_sha256: immutableUploadRes.data!.content_sha256,
+        rights_status: 'authorized',
+        authorization_reference: 'contract://series-assets/001',
+        human_review_status: 'approved',
+        review_note: '人物与历史场景设定一致，批准进入镜头制作。',
+      },
+      { actor_id: 'reviewer-series-001', authentication_method: 'signed_session' },
+    );
+    expect(reviewedAssetRes.ok).toBe(true);
+    expect(reviewedAssetRes.data).toMatchObject({
+      reviewer_id: 'reviewer-series-001',
+      production_credit_granted: true,
+    });
+    expect(reviewedAssetRes.data?.asset).toMatchObject({
+      rights_status: 'authorized',
+      human_review_status: 'approved',
+      reviewer_id: 'reviewer-series-001',
+    });
+
+    const replacementUploadRes = await uploadAiComicSeriesSeedanceAssetFile(
+      saveRes.data!.project.series_project_id,
+      {
+        asset_id: bindableAsset!.asset_id,
+        file: {
+          original_filename: 'series-reference-v2.png',
+          mime_type: 'image/png',
+          buffer: Buffer.concat([ONE_PIXEL_PNG, Buffer.from([0])]),
+        },
+      },
+    );
+    expect(replacementUploadRes.ok).toBe(true);
+    expect(replacementUploadRes.data?.content_sha256).not.toBe(immutableUploadRes.data?.content_sha256);
+    expect(replacementUploadRes.data?.asset).toMatchObject({
+      rights_status: 'pending',
+      human_review_status: 'pending',
+    });
+    expect(replacementUploadRes.data?.asset.reviewer_id).toBeUndefined();
 
     const firstProductionItem = seedanceExportRes.data!.seedance_production!.items[0]!;
     const productionStatusRes = await updateAiComicSeriesSeedanceProductionStatus(
@@ -3255,6 +3600,97 @@ describe('outline-service', () => {
     ));
     expect(finalRunnerCalls[0].inputVideoPath).toBe(resolve(projectDir, realAudioMixRes.data!.output_path));
     expect(finalRunnerCalls[0].outputPath).toContain('.external.tmp');
+    expect(await readFile(resolve(projectDir, finalRealRes.data!.output_path), 'utf8'))
+      .toBe('fake final delivery');
+    expect(finalRealRes.data?.seedance_final_delivery.current_release).toMatchObject({
+      immutable: true,
+      output_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      manifest_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      archived_output_path: expect.stringContaining('/releases/'),
+      archived_manifest_path: expect.stringContaining('/releases/'),
+    });
+    const firstRelease = finalRealRes.data!.seedance_final_delivery.current_release!;
+    expect(await readFile(resolve(projectDir, firstRelease.archived_output_path), 'utf8'))
+      .toBe('fake final delivery');
+
+    const finalSecondRes = await assembleAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        dry_run: false,
+        overwrite: true,
+        include_subtitles: false,
+        missing_dependency_mode: 'strict',
+        output_profile: 'mp4_h264_720p',
+        output_filename: 'local-final-delivery.mp4',
+      },
+      {
+        runner: async params => {
+          await writeFile(params.outputPath, 'fake final delivery v2');
+        },
+      },
+    );
+    expect(finalSecondRes.ok).toBe(true);
+    expect(finalSecondRes.data?.seedance_final_delivery.release_history).toHaveLength(2);
+    expect(finalSecondRes.data?.seedance_final_delivery.current_release?.release_id).not.toBe(firstRelease.release_id);
+
+    await writeFile(resolve(projectDir, firstRelease.archived_output_path), 'tampered release bytes');
+    const tamperedRollbackRes = await rollbackAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        release_id: firstRelease.release_id,
+        confirmed: true,
+        reason: '回归测试：篡改归档必须拒绝。',
+      },
+      {
+        actor_id: 'release-operator-001',
+        authentication_method: 'signed_session',
+      },
+    );
+    expect(tamperedRollbackRes.ok).toBe(false);
+    expect(tamperedRollbackRes.error?.message).toContain('hash or byte size');
+    expect(await readFile(resolve(projectDir, finalRealRes.data!.output_path), 'utf8'))
+      .toBe('fake final delivery v2');
+    await writeFile(resolve(projectDir, firstRelease.archived_output_path), 'fake final delivery');
+
+    const localBypassRollbackRes = await rollbackAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        release_id: firstRelease.release_id,
+        confirmed: true,
+        reason: '回归测试：本地绕过身份不得回滚。',
+      },
+      {
+        actor_id: 'local-user',
+        authentication_method: 'local_bypass',
+      },
+    );
+    expect(localBypassRollbackRes.ok).toBe(false);
+    expect(localBypassRollbackRes.error?.code).toBe('ACCESS_FORBIDDEN');
+
+    const rollbackRes = await rollbackAiComicSeriesSeedanceFinalDelivery(
+      saveRes.data!.project.series_project_id,
+      {
+        release_id: firstRelease.release_id,
+        confirmed: true,
+        reason: '回归测试：恢复已验证的上一版交付。',
+      },
+      {
+        actor_id: 'release-operator-001',
+        authentication_method: 'signed_session',
+      },
+    );
+    expect(rollbackRes.ok).toBe(true);
+    expect(rollbackRes.data?.seedance_final_delivery).toMatchObject({
+      status: 'ready',
+      current_release: { release_id: firstRelease.release_id },
+      rollback_events: [expect.objectContaining({
+        target_release_id: firstRelease.release_id,
+        actor_id: 'release-operator-001',
+        reason: '回归测试：恢复已验证的上一版交付。',
+        output_sha256_verified: true,
+        manifest_sha256_verified: true,
+      })],
+    });
     expect(await readFile(resolve(projectDir, finalRealRes.data!.output_path), 'utf8'))
       .toBe('fake final delivery');
 

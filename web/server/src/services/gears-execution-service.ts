@@ -15,6 +15,8 @@ import { GearsJobCallbackRequestSchema } from '@shared/schemas.js';
 import type {
   ApiResponse,
   DomainPackProductionHealthReport,
+  ExternalProviderCallAuthorizationRecord,
+  ExternalProviderCallAuthorizationRequest,
   GearsExecutionArtifact,
   GearsExecutionAcceptanceArtifact,
   GearsExecutionAcceptanceCheck,
@@ -34,11 +36,15 @@ import type {
   GearsExecutionLiveSmokeRunReport,
   GearsExecutionLiveSmokeRunRequest,
   GearsExecutionLiveSmokeRunStepResult,
+  GearsExecutionMetricDistribution,
+  GearsExecutionOperationalMetrics,
   GearsExecutionPressureCheck,
   GearsExecutionPressureReport,
   GearsExecutionReadinessCheck,
   GearsExecutionReadinessReport,
   GearsExecutionReadinessSmoke,
+  GearsExecutionRecoveryPlan,
+  GearsExecutionRecoveryStrategy,
   GearsExecutionSmokePackage,
   GearsExecutionWorkerAcceptanceCommand,
   GearsExecutionWorkerAcceptanceEnvVar,
@@ -60,6 +66,7 @@ import type {
   GearsJobSubmitAdapterSummary,
   GearsJobSubmitFailure,
   GearsJobStatusSyncAdapterSummary,
+  GearsProviderAssetHandoffAuditRecord,
   ProductionMaterialPackHealthReport,
 } from '@shared/types.js';
 import {
@@ -79,6 +86,7 @@ export const GEARS_EXECUTION_JOB_TYPES: GearsExecutionJobType[] = [
   'storyboard_image',
   'character_image',
   'scene_image',
+  'prop_image',
   'seedance_video',
   'subtitle_render',
   'audio_mix',
@@ -127,6 +135,7 @@ export interface GearsExecutionSubmitUnit {
   payload: Record<string, unknown>;
   payload_summary?: string;
   local_gears_job_id: string;
+  provider_asset_handoffs?: GearsProviderAssetHandoffAuditRecord[];
 }
 
 export interface GearsExecutionAcceptedJob {
@@ -165,6 +174,8 @@ export interface NormalizedGearsJobCallback {
   source_unit_id?: string;
   status: GearsExecutionJobStatus;
   progress_percent?: number;
+  actual_cost_amount?: number;
+  cost_currency?: string;
   artifact_urls: string[];
   artifacts?: GearsExecutionArtifact[];
   failure_category?: GearsExecutionFailureCategory;
@@ -343,6 +354,8 @@ function isGearsExecutionWorkerCapabilities(
     || value.idempotent_submit !== true
     || value.status_poll_supported !== true
     || value.callback_delivery_supported !== true
+    || (value.provider_asset_handoff_supported !== undefined
+      && typeof value.provider_asset_handoff_supported !== 'boolean')
     || !Array.isArray(value.supported_job_types)
     || value.supported_job_types.length === 0
     || !value.supported_job_types.every(jobType =>
@@ -8174,6 +8187,10 @@ function renderGearsExecutionLiveSmokeRunMarkdown(report: Omit<GearsExecutionLiv
     `- accepted_count: ${report.accepted_count}`,
     `- rejected_count: ${report.rejected_count}`,
     `- failed_count: ${report.failed_count}`,
+    `- external_authorization_reference: ${report.external_call_authorization?.authorization_reference ?? 'none'}`,
+    `- external_max_cost: ${report.external_call_authorization
+      ? `${report.external_call_authorization.max_cost_amount} ${report.external_call_authorization.cost_currency}`
+      : 'none'}`,
     '',
     '## Blocked By',
     '',
@@ -8304,6 +8321,36 @@ export async function runGearsExecutionLiveSmoke(
     };
   }
 
+  const authorization = normalizeExternalProviderCallAuthorization(
+    input.external_call_authorization,
+    generatedAt,
+  );
+  if (!authorization.ok || !authorization.data) {
+    const baseReport: Omit<GearsExecutionLiveSmokeRunReport, 'markdown'> = {
+      provider: 'gears',
+      schema_version: 'gears-execution-live-smoke-run/v1',
+      status: 'blocked',
+      execute,
+      poll_after_submit: pollAfterSubmit,
+      readiness_status: readiness.status,
+      readiness_score: readiness.score,
+      blocked_by: ['external_call_authorization'],
+      submitted_job_ids: [],
+      accepted_count: 0,
+      rejected_count: 0,
+      failed_count: 1,
+      steps: liveSteps.map(step => liveSmokeStepFromPlan(
+        step,
+        step.id === 'submit_http' ? 'blocked' : 'skipped',
+        step.id === 'submit_http'
+          ? authorization.error?.message ?? 'Explicit external call authorization is required.'
+          : 'Skipped because live smoke submit authorization is missing.',
+      )),
+      generated_at: generatedAt,
+    };
+    return { ...baseReport, markdown: renderGearsExecutionLiveSmokeRunMarkdown(baseReport) };
+  }
+
   const steps: GearsExecutionLiveSmokeRunStepResult[] = [];
   const units = buildLiveSmokeSubmitUnits();
   const submittedAt = new Date().toISOString();
@@ -8319,6 +8366,7 @@ export async function runGearsExecutionLiveSmoke(
     callbackUrl: gearsProjectCallbackUrl('GEARS_SMOKE_PROJECT_ID'),
     note,
     useGearsApi: true,
+    externalCallAuthorization: input.external_call_authorization,
     units,
   });
   const submitDuration = Date.now() - submitStarted;
@@ -8336,6 +8384,7 @@ export async function runGearsExecutionLiveSmoke(
       accepted_count: 0,
       rejected_count: 0,
       failed_count: 1,
+      external_call_authorization: authorization.data,
       steps: [
         {
           id: 'submit_http',
@@ -8474,6 +8523,7 @@ export async function runGearsExecutionLiveSmoke(
     accepted_count: accepted.length,
     rejected_count: failures.length,
     failed_count: hardFailures + pollFailedCount,
+    external_call_authorization: submitRes.data.summary.external_call_authorization ?? authorization.data,
     steps,
     generated_at: generatedAt,
   };
@@ -8509,6 +8559,7 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         'idempotent_submit = true',
         'status_poll_supported = true',
         'callback_delivery_supported = true',
+        'provider_asset_handoff_supported = true when provider_asset_inputs are accepted',
         'supported_job_types[]',
         'endpoints.capabilities = GET /gears/capabilities',
         'endpoints.submit = POST /gears/jobs',
@@ -8538,6 +8589,9 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         'payload.units[].previous_provider_job_id',
         'payload.units[].last_video_url',
         'payload.units[].review_issues',
+        'payload.units[].provider_asset_inputs[]',
+        'payload.units[].provider_asset_inputs[].content_sha256',
+        'payload.units[].provider_asset_inputs[].transport',
         'callback_url',
         'callback_secret_hint',
       ],
@@ -8574,6 +8628,22 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
             script_text: '少年站在祠堂门口。',
             seedance_prompt: '0-3秒：少年站在祠堂门口。',
             asset_slots: [],
+            provider_asset_inputs: [{
+              schema_version: 'gears-provider-asset-input/v1',
+              asset_id: 'character-zhou',
+              label: '周敦颐',
+              modality: 'image',
+              reference_slot: 'character_1',
+              content_sha256: '<SHA256_OF_VERIFIED_BYTES>',
+              rights_authorization_reference: '<RIGHTS_AUTHORIZATION_REFERENCE>',
+              human_reviewer_id: '<AUTHENTICATED_REVIEWER_ID>',
+              human_reviewed_at: '<ISO_8601_TIMESTAMP>',
+              transport: {
+                kind: 'provider_asset',
+                provider: '<PROVIDER_NAME>',
+                provider_asset_id: '<PROVIDER_FILE_ID>',
+              },
+            }],
             metadata: {
               job_type: 'seedance_video',
               source_unit_id: 'episode:1:shot:001',
@@ -8605,6 +8675,8 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         'progress_percent',
         'progressPercent',
         'percent',
+        'actual_cost_amount | actualCostAmount | cost_amount | costAmount',
+        'cost_currency | costCurrency | currency',
         'artifacts',
         'outputs',
         'failures',
@@ -8672,6 +8744,8 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         'progress',
         'event_time',
         'completed_at',
+        'actual_cost_amount | actualCostAmount | cost_amount | costAmount',
+        'cost_currency | costCurrency | currency',
         'artifacts',
         'artifact_urls',
         'video_url | videoUrl',
@@ -8730,8 +8804,8 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
       ],
       idempotency_fields: [
         'event_id | eventId | callback_id | callbackId',
-        'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/message are preserved)',
-        'fallback: status + message + progress_percent when event id is absent',
+        'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/cost/message are preserved)',
+        'fallback: status + message + progress_percent + actual cost when event id is absent',
       ],
       max_batch_items: GEARS_CALLBACK_BATCH_ITEM_LIMIT,
       response_fields: [
@@ -8750,6 +8824,10 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         'gears_job_ledger.items[].last_poll_failure_category',
         'gears_job_ledger.items[].last_poll_error_code',
         'gears_job_ledger.items[].completed_at',
+        'gears_job_ledger.items[].execution_cost.actual_cost_amount',
+        'gears_job_ledger.items[].execution_cost.cost_currency',
+        'gears_job_ledger.items[].execution_cost.authorization_total_actual_cost_amount',
+        'gears_job_ledger.items[].execution_cost.boundary_status',
         'gears_job_ledger.items[].callback_events[].event_id_source',
         'gears_job_ledger.items[].callback_events[].provider_event_at',
         'gears_job_ledger.items[].callback_events[].previous_status',
@@ -8766,6 +8844,8 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
           idempotencyKey: 'seedance_video:shot-1',
           outputUrl: 'https://gears.example/media/shot-1.mp4',
           progressPercent: 100,
+          actualCostAmount: 8.5,
+          currency: 'CNY',
           eventTime: '2026-06-20T10:00:00.000Z',
           completedAt: '2026-06-20T10:01:00.000Z',
           qualityScore: 0.92,
@@ -8798,6 +8878,15 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
         },
       ],
     },
+    portability: {
+      backward_compatible_capability_schema: 'gears-execution-worker-capabilities/v1',
+      provider_asset_input_schema: 'gears-provider-asset-input/v1',
+      provider_asset_handoff_attestation_field: 'provider_asset_handoff_supported',
+      provider_asset_handoff_required_when_inputs_present: true,
+      missing_handoff_attestation_behavior: 'fail_closed_before_submit',
+      persisted_handoff_audit_schema: 'gears-provider-asset-handoff-audit/v1',
+      signed_url_query_persisted: false,
+    },
     notes: [
       'china-culture-kb stores production intent, ledgers, dashboard state, review notes, and callbacks.',
       'GEARS v2 owns image/video/post-production execution and media artifacts.',
@@ -8806,7 +8895,8 @@ export function getGearsExecutionContractInfo(): GearsExecutionContractInfo {
       'Terminal-to-terminal callback changes are applied but marked with previous_status and terminal_status_changed for replay/audit.',
       'Canceled GEARS callbacks preserve failure_reason, error_code, and failure_category as terminal execution context.',
       'Provider event timestamps are normalized to ISO strings when event_time/eventTime/timestamp/completedAt fields are supplied.',
-      'When idempotencyKey is used as the callback event id fallback, repeated identical lifecycle payloads are deduplicated but changed status/progress/message callbacks remain in callback_events.',
+      'When idempotencyKey is used as the callback event id fallback, repeated identical lifecycle payloads are deduplicated but changed status/progress/cost/message callbacks remain in callback_events.',
+      'Provider-reported actual cost is persisted from callback or status poll, aggregated by authorization_reference across the batch, and blocks readiness on over-budget, currency mismatch, missing authorization, or missing terminal settlement.',
       `Each GEARS job ledger item keeps only the latest ${GEARS_CALLBACK_EVENT_RETENTION_LIMIT} callback_events to keep large series ledgers bounded.`,
       `GEARS callback envelopes accept at most ${GEARS_CALLBACK_BATCH_ITEM_LIMIT} callback items per request; split larger worker batches before posting.`,
       'Legacy SEEDANCE_PROVIDER_* endpoints remain compatibility-only.',
@@ -8843,6 +8933,28 @@ function dateTimeField(...values: unknown[]): string | undefined {
 
 function numberField(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function nonNegativeCostField(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    const amount = typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value.trim())
+        : Number.NaN;
+    if (Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000) {
+      return Math.round(amount * 1_000_000) / 1_000_000;
+    }
+  }
+  return undefined;
+}
+
+function costCurrencyField(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    const currency = stringField(value)?.toUpperCase();
+    if (currency && /^[A-Z]{3}$/.test(currency)) return currency;
+  }
+  return undefined;
 }
 
 function progressPercentField(...values: unknown[]): number | undefined {
@@ -9979,6 +10091,7 @@ export async function submitGearsExecutionJobs(input: {
   callbackUrl?: string;
   note?: string;
   useGearsApi?: boolean;
+  externalCallAuthorization?: ExternalProviderCallAuthorizationRequest;
   payload?: Record<string, unknown>;
   units: GearsExecutionSubmitUnit[];
 }): Promise<ApiResponse<GearsExecutionSubmitAdapterResult>> {
@@ -10015,6 +10128,18 @@ export async function submitGearsExecutionJobs(input: {
     });
   }
 
+  const authorization = normalizeExternalProviderCallAuthorization(
+    input.externalCallAuthorization,
+    new Date().toISOString(),
+  );
+  if (!authorization.ok || !authorization.data) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      authorization.error?.message ?? 'external_call_authorization is required before GEARS HTTP submission',
+      authorization.error?.details,
+    );
+  }
+
   const baseUrl = configuredGearsApiBaseUrl();
   if (!baseUrl) {
     return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS_EXECUTION_WORKER_API_BASE_URL is required when use_gears_api=true');
@@ -10022,6 +10147,17 @@ export async function submitGearsExecutionJobs(input: {
 
   const capabilities = await requireGearsExecutionWorkerCapabilities([input.jobType]);
   if (!capabilities.ok) return forwardExecutionWorkerFailure(capabilities);
+  const providerAssetInputCount = input.units.reduce(
+    (count, unit) => count + (unit.provider_asset_handoffs?.length ?? 0),
+    0,
+  );
+  if (providerAssetInputCount > 0 && capabilities.data?.provider_asset_handoff_supported !== true) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS execution worker must attest provider_asset_handoff_supported=true before provider asset inputs are submitted',
+      { provider_asset_input_count: providerAssetInputCount },
+    );
+  }
 
   const endpoint = joinPublicUrl(baseUrl, '/gears/jobs');
   const body = {
@@ -10091,13 +10227,66 @@ export async function submitGearsExecutionJobs(input: {
     const payload = text.trim() ? JSON.parse(text) as unknown : [];
     const normalized = normalizeGearsSubmitAdapterResults({ payload, units: input.units });
     if (typeof normalized === 'string') return fail(ErrorCodes.VALIDATION_ERROR, normalized);
-    return success(normalized);
+    return success({
+      ...normalized,
+      summary: {
+        ...normalized.summary,
+        external_call_authorization: authorization.data,
+        provider_asset_input_count: providerAssetInputCount,
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error';
     return fail(ErrorCodes.INTERNAL_ERROR, `GEARS submit request failed: ${message}`);
   } finally {
     clearTimeout(timer);
   }
+}
+
+function normalizeExternalProviderCallAuthorization(
+  input: ExternalProviderCallAuthorizationRequest | undefined,
+  confirmedAt: string,
+): ApiResponse<ExternalProviderCallAuthorizationRecord> {
+  if (!input || input.authorized !== true) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'external_call_authorization.authorized=true is required before GEARS HTTP submission',
+    );
+  }
+  const reference = input.authorization_reference?.trim();
+  if (!reference) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'external_call_authorization.authorization_reference is required before GEARS HTTP submission',
+    );
+  }
+  if (!Number.isFinite(input.max_cost_amount) || input.max_cost_amount < 0) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'external_call_authorization.max_cost_amount must be a non-negative finite number',
+    );
+  }
+  const currency = input.cost_currency?.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'external_call_authorization.cost_currency must be a 3-letter currency code',
+    );
+  }
+  if (input.data_transfer_acknowledged !== true) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'external_call_authorization.data_transfer_acknowledged=true is required before GEARS HTTP submission',
+    );
+  }
+  return success({
+    authorized: true,
+    authorization_reference: reference,
+    max_cost_amount: input.max_cost_amount,
+    cost_currency: currency,
+    data_transfer_acknowledged: true,
+    confirmed_at: confirmedAt,
+  });
 }
 
 function extractGearsStatusRecord(payload: unknown, item: GearsJobLedgerItem): Record<string, unknown> | string {
@@ -10154,6 +10343,13 @@ function callbackEnvelopeDefaults(envelope: Record<string, unknown>): Record<str
     'completedAt',
     'finished_at',
     'finishedAt',
+    'actual_cost_amount',
+    'actualCostAmount',
+    'cost_amount',
+    'costAmount',
+    'cost_currency',
+    'costCurrency',
+    'currency',
   ]) {
     if (envelope[key] !== undefined) defaults[key] = envelope[key];
   }
@@ -10418,6 +10614,17 @@ export function normalizeGearsJobCallback(request: GearsJobCallbackRequest): Nor
     source_unit_id: sourceUnitId,
     status,
     progress_percent: progressPercent,
+    actual_cost_amount: nonNegativeCostField(
+      merged.actual_cost_amount,
+      merged.actualCostAmount,
+      merged.cost_amount,
+      merged.costAmount,
+    ),
+    cost_currency: costCurrencyField(
+      merged.cost_currency,
+      merged.costCurrency,
+      merged.currency,
+    ),
     artifact_urls: artifactUrls,
     artifacts,
     failure_category: failureContext
@@ -10468,6 +10675,8 @@ export function mergeGearsCallbackEvents(input: {
     status_regression_ignored: input.statusRegressionIgnored || undefined,
     terminal_status_changed: input.terminalStatusChanged || undefined,
     progress_percent: input.callback.progress_percent,
+    actual_cost_amount: input.callback.actual_cost_amount,
+    cost_currency: input.callback.cost_currency,
     message: input.callback.message ?? input.callback.note,
   };
   const existing = input.existing ?? [];
@@ -10491,13 +10700,352 @@ export function gearsCallbackEventIsDuplicate(input: {
       if (input.callback.event_id_source !== 'idempotency_key') return true;
       return item.status === input.callback.status
         && item.progress_percent === input.callback.progress_percent
+        && item.actual_cost_amount === input.callback.actual_cost_amount
+        && item.cost_currency === input.callback.cost_currency
         && item.message === message;
     }
     return !item.event_id
       && item.status === input.callback.status
       && item.progress_percent === input.callback.progress_percent
+      && item.actual_cost_amount === input.callback.actual_cost_amount
+      && item.cost_currency === input.callback.cost_currency
       && item.message === message;
   });
+}
+
+export function mergeGearsExecutionCostFromCallback(input: {
+  item: GearsJobLedgerItem;
+  callback: NormalizedGearsJobCallback;
+  receivedAt: string;
+}): GearsJobLedgerItem['execution_cost'] {
+  if (input.callback.actual_cost_amount === undefined || !input.callback.cost_currency) {
+    return input.item.execution_cost;
+  }
+  const authorization = input.item.external_call_authorization;
+  const boundaryStatus = !authorization
+    ? 'authorization_missing'
+    : authorization.cost_currency !== input.callback.cost_currency
+      ? 'currency_mismatch'
+      : input.callback.actual_cost_amount > authorization.max_cost_amount
+        ? 'exceeded_authorization'
+        : 'within_authorization';
+  return {
+    actual_cost_amount: input.callback.actual_cost_amount,
+    cost_currency: input.callback.cost_currency,
+    provider_reported_at: input.callback.provider_event_at
+      ?? input.callback.completed_at
+      ?? input.receivedAt,
+    reporting_channel: 'callback_or_poll',
+    boundary_status: boundaryStatus,
+    authorization_reference: authorization?.authorization_reference,
+    authorized_max_cost_amount: authorization?.max_cost_amount,
+    authorization_total_actual_cost_amount: input.callback.actual_cost_amount,
+  };
+}
+
+export function reconcileGearsLedgerExecutionCosts(
+  items: GearsJobLedgerItem[],
+): GearsJobLedgerItem[] {
+  const costsByAuthorization = new Map<string, GearsJobLedgerItem[]>();
+  for (const item of items) {
+    const reference = item.external_call_authorization?.authorization_reference;
+    if (!reference || !item.execution_cost) continue;
+    const group = costsByAuthorization.get(reference) ?? [];
+    group.push(item);
+    costsByAuthorization.set(reference, group);
+  }
+
+  return items.map(item => {
+    const cost = item.execution_cost;
+    if (!cost) return item;
+    const authorization = item.external_call_authorization;
+    if (!authorization) {
+      return {
+        ...item,
+        execution_cost: {
+          ...cost,
+          boundary_status: 'authorization_missing',
+          authorization_reference: undefined,
+          authorized_max_cost_amount: undefined,
+          authorization_total_actual_cost_amount: cost.actual_cost_amount,
+        },
+      };
+    }
+
+    const group = costsByAuthorization.get(authorization.authorization_reference) ?? [item];
+    const currencyMismatch = group.some(candidate =>
+      candidate.execution_cost?.cost_currency !== authorization.cost_currency
+      || candidate.external_call_authorization?.cost_currency !== authorization.cost_currency
+    );
+    const aggregateAmount = Math.round(group.reduce(
+      (total, candidate) => total + (candidate.execution_cost?.actual_cost_amount ?? 0),
+      0,
+    ) * 1_000_000) / 1_000_000;
+    const boundaryStatus = currencyMismatch
+      ? 'currency_mismatch'
+      : aggregateAmount > authorization.max_cost_amount
+        ? 'exceeded_authorization'
+        : 'within_authorization';
+    return {
+      ...item,
+      execution_cost: {
+        ...cost,
+        boundary_status: boundaryStatus,
+        authorization_reference: authorization.authorization_reference,
+        authorized_max_cost_amount: authorization.max_cost_amount,
+        authorization_total_actual_cost_amount: aggregateAmount,
+      },
+    };
+  });
+}
+
+export function summarizeGearsExecutionCostGovernance(ledger?: GearsJobLedger): {
+  authorized_job_count: number;
+  reported_cost_count: number;
+  pending_terminal_cost_report_count: number;
+  boundary_violation_count: number;
+  exceeded_authorization_count: number;
+  currency_mismatch_count: number;
+  authorization_missing_count: number;
+} {
+  const items = reconcileGearsLedgerExecutionCosts(normalizeGearsJobLedger(ledger).items);
+  const boundaryViolationItems = items.filter(item =>
+    item.execution_cost && item.execution_cost.boundary_status !== 'within_authorization'
+  );
+  return {
+    authorized_job_count: items.filter(item => item.external_call_authorization).length,
+    reported_cost_count: items.filter(item => item.execution_cost).length,
+    pending_terminal_cost_report_count: items.filter(item =>
+      item.external_call_authorization
+      && gearsJobStatusIsTerminal(item.status)
+      && !item.execution_cost
+    ).length,
+    boundary_violation_count: boundaryViolationItems.length,
+    exceeded_authorization_count: boundaryViolationItems.filter(item =>
+      item.execution_cost?.boundary_status === 'exceeded_authorization'
+    ).length,
+    currency_mismatch_count: boundaryViolationItems.filter(item =>
+      item.execution_cost?.boundary_status === 'currency_mismatch'
+    ).length,
+    authorization_missing_count: boundaryViolationItems.filter(item =>
+      item.execution_cost?.boundary_status === 'authorization_missing'
+    ).length,
+  };
+}
+
+function gearsMetricDistribution(values: number[]): GearsExecutionMetricDistribution {
+  const sorted = values
+    .filter(value => Number.isFinite(value) && value >= 0)
+    .sort((a, b) => a - b);
+  if (!sorted.length) {
+    return { sample_count: 0, average: 0, p50: 0, p95: 0, max: 0 };
+  }
+  const percentile = (ratio: number) => sorted[Math.max(0, Math.ceil(sorted.length * ratio) - 1)] ?? 0;
+  return {
+    sample_count: sorted.length,
+    average: Math.round(sorted.reduce((total, value) => total + value, 0) / sorted.length),
+    p50: percentile(0.5),
+    p95: percentile(0.95),
+    max: sorted.at(-1) ?? 0,
+  };
+}
+
+function gearsOperationalArtifactIsLocalAcceptance(
+  artifact: GearsExecutionArtifact,
+): boolean {
+  return artifact.role === 'local_acceptance'
+    || artifact.metadata?.not_external_provider_output === true
+    || artifact.url.startsWith('https://local.story-agent.invalid/gears-acceptance');
+}
+
+function gearsOperationalJobHasExternalOutput(item: GearsJobLedgerItem): boolean {
+  return (item.artifacts ?? []).some(artifact => !gearsOperationalArtifactIsLocalAcceptance(artifact))
+    || item.artifact_urls.some(url => !url.startsWith('https://local.story-agent.invalid/gears-acceptance'));
+}
+
+function elapsedMilliseconds(start?: string, end?: string): number | undefined {
+  const startTime = start ? Date.parse(start) : Number.NaN;
+  const endTime = end ? Date.parse(end) : Number.NaN;
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) return undefined;
+  return endTime - startTime;
+}
+
+export function buildGearsExecutionOperationalMetrics(
+  ledger?: GearsJobLedger,
+): GearsExecutionOperationalMetrics {
+  const normalized = normalizeGearsJobLedger(ledger);
+  const items = reconcileGearsLedgerExecutionCosts(normalized.items);
+  const externalItems = items.filter(item => item.external_call_authorization);
+  const terminalItems = externalItems.filter(item => gearsJobStatusIsTerminal(item.status));
+  const failureItems = terminalItems.filter(item => ['failed', 'rejected', 'canceled'].includes(item.status));
+  const executionDurations = terminalItems
+    .map(item => elapsedMilliseconds(item.submitted_at, item.completed_at))
+    .filter((value): value is number => value !== undefined);
+  const callbackLatencies = externalItems.flatMap(item =>
+    (item.callback_events ?? [])
+      .map(event => elapsedMilliseconds(event.provider_event_at, event.received_at))
+      .filter((value): value is number => value !== undefined)
+  );
+  const failureCategoryCounts: GearsExecutionOperationalMetrics['failure_category_counts'] = {};
+  for (const item of failureItems) {
+    const category = item.failure_category ?? 'unknown';
+    failureCategoryCounts[category] = (failureCategoryCounts[category] ?? 0) + 1;
+  }
+  const actualCostByCurrency: Record<string, number> = {};
+  for (const item of externalItems) {
+    if (!item.execution_cost) continue;
+    const currency = item.execution_cost.cost_currency;
+    actualCostByCurrency[currency] = Math.round(
+      ((actualCostByCurrency[currency] ?? 0) + item.execution_cost.actual_cost_amount) * 1_000_000,
+    ) / 1_000_000;
+  }
+  const readyExternalOutputCount = terminalItems.filter(item =>
+    item.status === 'ready' && gearsOperationalJobHasExternalOutput(item)
+  ).length;
+  const percentage = (count: number, total: number) => total > 0
+    ? Math.round((count / total) * 10_000) / 100
+    : 0;
+  const costGovernance = summarizeGearsExecutionCostGovernance({
+    schema_version: 'gears-job-ledger/v1',
+    updated_at: normalized.updated_at,
+    items,
+  });
+  return {
+    schema_version: 'gears-execution-operational-metrics/v1',
+    measured_at: normalized.updated_at,
+    scope: 'authorized_external_jobs_only',
+    all_job_count: items.length,
+    authorized_external_job_count: externalItems.length,
+    active_job_count: externalItems.filter(item => !gearsJobStatusIsTerminal(item.status)).length,
+    terminal_job_count: terminalItems.length,
+    ready_external_output_count: readyExternalOutputCount,
+    actual_output_rate_percent: percentage(readyExternalOutputCount, terminalItems.length),
+    terminal_failure_count: failureItems.length,
+    failure_rate_percent: percentage(failureItems.length, terminalItems.length),
+    failure_category_counts: failureCategoryCounts,
+    poll_failure_count: externalItems.filter(item => item.last_poll_error).length,
+    execution_duration_ms: gearsMetricDistribution(executionDurations),
+    callback_delivery_latency_ms: gearsMetricDistribution(callbackLatencies),
+    actual_cost_by_currency: actualCostByCurrency,
+    cost_boundary_violation_count: costGovernance.boundary_violation_count,
+    pending_terminal_cost_report_count: costGovernance.pending_terminal_cost_report_count,
+    local_acceptance_excluded: true,
+  };
+}
+
+function gearsRecoveryProfile(category: GearsExecutionFailureCategory): {
+  strategy: GearsExecutionRecoveryStrategy;
+  retryEligible: boolean;
+  reason: string;
+} {
+  if ([
+    'provider_timeout',
+    'provider_rate_limit',
+    'provider_server_error',
+    'network_error',
+    'worker_unavailable',
+    'render_failed',
+    'artifact_upload_failed',
+    'callback_delivery_failed',
+    'output_missing',
+  ].includes(category)) {
+    return {
+      strategy: 'retry_transient_failure',
+      retryEligible: true,
+      reason: '瞬时执行、传输或 Worker 故障；复核输入后可在新的成本授权下重试。',
+    };
+  }
+  if (['asset_missing', 'artifact_invalid', 'payload_invalid'].includes(category)) {
+    return {
+      strategy: 'repair_input_then_retry',
+      retryEligible: true,
+      reason: '输入、素材或产物合同不合法；先修复并重新预检，再在新的成本授权下重试。',
+    };
+  }
+  if (category === 'provider_auth') {
+    return {
+      strategy: 'refresh_provider_credentials',
+      retryEligible: true,
+      reason: 'Provider 凭据或权限失败；轮换/修复凭据并通过 capability preflight 后重试。',
+    };
+  }
+  if (category === 'provider_quota') {
+    return {
+      strategy: 'increase_provider_quota_or_budget',
+      retryEligible: true,
+      reason: 'Provider 配额或余额不足；由操作员确认配额和新的成本边界后重试。',
+    };
+  }
+  if (category === 'content_policy') {
+    return {
+      strategy: 'manual_content_policy_review',
+      retryEligible: false,
+      reason: '内容政策阻断不得自动重试；需人工复核内容、授权和供应商政策。',
+    };
+  }
+  return {
+    strategy: 'manual_failure_investigation',
+    retryEligible: false,
+    reason: '失败原因不满足稳定自动分类；需人工诊断并记录处置结论。',
+  };
+}
+
+export function buildGearsExecutionRecoveryPlan(
+  ledger?: GearsJobLedger,
+): GearsExecutionRecoveryPlan {
+  const normalized = normalizeGearsJobLedger(ledger);
+  const items: GearsExecutionRecoveryPlan['items'] = [];
+  for (const item of normalized.items) {
+    if (!gearsJobStatusIsTerminal(item.status) && item.last_poll_error) {
+      items.push({
+        ledger_id: item.ledger_id,
+        gears_job_id: item.gears_job_id,
+        source_unit_id: item.source_unit_id,
+        job_type: item.job_type,
+        status: item.status,
+        failure_category: item.last_poll_failure_category ?? 'unknown',
+        strategy: 'status_resync',
+        retry_eligible: false,
+        can_auto_execute: true,
+        requires_operator_review: false,
+        requires_new_external_call_authorization: false,
+        reason: '执行 job 尚未终态，最近一次状态轮询失败；可安全重试状态同步，不创建新的媒体执行。',
+      });
+      continue;
+    }
+    if (!['failed', 'rejected', 'canceled'].includes(item.status)) continue;
+    const category = item.failure_category ?? 'unknown';
+    const profile = gearsRecoveryProfile(category);
+    items.push({
+      ledger_id: item.ledger_id,
+      gears_job_id: item.gears_job_id,
+      source_unit_id: item.source_unit_id,
+      job_type: item.job_type,
+      status: item.status,
+      failure_category: category,
+      strategy: profile.strategy,
+      retry_eligible: profile.retryEligible,
+      can_auto_execute: false,
+      requires_operator_review: true,
+      requires_new_external_call_authorization: profile.retryEligible,
+      reason: profile.reason,
+    });
+  }
+  return {
+    schema_version: 'gears-execution-recovery-plan/v1',
+    generated_at: normalized.updated_at,
+    item_count: items.length,
+    retry_eligible_count: items.filter(item => item.retry_eligible).length,
+    status_resync_count: items.filter(item => item.strategy === 'status_resync').length,
+    operator_intervention_count: items.filter(item => item.requires_operator_review).length,
+    auto_executable_count: items.filter(item => item.can_auto_execute).length,
+    items,
+    notes: [
+      '只有 status_resync 可自动执行；它不会创建新的媒体任务或新的 Provider 成本。',
+      '所有媒体执行重试都要求操作员复核，并重新提供 external_call_authorization；旧授权不得静默复用。',
+      'content_policy 与 unknown 分类不得自动重试。',
+    ],
+  };
 }
 
 export function buildGearsLedgerItem(input: {
@@ -10508,6 +11056,7 @@ export function buildGearsLedgerItem(input: {
   unit: GearsExecutionSubmitUnit;
   accepted: GearsExecutionAcceptedJob;
   submittedAt: string;
+  externalCallAuthorization?: ExternalProviderCallAuthorizationRecord;
   note?: string;
 }): GearsJobLedgerItem {
   const artifactUrls = [...new Set((input.accepted.artifacts ?? []).map(artifact => artifact.url))];
@@ -10524,6 +11073,8 @@ export function buildGearsLedgerItem(input: {
     source_story_id: input.sourceStoryId,
     series_project_id: input.seriesProjectId,
     idempotency_key: input.accepted.idempotency_key ?? gearsIdempotencyKey(input.jobType, input.unit.source_unit_id),
+    external_call_authorization: input.externalCallAuthorization,
+    provider_asset_handoffs: input.unit.provider_asset_handoffs?.map(item => ({ ...item })),
     status: input.accepted.status,
     progress_percent: initialProgress,
     artifact_urls: artifactUrls,
@@ -10542,6 +11093,7 @@ export function buildRejectedGearsLedgerItem(input: {
   unit: GearsExecutionSubmitUnit;
   failure: GearsJobSubmitFailure;
   submittedAt: string;
+  externalCallAuthorization?: ExternalProviderCallAuthorizationRecord;
   note?: string;
 }): GearsJobLedgerItem {
   const idempotencyKey = input.failure.idempotency_key ?? gearsIdempotencyKey(input.jobType, input.unit.source_unit_id);
@@ -10556,6 +11108,8 @@ export function buildRejectedGearsLedgerItem(input: {
     source_story_id: input.sourceStoryId,
     series_project_id: input.seriesProjectId,
     idempotency_key: idempotencyKey,
+    external_call_authorization: input.externalCallAuthorization,
+    provider_asset_handoffs: input.unit.provider_asset_handoffs?.map(item => ({ ...item })),
     status: 'rejected',
     progress_percent: 0,
     artifact_urls: [],

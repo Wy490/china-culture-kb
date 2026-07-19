@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getKbRoot } from '../lib/provinces.js';
+import {
+  inspectStoryGenerationActivity,
+  type StoryGenerationActivityEvidence,
+} from '../lib/story-generation-activity.js';
 
 type HealthStatus = 'ready' | 'planned' | 'production_gap' | 'interrupted';
 type HealthScope = 'story_project' | 'ai_comic_series_project';
@@ -53,6 +57,7 @@ export interface StoryAgentGeneratedHealthItem {
 export interface StoryAgentGeneratedHealthReport {
   schema_version: 'mcp-story-agent-generated-health/v1';
   generated_at: string;
+  generation_activity: StoryGenerationActivityEvidence;
   summary: {
     scanned_story_project_count: number;
     scanned_series_project_count: number;
@@ -421,6 +426,7 @@ function countMissing(items: StoryAgentGeneratedHealthItem[], contract: string, 
 }
 
 function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>): string {
+  const activity = report.generation_activity;
   return [
     '# MCP Story Agent Generated Health',
     '',
@@ -446,6 +452,48 @@ function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>
     `- series_seedance_test_fixture_failure_items: ${report.summary.series_seedance_test_fixture_failure_item_count ?? 0}`,
     `- series_missing_final_delivery_manifest: ${report.summary.series_missing_final_delivery_manifest_count}`,
     '',
+    '## Generation Activity',
+    '',
+    `- diagnosis: ${activity.diagnosis}`,
+    `- latest_persisted_activity_kind: ${activity.latest_persisted_activity_kind}`,
+    `- latest_story_id: ${activity.latest_story?.story_id ?? 'none'}`,
+    `- latest_story_created_at: ${activity.latest_story?.created_at ?? 'none'}`,
+    `- latest_project_version: ${activity.latest_project_version?.version_id ?? 'none'}`,
+    `- project_revisions_after_latest_story: ${activity.summary.project_revision_after_latest_story_count}`,
+    `- reports_after_latest_story: ${activity.summary.report_after_latest_story_count}`,
+    `- pending_transactions: ${activity.summary.pending_transaction_count}`,
+    `- legacy_stories: ${activity.summary.legacy_story_count}`,
+    `- durable_attempt_history: ${activity.signals.durable_generation_attempt_history_available}`,
+    `- latest_generation_attempt_id: ${activity.latest_generation_attempt?.attempt_id ?? 'none'}`,
+    `- latest_generation_attempt_status: ${activity.latest_generation_attempt?.status ?? 'none'}`,
+    `- generation_attempts: ${activity.summary.generation_attempt_count}`,
+    `- generation_attempt_failures: ${activity.summary.generation_attempt_failed_count}`,
+    `- generation_attempts_incomplete: ${activity.summary.generation_attempt_incomplete_count}`,
+    `- attempt_audit_readiness: ${activity.attempt_audit_readiness.status}`,
+    `- attempt_audit_history_integrity: ${activity.attempt_audit_readiness.history_integrity}`,
+    `- attempt_audit_lock_status: ${activity.attempt_audit_readiness.lock_status}`,
+    `- attempt_audit_current_file_bytes: ${activity.attempt_audit_readiness.current_file_bytes}`,
+    `- attempt_audit_archive_count: ${activity.attempt_audit_readiness.archive_count}`,
+    `- attempt_audit_lock_timeout_ms: ${activity.attempt_audit_readiness.configured_lock_timeout_ms}`,
+    `- attempt_audit_lock_retry_ms: ${activity.attempt_audit_readiness.configured_lock_retry_ms}`,
+    `- attempt_audit_lock_stale_ms: ${activity.attempt_audit_readiness.configured_lock_stale_ms}`,
+    `- attempt_audit_configuration_valid: ${activity.attempt_audit_readiness.configuration_valid}`,
+    `- attempt_audit_configuration_warnings: ${activity.attempt_audit_readiness.configuration_warnings.join(', ') || 'none'}`,
+    `- attempt_audit_permission_policy: ${activity.attempt_audit_readiness.permission_policy}`,
+    `- attempt_audit_permission_policy_satisfied: ${activity.attempt_audit_readiness.permission_policy_satisfied}`,
+    `- attempt_audit_event_file_sync_required: ${activity.attempt_audit_readiness.event_file_sync_required}`,
+    `- attempt_audit_no_follow_open_required: ${activity.attempt_audit_readiness.no_follow_open_required}`,
+    `- attempt_audit_directory_entry_sync_guaranteed: ${activity.attempt_audit_readiness.directory_entry_sync_guaranteed}`,
+    `- attempt_audit_blockers: ${activity.attempt_audit_readiness.blockers.join(', ') || 'none'}`,
+    `- attempt_audit_operator_actions: ${activity.attempt_audit_readiness.operator_actions.join(', ') || 'none'}`,
+    `- attempt_audit_automatic_repair_allowed: ${activity.attempt_audit_readiness.automatic_repair_allowed}`,
+    `- attempt_audit_destructive_action_performed: ${activity.attempt_audit_readiness.destructive_action_performed}`,
+    `- no_generation_request_confirmed: ${activity.signals.no_generation_request_confirmed}`,
+    `- generation_pipeline_failure_confirmed: ${activity.signals.generation_pipeline_failure_confirmed}`,
+    `- generation_attempt_incomplete_detected: ${activity.signals.generation_attempt_incomplete_detected}`,
+    `- generated_files_modified: ${activity.safety.generated_files_modified}`,
+    `- model_invoked: ${activity.safety.model_invoked}`,
+    '',
     '## Priority Items',
     '',
     ...(report.items.length
@@ -462,11 +510,12 @@ export async function getStoryAgentGeneratedHealth(
   input: GetStoryAgentGeneratedHealthInput = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
   const limit = Number.isFinite(input.limit) ? Math.max(1, Math.min(Math.floor(input.limit ?? 30), 100)) : 30;
-  const [storyRecords, seriesRecords, storyIds, signoffExcludedSeriesIds] = await Promise.all([
+  const [storyRecords, seriesRecords, storyIds, signoffExcludedSeriesIds, generationActivity] = await Promise.all([
     listProjectRecords('projects'),
     listProjectRecords('ai-comic-series-projects'),
     listStoryIds(),
     readSignoffExcludedSeriesIds(),
+    inspectStoryGenerationActivity({ generatedRoot: generatedRoot(), kbRoot: getKbRoot() }),
   ]);
   const storyItems = await Promise.all(storyRecords.map(storyHealth));
   const seriesItems = seriesRecords.map(record => seriesHealth(record, storyIds, signoffExcludedSeriesIds));
@@ -494,6 +543,7 @@ export async function getStoryAgentGeneratedHealth(
   );
   const allItems = [...storyItems, ...seriesItems].sort((a, b) => (
     Number(a.signoff_eligible === false) - Number(b.signoff_eligible === false)
+    || Number(b.final_delivery_manifest_missing === true) - Number(a.final_delivery_manifest_missing === true)
     || statusRank(a.status) - statusRank(b.status)
     || b.risk_score - a.risk_score
     || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')
@@ -502,6 +552,7 @@ export async function getStoryAgentGeneratedHealth(
   const base: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'mcp-story-agent-generated-health/v1',
     generated_at: new Date().toISOString(),
+    generation_activity: generationActivity,
     summary: {
       scanned_story_project_count: storyRecords.length,
       scanned_series_project_count: seriesRecords.length,

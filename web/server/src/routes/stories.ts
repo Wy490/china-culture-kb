@@ -27,6 +27,8 @@ import {
   storyProjectResourceIdsForStoryId,
 } from '../services/product-resource-access-service.js';
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
+import { resolveStoryVideoType } from '../platform/story-generation-policy.js';
+import { runWithStoryGenerationAttemptAudit } from '../services/story-generation-attempt-audit-service.js';
 
 export const storiesRouter = Router();
 
@@ -70,10 +72,13 @@ storiesRouter.post(
     const { domain = 'china_culture', ...storyRequest } = req.body as StoryGenerateRequest & {
       domain?: string;
     };
-    const result = await storyAgentDomainRegistry.require(domain).generateStory(
+    const result = await runWithStoryGenerationAttemptAudit({
+      sourceDomain: domain,
+      videoType: resolveStoryVideoType(storyRequest),
+    }, () => storyAgentDomainRegistry.require(domain).generateStory(
       storyRequest,
       { access_control: accessControl },
-    );
+    ));
     const status = result.ok
       ? 200
       : result.error?.code === ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED

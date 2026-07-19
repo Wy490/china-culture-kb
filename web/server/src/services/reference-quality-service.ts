@@ -156,13 +156,7 @@ export function combineQualityReports(
   const passed = dramaticQuality.passed && referenceSafety.safe;
 
   return {
-    hasCentralEvent: dramaticQuality.hasCentralEvent,
-    hasConflict: dramaticQuality.hasConflict,
-    hasProtagonistChoice: dramaticQuality.hasProtagonistChoice,
-    hasSceneAction: dramaticQuality.hasSceneAction,
-    hasClimax: dramaticQuality.hasClimax,
-    hasEndingTheme: dramaticQuality.hasEndingTheme,
-    isNotBiographySummary: dramaticQuality.isNotBiographySummary,
+    ...dramaticQuality,
     passed,
     issues: combinedIssues,
   };

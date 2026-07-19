@@ -1,6 +1,6 @@
-import { dirname, extname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import {
   fail,
@@ -13,6 +13,9 @@ import {
 } from '@shared/types.js';
 import type {
   ApiResponse,
+  AssetIngestReport,
+  MediaAssetReviewUpdateRequest,
+  MediaAssetReviewUpdateResult,
   StoryGenerateResult,
   StoryProjectDetail,
   StoryProjectExportPackage,
@@ -159,13 +162,17 @@ import {
   materialPackFromKnowledgePack,
 } from './creation-contract-service.js';
 import { buildRegenerationNote, regenerateSceneInStory } from './story-regenerate-service.js';
+import { inspectMediaAssetUpload } from './asset-ingest-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
+import {
+  rebuildDerivedStoryState,
+  StoryDerivedStateValidationError,
+} from './derived-story-state-service.js';
 import { buildProductionMaterialReadinessReport } from './production-material-readiness-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
-import { validateDramaticStory } from './dramatic-story.js';
-import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
+import { getStoryFamilyRepairGuidance, validateStoryFamilyBaseQuality } from './story-family-quality-service.js';
 import {
   buildStoryProductionBoard,
   seedanceShotProductionId,
@@ -174,13 +181,7 @@ import {
 import { buildProductionReadinessAutomationPlan } from './production-readiness-automation.js';
 import { resolveStoryProjectWorkflow } from '@shared/project-workflow.js';
 import type { ProductResourceOwnership } from '@shared/product-access.js';
-import {
-  type ProjectRepository,
-  type ProjectMetaExpectation,
-  type ProjectVersionExpectation,
-} from '../repositories/project-repository.js';
 import { FileArtifactStore } from '../repositories/artifact-store.js';
-import { createStoryProjectRepository } from '../platform/project-repository-provider.js';
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
 import {
   formatStoryDomainEditPersistenceBoundary,
@@ -196,6 +197,8 @@ import type { DomainProductionMaterialGuidance } from '../platform/domain-pack.j
 import { repairStoryWithProductionBoard } from './production-board-repair-service.js';
 import {
   buildGearsLedgerItem,
+  buildGearsExecutionOperationalMetrics,
+  buildGearsExecutionRecoveryPlan,
   buildLocalGearsJobId,
   buildRejectedGearsLedgerItem,
   gearsProjectCallbackPath,
@@ -206,22 +209,33 @@ import {
   extractGearsJobCallbackRequests,
   markGearsLedgerPollFailures,
   mergeGearsCallbackEvents,
+  mergeGearsExecutionCostFromCallback,
   mergeGearsLedgerItems,
   normalizeGearsJobCallback,
   normalizeGearsJobLedger,
   pollGearsExecutionJobStatuses,
+  reconcileGearsLedgerExecutionCosts,
   resolveGearsLedgerStatusAfterCallback,
   submitGearsExecutionJobs,
+  summarizeGearsExecutionCostGovernance,
   type GearsExecutionSubmitUnit,
 } from './gears-execution-service.js';
+import {
+  attachGearsProviderAssetHandoffs,
+  type GearsProviderAssetSource,
+} from './gears-provider-asset-handoff-service.js';
+import {
+  STORY_PROJECT_VIDEO_TYPES as ALL_VIDEO_TYPES,
+  buildProjectId,
+  buildVersionId,
+  nextProjectUpdatedAt,
+  parseProjectId,
+  projectDir,
+  projectMetaExpectation,
+  projectRepository,
+} from './project-core-service.js';
 
-const ALL_VIDEO_TYPES: VideoType[] = [
-  'character_story', 'historical_drama', 'legend_story',
-  'culture_promo', 'heritage_promo', 'city_brand_promo',
-  'scene_short', 'landscape_mood',
-  'documentary_short', 'explainer_video', 'lecture_video', 'education_training',
-  'children_story', 'social_short', 'ai_comic_drama',
-];
+export { buildProjectId };
 
 const SEEDANCE_SHOT_PRODUCTION_STATUSES: SeedanceShotProductionStatus[] = [
   'not_started',
@@ -262,45 +276,6 @@ function generatedRoot(): string {
 
 function storiesRoot(generatedRootOverride?: string): string {
   return resolve(generatedRootOverride ?? generatedRoot(), 'stories');
-}
-
-function projectsRoot(generatedRootOverride?: string): string {
-  return resolve(generatedRootOverride ?? generatedRoot(), 'projects');
-}
-
-function projectRepository(generatedRootOverride?: string): ProjectRepository {
-  return createStoryProjectRepository(projectsRoot(generatedRootOverride));
-}
-
-function projectVersionExpectation(project: StoryProjectMeta): ProjectVersionExpectation {
-  return {
-    current_version_id: project.current_version_id,
-    version_count: project.version_count,
-  };
-}
-
-function projectMetaExpectation(project: StoryProjectMeta): ProjectMetaExpectation {
-  return {
-    ...projectVersionExpectation(project),
-    updated_at: project.updated_at,
-  };
-}
-
-function nextProjectUpdatedAt(project: StoryProjectMeta): string {
-  const previous = Date.parse(project.updated_at);
-  return new Date(Math.max(Date.now(), Number.isFinite(previous) ? previous + 1 : Date.now())).toISOString();
-}
-
-function projectDir(projectId: string): string {
-  return resolve(projectsRoot(), projectId);
-}
-
-function projectVersionsDir(projectId: string): string {
-  return resolve(projectDir(projectId), 'versions');
-}
-
-function projectVersionPath(projectId: string, versionId: string): string {
-  return resolve(projectVersionsDir(projectId), `${versionId}.json`);
 }
 
 function projectSeedanceProviderApiPath(projectId: string, action: 'provider-callback' | 'poll-provider'): string {
@@ -369,12 +344,17 @@ function countOpenSupplementTasks(story: StoryGenerateResult): number {
 }
 
 function qualitySummary(story: Pick<StoryGenerateResult, 'quality_report'>): {
+  story_publishable?: boolean;
+  production_ready?: boolean;
   quality_passed?: boolean;
   genre_score?: number;
   quality_issue_count?: number;
 } {
   if (!story.quality_report) return {};
   return {
+    story_publishable: story.quality_report.quality_gates?.story_publishable
+      ?? story.quality_report.passed,
+    production_ready: story.quality_report.quality_gates?.production_ready,
     quality_passed: story.quality_report.passed,
     genre_score: story.quality_report.genre_score,
     quality_issue_count: story.quality_report.issues.length,
@@ -390,25 +370,6 @@ function storySourcePath(
 
 function storySourcePathsForId(storyId: string): string[] {
   return ALL_VIDEO_TYPES.map(videoType => resolve(storiesRoot(), videoType, `${storyId}.json`));
-}
-
-export function buildProjectId(storyId: string, videoType: string): string {
-  return `${storyId}--${videoType}`;
-}
-
-function buildVersionId(projectId: string, versionNumber: number): string {
-  return `${projectId}-v${versionNumber}`;
-}
-
-function parseProjectId(projectId: string): { storyId: string; videoType: VideoType } | null {
-  const marker = '--';
-  const markerIndex = projectId.indexOf(marker);
-  if (markerIndex === -1) return null;
-
-  const storyId = projectId.slice(0, markerIndex);
-  const videoType = projectId.slice(markerIndex + marker.length) as VideoType;
-  if (!ALL_VIDEO_TYPES.includes(videoType)) return null;
-  return { storyId, videoType };
 }
 
 function toVersionSummary(snapshot: StoryProjectVersionSnapshot): StoryProjectVersionSummary {
@@ -490,6 +451,13 @@ function normalizeSeedanceAssetHistory(history?: SeedanceAssetHistoryEvent[]): S
       original_filename: event.original_filename,
       mime_type: event.mime_type,
       size_bytes: event.size_bytes,
+      content_sha256: event.content_sha256,
+      rights_status: event.rights_status,
+      authorization_reference: event.authorization_reference,
+      person_consent_reference: event.person_consent_reference,
+      human_review_status: event.human_review_status,
+      reviewer_id: event.reviewer_id,
+      reviewed_at: event.reviewed_at,
       source_project_id: event.source_project_id,
       source_project_title: event.source_project_title,
       source_asset_id: event.source_asset_id,
@@ -521,6 +489,13 @@ function seedanceAssetHistoryEvent(params: {
     original_filename: params.asset.original_filename,
     mime_type: params.asset.mime_type,
     size_bytes: params.asset.size_bytes,
+    content_sha256: params.asset.content_sha256,
+    rights_status: params.asset.rights_status,
+    authorization_reference: params.asset.authorization_reference,
+    person_consent_reference: params.asset.person_consent_reference,
+    human_review_status: params.asset.human_review_status,
+    reviewer_id: params.asset.reviewer_id,
+    reviewed_at: params.asset.reviewed_at,
     source_project_id: params.sourceProject?.project_id,
     source_project_title: params.sourceProject?.title,
     source_asset_id: params.sourceAssetId,
@@ -560,6 +535,16 @@ function normalizeSeedanceAssetLibrary(library?: SeedanceAssetLibrary): Seedance
         provider_asset_id: item.provider_asset_id,
         upload_status: item.upload_status,
         upload_error: item.upload_error,
+        content_sha256: item.content_sha256,
+        prompt_sha256: item.prompt_sha256,
+        model: item.model,
+        rights_status: item.rights_status,
+        authorization_reference: item.authorization_reference,
+        person_consent_reference: item.person_consent_reference,
+        human_review_status: item.human_review_status,
+        reviewer_id: item.reviewer_id,
+        reviewed_at: item.reviewed_at,
+        review_note: item.review_note,
         history: normalizeSeedanceAssetHistory(item.history),
         description: item.description,
         updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
@@ -2585,11 +2570,12 @@ async function persistProjectVersion(
   const nextVersionNumber = project.version_count + 1;
   const createdAt = nextProjectUpdatedAt(project);
   const versionId = buildVersionId(project.project_id, nextVersionNumber);
-  const updatedStory: StoryGenerateResult = {
+  const storyWithVersionIdentity: StoryGenerateResult = {
     ...story,
     project_id: project.project_id,
     current_version_id: versionId,
   };
+  const updatedStory = await rebuildDerivedStoryState(storyWithVersionIdentity);
 
   const snapshot: StoryProjectVersionSnapshot = {
     project_id: project.project_id,
@@ -2641,6 +2627,15 @@ async function persistProjectVersion(
     updated_at: project.updated_at,
   });
   return updatedMeta;
+}
+
+function derivedStateValidationFailure<T>(error: unknown): ApiResponse<T> | null {
+  if (!(error instanceof StoryDerivedStateValidationError)) return null;
+  return fail(
+    ErrorCodes.DOMAIN_SAFETY_VALIDATION_FAILED,
+    error.message,
+    error.story.domain_safety,
+  );
 }
 
 export async function createProjectFromGeneratedStory(
@@ -2760,6 +2755,16 @@ export async function updateProjectSeedanceAssetLibrary(
       provider_asset_id: item.provider_asset_id?.trim() || previous?.provider_asset_id,
       upload_status: item.upload_status ?? previous?.upload_status,
       upload_error: item.upload_error?.trim() || previous?.upload_error,
+      content_sha256: previous?.content_sha256,
+      prompt_sha256: previous?.prompt_sha256,
+      model: previous?.model,
+      rights_status: previous?.rights_status,
+      authorization_reference: previous?.authorization_reference,
+      person_consent_reference: previous?.person_consent_reference,
+      human_review_status: previous?.human_review_status,
+      reviewer_id: previous?.reviewer_id,
+      reviewed_at: previous?.reviewed_at,
+      review_note: previous?.review_note,
       description: item.description?.trim() || previous?.description,
       updated_at: updatedAt,
     };
@@ -2991,27 +2996,46 @@ export async function uploadProjectSeedanceAssetFile(
     return fail(ErrorCodes.VALIDATION_ERROR, 'asset_id or label+kind is required for Seedance asset upload');
   }
 
-  const extension = seedanceAssetUploadExtension(request.file.original_filename, request.file.mime_type);
-  const fileId = `seedance-upload-${slugifySeedanceAssetLabel(assetId)}-${randomUUID().slice(0, 8)}`;
-  const filename = `${fileId}${extension}`;
-  const uploadDir = resolve(projectDir(project.project_id), 'seedance-assets', 'uploads');
-  await new FileArtifactStore(uploadDir).writeBinary(filename, request.file.buffer, {
-    overwrite: 'forbid',
-  });
-  const localPath = `projects/${project.project_id}/seedance-assets/uploads/${filename}`;
   const existing = byId.get(assetId);
+  const resolvedModality = request.modality ?? existing?.modality ?? reportMatch?.modality ?? defaultSeedanceAssetModality(resolvedKind);
+  let ingest: AssetIngestReport;
+  try {
+    ingest = inspectMediaAssetUpload({
+      original_filename: request.file.original_filename,
+      declared_mime_type: request.file.mime_type,
+      expected_modality: resolvedModality,
+      buffer: request.file.buffer,
+    });
+  } catch (error) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      error instanceof Error ? error.message : 'Uploaded Seedance asset failed media inspection',
+    );
+  }
+  const fileId = `media-${ingest.content_sha256}`;
+  const filename = `${ingest.content_sha256}${ingest.canonical_extension}`;
+  const originalDir = resolve(projectDir(project.project_id), 'media', 'originals');
+  const originalStore = new FileArtifactStore(originalDir);
+  if (!(await originalStore.exists(filename))) {
+    await originalStore.writeBinary(filename, request.file.buffer, { overwrite: 'forbid' });
+  }
+  const localPath = `projects/${project.project_id}/media/originals/${filename}`;
+  const previewUrl = `/api/projects/${project.project_id}/production-board/media-assets/media-sha256-${ingest.content_sha256}/preview`;
   const asset: SeedanceAssetLibraryItem = {
     asset_id: assetId,
     kind: resolvedKind,
     label: resolvedLabel,
-    modality: request.modality ?? existing?.modality ?? reportMatch?.modality ?? defaultSeedanceAssetModality(resolvedKind),
+    modality: resolvedModality,
     role: request.role ?? existing?.role ?? reportMatch?.role ?? defaultSeedanceAssetRole(resolvedKind),
     reference_slot: request.reference_slot?.trim() || existing?.reference_slot || reportMatch?.reference_slot,
     file_id: fileId,
     local_path: localPath,
     original_filename: request.file.original_filename,
-    mime_type: request.file.mime_type,
-    size_bytes: request.file.buffer.length,
+    mime_type: ingest.detected_mime_type,
+    size_bytes: ingest.byte_size,
+    content_sha256: ingest.content_sha256,
+    rights_status: 'pending',
+    human_review_status: 'pending',
     provider: 'local_upload',
     provider_asset_id: fileId,
     upload_status: 'uploaded',
@@ -3055,21 +3079,151 @@ export async function uploadProjectSeedanceAssetFile(
     file_id: fileId,
     local_path: localPath,
     original_filename: request.file.original_filename,
-    mime_type: request.file.mime_type,
-    size_bytes: request.file.buffer.length,
+    mime_type: ingest.detected_mime_type,
+    size_bytes: ingest.byte_size,
+    content_sha256: ingest.content_sha256,
+    preview_url: previewUrl,
+    ingest,
   });
 }
 
-function seedanceAssetUploadExtension(filename: string, mimeType: string): string {
-  const ext = extname(filename).toLowerCase().replace(/[^a-z0-9.]/g, '');
-  if (ext && ext.length <= 12) return ext;
-  if (mimeType === 'image/png') return '.png';
-  if (mimeType === 'image/jpeg') return '.jpg';
-  if (mimeType === 'image/webp') return '.webp';
-  if (mimeType === 'video/mp4') return '.mp4';
-  if (mimeType === 'audio/mpeg') return '.mp3';
-  if (mimeType === 'audio/wav') return '.wav';
-  return '.bin';
+export async function updateProjectMediaAssetReview(
+  projectId: string,
+  request: MediaAssetReviewUpdateRequest,
+  reviewer: {
+    actor_id: string;
+    authentication_method: 'static_registry_token' | 'signed_session';
+  },
+): Promise<ApiResponse<MediaAssetReviewUpdateResult>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  const { project, current_story } = detail.data;
+  const current = normalizeSeedanceAssetLibrary(project.seedance_asset_library);
+  const existing = current.items.find(item => item.asset_id === request.asset_id);
+  if (!existing) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Media asset "${request.asset_id}" is not in the project asset library`);
+  }
+  if (!request.rights_status && !request.human_review_status) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'rights_status or human_review_status is required');
+  }
+  if (request.expected_content_sha256) {
+    const expected = request.expected_content_sha256.toLowerCase();
+    if (!existing.content_sha256 || existing.content_sha256.toLowerCase() !== expected) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'Media asset content changed or does not match expected_content_sha256; review the current immutable file',
+      );
+    }
+  }
+  if (request.rights_status === 'authorized' && !request.authorization_reference?.trim()) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'authorization_reference is required for authorized media rights');
+  }
+  if (request.human_review_status && request.human_review_status !== 'pending') {
+    if (!request.expected_content_sha256 || !request.review_note?.trim()) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'expected_content_sha256 and review_note are required for a human visual review decision',
+      );
+    }
+    const currentBoard = buildStoryProductionBoard(current_story, {
+      seedanceAssetLibrary: project.seedance_asset_library,
+      seedanceShotLedger: project.seedance_shot_ledger,
+      sourceVersionId: project.current_version_id,
+    });
+    const binding = currentBoard.media_asset_library.bindings.find(item => item.asset_id === existing.asset_id);
+    const artifact = binding?.artifact_id
+      ? currentBoard.media_asset_library.artifacts.find(item => item.artifact_id === binding.artifact_id)
+      : undefined;
+    if (artifact?.integrity_status !== 'verified' || artifact.storage.kind !== 'local_immutable') {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'Human visual review requires a locally ingested immutable artifact with verified bytes',
+      );
+    }
+  }
+
+  const reviewedAt = nextProjectUpdatedAt(project);
+  const humanReviewStatus = request.human_review_status ?? existing.human_review_status ?? 'pending';
+  const asset: SeedanceAssetLibraryItem = {
+    ...existing,
+    rights_status: request.rights_status ?? existing.rights_status ?? 'pending',
+    authorization_reference: request.authorization_reference?.trim() ?? existing.authorization_reference,
+    person_consent_reference: request.person_consent_reference?.trim() ?? existing.person_consent_reference,
+    human_review_status: humanReviewStatus,
+    reviewer_id: request.human_review_status && request.human_review_status !== 'pending'
+      ? reviewer.actor_id
+      : request.human_review_status === 'pending' ? undefined : existing.reviewer_id,
+    reviewed_at: request.human_review_status && request.human_review_status !== 'pending'
+      ? reviewedAt
+      : request.human_review_status === 'pending' ? undefined : existing.reviewed_at,
+    review_note: request.human_review_status && request.human_review_status !== 'pending'
+      ? request.review_note?.trim()
+      : request.human_review_status === 'pending' ? undefined : existing.review_note,
+    updated_at: reviewedAt,
+  };
+  let history = normalizeSeedanceAssetHistory(existing.history) ?? [];
+  if (request.rights_status) {
+    history = appendSeedanceAssetHistory({ ...existing, history }, seedanceAssetHistoryEvent({
+      asset,
+      eventType: 'rights_review',
+      createdAt: reviewedAt,
+      note: request.authorization_reference?.trim() ?? `rights_status=${request.rights_status}`,
+    }));
+  }
+  if (request.human_review_status) {
+    history = appendSeedanceAssetHistory({ ...existing, history }, seedanceAssetHistoryEvent({
+      asset,
+      eventType: 'human_visual_review',
+      createdAt: reviewedAt,
+      note: request.review_note?.trim() ?? `human_review_status=${request.human_review_status}`,
+    }));
+  }
+  const reviewedAsset = { ...asset, history };
+  const updatedProject: StoryProjectMeta = {
+    ...project,
+    updated_at: reviewedAt,
+    seedance_asset_library: {
+      schema_version: 'seedance-asset-library/v1',
+      updated_at: reviewedAt,
+      items: current.items
+        .map(item => item.asset_id === reviewedAsset.asset_id ? reviewedAsset : item)
+        .sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')),
+    },
+  };
+  await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
+  const nextDetail = await getProject(project.project_id);
+  if (!nextDetail.ok || !nextDetail.data) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found after media review update`);
+  }
+  const board = buildStoryProductionBoard(nextDetail.data.current_story, {
+    seedanceAssetLibrary: nextDetail.data.project.seedance_asset_library,
+    seedanceShotLedger: nextDetail.data.project.seedance_shot_ledger,
+    sourceVersionId: nextDetail.data.project.current_version_id,
+  });
+  const binding = board.media_asset_library.bindings.find(item => item.asset_id === request.asset_id);
+  const artifact = binding?.artifact_id
+    ? board.media_asset_library.artifacts.find(item => item.artifact_id === binding.artifact_id)
+    : undefined;
+  if (!binding || !artifact) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Media asset "${request.asset_id}" is not bound to the current production board`,
+    );
+  }
+  return success({
+    detail: nextDetail.data,
+    asset: reviewedAsset,
+    artifact,
+    binding,
+    reviewer_id: reviewer.actor_id,
+    reviewed_at: reviewedAt,
+    production_credit_granted: binding.production_credit_granted,
+  });
 }
 
 function seedanceAssetPlaceholderFilename(asset: SeedanceAssetBindingItem): string {
@@ -3374,6 +3528,9 @@ function toGlobalSeedanceAssetItem(project: StoryProjectMeta, item: SeedanceAsse
     provider_asset_id: item.provider_asset_id,
     upload_status: item.upload_status,
     upload_error: item.upload_error,
+    content_sha256: item.content_sha256,
+    rights_status: item.rights_status,
+    human_review_status: item.human_review_status,
     description: item.description,
     updated_at: item.updated_at,
   };
@@ -3466,6 +3623,16 @@ export async function reuseProjectSeedanceAsset(
     provider_asset_id: sourceItem.provider_asset_id,
     upload_status: sourceItem.upload_status ?? 'external',
     upload_error: undefined,
+    content_sha256: sourceItem.content_sha256,
+    prompt_sha256: sourceItem.prompt_sha256,
+    model: sourceItem.model,
+    rights_status: sourceItem.rights_status,
+    authorization_reference: sourceItem.authorization_reference,
+    person_consent_reference: sourceItem.person_consent_reference,
+    human_review_status: sourceItem.human_review_status,
+    reviewer_id: sourceItem.reviewer_id,
+    reviewed_at: sourceItem.reviewed_at,
+    review_note: sourceItem.review_note,
     description: request.description?.trim() || existing?.description || reportMatch?.prompt_usage || sourceItem.description,
     updated_at: updatedAt,
   };
@@ -4760,6 +4927,16 @@ function buildProjectGearsUnits(input: {
       payload_summary: compactDeliveryPayloadSummary(`${scene.name} ${scene.description}`),
       payload: { scene },
     }));
+  } else if (input.jobType === 'prop_image') {
+    input.board.image_asset_job_plan.requirements
+      .filter(requirement => requirement.asset_kind === 'prop')
+      .forEach(requirement => addUnit({
+        source_unit_id: requirement.source_unit_id,
+        source_unit_label: requirement.label,
+        source_scene_id: requirement.source_scene_ids[0],
+        payload_summary: compactDeliveryPayloadSummary(`${requirement.label} ${requirement.prompt}`),
+        payload: { requirement },
+      }));
   } else {
     const sourceUnitIds = requestedIds.size ? [...requestedIds] : [`${input.projectId}:${input.jobType}`];
     sourceUnitIds.forEach(sourceUnitId => addUnit({
@@ -4923,6 +5100,34 @@ export async function submitProjectGearsJobs(
     });
   }
 
+  let submitUnits = filtered.units;
+  if (
+    request.use_gears_api
+    && request.external_call_authorization?.authorized === true
+    && jobType === 'seedance_video'
+  ) {
+    const bindingByAssetId = new Map(board.media_asset_library.bindings.map(binding => [binding.asset_id, binding]));
+    const assets: GearsProviderAssetSource[] = normalizeSeedanceAssetLibrary(project.seedance_asset_library).items
+      .map(item => ({
+        asset_id: item.asset_id,
+        label: item.label,
+        modality: item.modality,
+        file_url: item.file_url,
+        provider: item.provider,
+        provider_asset_id: item.provider_asset_id,
+        content_sha256: item.content_sha256,
+        rights_status: item.rights_status,
+        authorization_reference: item.authorization_reference,
+        human_review_status: item.human_review_status,
+        reviewer_id: item.reviewer_id,
+        reviewed_at: item.reviewed_at,
+        production_credit_granted: Boolean(bindingByAssetId.get(item.asset_id)?.production_credit_granted),
+      }));
+    const handoff = attachGearsProviderAssetHandoffs({ units: submitUnits, assets, verified_at: submittedAt });
+    if (!handoff.ok) return fail(ErrorCodes.VALIDATION_ERROR, handoff.message, handoff.details);
+    submitUnits = handoff.units;
+  }
+
   const adapterRes = await submitGearsExecutionJobs({
     sourceProjectId: project.project_id,
     sourceStoryId: current_story.storyId,
@@ -4932,8 +5137,9 @@ export async function submitProjectGearsJobs(
     callbackUrl: request.callback_url ?? gearsProjectCallbackUrl(project.project_id),
     note: request.note,
     useGearsApi: Boolean(request.use_gears_api),
+    externalCallAuthorization: request.external_call_authorization,
     payload: request.payload,
-    units: filtered.units,
+    units: submitUnits,
   });
   if (!adapterRes.ok || !adapterRes.data) {
     return fail(
@@ -4946,7 +5152,8 @@ export async function submitProjectGearsJobs(
   }
 
   failures.push(...adapterRes.data.failures);
-  const unitById = new Map(filtered.units.map(unit => [unit.source_unit_id, unit]));
+  const externalCallAuthorization = adapterRes.data.summary.external_call_authorization;
+  const unitById = new Map(submitUnits.map(unit => [unit.source_unit_id, unit]));
   const submittedJobs = adapterRes.data.accepted
     .map(accepted => {
       const unit = unitById.get(accepted.source_unit_id);
@@ -4958,6 +5165,7 @@ export async function submitProjectGearsJobs(
         unit,
         accepted,
         submittedAt,
+        externalCallAuthorization,
         note: request.note,
       });
     })
@@ -4974,6 +5182,7 @@ export async function submitProjectGearsJobs(
         unit,
         failure,
         submittedAt,
+        externalCallAuthorization,
         note: request.note,
       });
     })
@@ -5503,6 +5712,7 @@ function updateGearsLedgerItemFromCallback(input: {
     last_poll_error_code: undefined,
     updated_at: input.receivedAt,
     completed_at: completedAt,
+    execution_cost: mergeGearsExecutionCostFromCallback(input),
     callback_events: mergeGearsCallbackEvents({
       existing: input.item.callback_events,
       callback: input.callback,
@@ -5513,6 +5723,104 @@ function updateGearsLedgerItemFromCallback(input: {
       terminalStatusChanged,
     }),
   };
+}
+
+function archiveGearsImageArtifact(input: {
+  project: StoryProjectMeta;
+  board: StoryProductionBoard;
+  item: GearsJobLedgerItem;
+  callbackStatus: GearsJobLedgerItem['status'];
+  receivedAt: string;
+  duplicate: boolean;
+}): SeedanceAssetLibrary | undefined {
+  if (
+    input.duplicate
+    || input.callbackStatus !== 'ready'
+    || input.item.status !== 'ready'
+    || !['character_image', 'scene_image', 'prop_image'].includes(input.item.job_type)
+  ) {
+    return input.project.seedance_asset_library;
+  }
+  const requirement = input.board.image_asset_job_plan.requirements.find(item => (
+    item.job_type === input.item.job_type && item.source_unit_id === input.item.source_unit_id
+  ));
+  if (!requirement) return input.project.seedance_asset_library;
+  const artifact = input.item.artifacts?.find(item => isExternalProductionArtifactUrl(item.url));
+  const artifactUrl = artifact?.url
+    ?? input.item.artifact_urls.find(isExternalProductionArtifactUrl);
+  if (!artifactUrl) return input.project.seedance_asset_library;
+
+  const current = normalizeSeedanceAssetLibrary(input.project.seedance_asset_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const existing = byId.get(requirement.asset_id);
+  const model = artifactMetadataString(artifact?.metadata, 'model');
+  const originalFilename = artifactUrlFilename(artifactUrl);
+  const asset: SeedanceAssetLibraryItem = {
+    asset_id: requirement.asset_id,
+    kind: requirement.asset_kind,
+    label: requirement.label,
+    modality: 'image',
+    role: existing?.role ?? defaultSeedanceAssetRole(requirement.asset_kind),
+    reference_slot: requirement.reference_slot ?? existing?.reference_slot,
+    file_url: artifactUrl,
+    original_filename: originalFilename,
+    mime_type: artifact?.mime_type,
+    provider: 'gears',
+    provider_asset_id: artifact?.artifact_id ?? input.item.gears_job_id,
+    upload_status: 'external',
+    content_sha256: undefined,
+    prompt_sha256: createHash('sha256').update(requirement.prompt, 'utf8').digest('hex'),
+    model,
+    rights_status: 'pending',
+    authorization_reference: undefined,
+    person_consent_reference: undefined,
+    human_review_status: 'pending',
+    reviewer_id: undefined,
+    reviewed_at: undefined,
+    review_note: undefined,
+    description: requirement.prompt,
+    updated_at: input.receivedAt,
+  };
+  byId.set(requirement.asset_id, {
+    ...asset,
+    history: appendSeedanceAssetHistory(existing, seedanceAssetHistoryEvent({
+      asset,
+      eventType: 'provider_callback',
+      createdAt: input.receivedAt,
+      note: `GEARS ${input.item.job_type} callback: ${input.item.gears_job_id}`,
+    })),
+  });
+  return {
+    schema_version: 'seedance-asset-library/v1',
+    updated_at: input.receivedAt,
+    items: [...byId.values()].sort((a, b) => (
+      a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')
+    )),
+  };
+}
+
+function isExternalProductionArtifactUrl(value: string): boolean {
+  return isHttpArtifactUrl(value)
+    && !isPlaceholderExternalArtifactUrl(value)
+    && !isLocalAcceptanceArtifactUrl(value)
+    && !isPrivateOrLocalArtifactUrl(value);
+}
+
+function artifactMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 160) : undefined;
+}
+
+function artifactUrlFilename(value: string): string | undefined {
+  try {
+    const filename = new URL(value).pathname.split('/').filter(Boolean).at(-1);
+    return filename ? decodeURIComponent(filename).slice(0, 240) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function importProjectGearsCallback(
@@ -5565,9 +5873,9 @@ export async function importProjectGearsCallback(
   const gearsJobLedger: GearsJobLedger = {
     schema_version: 'gears-job-ledger/v1',
     updated_at: receivedAt,
-    items: ledger.items.map(item =>
+    items: reconcileGearsLedgerExecutionCosts(ledger.items.map(item =>
       item.ledger_id === match.ledger_id ? updatedItem : item
-    ),
+    )),
   };
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
@@ -5582,11 +5890,20 @@ export async function importProjectGearsCallback(
         note: callback.note ?? callback.message ?? `GEARS callback: ${updatedItem.status}`,
       })
     : project.seedance_shot_ledger;
+  const seedanceAssetLibrary = archiveGearsImageArtifact({
+    project,
+    board,
+    item: updatedItem,
+    callbackStatus: callback.status,
+    receivedAt,
+    duplicate: duplicateCount > 0,
+  });
   const updatedProject: StoryProjectMeta = {
     ...project,
     updated_at: receivedAt,
     gears_job_ledger: gearsJobLedger,
     seedance_shot_ledger: seedanceShotLedger,
+    seedance_asset_library: seedanceAssetLibrary,
   };
   await projectRepository().writeMeta(updatedProject, projectMetaExpectation(project));
   return success({
@@ -6245,6 +6562,7 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
   return success(buildStoryProductionBoard(detail.data.current_story, {
     seedanceAssetLibrary: detail.data.project.seedance_asset_library,
     seedanceShotLedger: detail.data.project.seedance_shot_ledger,
+    sourceVersionId: detail.data.project.current_version_id,
   }));
 }
 
@@ -6271,6 +6589,9 @@ export async function getProjectProductionReadiness(
       ? 100
       : 0;
   const gearsSummary = summarizeProductionReadinessGears(detail.project.gears_job_ledger);
+  const gearsCostGovernance = summarizeGearsExecutionCostGovernance(detail.project.gears_job_ledger);
+  const gearsOperationalMetrics = buildGearsExecutionOperationalMetrics(detail.project.gears_job_ledger);
+  const gearsRecoveryPlan = buildGearsExecutionRecoveryPlan(detail.project.gears_job_ledger);
   const localActiveGearsCount = activeLocalGearsJobCount(detail.project.gears_job_ledger);
   const localGearsAcceptanceAvailable = localActiveGearsCount > 0 && localActiveGearsCount === gearsSummary.active;
   const activeGearsActionKey = localGearsAcceptanceAvailable ? 'accept_local_gears_artifacts' : 'sync_gears_jobs';
@@ -6278,6 +6599,9 @@ export async function getProjectProductionReadiness(
   const activeShotCount = shotStatusCounts.submitted + shotStatusCounts.processing;
   const shotCount = board.seedance_shot_ledger.items.length || board.shot_units.length;
   const seedancePlaceholderAssetCount = board.seedance_asset_report.placeholder_asset_count ?? 0;
+  const mediaBindingCount = board.media_asset_library.summary.binding_count;
+  const mediaProductionCreditCount = board.media_asset_library.summary.production_credit_binding_count;
+  const mediaProductionGapCount = Math.max(0, mediaBindingCount - mediaProductionCreditCount);
   const currentVersion = detail.versions.find(
       version => version.version_id === detail.project.current_version_id,
     );
@@ -6410,6 +6734,16 @@ export async function getProjectProductionReadiness(
       action_label: '批量导入正式素材',
     });
   }
+  if (mediaProductionGapCount > 0) {
+    addIssue({
+      issue_id: 'media-assets-production-credit-missing',
+      severity: 'warning',
+      lane_key: 'delivery_contract',
+      label: `${mediaProductionGapCount} 个媒体绑定未取得生产资格`,
+      detail: `当前只有 ${mediaProductionCreditCount}/${mediaBindingCount} 个绑定同时通过字节完整性、版权授权和真人视觉审核；结构已绑定或供应商回传不计正式投产信用。`,
+      action_label: '完成媒体授权与真人审核',
+    });
+  }
   if (board.seedance_asset_report.upload_required_count > 0) {
     addAction({
       action_key: 'draft_seedance_asset_placeholders',
@@ -6504,6 +6838,26 @@ export async function getProjectProductionReadiness(
       lane_key: 'gears_execution',
     });
   } else {
+    if (gearsCostGovernance.boundary_violation_count > 0) {
+      addIssue({
+        issue_id: 'gears-execution-cost-boundary-violated',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsCostGovernance.boundary_violation_count} 个 GEARS job 费用越界`,
+        detail: `实际费用账本存在超授权 ${gearsCostGovernance.exceeded_authorization_count}、币种不一致 ${gearsCostGovernance.currency_mismatch_count}、缺失授权 ${gearsCostGovernance.authorization_missing_count}；完成财务复核与重新授权前不得交付。`,
+        action_label: '复核并重新授权外部费用',
+      });
+    }
+    if (gearsCostGovernance.pending_terminal_cost_report_count > 0) {
+      addIssue({
+        issue_id: 'gears-execution-cost-settlement-pending',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsCostGovernance.pending_terminal_cost_report_count} 个终态 GEARS job 待费用结算`,
+        detail: '已授权的外部 job 已进入终态，但 Provider 尚未通过 callback/status poll 回传实际费用与币种；结算完成前不得最终交付。',
+        action_label: '同步 Provider 实际费用',
+      });
+    }
     if (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0) {
       addIssue({
         issue_id: 'gears-terminal-failures',
@@ -6605,22 +6959,26 @@ export async function getProjectProductionReadiness(
       key: 'delivery_contract',
       label: 'Delivery Contract',
       status: board.delivery_manifest.stage === 'ready'
-        ? currentVersion?.production_board_export && seedancePlaceholderAssetCount === 0 ? 'ready' : 'needs_action'
+        ? currentVersion?.production_board_export && seedancePlaceholderAssetCount === 0 && mediaProductionGapCount === 0 ? 'ready' : 'needs_action'
         : board.delivery_manifest.stage === 'blocked' ? 'blocked' : 'needs_action',
       score: Math.max(
         0,
         productionReadinessDeliveryScore(board.delivery_manifest.stage, Boolean(currentVersion?.production_board_export))
-          - (seedancePlaceholderAssetCount > 0 ? 10 : 0),
+          - (seedancePlaceholderAssetCount > 0 ? 10 : 0)
+          - (mediaProductionGapCount > 0 ? Math.min(25, mediaProductionGapCount * 3) : 0),
       ),
       detail: currentVersion?.production_board_export
         ? seedancePlaceholderAssetCount > 0
           ? `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件；仍有 ${seedancePlaceholderAssetCount} 个占位参考图需替换。`
-          : `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件。`
+          : mediaProductionGapCount > 0
+            ? `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件；仍有 ${mediaProductionGapCount} 个媒体绑定未完成完整性、版权与真人审核。`
+            : `最近交付包已落盘：${currentVersion.production_board_export.file_count} 个文件。`
         : board.delivery_manifest.next_action,
       count_text: `${board.delivery_manifest.ready_artifact_count}/${board.delivery_manifest.artifacts.length} artifacts`,
       evidence: [
         `stage ${board.delivery_manifest.stage}`,
         `placeholder_assets ${seedancePlaceholderAssetCount}`,
+        `media_production_credit ${mediaProductionCreditCount}/${mediaBindingCount}`,
         currentVersion?.production_board_export ? `exported ${currentVersion.production_board_export.exported_at}` : 'not exported',
       ],
       action_key: currentVersion?.production_board_export ? undefined : 'export_production_board',
@@ -6739,7 +7097,7 @@ export async function getProjectProductionReadiness(
     readyShotCount: shotStatusCounts.ready,
     failedShotCount: shotStatusCounts.failed,
     seedancePlaceholderAssetCount,
-    seedanceProductionAssetReadyCount: board.seedance_asset_report.production_asset_ready_count ?? 0,
+    seedanceProductionAssetReadyCount: mediaProductionCreditCount,
     gearsSummary,
   });
   const base: Omit<StoryProjectProductionReadinessReport, 'markdown'> = {
@@ -6749,6 +7107,8 @@ export async function getProjectProductionReadiness(
     title: detail.current_story.title,
     generated_at: new Date().toISOString(),
     summary,
+    gears_operational_metrics: gearsOperationalMetrics,
+    gears_recovery_plan: gearsRecoveryPlan,
     lanes,
     issues,
     next_actions: sortedNextActions,
@@ -7210,6 +7570,25 @@ function buildStoryProjectProductionReadinessMarkdown(
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     '',
+    '## GEARS Operational Metrics',
+    '',
+    `- scope: ${report.gears_operational_metrics.scope}`,
+    `- authorized external jobs: ${report.gears_operational_metrics.authorized_external_job_count}`,
+    `- actual output rate: ${report.gears_operational_metrics.actual_output_rate_percent}%`,
+    `- failure rate: ${report.gears_operational_metrics.failure_rate_percent}%`,
+    `- execution p50/p95: ${report.gears_operational_metrics.execution_duration_ms.p50}/${report.gears_operational_metrics.execution_duration_ms.p95} ms`,
+    `- callback latency p50/p95: ${report.gears_operational_metrics.callback_delivery_latency_ms.p50}/${report.gears_operational_metrics.callback_delivery_latency_ms.p95} ms`,
+    `- actual cost: ${Object.entries(report.gears_operational_metrics.actual_cost_by_currency).map(([currency, amount]) => `${amount} ${currency}`).join(' + ') || 'none'}`,
+    `- local acceptance excluded: ${report.gears_operational_metrics.local_acceptance_excluded}`,
+    '',
+    '## GEARS Recovery Plan',
+    '',
+    `- recovery items: ${report.gears_recovery_plan.item_count}`,
+    `- retry eligible: ${report.gears_recovery_plan.retry_eligible_count}`,
+    `- status resync: ${report.gears_recovery_plan.status_resync_count}`,
+    `- operator intervention: ${report.gears_recovery_plan.operator_intervention_count}`,
+    ...report.gears_recovery_plan.items.map(item => `- ${item.source_unit_id} · ${item.failure_category} · ${item.strategy} · auto=${item.can_auto_execute}: ${item.reason}`),
+    '',
     '## Project Workflow',
     '',
     `- 状态: ${report.workflow.state_label}`,
@@ -7376,6 +7755,22 @@ export async function exportProjectProductionBoard(projectId: string): Promise<A
     'seedance-asset-report.md',
     board.seedance_asset_report.markdown,
     'text/markdown',
+  );
+  await writeExportFile(
+    'media-asset-library-json',
+    'media_asset_library',
+    'Media Asset Library JSON',
+    'media-asset-library.json',
+    JSON.stringify(board.media_asset_library, null, 2),
+    'application/json',
+  );
+  await writeExportFile(
+    'image-asset-job-plan-json',
+    'image_asset_job_plan',
+    'Image Asset Job Plan JSON',
+    'image-asset-job-plan.json',
+    JSON.stringify(board.image_asset_job_plan, null, 2),
+    'application/json',
   );
   await writeExportFile(
     'seedance-shot-ledger-json',
@@ -8073,6 +8468,9 @@ function buildProjectExportPackage(params: {
       ? STORY_STRUCTURE_CONFIG[params.story.story_structure]?.label ?? params.story.story_structure
       : undefined,
     logline: params.story.logline,
+    story_publishable: params.story.quality_report?.quality_gates?.story_publishable
+      ?? params.story.quality_report?.passed,
+    production_ready: params.story.quality_report?.quality_gates?.production_ready,
     quality_passed: params.story.quality_report?.passed,
     genre_score: params.story.quality_report?.genre_score,
     outline_coverage_score: params.story.quality_report?.outline_coverage_report?.coverage_score,
@@ -8716,7 +9114,14 @@ function normalizeStoryGenerationFields(story: StoryGenerateResult): StoryGenera
 }
 
 async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Promise<StoryProjectMeta> {
-  if (project.creation_use_case && project.truth_mode && project.material_sufficiency && project.creation_contract) {
+  if (
+    project.creation_use_case
+    && project.truth_mode
+    && project.material_sufficiency
+    && project.creation_contract
+    && project.story_publishable !== undefined
+    && project.production_ready !== undefined
+  ) {
     return project;
   }
   const versions = await readVersionSnapshots(project.project_id);
@@ -8727,6 +9132,7 @@ async function hydrateProjectMetaForCurrentStory(project: StoryProjectMeta): Pro
 }
 
 function hydrateProjectMetaForStory(project: StoryProjectMeta, story: StoryGenerateResult): StoryProjectMeta {
+  const hydratedQuality = qualitySummary(story);
   return {
     ...project,
     source_domain: resolveStorySourceDomain(story),
@@ -8735,6 +9141,11 @@ function hydrateProjectMetaForStory(project: StoryProjectMeta, story: StoryGener
     truth_mode: project.truth_mode ?? story.truth_mode,
     material_sufficiency: project.material_sufficiency ?? story.material_sufficiency,
     creation_contract: project.creation_contract ?? story.creation_contract,
+    // Preserve the historical aggregate fields stored in project.json. Read-time
+    // enrichment may apply newer workflow checks; it should only backfill the new
+    // dual-status contract, not silently rewrite legacy summary semantics.
+    story_publishable: hydratedQuality.story_publishable ?? project.story_publishable,
+    production_ready: hydratedQuality.production_ready ?? project.production_ready,
   };
 }
 
@@ -8766,13 +9177,19 @@ export async function regenerateProjectScene(
 
   const updatedStory = await regenerateSceneInStory(current_story, request);
 
-  await persistProjectVersion(
-    project,
-    updatedStory,
-    'scene_regeneration',
-    [request.scene_id],
-    buildRegenerationNote(request),
-  );
+  try {
+    await persistProjectVersion(
+      project,
+      updatedStory,
+      'scene_regeneration',
+      [request.scene_id],
+      buildRegenerationNote(request),
+    );
+  } catch (error) {
+    const validationFailure = derivedStateValidationFailure<StoryProjectDetail>(error);
+    if (validationFailure) return validationFailure;
+    throw error;
+  }
 
   return getProject(projectId);
 }
@@ -8795,13 +9212,23 @@ export async function repairProjectQuality(
     ? (actionSceneIds.length > 0 ? actionSceneIds : current_story.scene_breakdown.map(scene => scene.scene_id))
     : [];
 
-  await persistProjectVersion(
-    project,
-    updatedStory,
-    'quality_repair',
-    changedSceneIds,
-    buildQualityRepairNote(trace),
-  );
+  if (!trace.applied) {
+    return getProject(projectId);
+  }
+
+  try {
+    await persistProjectVersion(
+      project,
+      updatedStory,
+      'quality_repair',
+      changedSceneIds,
+      buildQualityRepairNote(trace),
+    );
+  } catch (error) {
+    const validationFailure = derivedStateValidationFailure<StoryProjectDetail>(error);
+    if (validationFailure) return validationFailure;
+    throw error;
+  }
 
   return getProject(projectId);
 }
@@ -8889,6 +9316,7 @@ async function buildQualityRepairPromptText(input: {
   const revisionBoundary = await getStoryDomainRevisionEditBoundary(story);
   const revisionGuidance = revisionBoundary.guidance;
   const quality = story.quality_report;
+  const familyGuidance = getStoryFamilyRepairGuidance(story.video_type);
   const targetScenes = story.scene_breakdown
     .filter(scene => targetSceneIds.includes(scene.scene_id))
     .map(scene => ({
@@ -8901,7 +9329,7 @@ async function buildQualityRepairPromptText(input: {
       dialogue_or_narration: scene.dialogue_or_narration,
     }));
   return [
-    `你是${revisionGuidance.writer_role}。请输出一个完整 repaired_story_json。`,
+    `你是${revisionGuidance.writer_role}，本次以${familyGuidance.writer_role}职责修订。请输出一个完整 repaired_story_json。`,
     '',
     '硬性输出规则：',
     '1. 只输出一个 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
@@ -8915,6 +9343,13 @@ async function buildQualityRepairPromptText(input: {
     '持久化禁写合同：',
     ...formatStoryDomainEditPersistenceBoundary(revisionBoundary.persistence).map(line => `- ${line}`),
     '- 只输出修订 JSON；实际保存只能由 Story Agent 项目版本接口在合同允许范围内执行。',
+    '',
+    `${familyGuidance.family_label}家族修复合同：`,
+    ...familyGuidance.instructions.map(instruction => `- ${instruction}`),
+    `- 优先修改字段：${familyGuidance.focus_fields.join('、')}`,
+    ...(quality?.family_quality_report?.checks
+      .filter(check => check.status === 'failed')
+      .map(check => `- 待修门禁 [${check.check_id}] ${check.label}：${check.summary}`) ?? []),
     '',
     '创作合同边界：',
     JSON.stringify({
@@ -8942,6 +9377,7 @@ async function buildQualityRepairPromptText(input: {
       missing_required_elements: quality?.missing_required_elements ?? [],
       weak_beats: quality?.weak_beats ?? [],
       forbidden_patterns_found: quality?.forbidden_patterns_found ?? [],
+      family_quality_report: quality?.family_quality_report,
     }, null, 2),
     '',
     ...(request.user_instruction?.trim()
@@ -9588,19 +10024,9 @@ function normalizeRepairedStoryCandidate(
 
 function revalidateRepairedStory(story: StoryGenerateResult): StoryGenerateResult {
   const normalized = normalizeStoryGenerationFields(story);
-  const baseQualityReport = normalized.story_structure === 'memory_mosaic_biography'
-    ? validateMemoryMosaicStory({
-        full_text: normalized.full_text,
-        scene_breakdown: normalized.scene_breakdown,
-        memory_seed: normalized.memory_mosaic_seed,
-      })
-    : validateDramaticStory({
-        full_text: normalized.full_text,
-        scene_breakdown: normalized.scene_breakdown,
-        title: normalized.title,
-        selectedEvent: normalized.story_blueprint?.central_event ?? normalized.title,
-        videoType: normalized.video_type,
-      });
+  const baseQualityReport = validateStoryFamilyBaseQuality(normalized, {
+    selectedEvent: normalized.story_blueprint?.central_event ?? normalized.title,
+  });
   const narrativePatternIds = normalized.creation_contract?.narrative_pattern_ids ?? [];
   let qualityReport: StoryQualityReport = validateGenreStoryQuality({
     story: normalized,
@@ -9751,13 +10177,19 @@ export async function applyProjectQualityRepairJson(
     ...candidate,
     repair_trace: [...(candidate.repair_trace ?? []), appliedTrace],
   };
-  await persistProjectVersion(
-    project,
-    storyToPersist,
-    'quality_repair',
-    sceneIdsChanged.length > 0 ? sceneIdsChanged : current_story.scene_breakdown.map(scene => scene.scene_id),
-    request.user_instruction?.trim() || '应用模型修复 JSON',
-  );
+  try {
+    await persistProjectVersion(
+      project,
+      storyToPersist,
+      'quality_repair',
+      sceneIdsChanged.length > 0 ? sceneIdsChanged : current_story.scene_breakdown.map(scene => scene.scene_id),
+      request.user_instruction?.trim() || '应用模型修复 JSON',
+    );
+  } catch (error) {
+    const validationFailure = derivedStateValidationFailure<StoryQualityRepairApplyResult>(error);
+    if (validationFailure) return validationFailure;
+    throw error;
+  }
   const nextDetail = await getProject(projectId);
   return success(buildQualityRepairApplyResponse({
     project_id: project.project_id,
@@ -9799,13 +10231,20 @@ export async function repairProjectProductionBoard(
     });
   }
 
-  const updatedMeta = await persistProjectVersion(
-    project,
-    repair.story,
-    'production_board_repair',
-    repair.trace.changed_scene_ids,
-    repair.trace.note,
-  );
+  let updatedMeta: StoryProjectMeta;
+  try {
+    updatedMeta = await persistProjectVersion(
+      project,
+      repair.story,
+      'production_board_repair',
+      repair.trace.changed_scene_ids,
+      repair.trace.note,
+    );
+  } catch (error) {
+    const validationFailure = derivedStateValidationFailure<StoryProductionBoardRepairResult>(error);
+    if (validationFailure) return validationFailure;
+    throw error;
+  }
   const nextDetail = await getProject(projectId);
   if (!nextDetail.ok || !nextDetail.data) {
     return fail(
@@ -10970,17 +11409,21 @@ export async function updateProjectSupplementTask(
     updatedTask.supplement_note,
     updatedAt,
   );
-  const updatedStory: StoryGenerateResult = {
+  const updatedStoryCandidate: StoryGenerateResult = {
     ...current_story,
     supplement_tasks: updatedTasks,
     ...materialRefresh,
   };
+  const updatedStory = await rebuildDerivedStoryState(updatedStoryCandidate, {
+    revalidateDomainSafety: false,
+  });
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: updatedAt,
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
     material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
     creation_contract: updatedStory.creation_contract ?? project.creation_contract,
+    ...qualitySummary(updatedStory),
   };
   const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
   if (!snapshot) {
@@ -10996,6 +11439,9 @@ export async function updateProjectSupplementTask(
     ...raw,
     supplement_tasks: updatedTasks,
     ...materialRefresh,
+    gears_segments: updatedStory.gears_segments,
+    gears_delivery: updatedStory.gears_delivery,
+    quality_report: updatedStory.quality_report,
     project_id: updatedStory.project_id,
     current_version_id: updatedStory.current_version_id,
   }));
@@ -11016,16 +11462,20 @@ export async function addProjectMaterialPackMaterial(
   const updatedAt = nextProjectUpdatedAt(project);
   const materialPack = buildMaterialPackWithManualMaterial(current_story, request, updatedAt);
   const materialRefresh = refreshStoryMaterialContract(current_story, materialPack);
-  const updatedStory: StoryGenerateResult = {
+  const updatedStoryCandidate: StoryGenerateResult = {
     ...current_story,
     ...materialRefresh,
   };
+  const updatedStory = await rebuildDerivedStoryState(updatedStoryCandidate, {
+    revalidateDomainSafety: false,
+  });
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: updatedAt,
     open_supplement_task_count: countOpenSupplementTasks(updatedStory),
     material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
     creation_contract: updatedStory.creation_contract ?? project.creation_contract,
+    ...qualitySummary(updatedStory),
   };
   const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
   if (!snapshot) {
@@ -11040,6 +11490,9 @@ export async function addProjectMaterialPackMaterial(
   await updateSourceStory(updatedStory, raw => ({
     ...raw,
     ...materialRefresh,
+    gears_segments: updatedStory.gears_segments,
+    gears_delivery: updatedStory.gears_delivery,
+    quality_report: updatedStory.quality_report,
     project_id: updatedStory.project_id,
     current_version_id: updatedStory.current_version_id,
   }));
@@ -11597,16 +12050,27 @@ export async function updateProjectCurrentGearsDelivery(
   if (!snapshot) return;
   if (snapshot.story.storyId !== storyId) return;
 
+  const rebuiltStory = await rebuildDerivedStoryState({
+    ...snapshot.story,
+    gears_delivery: gearsDelivery,
+  }, {
+    revalidateDomainSafety: false,
+  });
+  const storyWithEditedMarkdown: StoryGenerateResult = {
+    ...rebuiltStory,
+    gears_delivery: rebuiltStory.gears_delivery
+      ? { ...rebuiltStory.gears_delivery, markdown: gearsDelivery.markdown }
+      : gearsDelivery,
+  };
   const updatedSnapshot: StoryProjectVersionSnapshot = {
     ...snapshot,
-    story: {
-      ...snapshot.story,
-      gears_delivery: gearsDelivery,
-    },
+    quality_report: storyWithEditedMarkdown.quality_report,
+    story: storyWithEditedMarkdown,
   };
   const updatedMeta: StoryProjectMeta = {
     ...project,
     updated_at: nextProjectUpdatedAt(project),
+    ...qualitySummary(storyWithEditedMarkdown),
   };
 
   await repository.writeCurrentState(
@@ -11614,6 +12078,14 @@ export async function updateProjectCurrentGearsDelivery(
     updatedSnapshot,
     projectMetaExpectation(project),
   );
+  await updateSourceStory(storyWithEditedMarkdown, raw => ({
+    ...raw,
+    gears_segments: storyWithEditedMarkdown.gears_segments,
+    gears_delivery: storyWithEditedMarkdown.gears_delivery,
+    quality_report: storyWithEditedMarkdown.quality_report,
+    project_id: storyWithEditedMarkdown.project_id,
+    current_version_id: storyWithEditedMarkdown.current_version_id,
+  }), generatedRootOverride);
 }
 
 export async function updateProjectCurrentGearsWebhookStatus(

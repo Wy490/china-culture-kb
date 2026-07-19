@@ -12,6 +12,7 @@ import {
   getGenreReturnJsonFields,
   getGenreStoryProfile,
 } from './genre-story-profiles.js';
+import { getStoryFamilyRepairGuidance } from './story-family-quality-service.js';
 
 export function shouldAttemptStoryRepair(input: {
   autoRepair?: boolean;
@@ -95,14 +96,28 @@ export function buildStoryRepairPromptPackage(input: {
   strictness?: GenreStrictness;
 }): StoryGenerationPromptPackage {
   const profile = getGenreStoryProfile(input.story.video_type);
-  const repairActions = input.qualityReport.repair_actions ?? profile.repair_guidance;
+  const familyGuidance = getStoryFamilyRepairGuidance(input.story.video_type);
+  const failedFamilyChecks = input.qualityReport.family_quality_report?.checks
+    .filter(check => check.status === 'failed') ?? [];
+  const familyRepairActions = failedFamilyChecks.length > 0
+    ? [
+        `按「${familyGuidance.family_label}」家族修复，不套用其他片型家族义务。`,
+        ...failedFamilyChecks.map(check => `补齐「${check.label}」：${check.summary}`),
+        ...familyGuidance.instructions,
+        `优先修改字段：${familyGuidance.focus_fields.join('、')}。`,
+      ]
+    : [];
+  const repairActions = [
+    ...familyRepairActions,
+    ...(input.qualityReport.repair_actions ?? profile.repair_guidance),
+  ].filter((action, index, all) => all.indexOf(action) === index);
   const repairContractShouldRespect = buildRepairContractShouldRespect(input.story);
   const repairContractPromptLines = buildRepairContractPromptLines(input.story);
   const strictnessLine = input.strictness === 'strict'
     ? '严格模式：必须优先满足类型结构、类型必填字段和场景功能。'
     : input.strictness === 'loose'
       ? '宽松模式：保留原文主要表达，只修正明显类型缺口。'
-      : '均衡模式：在保留原意的同时补强类型结构和剧情推进。';
+      : '均衡模式：在保留原意的同时补强对应片型家族的信息、场景与交付推进。';
 
   return {
     ...input.basePackage,
@@ -111,6 +126,8 @@ export function buildStoryRepairPromptPackage(input: {
       should_respect: [
         ...input.basePackage.output_contract.should_respect,
         strictnessLine,
+        ...familyGuidance.instructions,
+        `优先修改字段：${familyGuidance.focus_fields.join('、')}。`,
         ...repairActions,
         ...repairContractShouldRespect,
       ],
@@ -119,6 +136,7 @@ export function buildStoryRepairPromptPackage(input: {
     system_prompt: [
       input.basePackage.system_prompt,
       '',
+      `你是${familyGuidance.writer_role}。`,
       '现在执行一次完整故事重写。',
       strictnessLine,
       '必须修正质量报告指出的问题，保持 scene_id 数量和编号不变。',
@@ -151,6 +169,13 @@ export function buildStoryRepairPromptPackage(input: {
       '=== 修复动作 ===',
       ...repairActions.map(action => `- ${action}`),
       '',
+      `=== ${familyGuidance.family_label}家族门禁 ===`,
+      `家族：${familyGuidance.family_label}`,
+      `修订角色：${familyGuidance.writer_role}`,
+      ...failedFamilyChecks.map(check => `- [${check.check_id}] ${check.label}：${check.summary}`),
+      ...familyGuidance.instructions.map(instruction => `- ${instruction}`),
+      `优先字段：${familyGuidance.focus_fields.join('、')}`,
+      '',
       ...(repairContractPromptLines.length > 0 ? [
         ...repairContractPromptLines,
         '',
@@ -170,7 +195,11 @@ export function buildStoryRepairPromptPackage(input: {
         `预览：${input.qualityReport.pattern_quality_report.preview}`,
         ...input.qualityReport.pattern_quality_report.weak_signals
           .slice(0, 8)
-          .map(signal => `- ${signal.label}：${signal.repair_hint}`),
+          .map(signal => [
+            `- ${signal.label}：${signal.repair_hint}`,
+            `  反证：${signal.counter_evidence[0] ?? '无'}`,
+            `  目标：场景 ${signal.repair_target.scene_ids.join('、') || '全局'}；字段 ${signal.repair_target.fields.join('、')}`,
+          ].join('\n')),
         '',
       ] : []),
       ...(input.qualityReport.gears_readiness_report ? [

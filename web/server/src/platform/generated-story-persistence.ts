@@ -10,6 +10,7 @@ import {
 } from '../services/project-service.js';
 import { notifyGearsStoryReady } from '../services/gears-webhook-service.js';
 import type { GearsWebhookResult } from '../services/gears-webhook-service.js';
+import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
 
 interface GeneratedStoryWriter {
   create(story: StoryGenerateResult): Promise<'created' | 'exists'>;
@@ -72,8 +73,14 @@ export async function persistGeneratedStoryAndNotifyGears(input: {
   repository: GeneratedStoryWriter;
   generatedRoot: string;
 }): Promise<StoryGenerateResult> {
+  const rebuiltStory = await rebuildDerivedStoryState(input.storyData, {
+    // Initial generation already evaluated the exact request material. Some
+    // user-supplied/ephemeral entries do not exist in the durable Domain Pack,
+    // so a registry lookup here would replace a valid report with "not found".
+    revalidateDomainSafety: false,
+  });
   const storyWithProject = await createProjectFromGeneratedStory(
-    input.storyData,
+    rebuiltStory,
     input.createdAt,
     input.accessControl,
   );

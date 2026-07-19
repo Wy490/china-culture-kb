@@ -3,7 +3,7 @@
 import { Router, type Request } from 'express';
 import { requireCallbackSecret } from '../middleware/callback-auth.js';
 import { requireProductAccess } from '../middleware/product-access.js';
-import { ErrorCodes } from '@shared/types.js';
+import { ErrorCodes, fail } from '@shared/types.js';
 import type { ProductAccessContext } from '@shared/product-access.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import {
@@ -13,6 +13,7 @@ import {
   AiComicSeedanceAudioMixRequestSchema,
   AiComicSeedanceAssetLibraryUpdateRequestSchema,
   AiComicSeedanceFinalDeliveryRequestSchema,
+  AiComicSeedanceFinalDeliveryRollbackRequestSchema,
   AiComicSeedanceProductionAutoSelectRequestSchema,
   AiComicSeedanceProductionBatchUpdateRequestSchema,
   AiComicSeedanceProductionCallbackRequestSchema,
@@ -28,6 +29,8 @@ import {
   AiComicSeedanceThumbnailCaptureRequestSchema,
   AiComicSeedanceTitleCardRenderRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
+  AiComicSeriesMediaArtifactPreviewParamSchema,
+  AiComicSeriesMediaAssetReviewParamSchema,
   AiComicSeriesProjectArchiveRequestSchema,
   AiComicSeriesProjectCopyRequestSchema,
   AiComicSeriesProjectIdParamSchema,
@@ -36,6 +39,7 @@ import {
   GearsJobCallbackRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
+  MediaAssetReviewUpdateRequestSchema,
   ProductionReadinessAutomationRunRequestSchema,
   StoryOutlineAnalyzeRequestSchema,
 } from '@shared/schemas.js';
@@ -66,6 +70,7 @@ import {
   exportAiComicSeriesSeedanceTitleCardPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   previewAiComicEpisodeContext,
+  readAiComicSeriesMediaAssetPreview,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
   getAiComicSeriesProductionReadiness,
@@ -76,6 +81,7 @@ import {
   mixAiComicSeriesSeedanceAudio,
   recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
+  rollbackAiComicSeriesSeedanceFinalDelivery,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   resolveAiComicSeriesSeedanceReview,
@@ -85,11 +91,14 @@ import {
   submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
   syncAiComicSeriesGearsJobStatuses,
+  uploadAiComicSeriesSeedanceAssetFile,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
+  updateAiComicSeriesMediaAssetReview,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
+import { parseMultipartAssetUpload } from '../services/multipart-asset-upload-service.js';
 import {
   filterProductResourcesForRequest,
   productResourceOwnershipForActor,
@@ -127,6 +136,9 @@ const seriesProjectResource = {
 const requireSeriesRead = requireProductAccess('project:read', { resource: seriesProjectResource });
 const requireStoryCreate = requireProductAccess('story:create', { resource: seriesProjectResource });
 const requireSeriesProductionWrite = requireProductAccess('production:write', { resource: seriesProjectResource });
+const requireSeriesMediaReview = requireProductAccess('review:operate', { resource: seriesProjectResource });
+
+const SERIES_ASSET_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 
 outlineRouter.use((req, res, next) => {
   if (req.path.endsWith('/gears-callback') || req.path.endsWith('/seedance-production-callback')) {
@@ -139,6 +151,10 @@ outlineRouter.use((req, res, next) => {
       return;
     }
     next();
+    return;
+  }
+  if (req.path.includes('/media-assets/') && req.path.endsWith('/review')) {
+    requireSeriesMediaReview(req, res, next);
     return;
   }
   const productionWrite = req.path.includes('/production-readiness')
@@ -696,6 +712,33 @@ outlineRouter.post(
   },
 );
 
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-final/rollback — restore an immutable local release
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-final/rollback',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeedanceFinalDeliveryRollbackRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const access = res.locals.productAccess as ProductAccessContext | undefined;
+      if (!access?.actor || access.authentication_method === 'local_bypass') {
+        res.status(403).json(fail(
+          ErrorCodes.ACCESS_FORBIDDEN,
+          'A verified production operator session is required to roll back final delivery',
+        ));
+        return;
+      }
+      const result = await rollbackAiComicSeriesSeedanceFinalDelivery(seriesProjectId, req.body, {
+        actor_id: access.actor.actor_id,
+        authentication_method: access.authentication_method,
+      });
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : result.error?.code === ErrorCodes.ACCESS_FORBIDDEN ? 403 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-reviews — add a review issue
 outlineRouter.post(
   '/ai-comic-series-projects/:seriesProjectId/seedance-reviews',
@@ -768,6 +811,106 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/seedance-assets/upload — ingest immutable image bytes
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/seedance-assets/upload',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      let parsed: Awaited<ReturnType<typeof parseMultipartAssetUpload>>;
+      try {
+        parsed = await parseMultipartAssetUpload(req, {
+          max_bytes: SERIES_ASSET_UPLOAD_MAX_BYTES,
+          default_filename: 'series-seedance-asset.bin',
+        });
+      } catch (err: any) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, err.message ?? 'Invalid series asset upload'));
+        return;
+      }
+      if (!parsed.file) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, 'Series asset upload requires a file field'));
+        return;
+      }
+      const kind = parsed.fields.kind;
+      const result = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId, {
+        asset_id: parsed.fields.asset_id,
+        label: parsed.fields.label,
+        kind: ['character', 'location', 'unknown'].includes(kind) ? kind as any : undefined,
+        reference_slot: parsed.fields.reference_slot,
+        description: parsed.fields.description,
+        file: {
+          original_filename: parsed.file.filename,
+          mime_type: parsed.file.mime_type,
+          buffer: parsed.file.buffer,
+        },
+      });
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// GET /api/story-outline/ai-comic-series-projects/:seriesProjectId/media-assets/:artifactId/preview — authenticated immutable preview
+outlineRouter.get(
+  '/ai-comic-series-projects/:seriesProjectId/media-assets/:artifactId/preview',
+  validateParams(AiComicSeriesMediaArtifactPreviewParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, artifactId } = req.params as { seriesProjectId: string; artifactId: string };
+      const result = await readAiComicSeriesMediaAssetPreview(seriesProjectId, artifactId);
+      if (!result.ok) {
+        res.status(result.status).json(fail(
+          result.status === 404 ? ErrorCodes.STORY_NOT_FOUND : ErrorCodes.VALIDATION_ERROR,
+          result.message,
+        ));
+        return;
+      }
+      res.setHeader('Content-Type', result.data.mime_type);
+      res.setHeader('Content-Length', String(result.data.byte_size));
+      res.setHeader('Content-Disposition', `inline; filename="${result.data.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+      res.setHeader('ETag', `"sha256-${result.data.content_sha256}"`);
+      res.status(200).send(result.data.buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/media-assets/:assetId/review — verified rights and visual review
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/media-assets/:assetId/review',
+  validateParams(AiComicSeriesMediaAssetReviewParamSchema),
+  validateBody(MediaAssetReviewUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, assetId } = req.params as { seriesProjectId: string; assetId: string };
+      if (assetId !== req.body.asset_id) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, 'Path assetId must match body asset_id'));
+        return;
+      }
+      const access = res.locals.productAccess as ProductAccessContext | undefined;
+      if (!access?.actor || access.authentication_method === 'local_bypass') {
+        res.status(403).json(fail(
+          ErrorCodes.ACCESS_FORBIDDEN,
+          'A verified reviewer session is required to grant series media rights or human visual review credit',
+        ));
+        return;
+      }
+      const result = await updateAiComicSeriesMediaAssetReview(seriesProjectId, req.body, {
+        actor_id: access.actor.actor_id,
+        authentication_method: access.authentication_method,
+      });
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

@@ -4,6 +4,7 @@ import {
   getRecommendedModelProfile,
   listModelProfiles,
   resolveModelProfile,
+  resolveStoryGenerationModelProfile,
 } from '../services/model-catalog.js';
 
 describe('model-catalog', () => {
@@ -21,6 +22,21 @@ describe('model-catalog', () => {
     expect(profile).toBeTruthy();
     expect(profile?.runtime).toBe('claude');
     expect(profile?.model).toBe('sonnet');
+  });
+
+  it('provides an explicit local engine and uses it when story generation omits a model', () => {
+    const localProfile = getModelProfileById('local_story_engine');
+
+    expect(localProfile).toMatchObject({
+      runtime: 'local',
+      model: 'deterministic_v1',
+    });
+    expect(resolveStoryGenerationModelProfile(undefined).id).toBe('local_story_engine');
+  });
+
+  it('rejects an unknown story-generation model instead of silently selecting another one', () => {
+    expect(() => resolveStoryGenerationModelProfile('not-a-real-model'))
+      .toThrow('Unknown story generation model profile');
   });
 
   it('returns the recommended profile when requested', () => {

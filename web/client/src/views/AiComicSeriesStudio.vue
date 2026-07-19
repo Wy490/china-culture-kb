@@ -620,6 +620,28 @@
             >
               {{ lane.label }} · {{ productionReadinessStatusLabel(lane.status) }} · {{ lane.score }}
             </span>
+            <template v-if="productionReadiness.gears_operational_metrics.authorized_external_job_count">
+              <span class="series-studio__episode-audit series-studio__episode-audit--unknown">
+                外部产出率 {{ productionReadiness.gears_operational_metrics.actual_output_rate_percent }}%
+              </span>
+              <span class="series-studio__episode-audit series-studio__episode-audit--unknown">
+                失败率 {{ productionReadiness.gears_operational_metrics.failure_rate_percent }}%
+              </span>
+              <span class="series-studio__episode-audit series-studio__episode-audit--unknown">
+                执行 P95 {{ productionReadiness.gears_operational_metrics.execution_duration_ms.p95 }}ms
+              </span>
+              <span class="series-studio__episode-audit series-studio__episode-audit--unknown">
+                Callback P95 {{ productionReadiness.gears_operational_metrics.callback_delivery_latency_ms.p95 }}ms
+              </span>
+            </template>
+            <template v-if="productionReadiness.gears_recovery_plan.item_count">
+              <span class="series-studio__episode-audit series-studio__episode-audit--needs_attention">
+                恢复 {{ productionReadiness.gears_recovery_plan.item_count }} · 可重试 {{ productionReadiness.gears_recovery_plan.retry_eligible_count }}
+              </span>
+              <span class="series-studio__episode-audit series-studio__episode-audit--unknown">
+                自动状态同步 {{ productionReadiness.gears_recovery_plan.auto_executable_count }} · 需人工 {{ productionReadiness.gears_recovery_plan.operator_intervention_count }}
+              </span>
+            </template>
           </div>
           <div v-if="productionReadiness.issues.length > 0" class="series-studio__thread-closure">
             <div class="series-studio__thread-closure-head">
@@ -904,6 +926,15 @@
             <span v-if="latestGearsJob?.last_poll_error" class="series-studio__episode-audit series-studio__episode-audit--needs_attention">
               GEARS 轮询失败 {{ gearsJobPollFailureLabel(latestGearsJob) }}
             </span>
+            <span v-if="gearsJobStats.cost_reported" class="series-studio__episode-audit series-studio__episode-audit--unknown">
+              已结算 {{ gearsJobStats.cost_reported }}/{{ gearsJobStats.authorized }} · {{ gearsCostTotalsLabel }}
+            </span>
+            <span v-if="gearsJobStats.cost_pending" class="series-studio__episode-audit series-studio__episode-audit--needs_attention">
+              费用待结算 {{ gearsJobStats.cost_pending }}
+            </span>
+            <span v-if="gearsJobStats.cost_violation" class="series-studio__episode-audit series-studio__episode-audit--needs_attention">
+              费用越界 {{ gearsJobStats.cost_violation }}
+            </span>
           </div>
           <div v-if="gearsExecutionSmokePackage" class="series-studio__gears-package-actions">
             <button class="series-studio__ghost-button" @click="exportGearsSmokePackageMarkdown">
@@ -1145,6 +1176,21 @@
                 >
                   {{ submittingGearsJobs ? '提交中...' : selectedGearsSubmitButtonLabel }}
                 </button>
+                <label class="series-studio__gears-cost-limit">
+                  <span>外呼最高成本</span>
+                  <input
+                    v-model.number="gearsExternalMaxCostAmount"
+                    class="series-studio__input series-studio__input--compact"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    aria-label="GEARS 外呼最高成本"
+                  >
+                  <select v-model="gearsExternalCostCurrency" class="series-studio__select series-studio__select--compact" aria-label="GEARS 外呼成本币种">
+                    <option value="CNY">CNY</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </label>
                 <button
                   class="series-studio__ghost-button"
                   :disabled="submittingGearsJobs || submittingGearsApiJobs || !gearsExecutionConfig?.ready_for_submit"
@@ -1332,6 +1378,21 @@
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.subtitle_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">字幕</span>
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.audio_mix_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">混音</span>
               <span :class="['series-studio__episode-audit', seedanceFinalDelivery.dependency_status.title_cards_ready ? 'series-studio__episode-audit--passed' : 'series-studio__episode-audit--needs_attention']">片头片尾</span>
+              <span v-if="seedanceFinalDelivery.current_release" class="series-studio__episode-audit series-studio__episode-audit--passed">
+                当前 release {{ seedanceFinalDelivery.current_release.release_id }} · SHA {{ seedanceFinalDelivery.current_release.output_sha256.slice(0, 12) }}
+              </span>
+            </div>
+            <div v-if="seedanceFinalRollbackTargets.length" class="series-studio__memory-actions">
+              <button
+                v-for="release in seedanceFinalRollbackTargets.slice(0, 4)"
+                :key="release.release_id"
+                class="series-studio__ghost-button"
+                :disabled="!canRollbackFinalDelivery || Boolean(rollingBackFinalReleaseId)"
+                :title="canRollbackFinalDelivery ? `恢复 SHA-256 ${release.output_sha256}` : '需要已验证且具有 production:write 权限的操作员会话'"
+                @click="rollbackSeedanceFinalRelease(release.release_id)"
+              >
+                {{ rollingBackFinalReleaseId === release.release_id ? '回滚中...' : `回滚 ${formatDate(release.created_at)}` }}
+              </button>
             </div>
           </div>
           <div v-if="seedanceReviewLedger || seedanceFinalDelivery" class="series-studio__thread-closure">
@@ -1601,6 +1662,128 @@
                   </button>
                 </div>
               </details>
+            </article>
+          </div>
+        </section>
+
+        <section v-if="seedanceAssetReport?.assets.length" class="series-studio__section series-studio__quality">
+          <div class="series-studio__section-header">
+            <h2>系列图片资产与审核</h2>
+            <span>
+              {{ seedanceVerifiedAssetCount }} 已验证 · {{ seedanceProductionCreditAssetCount }} production credit
+            </span>
+            <button
+              class="series-studio__ghost-button"
+              :disabled="loadingSeedanceAssetReport"
+              @click="loadSeedanceAssetReport"
+            >
+              {{ loadingSeedanceAssetReport ? '刷新中...' : '刷新素材' }}
+            </button>
+          </div>
+          <p class="series-studio__field-hint">
+            外部回调只建立待验证绑定；上传真实文件并完成 SHA-256 校验后，才允许已登录审核员签署版权与真人视觉结论。
+          </p>
+          <div class="series-studio__series-assets">
+            <article
+              v-for="asset in seedanceAssetReport.assets.slice(0, 20)"
+              :key="asset.asset_id"
+              class="series-studio__series-asset"
+            >
+              <div class="series-studio__thread-closure-head">
+                <strong>{{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }}</strong>
+                <span>{{ asset.kind }} · {{ asset.status }}</span>
+              </div>
+              <figure v-if="seriesSeedanceAssetPreviewUrl(asset.asset_id)" class="series-studio__series-asset-preview">
+                <img
+                  :src="seriesSeedanceAssetPreviewUrl(asset.asset_id)"
+                  :alt="`${asset.label} 安全预览`"
+                  loading="lazy"
+                >
+                <figcaption>
+                  认证预览 · {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.content_sha256?.slice(0, 12) }}
+                </figcaption>
+              </figure>
+              <small>
+                完整性 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.content_sha256 ? '已验证' : '未验证' }}
+                · 版权 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.rights_status ?? 'pending' }}
+                · 真人审核 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.human_review_status ?? 'pending' }}
+                · production credit {{ seriesSeedanceAssetProductionCredit(asset.asset_id) ? '1' : '0' }}
+              </small>
+              <div
+                v-if="seriesSeedanceAssetProductionCredit(asset.asset_id)"
+                class="series-studio__provider-asset-handoff"
+              >
+                <small>
+                  Provider 交付地址：{{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.file_url ?? '尚未设置公网 HTTPS / 签名 URL' }}
+                </small>
+                <input
+                  v-model="seedanceProviderAssetUrlInputs[asset.asset_id]"
+                  class="series-studio__input series-studio__input--compact"
+                  placeholder="https://公网素材地址（可含签名参数）"
+                >
+                <button
+                  class="series-studio__memory-action"
+                  :disabled="bindingSeedanceProviderAssetId === asset.asset_id"
+                  @click="bindSeriesSeedanceProviderAssetUrl(asset)"
+                >
+                  {{ bindingSeedanceProviderAssetId === asset.asset_id ? '保存中...' : '设置 Provider 交付 URL' }}
+                </button>
+              </div>
+              <label class="series-studio__series-asset-upload">
+                <span>{{ uploadingSeedanceAssetId === asset.asset_id ? '上传中...' : '上传并校验真实图片' }}</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  :disabled="Boolean(uploadingSeedanceAssetId)"
+                  @change="uploadSeriesSeedanceAsset(asset, $event)"
+                >
+              </label>
+              <details
+                v-if="seriesSeedanceAssetLibraryItem(asset.asset_id)?.content_sha256"
+                class="series-studio__seedance-ops"
+              >
+                <summary class="series-studio__seedance-ops-summary">版权与真人视觉审核</summary>
+                <div class="series-studio__seedance-ops-body">
+                  <small>{{ seedanceMediaReviewPermissionHint }}</small>
+                  <fieldset
+                    v-if="seedanceMediaReviewForms[asset.asset_id]"
+                    :disabled="!canReviewSeedanceMediaAssets || reviewingSeedanceAssetId === asset.asset_id"
+                  >
+                    <label>
+                      <span>授权/受限依据</span>
+                      <input
+                        v-model="seedanceMediaReviewForms[asset.asset_id].authorization_reference"
+                        class="series-studio__input"
+                        placeholder="合同、授权单或受限原因编号"
+                      >
+                    </label>
+                    <label>
+                      <span>人物同意依据（如适用）</span>
+                      <input
+                        v-model="seedanceMediaReviewForms[asset.asset_id].person_consent_reference"
+                        class="series-studio__input"
+                        placeholder="肖像或人物同意记录"
+                      >
+                    </label>
+                    <label>
+                      <span>视觉审核意见</span>
+                      <textarea
+                        v-model="seedanceMediaReviewForms[asset.asset_id].review_note"
+                        class="series-studio__textarea"
+                        rows="3"
+                        placeholder="画面质量、人物一致性、时代细节与风险判断"
+                      />
+                    </label>
+                    <div class="series-studio__memory-actions">
+                      <button class="series-studio__ghost-button" @click="submitSeriesSeedanceMediaReview(asset, 'authorize')">仅确认授权</button>
+                      <button class="series-studio__ghost-button" @click="submitSeriesSeedanceMediaReview(asset, 'approve')">授权并通过</button>
+                      <button class="series-studio__ghost-button" @click="submitSeriesSeedanceMediaReview(asset, 'reject')">视觉拒绝</button>
+                      <button class="series-studio__ghost-button" @click="submitSeriesSeedanceMediaReview(asset, 'restrict')">版权受限</button>
+                    </div>
+                  </fieldset>
+                </div>
+              </details>
+              <small v-else-if="asset.is_bound">外部绑定尚无真实字节 SHA-256，不能授予真人审核或生产信用。</small>
             </article>
           </div>
         </section>
@@ -2249,9 +2432,11 @@ import {
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   recoverAiComicSeriesSeedanceProviderTimeouts,
+  reviewAiComicSeriesMediaAsset,
   rebuildAiComicSeriesLedger,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
+  rollbackAiComicSeriesSeedanceFinalDelivery,
   resolveAiComicSeriesSeedanceReview,
   runAiComicSeriesProductionReadinessAutomation,
   saveAiComicSeriesProject,
@@ -2259,11 +2444,13 @@ import {
   submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
   syncAiComicSeriesGearsJobs,
+  uploadAiComicSeriesSeedanceAssetFile,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '@/api/stories'
+import { serverProductAccessContext } from '@/product-access'
 import {
   getGearsExecutionAcceptanceReport,
   getGearsExecutionConfig,
@@ -2299,6 +2486,7 @@ import type {
   AiComicSeedanceProductionStatus,
   AiComicSeedanceProductionStatusUpdateRequest,
   AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceAssetLibrary,
   AiComicSeedanceAudioLibraryUpdateRequest,
   AiComicSeedanceAudioMixLedger,
   AiComicSeedanceCutAssemblyLedger,
@@ -2313,6 +2501,7 @@ import type {
   AiComicSeedanceTitleCardRenderLedger,
   AiComicSeedanceVersionComparisonShot,
   AiComicSeriesSeedanceDashboard,
+  AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceVersionComparisonPackage,
   GearsExecutionAcceptanceReport,
   GearsExecutionConfigInfo,
@@ -2332,6 +2521,7 @@ import type {
   NarrativePattern,
   NarrativePatternCatalog,
   NarrativePatternId,
+  MediaAssetReviewUpdateRequest,
   RecommendedNarrativePattern,
   StoryGenerateResult,
 } from '@shared/types'
@@ -2382,7 +2572,18 @@ const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(n
 const seedanceAudioMix = ref<AiComicSeedanceAudioMixLedger | null>(null)
 const seedanceTitleCardRender = ref<AiComicSeedanceTitleCardRenderLedger | null>(null)
 const seedanceFinalDelivery = ref<AiComicSeedanceFinalDeliveryLedger | null>(null)
+const rollingBackFinalReleaseId = ref('')
 const seedanceReviewLedger = ref<AiComicSeedanceReviewLedger | null>(null)
+const seedanceAssetLibrary = ref<AiComicSeedanceAssetLibrary | null>(null)
+const seedanceAssetReport = ref<AiComicSeriesSeedanceAssetReportPackage | null>(null)
+const loadingSeedanceAssetReport = ref(false)
+const uploadingSeedanceAssetId = ref('')
+const reviewingSeedanceAssetId = ref('')
+const seedanceMediaReviewForms = ref<Record<string, {
+  authorization_reference: string
+  person_consent_reference: string
+  review_note: string
+}>>({})
 const gearsJobLedger = ref<GearsJobLedger | null>(null)
 const gearsExecutionConfig = ref<GearsExecutionConfigInfo | null>(null)
 const gearsExecutionReadiness = ref<GearsExecutionReadinessReport | null>(null)
@@ -2418,12 +2619,15 @@ const gearsSubmitJobTypes: GearsExecutionJobType[] = [
   'storyboard_image',
   'character_image',
   'scene_image',
+  'prop_image',
   'subtitle_render',
   'audio_mix',
   'title_card_render',
   'final_assemble',
 ]
 const selectedGearsJobType = ref<GearsExecutionJobType>('seedance_video')
+const gearsExternalMaxCostAmount = ref(0)
+const gearsExternalCostCurrency = ref('CNY')
 const gearsCallbackImportText = ref('')
 const importingGearsCallbacks = ref(false)
 const recoveringSeedanceTimeouts = ref(false)
@@ -2445,6 +2649,8 @@ const seedanceReviewDraft = ref({
 })
 const seedanceReturnImportInput = ref<HTMLInputElement | null>(null)
 const seedanceAssetImportInput = ref<HTMLInputElement | null>(null)
+const seedanceProviderAssetUrlInputs = ref<Record<string, string>>({})
+const bindingSeedanceProviderAssetId = ref('')
 const seedanceAudioImportInput = ref<HTMLInputElement | null>(null)
 const editingEpisodeNo = ref<number | null>(null)
 const episodeEditDraft = ref<EpisodeEditDraft | null>(null)
@@ -2572,6 +2778,11 @@ const gearsJobStats = computed(() => {
     ready: 0,
     failed: 0,
     seedance_video: 0,
+    authorized: 0,
+    cost_reported: 0,
+    cost_pending: 0,
+    cost_violation: 0,
+    actual_cost_by_currency: {} as Record<string, number>,
   }
   for (const item of gearsJobItems.value) {
     stats.total += 1
@@ -2583,10 +2794,65 @@ const gearsJobStats = computed(() => {
     } else {
       stats.active += 1
     }
+    if (item.external_call_authorization) stats.authorized += 1
+    if (item.execution_cost) {
+      stats.cost_reported += 1
+      const currency = item.execution_cost.cost_currency
+      stats.actual_cost_by_currency[currency] = (stats.actual_cost_by_currency[currency] ?? 0)
+        + item.execution_cost.actual_cost_amount
+      if (item.execution_cost.boundary_status !== 'within_authorization') stats.cost_violation += 1
+    } else if (item.external_call_authorization && ['ready', 'failed', 'rejected', 'canceled'].includes(item.status)) {
+      stats.cost_pending += 1
+    }
   }
   return stats
 })
+const gearsCostTotalsLabel = computed(() => {
+  const entries = Object.entries(gearsJobStats.value.actual_cost_by_currency)
+  return entries.length
+    ? entries.map(([currency, amount]) => `${amount.toFixed(2)} ${currency}`).join(' + ')
+    : '0.00'
+})
 const latestGearsJob = computed(() => gearsJobItems.value[0] ?? null)
+const seedanceFinalRollbackTargets = computed(() =>
+  [...(seedanceFinalDelivery.value?.release_history ?? [])]
+    .filter(item => item.release_id !== seedanceFinalDelivery.value?.current_release?.release_id)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+)
+const canRollbackFinalDelivery = computed(() => {
+  const access = serverProductAccessContext.value
+  return Boolean(
+    access?.mode === 'required'
+    && access.authenticated
+    && access.authentication_method !== 'local_bypass'
+    && access.permissions.includes('production:write'),
+  )
+})
+const canReviewSeedanceMediaAssets = computed(() => {
+  const access = serverProductAccessContext.value
+  return Boolean(
+    access?.mode === 'required'
+    && access.authenticated
+    && access.authentication_method !== 'local_bypass'
+    && access.permissions.includes('review:operate'),
+  )
+})
+const seedanceMediaReviewPermissionHint = computed(() => {
+  const access = serverProductAccessContext.value
+  if (canReviewSeedanceMediaAssets.value) {
+    return `审核员：${access?.actor?.display_name ?? access?.actor?.actor_id}`
+  }
+  if (access?.authentication_method === 'local_bypass') {
+    return '当前为本地绕过身份：可上传和预览，但不能授予真人审核信用。'
+  }
+  return '需要已登录且具有 review:operate 权限的审核员。'
+})
+const seedanceVerifiedAssetCount = computed(() => (
+  seedanceAssetLibrary.value?.items.filter(item => Boolean(item.content_sha256 && item.local_path)).length ?? 0
+))
+const seedanceProductionCreditAssetCount = computed(() => (
+  seedanceAssetLibrary.value?.items.filter(item => seriesSeedanceAssetProductionCredit(item.asset_id)).length ?? 0
+))
 const selectedGearsJobTypeLabel = computed(() => gearsJobTypeLabel(selectedGearsJobType.value))
 const selectedGearsSubmitButtonLabel = computed(() =>
   selectedGearsJobType.value === 'seedance_video'
@@ -2867,11 +3133,13 @@ async function loadSeriesProject(id: string) {
     seedanceTitleCardRender.value = res.data.seedance_title_card_render ?? null
     seedanceFinalDelivery.value = res.data.seedance_final_delivery ?? null
     seedanceReviewLedger.value = res.data.seedance_review_ledger ?? null
+    seedanceAssetLibrary.value = res.data.seedance_asset_library ?? null
     gearsJobLedger.value = res.data.gears_job_ledger ?? null
     seedanceDashboard.value = null
     seedanceVersionComparison.value = null
     showSeedanceVersionComparison.value = false
     applyPlan(res.data.plan)
+    await loadSeedanceAssetReport()
     await loadSeedanceDashboard()
     await loadProductionReadiness()
     saveMessage.value = `已保存：${res.data.project.series_project_id} · ${formatDate(res.data.project.updated_at)}`
@@ -2883,9 +3151,32 @@ async function loadSeriesProject(id: string) {
     seedanceDashboard.value = null
     productionReadiness.value = null
     gearsJobLedger.value = null
+    seedanceAssetLibrary.value = null
+    seedanceAssetReport.value = null
     errorMessage.value = res.error?.message ?? '加载系列规划失败'
   }
   planning.value = false
+}
+
+async function loadSeedanceAssetReport() {
+  if (!seriesProjectId.value || loadingSeedanceAssetReport.value) return
+  loadingSeedanceAssetReport.value = true
+  const res = await exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    seedanceAssetReport.value = res.data
+    const nextForms = { ...seedanceMediaReviewForms.value }
+    for (const asset of res.data.assets) {
+      nextForms[asset.asset_id] ??= {
+        authorization_reference: '',
+        person_consent_reference: '',
+        review_note: '',
+      }
+    }
+    seedanceMediaReviewForms.value = nextForms
+  } else {
+    seedanceAssetReport.value = null
+  }
+  loadingSeedanceAssetReport.value = false
 }
 
 async function loadSeedanceDashboard() {
@@ -2974,6 +3265,9 @@ async function handlePlan() {
   seedanceTitleCardRender.value = null
   seedanceFinalDelivery.value = null
   seedanceReviewLedger.value = null
+  seedanceAssetLibrary.value = null
+  seedanceAssetReport.value = null
+  seedanceMediaReviewForms.value = {}
   gearsJobLedger.value = null
   seedanceVersionComparison.value = null
   showSeedanceVersionComparison.value = false
@@ -3812,16 +4106,33 @@ function exportGearsWorkerEvidenceSignoffJson() {
 
 async function runGearsLiveSmoke(execute: boolean) {
   if (!seriesProjectId.value || runningGearsLiveSmoke.value) return
+  const maxCostAmount = Number(gearsExternalMaxCostAmount.value)
+  if (execute && (!Number.isFinite(maxCostAmount) || maxCostAmount < 0)) {
+    errorMessage.value = 'GEARS live smoke 最高成本必须是大于或等于 0 的数字'
+    return
+  }
   if (execute) {
-    const confirmed = window.confirm('确定向 GEARS v2 提交 live smoke 任务吗？')
+    const confirmed = window.confirm(
+      `确定向 GEARS v2 提交 live smoke 数据，并授权本次最高成本 ${maxCostAmount} ${gearsExternalCostCurrency.value} 吗？`,
+    )
     if (!confirmed) return
   }
+  const actorId = serverProductAccessContext.value?.actor?.actor_id ?? 'interactive-user'
   runningGearsLiveSmoke.value = true
   errorMessage.value = ''
   saveMessage.value = ''
   const res = await runGearsExecutionLiveSmoke({
     execute,
     poll_after_submit: execute,
+    external_call_authorization: execute
+      ? {
+          authorized: true,
+          authorization_reference: `ui-confirmation:${actorId}:${new Date().toISOString()}`,
+          max_cost_amount: maxCostAmount,
+          cost_currency: gearsExternalCostCurrency.value,
+          data_transfer_acknowledged: true,
+        }
+      : undefined,
     note: `系列工作台 GEARS live smoke：${seriesProjectId.value}`,
   })
   if (res.ok && res.data) {
@@ -4473,6 +4784,29 @@ async function assembleSeedanceFinalDryRun() {
   assemblingSeedanceFinal.value = false
 }
 
+async function rollbackSeedanceFinalRelease(releaseId: string) {
+  if (!seriesProjectId.value || rollingBackFinalReleaseId.value || !canRollbackFinalDelivery.value) return
+  const reason = window.prompt('请输入回滚原因（至少 8 个字符），操作将恢复已归档并通过 SHA-256 校验的视频和 manifest。')?.trim()
+  if (!reason || reason.length < 8) return
+  if (!window.confirm(`确认把最终交付回滚到 ${releaseId}？`)) return
+  rollingBackFinalReleaseId.value = releaseId
+  errorMessage.value = ''
+  const res = await rollbackAiComicSeriesSeedanceFinalDelivery(seriesProjectId.value, {
+    release_id: releaseId,
+    confirmed: true,
+    reason,
+  })
+  if (res.ok && res.data) {
+    seedanceFinalDelivery.value = res.data.seedance_final_delivery
+    lastSavedAt.value = res.data.project.updated_at
+    saveMessage.value = `最终交付已回滚到 ${releaseId}，视频与 manifest SHA-256 已复核。`
+    await Promise.all([loadSeedanceDashboard(), loadProductionReadiness(true)])
+  } else {
+    errorMessage.value = res.error?.message ?? '最终交付回滚失败'
+  }
+  rollingBackFinalReleaseId.value = ''
+}
+
 async function addSeedanceReview() {
   if (!seriesProjectId.value || addingSeedanceReview.value || !seedanceReviewDraft.value.note.trim()) return
   addingSeedanceReview.value = true
@@ -4554,6 +4888,24 @@ async function submitSeriesGearsJobs(useGearsApi = false) {
   const jobType = selectedGearsJobType.value
   const jobTypeLabel = gearsJobTypeLabel(jobType)
   const submitLabel = gearsJobTypeSubmitLabel(jobType)
+  const maxCostAmount = Number(gearsExternalMaxCostAmount.value)
+  if (useGearsApi && (!Number.isFinite(maxCostAmount) || maxCostAmount < 0)) {
+    errorMessage.value = 'GEARS 外呼最高成本必须是大于或等于 0 的数字'
+    return
+  }
+  if (useGearsApi && !window.confirm(
+    `确认向外部 GEARS 发送当前${jobTypeLabel}生产数据，并授权本次最高成本 ${maxCostAmount} ${gearsExternalCostCurrency.value}？`,
+  )) return
+  const actorId = serverProductAccessContext.value?.actor?.actor_id ?? 'interactive-user'
+  const authorization = useGearsApi
+    ? {
+        authorized: true as const,
+        authorization_reference: `ui-confirmation:${actorId}:${new Date().toISOString()}`,
+        max_cost_amount: maxCostAmount,
+        cost_currency: gearsExternalCostCurrency.value,
+        data_transfer_acknowledged: true as const,
+      }
+    : undefined
   if (useGearsApi) {
     submittingGearsApiJobs.value = true
   } else {
@@ -4563,6 +4915,7 @@ async function submitSeriesGearsJobs(useGearsApi = false) {
   const res = await submitAiComicSeriesGearsJobs(seriesProjectId.value, {
     job_type: jobType,
     use_gears_api: useGearsApi,
+    external_call_authorization: authorization,
     note: useGearsApi
       ? `前端提交系列 GEARS v2 ${submitLabel}执行任务`
       : `前端记录系列 GEARS v2 ${submitLabel}本地执行账本`,
@@ -4579,6 +4932,11 @@ async function submitSeriesGearsJobs(useGearsApi = false) {
       errorMessage.value = res.data.failures.map(item => {
         return `${gearsFailureTargetLabel(item)} ${item.message}`
       }).join('；')
+    }
+    const detailRes = await getAiComicSeriesProject(seriesProjectId.value)
+    if (detailRes.ok && detailRes.data) {
+      seedanceAssetLibrary.value = detailRes.data.seedance_asset_library ?? null
+      await loadSeedanceAssetReport()
     }
     await loadSeedanceDashboard()
     await loadProductionReadiness()
@@ -4706,6 +5064,11 @@ async function importSeriesGearsCallbacks() {
   if (failureMessages.length) {
     errorMessage.value = failureMessages.join('；')
   }
+  const detailRes = await getAiComicSeriesProject(seriesProjectId.value)
+  if (detailRes.ok && detailRes.data) {
+    seedanceAssetLibrary.value = detailRes.data.seedance_asset_library ?? null
+    await loadSeedanceAssetReport()
+  }
   await loadSeedanceDashboard()
   await loadProductionReadiness()
   importingGearsCallbacks.value = false
@@ -4757,6 +5120,166 @@ async function importSeedanceReturnJson(event: Event) {
   }
 }
 
+function seriesSeedanceAssetLibraryItem(assetId: string) {
+  return seedanceAssetLibrary.value?.items.find(item => item.asset_id === assetId)
+}
+
+function seriesSeedanceAssetPreviewUrl(assetId: string): string | undefined {
+  const item = seriesSeedanceAssetLibraryItem(assetId)
+  if (!seriesProjectId.value || !item?.content_sha256 || !item.local_path || item.provider !== 'local_upload') {
+    return undefined
+  }
+  return `/api/story-outline/ai-comic-series-projects/${seriesProjectId.value}/media-assets/media-sha256-${item.content_sha256}/preview`
+}
+
+function seriesSeedanceAssetProductionCredit(assetId: string): boolean {
+  const item = seriesSeedanceAssetLibraryItem(assetId)
+  return Boolean(
+    item?.provider === 'local_upload'
+    && item.local_path
+    && item.content_sha256
+    && item.rights_status === 'authorized'
+    && item.human_review_status === 'approved',
+  )
+}
+
+async function bindSeriesSeedanceProviderAssetUrl(
+  asset: AiComicSeriesSeedanceAssetReportPackage['assets'][number],
+) {
+  if (!seriesProjectId.value || bindingSeedanceProviderAssetId.value) return
+  const rawUrl = (seedanceProviderAssetUrlInputs.value[asset.asset_id] ?? '').trim()
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    errorMessage.value = 'Provider 交付地址必须是完整的公网 HTTPS URL'
+    return
+  }
+  if (parsed.protocol !== 'https:') {
+    errorMessage.value = 'Provider 交付地址必须使用 HTTPS'
+    return
+  }
+  bindingSeedanceProviderAssetId.value = asset.asset_id
+  errorMessage.value = ''
+  saveMessage.value = ''
+  const res = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId.value, {
+    items: [{
+      asset_id: asset.asset_id,
+      kind: asset.kind,
+      label: asset.label,
+      reference_slot: asset.reference_slot,
+      file_url: parsed.toString(),
+      description: asset.description,
+    }],
+  })
+  if (res.ok && res.data) {
+    seedanceAssetLibrary.value = res.data.seedance_asset_library ?? null
+    lastSavedAt.value = res.data.project.updated_at
+    seedanceProviderAssetUrlInputs.value = {
+      ...seedanceProviderAssetUrlInputs.value,
+      [asset.asset_id]: '',
+    }
+    await loadSeedanceAssetReport()
+    saveMessage.value = `已设置 Provider 素材交付地址：${asset.label}`
+  } else {
+    errorMessage.value = res.error?.message ?? '设置 Provider 素材交付地址失败'
+  }
+  bindingSeedanceProviderAssetId.value = ''
+}
+
+async function uploadSeriesSeedanceAsset(
+  asset: AiComicSeriesSeedanceAssetReportPackage['assets'][number],
+  event: Event,
+) {
+  if (!seriesProjectId.value || uploadingSeedanceAssetId.value) return
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadingSeedanceAssetId.value = asset.asset_id
+  errorMessage.value = ''
+  saveMessage.value = ''
+  const form = new FormData()
+  form.append('file', file)
+  form.append('asset_id', asset.asset_id)
+  form.append('kind', asset.kind)
+  form.append('label', asset.label)
+  if (asset.reference_slot) form.append('reference_slot', asset.reference_slot)
+  if (asset.description) form.append('description', asset.description)
+  const res = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId.value, form)
+  if (res.ok && res.data) {
+    seedanceAssetLibrary.value = res.data.detail.seedance_asset_library ?? null
+    lastSavedAt.value = res.data.detail.project.updated_at
+    await loadSeedanceAssetReport()
+    saveMessage.value = `系列素材已验证并入库：${asset.label}`
+  } else {
+    errorMessage.value = res.error?.message ?? '上传系列素材失败'
+  }
+  input.value = ''
+  uploadingSeedanceAssetId.value = ''
+}
+
+type SeriesMediaReviewAction = 'authorize' | 'approve' | 'reject' | 'restrict'
+
+async function submitSeriesSeedanceMediaReview(
+  asset: AiComicSeriesSeedanceAssetReportPackage['assets'][number],
+  action: SeriesMediaReviewAction,
+) {
+  if (!seriesProjectId.value || reviewingSeedanceAssetId.value) return
+  if (!canReviewSeedanceMediaAssets.value) {
+    errorMessage.value = seedanceMediaReviewPermissionHint.value
+    return
+  }
+  const item = seriesSeedanceAssetLibraryItem(asset.asset_id)
+  const form = seedanceMediaReviewForms.value[asset.asset_id]
+  if (!item?.content_sha256 || !form) {
+    errorMessage.value = '当前系列素材没有可绑定审核结论的本地验证 SHA-256'
+    return
+  }
+  if ((action === 'authorize' || action === 'approve') && !form.authorization_reference.trim()) {
+    errorMessage.value = '确认授权前必须填写合同、授权单或其他授权依据'
+    return
+  }
+  if ((action === 'approve' || action === 'reject') && !form.review_note.trim()) {
+    errorMessage.value = '真人视觉审核必须填写审核意见'
+    return
+  }
+  const body: MediaAssetReviewUpdateRequest = {
+    asset_id: asset.asset_id,
+    expected_content_sha256: item.content_sha256,
+  }
+  if (action === 'authorize' || action === 'approve') {
+    body.rights_status = 'authorized'
+    body.authorization_reference = form.authorization_reference.trim()
+    body.person_consent_reference = form.person_consent_reference.trim() || undefined
+  } else if (action === 'restrict') {
+    body.rights_status = 'restricted'
+    body.authorization_reference = form.authorization_reference.trim() || undefined
+  }
+  if (action === 'approve' || action === 'reject') {
+    body.human_review_status = action === 'approve' ? 'approved' : 'rejected'
+    body.review_note = form.review_note.trim()
+  }
+  reviewingSeedanceAssetId.value = asset.asset_id
+  errorMessage.value = ''
+  saveMessage.value = ''
+  const res = await reviewAiComicSeriesMediaAsset(
+    seriesProjectId.value,
+    asset.asset_id,
+    body,
+  )
+  if (res.ok && res.data) {
+    seedanceAssetLibrary.value = res.data.detail.seedance_asset_library ?? null
+    lastSavedAt.value = res.data.detail.project.updated_at
+    await loadSeedanceAssetReport()
+    saveMessage.value = res.data.production_credit_granted
+      ? `系列素材已获得 production credit：${asset.label}`
+      : `系列素材审核状态已更新：${asset.label}`
+  } else {
+    errorMessage.value = res.error?.message ?? '更新系列素材审核失败'
+  }
+  reviewingSeedanceAssetId.value = ''
+}
+
 async function importSeedanceAssetLibraryJson(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -4780,7 +5303,9 @@ async function importSeedanceAssetLibraryJson(event: Event) {
     errorMessage.value = ''
     const res = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId.value, { items })
     if (res.ok && res.data) {
+      seedanceAssetLibrary.value = res.data.seedance_asset_library ?? null
       lastSavedAt.value = res.data.project.updated_at
+      await loadSeedanceAssetReport()
       saveMessage.value = `已导入 ${items.length} 条 Seedance 素材绑定`
     } else {
       errorMessage.value = res.error?.message ?? '导入 Seedance 素材绑定失败'
@@ -5040,6 +5565,9 @@ function clearCurrentProject() {
   seedanceTitleCardRender.value = null
   seedanceFinalDelivery.value = null
   seedanceReviewLedger.value = null
+  seedanceAssetLibrary.value = null
+  seedanceAssetReport.value = null
+  seedanceMediaReviewForms.value = {}
   productionReadiness.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
@@ -5219,6 +5747,7 @@ function gearsJobTypeLabel(type: GearsJobLedgerItem['job_type']): string {
     storyboard_image: '故事板图',
     character_image: '人物图',
     scene_image: '场景图',
+    prop_image: '道具图',
     seedance_video: '视频返修/重试',
     subtitle_render: '字幕渲染',
     audio_mix: '混音',
@@ -6135,6 +6664,18 @@ function episodeProjectPath(episodeNo: number): string {
   gap: 8px;
 }
 
+.series-studio__gears-cost-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__gears-cost-limit input {
+  width: 92px;
+}
+
 .series-studio__seedance-ops:not([open]) .series-studio__seedance-ops-body {
   display: none;
 }
@@ -6191,6 +6732,86 @@ function episodeProjectPath(episodeNo: number): string {
 
 .series-studio__thread-closure-head span {
   color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__series-assets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.series-studio__series-asset {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  border: 1px solid #d5dee5;
+  border-radius: 6px;
+  background: #fff;
+  padding: 12px;
+}
+
+.series-studio__series-asset small {
+  color: #667986;
+  line-height: 1.45;
+}
+
+.series-studio__provider-asset-handoff {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(45, 116, 94, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(45, 116, 94, 0.06);
+}
+
+.series-studio__series-asset-preview {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.series-studio__series-asset-preview img {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 5px;
+  background: #eef2f4;
+  object-fit: contain;
+}
+
+.series-studio__series-asset-preview figcaption {
+  color: #667986;
+  font-size: 12px;
+}
+
+.series-studio__series-asset-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: #2b657a;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.series-studio__series-asset-upload input {
+  max-width: 220px;
+}
+
+.series-studio__series-asset fieldset {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.series-studio__series-asset fieldset label {
+  display: grid;
+  gap: 4px;
+  color: #425766;
   font-size: 12px;
 }
 
@@ -7246,7 +7867,8 @@ function episodeProjectPath(episodeNo: number): string {
   .series-studio__metrics,
   .series-studio__ledger,
   .series-studio__episode-columns,
-  .series-studio__episode-editor-grid {
+  .series-studio__episode-editor-grid,
+  .series-studio__series-assets {
     grid-template-columns: 1fr;
   }
 

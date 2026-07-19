@@ -1,0 +1,211 @@
+{
+  "schema_version": "story-agent-real-functional-smoke/v1",
+  "generated_at": "2026-07-19T04:09:14Z",
+  "status": "passed_local_canonical_external_model_requires_informed_approval",
+  "scope": {
+    "source_domain": "china_culture",
+    "entry_name": "周敦颐——理学开山鼻祖",
+    "selected_event": "拒签冤案",
+    "video_type": "character_story",
+    "target_video_duration": "1分钟",
+    "model_profile_id": "codex_gpt55",
+    "story_priority": "knowledge_first",
+    "source_material_mode": "generate_from_knowledge"
+  },
+  "execution": {
+    "canonical_endpoint": "POST /api/stories/generate",
+    "canonical_request_count": 6,
+    "canonical_success_count": 6,
+    "canonical_failure_count": 0,
+    "generation_source": "本地引擎",
+    "generation_mode": "local_only",
+    "generation_used_fallback": false,
+    "model_fallback_reason": "STORY_GEN_COMMAND is not configured",
+    "external_codex_preflight": {
+      "codex_cli_available": true,
+      "codex_login_status": "logged_in_using_chatgpt",
+      "bridge_configuration_verified": true,
+      "external_request_executed": false,
+      "external_model_call_count": 0,
+      "external_persistence_write_count": 0,
+      "blocker": "The request would send the selected knowledge-base entry and Story Agent prompt to an external Codex service and may consume account quota. Explicit informed user approval is required before execution.",
+      "workaround_attempted": false
+    }
+  },
+  "attempt_audit": {
+    "schema_version": "story-generation-attempt-event/v1",
+    "ledger_relative_path": "web/generated/system/story-generation-attempts.jsonl",
+    "ledger_event_count": 12,
+    "attempt_count": 6,
+    "succeeded_attempt_count": 6,
+    "failed_attempt_count": 0,
+    "incomplete_attempt_count": 0,
+    "status_sequence_per_attempt": [
+      "started",
+      "succeeded"
+    ],
+    "request_content_recorded": false,
+    "model_output_recorded": false,
+    "raw_exception_recorded": false,
+    "absolute_path_recorded": false,
+    "system_directory_mode": "0700",
+    "ledger_file_mode": "0600"
+  },
+  "immutable_samples": [
+    {
+      "story_id": "20260719-story-5zfncf574284",
+      "purpose": "initial_real_canonical_baseline",
+      "content_review_findings": [
+        "logline exposed structured region metadata",
+        "通书 was misclassified as the antagonist",
+        "the sourced quote was rewritten while still presented as a quotation"
+      ]
+    },
+    {
+      "story_id": "20260719-story-5zgief5bdd6f",
+      "purpose": "first_generator_fix_validation",
+      "content_review_findings": [
+        "慎动 was misclassified as a scene character"
+      ]
+    },
+    {
+      "story_id": "20260719-story-5zkqa0f89859",
+      "purpose": "concept_filter_validation",
+      "content_review_findings": [
+        "陈抟 drifted from the full biography into a single-event ending scene"
+      ]
+    },
+    {
+      "story_id": "20260719-story-5zfe954f0713",
+      "purpose": "single_event_scope_validation",
+      "content_review_findings": [
+        "the event-scoped character set removed the unrelated person but also omitted 王逵"
+      ]
+    },
+    {
+      "story_id": "20260719-story-5zjl70fcbbef",
+      "purpose": "story_character_fix_validation",
+      "content_review_findings": [
+        "story text and characters were correct, but the persisted GEARS scene asset still contained whole-entry summary metadata"
+      ]
+    },
+    {
+      "story_id": "20260719-story-5zda49662217",
+      "purpose": "final_accepted_local_canonical_sample",
+      "content_review_findings": []
+    }
+  ],
+  "final_sample": {
+    "story_id": "20260719-story-5zda49662217",
+    "project_id": "20260719-story-5zda49662217--character_story",
+    "version_id": "20260719-story-5zda49662217--character_story-v1",
+    "title": "拒签冤案",
+    "logline": "周敦颐拒签冤案——一份死刑文书面前，他选择了良知而非权势。",
+    "characters": [
+      {
+        "name": "周敦颐",
+        "role": "protagonist"
+      },
+      {
+        "name": "王逵",
+        "role": "antagonist"
+      }
+    ],
+    "exact_source_quote_present": true,
+    "exact_source_quote": "杀人以媚人，吾不为也！",
+    "forbidden_pollution_present": false,
+    "scene_count": 6,
+    "gears_segment_count": 6,
+    "quality_passed": true,
+    "quality_issues": [],
+    "pattern_score": 94,
+    "gears_readiness_score": 100,
+    "audience_text_clean": true,
+    "material_sufficiency_score": 100,
+    "domain_safety": {
+      "passed": true,
+      "machine_validation_only": true,
+      "human_review_complete": false,
+      "real_credit_granted": false
+    },
+    "persistence": {
+      "story_json_mode": "0600",
+      "project_json_mode": "0600",
+      "version_json_mode": "0600",
+      "json_identity_checks_passed": true,
+      "git_ignored_by_policy": true
+    }
+  },
+  "delivery_validation": {
+    "api_statuses": {
+      "GET /api/stories/20260719-story-5zda49662217": 200,
+      "GET /api/stories/20260719-story-5zda49662217/gears-segments": 200,
+      "GET /api/stories/20260719-story-5zda49662217/gears-delivery": 200,
+      "GET /api/stories/20260719-story-5zda49662217/seedance-prompts": 200,
+      "GET /api/projects/20260719-story-5zda49662217--character_story": 200
+    },
+    "gears_segments_schema": "gears-segments/v2",
+    "gears_delivery_schema": "gears-delivery/v1",
+    "gears_delivery_unit_count": 6,
+    "gears_scene_asset_names": [
+      "南安军衙"
+    ],
+    "seedance_schema": "seedance-prompt-package/v1",
+    "seedance_shot_count": 6,
+    "seedance_asset_count": 6,
+    "seedance_missing_required_slot_count": 0,
+    "seedance_material_over_limit": false,
+    "seedance_location_reference_polluted": false
+  },
+  "workspace_after_execution": {
+    "story_count": 28,
+    "project_count": 28,
+    "version_count": 59,
+    "report_count_after_this_report": 34,
+    "pending_transaction_count": 0,
+    "generated_artifacts_git_ignored": true
+  },
+  "implementation_fixes": [
+    "remove structured region metadata from refusal-event loglines",
+    "exclude titles, books, philosophical concepts, and office names from character extraction",
+    "scope refusal-event characters to the protagonist and the evidenced antagonist 王逵",
+    "preserve the exact sourced refusal quotation",
+    "fail machine quality validation when refusal evidence is distorted",
+    "detect structured region metadata in audience-facing text",
+    "derive GEARS scene assets from matching asset_split.scenes instead of whole-entry summaries",
+    "prefer explicit scene.location over visual-prompt incidental locations",
+    "refresh persisted GEARS scene assets when summary metadata pollution is detected",
+    "keep repeated-location Seedance references stable on the establishing scene",
+    "allow browser activity diagnostics to validate both uninitialized and valid real-ledger states"
+  ],
+  "validation": {
+    "targeted_story_quality_files_passed": 4,
+    "targeted_story_quality_tests_passed": 28,
+    "targeted_manifest_browser_tests_passed": 1,
+    "web_check_passed": true,
+    "web_server_test_files_passed": 132,
+    "web_server_test_files_skipped": 1,
+    "web_server_tests_passed": 1151,
+    "web_server_tests_skipped": 2,
+    "browser_tests_passed": 7,
+    "mcp_test_files_passed": 85,
+    "mcp_tests_passed": 473,
+    "knowledge_base_files_checked": 34,
+    "knowledge_base_entries_checked": 262,
+    "unified_ci_steps_passed": 21,
+    "unified_ci_steps_total": 21,
+    "p4_changed_files_excluding_report": 43,
+    "p4_hold_files": 0,
+    "staged_files": 0,
+    "git_diff_check_passed": true
+  },
+  "credit_boundary": {
+    "real_canonical_functional_smoke_completed": true,
+    "external_model_generation_completed": false,
+    "real_human_review_completed": false,
+    "real_revision_credit_granted": false,
+    "real_gears_or_seedance_provider_execution_completed": false,
+    "publishable_delivery_credit_granted": false,
+    "professional_pass_granted": false
+  }
+}

@@ -23,6 +23,9 @@ import {
   ProjectMaterialPackAddMaterialRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
+  MediaArtifactPreviewParamSchema,
+  MediaAssetReviewParamSchema,
+  MediaAssetReviewUpdateRequestSchema,
   ProductionReadinessAutomationRunRequestSchema,
   ProjectRetainRecentRequestSchema,
   SeedanceAssetBatchImportRequestSchema,
@@ -96,6 +99,7 @@ import {
   syncProjectGearsJobStatuses,
   uploadProjectSeedanceAssetFile,
   updateProjectSeedanceAssetLibrary,
+  updateProjectMediaAssetReview,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
@@ -104,6 +108,9 @@ import { importProjectToGearsWorkbench } from '../services/gears-workbench-conne
 import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
 import { filterProductResourcesForRequest } from '../services/product-resource-access-service.js';
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
+import { readProjectMediaAssetPreview } from '../services/media-asset-preview-service.js';
+import { getProductAccessContext } from '../services/product-access-service.js';
+import { parseMultipartAssetUpload } from '../services/multipart-asset-upload-service.js';
 
 export const projectsRouter = Router();
 
@@ -129,6 +136,7 @@ const storyProjectResource = {
 const requireProjectRead = requireProductAccess('project:read', { resource: storyProjectResource });
 const requireProjectWrite = requireProductAccess('project:write', { resource: storyProjectResource });
 const requireProjectProductionWrite = requireProductAccess('production:write', { resource: storyProjectResource });
+const requireProjectMediaReview = requireProductAccess('review:operate', { resource: storyProjectResource });
 const requireMaterialReview = requireProductAccess('material:review', { resource: storyProjectResource });
 const requireScopedMaterialReview = requireProductAccess('material:review', {
   resource: { ...storyProjectResource, required: true },
@@ -164,6 +172,10 @@ projectsRouter.use((req, res, next) => {
     requireScopedMaterialReview(req, res, next);
     return;
   }
+  if (req.path.includes('/production-board/media-assets/') && req.path.endsWith('/review')) {
+    requireProjectMediaReview(req, res, next);
+    return;
+  }
   if (req.method === 'GET') {
     requireProjectRead(req, res, next);
     return;
@@ -190,13 +202,6 @@ const SUPPLEMENT_TASK_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'needs_revision',
 ];
 const SUPPLEMENT_TASK_VIDEO_TYPES = Object.keys(VIDEO_TYPE_CONFIG) as VideoType[];
-
-type MultipartFile = {
-  field_name: string;
-  filename: string;
-  mime_type: string;
-  buffer: Buffer;
-};
 
 function queryEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
   return typeof value === 'string' && allowed.includes(value as T) ? value as T : undefined;
@@ -246,75 +251,6 @@ function supplementTaskFiltersFromRequest(req: Request): ProjectSupplementTaskLi
     task_keys: queryStringList(req.query.task_keys),
     search_query: searchQuery,
   };
-}
-
-async function readRequestBody(req: Request, maxBytes: number): Promise<Buffer> {
-  return await new Promise((resolvePromise, reject) => {
-    const chunks: Buffer[] = [];
-    let total = 0;
-    req.on('data', (chunk: Buffer) => {
-      total += chunk.length;
-      if (total > maxBytes) {
-        reject(new Error(`request body exceeds ${maxBytes} bytes`));
-        req.destroy();
-        return;
-      }
-      chunks.push(Buffer.from(chunk));
-    });
-    req.on('end', () => resolvePromise(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
-}
-
-function multipartBoundary(contentType: string | undefined): string | undefined {
-  const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType ?? '');
-  return (match?.[1] ?? match?.[2])?.trim();
-}
-
-function multipartDispositionValue(disposition: string, key: string): string | undefined {
-  const match = new RegExp(`${key}="([^"]*)"`).exec(disposition);
-  return match?.[1];
-}
-
-async function parseSeedanceAssetUpload(req: Request): Promise<{ fields: Record<string, string>; file?: MultipartFile }> {
-  const boundary = multipartBoundary(req.headers['content-type']);
-  if (!boundary) {
-    throw new Error('multipart/form-data boundary is required');
-  }
-  const body = await readRequestBody(req, SEEDANCE_ASSET_UPLOAD_MAX_BYTES);
-  const raw = body.toString('latin1');
-  const parts = raw.split(`--${boundary}`).slice(1, -1);
-  const fields: Record<string, string> = {};
-  let file: MultipartFile | undefined;
-
-  for (const part of parts) {
-    const normalized = part.replace(/^\r\n/, '').replace(/\r\n$/, '');
-    const headerEnd = normalized.indexOf('\r\n\r\n');
-    if (headerEnd < 0) continue;
-    const headerText = normalized.slice(0, headerEnd);
-    const content = normalized.slice(headerEnd + 4);
-    const headers = Object.fromEntries(headerText.split('\r\n').map((line) => {
-      const [name, ...rest] = line.split(':');
-      return [name.trim().toLowerCase(), rest.join(':').trim()];
-    }));
-    const disposition = headers['content-disposition'] ?? '';
-    const fieldName = multipartDispositionValue(disposition, 'name');
-    if (!fieldName) continue;
-    const filename = multipartDispositionValue(disposition, 'filename');
-    const contentBuffer = Buffer.from(content, 'latin1');
-    if (filename !== undefined) {
-      file = {
-        field_name: fieldName,
-        filename: filename.split(/[\\/]/).pop() || 'seedance-asset.bin',
-        mime_type: headers['content-type'] || 'application/octet-stream',
-        buffer: contentBuffer,
-      };
-    } else {
-      fields[fieldName] = contentBuffer.toString('utf8').trim();
-    }
-  }
-
-  return { fields, file };
 }
 
 projectsRouter.get('/', validateQuery(DomainPackQuerySchema), async (req, res, next) => {
@@ -461,6 +397,67 @@ projectsRouter.get('/:projectId/production-board', validateParams(ProjectIdParam
   }
 });
 
+projectsRouter.get(
+  '/:projectId/production-board/media-assets/:artifactId/preview',
+  validateParams(MediaArtifactPreviewParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId, artifactId } = req.params as { projectId: string; artifactId: string };
+      const result = await readProjectMediaAssetPreview(projectId, artifactId);
+      if (!result.ok) {
+        res.status(result.status).json(fail(
+          result.status === 404 ? ErrorCodes.STORY_NOT_FOUND : ErrorCodes.VALIDATION_ERROR,
+          result.message,
+        ));
+        return;
+      }
+      res.setHeader('Content-Type', result.data.mime_type);
+      res.setHeader('Content-Length', String(result.data.byte_size));
+      res.setHeader('Content-Disposition', `inline; filename="${result.data.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+      res.setHeader('ETag', `"sha256-${result.data.content_sha256}"`);
+      res.status(200).send(result.data.buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-board/media-assets/:assetId/review',
+  validateParams(MediaAssetReviewParamSchema),
+  validateBody(MediaAssetReviewUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId, assetId } = req.params as { projectId: string; assetId: string };
+      if (assetId !== req.body.asset_id) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, 'Path assetId must match body asset_id'));
+        return;
+      }
+      const access = getProductAccessContext(req);
+      if (!access.actor || access.authentication_method === 'local_bypass') {
+        res.status(403).json(fail(
+          ErrorCodes.ACCESS_FORBIDDEN,
+          'A verified reviewer session is required to grant media rights or human visual review credit',
+        ));
+        return;
+      }
+      const result = await updateProjectMediaAssetReview(projectId, req.body, {
+        actor_id: access.actor.actor_id,
+        authentication_method: access.authentication_method,
+      });
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400,
+      ).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 projectsRouter.get('/:projectId/production-readiness', validateParams(ProjectIdParamSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params as { projectId: string };
@@ -575,9 +572,12 @@ projectsRouter.post(
   async (req, res, next) => {
     try {
       const { projectId } = req.params as { projectId: string };
-      let parsed: Awaited<ReturnType<typeof parseSeedanceAssetUpload>>;
+      let parsed: Awaited<ReturnType<typeof parseMultipartAssetUpload>>;
       try {
-        parsed = await parseSeedanceAssetUpload(req);
+        parsed = await parseMultipartAssetUpload(req, {
+          max_bytes: SEEDANCE_ASSET_UPLOAD_MAX_BYTES,
+          default_filename: 'seedance-asset.bin',
+        });
       } catch (err: any) {
         res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, err.message ?? 'Invalid Seedance asset upload'));
         return;

@@ -7,10 +7,12 @@ import type {
   SeedancePromptShotUnit,
   SeedanceShotAssetSlot,
   SeedanceShotMaterialValidation,
+  ProductionShot,
   StoryGenerateResult,
   StoryScene,
 } from '@shared/types.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildProductionShotPlan } from './production-shot-plan-service.js';
 import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
 
 const PROMPT_NOISE_WORDS = [
@@ -62,13 +64,16 @@ type SeedanceImageReferenceSeed = {
 
 export function buildSeedancePromptPackage(story: StoryGenerateResult): SeedancePromptPackage {
   const delivery = ensureGearsDeliveryPackage(story);
+  const shotPlan = buildProductionShotPlan(story, delivery);
   const sceneById = new Map(story.scene_breakdown.map(scene => [scene.scene_id, scene]));
-  const assetReferences = buildAssetReferences(story, delivery);
-  const shotUnits = delivery.units.map(unit => buildShotUnit({
+  const deliveryUnitById = new Map(delivery.units.map(unit => [unit.unit_id, unit]));
+  const assetReferences = buildAssetReferences(story, delivery, shotPlan.shots);
+  const shotUnits = shotPlan.shots.map(shot => buildShotUnit({
     story,
     delivery,
-    unit,
-    scene: sceneById.get(unit.source_scene_id),
+    unit: deliveryUnitById.get(shot.source_unit_id)!,
+    shot,
+    scene: sceneById.get(shot.source_scene_id),
     assetReferences,
   }));
   const materialValidation = buildPackageMaterialValidation(assetReferences);
@@ -101,11 +106,12 @@ function buildShotUnit(input: {
   story: StoryGenerateResult;
   delivery: GearsDeliveryPackage;
   unit: GearsDeliveryUnit;
+  shot: ProductionShot;
   scene?: StoryScene;
   assetReferences: SeedanceAssetReference[];
 }): SeedancePromptShotUnit {
-  const { unit, scene } = input;
-  const durationSec = clampDuration(scene?.duration_sec ?? unit.suggested_duration_sec);
+  const { unit, shot, scene } = input;
+  const durationSec = clampDuration(unit.suggested_duration_sec);
   const location = scene?.location?.trim() || unit.scene_name || '未指定场景';
   const characters = unit.character_names.length > 0
     ? unit.character_names
@@ -121,14 +127,14 @@ function buildShotUnit(input: {
   const negativeConstraints = buildNegativeConstraints(scene, visualPrompt, unit.script_text);
   const assetSlots = buildShotAssetSlots({
     references: input.assetReferences,
-    shotId: `shot-${unit.unit_id}`,
+    shotId: shot.shot_id,
     sourceSceneId: unit.source_scene_id,
     characters,
     location,
     text: [unit.script_text, visualPrompt, cameraSuggestion].join(' '),
   });
   const materialValidation = buildShotMaterialValidation({
-    shotId: `shot-${unit.unit_id}`,
+    shotId: shot.shot_id,
     durationSec,
     characters,
     location,
@@ -136,7 +142,7 @@ function buildShotUnit(input: {
     assetSlots,
   });
   return {
-    shot_id: `shot-${unit.unit_id}`,
+    shot_id: shot.shot_id,
     source_scene_id: unit.source_scene_id,
     source_unit_id: unit.unit_id,
     duration_sec: durationSec,
@@ -199,7 +205,11 @@ function buildSeedancePrompt(input: {
 function buildAssetReferences(
   story: StoryGenerateResult,
   delivery: GearsDeliveryPackage,
+  shots: ProductionShot[],
 ): SeedanceAssetReference[] {
+  const shotIdsForScenes = (sceneIds: number[]) => shots
+    .filter(shot => sceneIds.includes(shot.source_scene_id))
+    .map(shot => shot.shot_id);
   const characterSeeds = delivery.character_assets.map(character => {
     const sourceSceneIds = story.scene_breakdown
       .filter(scene => scene.characters?.includes(character.name))
@@ -229,7 +239,7 @@ function buildAssetReferences(
     role: item.role,
     description: item.description,
     source_scene_ids: uniqueNumbers(item.source_scene_ids),
-    source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+    source_shot_ids: shotIdsForScenes(uniqueNumbers(item.source_scene_ids)),
     required: item.required,
   }));
   const cameraReferences: SeedanceAssetReference[] = buildCameraReferenceSeeds(story)
@@ -243,7 +253,7 @@ function buildAssetReferences(
       role: 'camera_reference',
       description: item.description,
       source_scene_ids: uniqueNumbers(item.source_scene_ids),
-      source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+      source_shot_ids: shotIdsForScenes(uniqueNumbers(item.source_scene_ids)),
       required: false,
     }));
   const audioReferences: SeedanceAssetReference[] = buildAudioReferenceSeeds(story)
@@ -257,7 +267,7 @@ function buildAssetReferences(
       role: item.role,
       description: item.description,
       source_scene_ids: uniqueNumbers(item.source_scene_ids),
-      source_shot_ids: uniqueNumbers(item.source_scene_ids).map(sceneId => `shot-${sceneId}`),
+      source_shot_ids: shotIdsForScenes(uniqueNumbers(item.source_scene_ids)),
       required: false,
     }));
   return [...imageReferences, ...cameraReferences, ...audioReferences];
@@ -273,6 +283,13 @@ function buildLocationReferenceSeeds(
     const label = scene.location.trim();
     if (!label) continue;
     const existing = byLabel.get(label);
+    if (existing) {
+      byLabel.set(label, {
+        ...existing,
+        source_scene_ids: uniqueNumbers([...existing.source_scene_ids, scene.scene_id]),
+      });
+      continue;
+    }
     const matchedAsset = bestSceneAssetForLocation(label, sceneAssets);
     const description = cleanPrompt(compactStrings([
       matchedAsset?.description,
@@ -284,7 +301,7 @@ function buildLocationReferenceSeeds(
       label,
       role: 'location_reference',
       description,
-      source_scene_ids: uniqueNumbers([...(existing?.source_scene_ids ?? []), scene.scene_id]),
+      source_scene_ids: [scene.scene_id],
       required: true,
       priority: 25 + scene.scene_id,
     });

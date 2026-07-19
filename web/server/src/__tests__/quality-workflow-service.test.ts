@@ -96,6 +96,34 @@ function makeStory(): StoryGenerateResult {
   };
 }
 
+function makePublishableStoryWithProductionGap(
+  productionMaterialReadiness: ProductionMaterialReadinessReport,
+): StoryGenerateResult {
+  const base = makeStory();
+  return {
+    ...base,
+    original_user_query: undefined,
+    full_text: '少年离开山村进入书院。面对误会，他查清书籍去向并公开证据，最终选择留下继续求学。',
+    scene_breakdown: base.scene_breakdown.map((scene, index) => ({
+      ...scene,
+      plot: [
+        '清晨，少年背起书箱离开山村，沿山路走向书院。',
+        '午后，师兄误会少年偷书；少年护住书箱，提出一起核对借阅簿。',
+        '夜晚，少年找到错放的书和借阅记录，公开证据后决定留在书院。',
+      ][index],
+      key_action: ['背起书箱踏上山路', '摊开借阅簿逐项核对', '举起借阅记录公开真相'][index],
+      characters: index === 1 ? ['少年', '师兄'] : ['少年'],
+      visual_prompt: ['山村路口，少年，书箱，晨光', '书院门口，少年与师兄，借阅簿，午后侧光', '书院廊下，少年举起借阅记录，灯笼暖光'][index],
+    })),
+    gears_segments: [{
+      ...base.gears_segments[0],
+      script_text: '少年背起书箱离开山村，沿山路走向书院。',
+      segment_prompt_hint: '山路清晨，中景跟拍少年背书箱前行。',
+    }],
+    production_material_readiness: productionMaterialReadiness,
+  };
+}
+
 describe('quality-workflow-service', () => {
   it('fully covers short focus nodes in a thematic historical outline', () => {
     const story: StoryGenerateResult = {
@@ -276,7 +304,7 @@ describe('quality-workflow-service', () => {
     expect(report.passed).toBe(false);
     expect(report.outline_coverage_report?.schema_version).toBe('outline-coverage/v1');
     expect(report.outline_coverage_report?.missing_nodes).toBeGreaterThan(0);
-    expect(report.pattern_quality_report?.schema_version).toBe('pattern-quality/v1');
+    expect(report.pattern_quality_report?.schema_version).toBe('pattern-quality/v2');
     expect(report.pattern_quality_report?.weak_signals.length).toBeGreaterThan(0);
     expect(report.gears_readiness_report?.schema_version).toBe('gears-readiness/v1');
     expect(report.gears_readiness_report?.prompt_gaps.length).toBeGreaterThan(0);
@@ -293,9 +321,31 @@ describe('quality-workflow-service', () => {
     expect(report.audience_text_report?.polluted_terms).toContain('质量信号');
   });
 
+  it('does not require character assets for a character-free landscape delivery', () => {
+    const base = makeStory();
+    const story: StoryGenerateResult = {
+      ...base,
+      video_type: 'landscape_mood',
+      presentation_style: 'ink_style',
+      characters: [],
+      scene_breakdown: base.scene_breakdown.map(scene => ({
+        ...scene,
+        plot: `${scene.plot} 云海沿峰林移动，山风和光线形成可见的时序变化。`,
+        key_action: '云海移动并显露峰林层次',
+        characters: [],
+        visual_prompt: '张家界峰林，清晨云海，山风，远景长镜头，水墨层次',
+      })),
+    };
+
+    const report = enrichStoryQualityReport({ story, qualityReport: makeBaseReport() });
+
+    expect(report.gears_readiness_report?.asset_gaps.join('\n')).not.toMatch(/角色资产|角色列表/);
+  });
+
   it('reports audience-facing quality labels as repairable pollution', () => {
     const story = {
       ...makeStory(),
+      logline: '永州→道县（籍贯/出生地）；衡阳（少年成长地），一纸判词逼出选择。',
       full_text: '少年写下主角目标，随后用行动具体地完成选择。',
       scene_breakdown: makeStory().scene_breakdown.map(scene => scene.scene_id === 2
         ? {
@@ -329,6 +379,8 @@ describe('quality-workflow-service', () => {
       '史实边界',
       '生成优先级',
       '质量信号',
+      '籍贯/出生地',
+      '少年成长地',
     ]));
     expect(report.repair_action_items?.some(action => action.action_id === 'repair-audience-text')).toBe(true);
     expect(report.repair_action_items?.find(action => action.action_id === 'repair-audience-text')?.scene_ids).toContain(2);
@@ -384,6 +436,119 @@ describe('quality-workflow-service', () => {
     expect(report.repair_action_items?.some(action => action.target_report === 'production_material')).toBe(true);
     expect(report.repair_actions?.join('\n')).toContain('参考图或关键帧');
     expect(report.repair_preview).toContain('生产素材需补');
+  });
+
+  it('separates a publishable story from production readiness when reference assets are missing', () => {
+    const productionMaterialReadiness: ProductionMaterialReadinessReport = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'ai_comic_drama',
+      pack_label: 'AI 漫剧单片',
+      score: 42,
+      status: 'blocked',
+      available_fields: ['core_conflict'],
+      missing_fields: [{
+        field_id: 'reference_images_or_keyframes',
+        label: '参考图或关键帧',
+        stage: 'production_ready',
+        blocking_level: 'blocking',
+        reason: '进入生产前需要真实参考图。',
+        recommended_question: '请补充主角和第一场关键帧参考图。',
+      }],
+      gate_reports: [],
+      recommended_next_questions: ['请补充主角和第一场关键帧参考图。'],
+    };
+
+    const report = enrichStoryQualityReport({
+      story: makePublishableStoryWithProductionGap(productionMaterialReadiness),
+      qualityReport: { ...makeBaseReport(), genre_score: 100 },
+    });
+
+    expect(report.passed).toBe(false);
+    expect(report.quality_gates?.schema_version).toBe('quality-gates/v2');
+    expect(report.quality_gates?.story_publishable).toBe(true);
+    expect(report.quality_gates?.production_ready).toBe(false);
+    expect(report.quality_gates?.narrative_gate.status).toBe('passed');
+    expect(report.quality_gates?.outline_gate.status).toBe('passed');
+    expect(report.quality_gates?.audience_text_gate.status).toBe('passed');
+    expect(report.quality_gates?.production_material_gate.status).toBe('failed');
+    expect(report.quality_gates?.asset_gate.status).toBe('not_evaluated');
+    expect(report.quality_gates?.external_provider_gate.status).toBe('not_evaluated');
+    expect(report.quality_gates?.story_blocking_gate_ids).toEqual([]);
+    expect(report.quality_gates?.production_blocking_gate_ids).toContain('production_material_gate');
+  });
+
+  it('does not let a legacy production failure poison the story gate during read-time enrichment', () => {
+    const productionMaterialReadiness: ProductionMaterialReadinessReport = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'ai_comic_drama',
+      pack_label: 'AI 漫剧单片',
+      score: 42,
+      status: 'blocked',
+      available_fields: ['core_conflict'],
+      missing_fields: [{
+        field_id: 'reference_images_or_keyframes',
+        label: '参考图或关键帧',
+        stage: 'production_ready',
+        blocking_level: 'blocking',
+        reason: '进入生产前需要真实参考图。',
+        recommended_question: '请补充主角和第一场关键帧参考图。',
+      }],
+      gate_reports: [],
+      recommended_next_questions: ['请补充主角和第一场关键帧参考图。'],
+    };
+    const story = makePublishableStoryWithProductionGap(productionMaterialReadiness);
+    const firstReport = enrichStoryQualityReport({
+      story,
+      qualityReport: { ...makeBaseReport(), genre_score: 100 },
+    });
+
+    const readTimeReport = enrichStoryQualityReport({ story, qualityReport: firstReport });
+
+    expect(firstReport.passed).toBe(false);
+    expect(readTimeReport.passed).toBe(false);
+    expect(readTimeReport.quality_gates?.story_publishable).toBe(true);
+    expect(readTimeReport.quality_gates?.narrative_gate.status).toBe('passed');
+  });
+
+  it('blocks story publication when the factual and cultural safety gate fails', () => {
+    const story: StoryGenerateResult = {
+      ...makePublishableStoryWithProductionGap({
+        schema_version: 'production-material-readiness/v1',
+        video_type: 'ai_comic_drama',
+        pack_label: 'AI 漫剧单片',
+        score: 100,
+        status: 'ready',
+        available_fields: ['core_conflict', 'reference_images_or_keyframes'],
+        missing_fields: [],
+        gate_reports: [],
+        recommended_next_questions: [],
+      }),
+      domain_safety: {
+        schema_version: 'story-domain-safety/v1',
+        domain: 'china_culture',
+        passed: false,
+        evaluated_rule_ids: ['verified-fact-boundary'],
+        blockers: [{
+          rule_id: 'verified-fact-boundary',
+          severity: 'blocker',
+          message: '把虚构桥段写成已核实史实。',
+        }],
+        warnings: [],
+        machine_validation_only: true,
+        human_review_complete: false,
+        real_credit_granted: false,
+      },
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: { ...makeBaseReport(), genre_score: 100 },
+    });
+
+    expect(report.quality_gates?.factual_cultural_gate.status).toBe('failed');
+    expect(report.quality_gates?.factual_cultural_gate.issues).toContain('把虚构桥段写成已核实史实。');
+    expect(report.quality_gates?.story_publishable).toBe(false);
+    expect(report.quality_gates?.story_blocking_gate_ids).toContain('factual_cultural_gate');
   });
 
   it('recognizes natural action evidence in pattern reports', () => {
@@ -463,6 +628,13 @@ describe('quality-workflow-service', () => {
     expect(weakLabels).not.toContain('人物高光选择：行动具体');
     expect(weakLabels).not.toContain('历史因果讲述：因果链清楚');
     expect(weakLabels).not.toContain('历史因果讲述：史实边界明确');
+    const actionSignal = report.pattern_quality_report?.satisfied_signals
+      .find(signal => signal.label === '人物高光选择：行动具体');
+    expect(actionSignal?.evidence_scene_ids).toEqual(expect.arrayContaining([1, 2, 3]));
+    expect(actionSignal?.observable_evidence[0]).toContain('场景');
+    expect(actionSignal?.counter_evidence).toEqual([]);
+    expect(actionSignal?.confidence).toBeGreaterThanOrEqual(0.8);
+    expect(actionSignal?.repair_target.fields).toContain('key_action');
     expect(report.audience_text_report?.clean).toBe(true);
   });
 
@@ -562,5 +734,50 @@ describe('quality-workflow-service', () => {
     expect(weakLabels).not.toContain('必须有主角目标');
     expect(weakLabels).not.toContain('必须有阻力');
     expect(weakLabels).not.toContain('必须有选择和代价');
+  });
+
+  it('does not award a pattern signal for leaked quality labels without observable scene evidence', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      title: '一般人物介绍',
+      logline: '介绍人物相关内容。',
+      theme: '人物内容',
+      full_text: '目标明确。阻力具体。选择有代价。行动具体。结尾有人物变化。',
+      scene_breakdown: makeStory().scene_breakdown.map((scene, index) => ({
+        ...scene,
+        title: `一般场景${index + 1}`,
+        dramatic_function: '一般介绍',
+        plot: '人物站在室内，旁白继续介绍相关背景内容。',
+        key_action: '介绍背景',
+        conflict: undefined,
+        dialogue_or_narration: '这里继续介绍相关内容。',
+        visual_prompt: '室内，一般人物，中景',
+        camera_suggestion: '固定镜头',
+        cultural_note: '测试。',
+      })),
+      gears_segments: [],
+      protagonist_arc: [],
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+      narrativePatternIds: ['hero_choice'],
+    });
+    const signal = [
+      ...(report.pattern_quality_report?.satisfied_signals ?? []),
+      ...(report.pattern_quality_report?.weak_signals ?? []),
+    ].find(item => item.label.includes('目标明确'));
+
+    expect(signal).toBeDefined();
+    expect(signal?.status).not.toBe('satisfied');
+    expect(signal?.evidence_scene_ids).toEqual([]);
+    expect(signal?.observable_evidence).toEqual([]);
+    expect(signal?.counter_evidence.join('\n')).toContain('标签');
+    expect(signal?.confidence).toBeLessThanOrEqual(0.5);
+    expect(signal?.repair_target).toMatchObject({
+      scope: 'scene',
+      scene_ids: expect.any(Array),
+    });
   });
 });

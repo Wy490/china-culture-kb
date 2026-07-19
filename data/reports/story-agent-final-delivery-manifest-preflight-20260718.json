@@ -1,0 +1,111 @@
+{
+  "schema_version": "story-agent-final-delivery-manifest-preflight-scan/v1",
+  "generated_at": "2026-07-18T03:58:14Z",
+  "source": "web/generated read-only local scan via Web preflight contract",
+  "safety": {
+    "generated_files_modified": false,
+    "final_assemble_invoked": false,
+    "manifest_written": false,
+    "project_json_written": false,
+    "publishable_delivery_credit_granted": false,
+    "real_gears_seedance_credit_granted": false
+  },
+  "summary": {
+    "target_count": 10,
+    "manifest_gap_confirmed_count": 10,
+    "preserve_fixture_eligible_count": 10,
+    "reexport_eligible_count": 0,
+    "reexport_blocked_count": 10,
+    "authorized_media_inputs_failed_count": 10,
+    "cut_output_failed_count": 10,
+    "subtitle_output_failed_count": 10,
+    "audio_mix_output_failed_count": 10,
+    "title_card_outputs_failed_count": 10,
+    "project_scoped_paths_failed_count": 0
+  },
+  "contract": {
+    "web_api": {
+      "method": "POST",
+      "path": "/api/system/story-agent-final-delivery-manifest-preflight"
+    },
+    "mcp_tool": "kb_preflight_story_agent_final_delivery_manifest",
+    "dispositions": [
+      "preserve_fixture_exclude_from_publishable_delivery",
+      "reexport_after_authorized_dependencies"
+    ],
+    "reexport_requirements": [
+      "explicit operator attestation for authorized media inputs with no placeholder media reference",
+      "cut/subtitle/audio/title-card ledgers are ready and not dry-run",
+      "declared cut/subtitle/audio/title-card files exist under web/generated",
+      "dependency, final output, and prospective manifest paths remain project-scoped"
+    ]
+  },
+  "results": [
+    {
+      "series_project_id": "20260619-series-0so7mqbg",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-mbmlccz0",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-ulkublp4",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-acyqrolx",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-1rfi5mzq",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-a4tgicqe",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-0nf0gc2q",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-3e9ga2oj",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-vw8eg21m",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    },
+    {
+      "series_project_id": "20260619-series-6uokxeln",
+      "preserve_fixture_status": "ready",
+      "reexport_status": "blocked",
+      "failed_checks": ["authorized_media_inputs", "cut_output", "subtitle_output", "audio_mix_output", "title_card_outputs"]
+    }
+  ],
+  "notes": [
+    "Preserve-fixture readiness is only a recommendation for operator-approved signoff exclusion and never counts as publishable delivery.",
+    "All ten historical projects remain ineligible for re-export even when attestation=true because placeholder media and/or current dependency evidence fails.",
+    "Historical seedance_final_delivery.dependency_status values were not trusted without current ledger, path, and file evidence.",
+    "No GEARS final assemble endpoint was called and web/generated remained unmodified."
+  ]
+}

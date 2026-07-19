@@ -68,6 +68,14 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
     sourceDomain: input.sourceDomain,
     title: input.storyResult.title,
     model_profile_id: selectedModelProfile.id,
+    requested_model_profile_id: input.request.model_profile_id,
+    effective_engine: input.generationMode === 'external_model'
+      ? 'external_model'
+      : input.generationMode === 'local_fallback'
+        ? 'local_fallback'
+        : 'local_story_engine',
+    external_model_call_performed: input.generationMode === 'external_model',
+    generation_reason: input.adapterResult.reason,
     generation_source: input.generationMode === 'external_model'
       ? selectedModelProfile.label
       : input.generationMode === 'local_fallback'

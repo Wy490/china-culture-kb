@@ -51,6 +51,10 @@ const NON_DRAMATIC_VIDEO_TYPES: VideoType[] = [
   'social_short',
 ];
 
+function isRefusalEvent(value?: string): boolean {
+  return Boolean(value && /(?:拒签|拒绝(?:签押|签字|落笔))/.test(value));
+}
+
 export function conflictScore(eventText: string, storyText: string): number {
   let score = 0;
 
@@ -376,7 +380,11 @@ function extractCharacterNames(
   let m: RegExpExecArray | null;
   while ((m = namePattern.exec(storyText)) !== null) {
     const name = m[0];
-    if (name !== protagonist && isUsableCharacterName(name)) counts.set(name, (counts.get(name) ?? 0) + 1);
+    if (
+      name !== protagonist
+      && !isPartialProtagonistName(name, protagonist)
+      && isUsableCharacterName(name)
+    ) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
   for (const [name, count] of counts) {
@@ -385,16 +393,38 @@ function extractCharacterNames(
   const namedPersonPattern = /^[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳史唐费薛雷贺倪汤滕殷罗毕郝邬安常乐于傅皮卞齐康伍余元顾孟黄穆萧尹姚邵汪祁毛禹狄米贝明臧计伏成戴宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪解应宗丁宣邓郁单杭洪包诸左石崔吉钮龚程嵇邢滑裴陆荣翁荀羊甄曲封芮储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘钭厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺蒙池乔阴胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍却璩桑桂濮牛寿通边燕冀浦尚农温别庄晏柴瞿阎慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧殳沃利蔚越夔隆师巩厍聂晁勾敖融冷訾辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公][\u4e00-\u9fa5]{1,3}$/;
   for (const keyword of keywords) {
     const candidate = keyword.trim();
-    if (candidate === protagonist || chars.includes(candidate)) continue;
+    if (candidate === protagonist || chars.includes(candidate) || isPartialProtagonistName(candidate, protagonist)) continue;
     if (/砍樵|传书|起义|会师|运动|文化|传说|花鼓戏|狐仙$/.test(candidate)) continue;
+    if (/^(?:慎动|主静|无极|太极|理学|道学|心学)$/.test(candidate)) continue;
+    if (/(?:书|说|经|论|集|记|传|志|图)$/.test(candidate)) continue;
     if (namedPersonPattern.test(candidate) || /大姐|姑娘|龙女$/.test(candidate)) chars.push(candidate);
   }
   return chars.slice(0, 6);
 }
 
+function isPartialProtagonistName(candidate: string, protagonist: string): boolean {
+  if (candidate.length < 2 || protagonist.length < 2) return false;
+  return protagonist.startsWith(candidate) || candidate.startsWith(protagonist);
+}
+
 function isUsableCharacterName(name: string): boolean {
+  if (/^(?:知军|上官|官员|司理参军)$/.test(name)) return false;
   if (/可作为|作为|不该|地方|后世|今永州|道县|衡阳|汝城|濂溪|书院|遗址|案件|案卷|文书|判词|选择|核心/.test(name)) return false;
   return name.length >= 2 && name.length <= 5;
+}
+
+function selectEventCharacterNames(
+  characterNames: string[],
+  protagonist: string,
+  centralEvent: string,
+  eventParagraphs: string[],
+): string[] {
+  if (!isRefusalEvent(centralEvent)) return characterNames;
+
+  const eventText = eventParagraphs.join('\n');
+  return eventText.includes('王逵') || characterNames.includes('王逵')
+    ? [protagonist, '王逵']
+    : [protagonist];
 }
 
 function cleanPlaceName(value?: string): string {
@@ -420,7 +450,7 @@ function subjectPlace(entry: EntryDetail): string {
 }
 
 function narrativePlace(entry: EntryDetail, centralEvent: string, videoType: VideoType): string {
-  if (centralEvent.includes('拒签')) return '南安军';
+  if (isRefusalEvent(centralEvent)) return '南安军';
   if (centralEvent.includes('断案')) return '分宁县';
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) return '汨罗江畔';
   if (videoType === 'documentary_short' || videoType === 'heritage_promo') return subjectPlace(entry);
@@ -431,11 +461,11 @@ function inferSubject(entry: EntryDetail): string {
   return entry.name.split('——')[0].trim();
 }
 
-function inferProtagonist(entry: EntryDetail, videoType: VideoType): string {
+export function inferProtagonist(entry: EntryDetail, videoType: VideoType): string {
   const subject = inferSubject(entry);
   if (!DRAMATIC_VIDEO_TYPES.includes(videoType)) return subject;
 
-  const eventNameMatch = subject.match(/^([\u4e00-\u9fa5]{2,4}?)(?:投江|殉国|断案|拒签|治案|悟道|砍樵|传书|起义|会师|抗日|创立|修建|改建|被贬|求学)/);
+  const eventNameMatch = subject.match(/^([\u4e00-\u9fa5]{2,4}?)(?:投江|殉国|断案|拒签|拒绝|治案|悟道|砍樵|传书|起义|会师|抗日|创立|修建|改建|被贬|求学)/);
   if (eventNameMatch) return eventNameMatch[1];
 
   if (/^[\u4e00-\u9fa5]{2,4}$/.test(subject)) return subject;
@@ -462,13 +492,14 @@ function generateStoryTitle(centralEvent: string, entry: EntryDetail, videoType:
   const eventShort = centralEvent.length <= 24 ? centralEvent : `${centralEvent.substring(0, 24)}…`;
 
   // Check if the event contains dramatic keywords for title inspiration
-  if (centralEvent.includes('拒签')) return `${eventShort}`;
+  if (isRefusalEvent(centralEvent)) return `${eventShort}`;
   if (centralEvent.includes('断案')) return `${protagonist}${eventShort}`;
   if (centralEvent.includes('投江')) return `${eventShort}`;
   if (centralEvent.includes('殉国')) return `${eventShort}`;
 
   // For documentary/lecture, use more descriptive title
   if (videoType === 'documentary_short' || videoType === 'lecture_video') {
+    if (eventShort === protagonist || eventShort.startsWith(`${protagonist}：`)) return eventShort;
     return `${protagonist}：${eventShort}`;
   }
 
@@ -529,7 +560,13 @@ export function generateDramaticContent(input: DramaticContentInput): {
   const eventParagraphs = extractEventParagraphs(entry.story, centralEvent);
   const quotes = extractQuotes(eventParagraphs.join('\n'));
   const protagonist = inferProtagonist(entry, videoType);
-  const characterNames = extractCharacterNames(entry.story, entry.name, protagonist, entry.keywords);
+  const extractedCharacterNames = extractCharacterNames(entry.story, entry.name, protagonist, entry.keywords);
+  const characterNames = selectEventCharacterNames(
+    extractedCharacterNames,
+    protagonist,
+    centralEvent,
+    eventParagraphs,
+  );
 
   // Supporting knowledge from knowledge_pack
   const supportingRegions = knowledgePack?.supporting_entries
@@ -905,7 +942,7 @@ function determineTimeOfDay(idx: number, centralEvent: string, paragraphs: strin
 }
 
 function determineLocation(entry: EntryDetail, idx: number, centralEvent: string, paragraphs: string[], supportingRegions: string[]): string {
-  if (centralEvent.includes('拒签')) return '南安军衙';
+  if (isRefusalEvent(centralEvent)) return '南安军衙';
   if (centralEvent.includes('断案')) return '分宁县衙';
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) return '汨罗江畔';
 
@@ -1275,7 +1312,7 @@ function extractActionDetails(paragraph: string, centralEvent: string): string {
 }
 
 function buildHookOpening(centralEvent: string, region: string, protagonist: string, details: string, quote: string, timeOfDay: string): string {
-  if (centralEvent.includes('拒签')) {
+  if (isRefusalEvent(centralEvent)) {
     const office = region.endsWith('军') ? `${region}衙` : `${region}军衙`;
     return `${timeOfDay}，${office}。一份死刑文书摆在案头，烛火摇晃映出"死罪"二字。${protagonist}翻到案卷最后一页，手指停在判词上，第一次没有立刻签字。`;
   }
@@ -1293,7 +1330,7 @@ function buildHookOpening(centralEvent: string, region: string, protagonist: str
 }
 
 function buildProtagonistSituation(protagonist: string, entry: EntryDetail, centralEvent: string, details: string, region: string): string {
-  if (centralEvent.includes('拒签')) {
+  if (isRefusalEvent(centralEvent)) {
     return `${protagonist}刚到${region}任司理参军——专管刑狱司法的底层官员。知军催他签字，说此案早已审结，只待他画押便可执行。但${protagonist}逐页细读案卷，发现疑点重重。囚犯依法不该死。`;
   }
   if (centralEvent.includes('断案')) {
@@ -1306,8 +1343,10 @@ function buildProtagonistSituation(protagonist: string, entry: EntryDetail, cent
 }
 
 function buildConflictEscalation(protagonist: string, centralEvent: string, details: string, characterNames: string[]): string {
-  const antagonist = characterNames.length > 1 ? characterNames[1] : '上官';
-  if (centralEvent.includes('拒签')) {
+  const antagonist = isRefusalEvent(centralEvent)
+    ? refusalAntagonist(characterNames)
+    : characterNames.length > 1 ? characterNames[1] : '上官';
+  if (isRefusalEvent(centralEvent)) {
     return `囚犯依法不该死——罪不至死，证据不足，量刑畸重。${protagonist}向${antagonist}提出异议，要求重新审查。${antagonist}不容置疑："此案已定，你只需签字。"签字，囚犯冤死，他保全官位；拒签，得罪上官，可能丢官甚至获罪。`;
   }
   if (centralEvent.includes('断案')) {
@@ -1320,7 +1359,7 @@ function buildConflictEscalation(protagonist: string, centralEvent: string, deta
 }
 
 function buildKeyActionScene(protagonist: string, centralEvent: string, details: string, quote: string): string {
-  if (centralEvent.includes('拒签')) {
+  if (isRefusalEvent(centralEvent)) {
     return `${protagonist}选择了拒签。他仔细翻阅案卷每一条证据，记录疑点，向知军逐条陈述。${antagonist_placeholder()}震怒，以长官权威相逼。${protagonist}拿起自己的任命文书——`;
   }
   if (centralEvent.includes('断案')) {
@@ -1336,14 +1375,15 @@ function antagonist_placeholder(): string {
   return '知军';
 }
 
-function isRefusalQuote(quote: string): boolean {
-  return /吾不为|不为也|不能签|不签|杀人|上官|人命/.test(quote);
+function refusalAntagonist(characterNames: string[]): string {
+  return characterNames.some(name => name.includes('王逵')) ? '知军王逵' : '知军';
 }
 
+const REFUSAL_EVENT_QUOTE = '杀人以媚人，吾不为也！';
+
 function buildClimaxScene(protagonist: string, centralEvent: string, quote: string, details: string): string {
-  if (centralEvent.includes('拒签')) {
-    const coreQuote = isRefusalQuote(quote) ? quote : '为上官杀人，以媚于人，吾不为也';
-    return `${protagonist}把未签的文书推回案头，对${antagonist_placeholder()}说："${coreQuote}。"他将任命文书交还，准备辞官离去。${antagonist_placeholder()}被震动，案卷被重新打开。`;
+  if (isRefusalEvent(centralEvent)) {
+    return `${protagonist}把未签的文书推回案头，对${antagonist_placeholder()}说："${REFUSAL_EVENT_QUOTE}"他将任命文书交还，准备辞官离去。${antagonist_placeholder()}被震动，案卷被重新打开。`;
   }
   if (centralEvent.includes('断案')) {
     return `新的证词和案卷细节互相印证，疑案终于查清。${protagonist}当众说明判由，冤屈者得以洗清，催促草率结案的人沉默退后。`;
@@ -1355,7 +1395,7 @@ function buildClimaxScene(protagonist: string, centralEvent: string, quote: stri
 }
 
 function buildEndingScene(protagonist: string, centralEvent: string, entry: EntryDetail, videoType: VideoType): string {
-  if (centralEvent.includes('拒签')) {
+  if (isRefusalEvent(centralEvent)) {
     return `囚犯因此免死。${protagonist}没有赢得权势，却守住了人命面前不能含糊的公道。拒签不是一句口号，而是他愿意为良知承担仕途代价的结果。`;
   }
   if (centralEvent.includes('断案')) {
@@ -1505,28 +1545,28 @@ function buildShortGoldenQuote(protagonist: string, centralEvent: string, quote:
 }
 
 function buildAiComicEntrance(protagonist: string, centralEvent: string, region: string, details: string): string {
-  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+  if (centralEvent.includes('断案') || isRefusalEvent(centralEvent)) {
     return `白天，${region}衙署外雨声未停。${protagonist}把案卷摊开，指尖停在两处互相矛盾的证词上；门外脚步逼近，催签的人已经到了。`;
   }
   return `主角入场。${protagonist}带着未解决的疑问进入${region}，手中握着能改变局面的物件，表情从迟疑变得警觉。`;
 }
 
 function buildAiComicConflict(protagonist: string, centralEvent: string, details: string): string {
-  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+  if (centralEvent.includes('断案') || isRefusalEvent(centralEvent)) {
     return `上官把笔推到${protagonist}面前，案卷边缘被烛油烫出黑痕。${protagonist}没有接笔，而是把疑点逐条摊开：证词时间对不上，伤痕位置也不对。`;
   }
   return `对立面逼近，要求${protagonist}立刻接受既定结果。${protagonist}用一件可见证据反问，场面从沉默变成正面交锋。`;
 }
 
 function buildAiComicTurn(protagonist: string, centralEvent: string, quote: string): string {
-  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+  if (centralEvent.includes('断案') || isRefusalEvent(centralEvent)) {
     return `${protagonist}忽然合上案卷，转身走向牢门。他不再只在案头找答案，而要亲眼重看现场；这一转身，让所有人都意识到他不会顺势签下去。`;
   }
   return `${protagonist}突然改变行动方向，放弃最省事的路，选择承担更难的后果。表情从被逼迫变成清醒。`;
 }
 
 function buildAiComicClose(protagonist: string, centralEvent: string, entry: EntryDetail): string {
-  if (centralEvent.includes('断案') || centralEvent.includes('拒签')) {
+  if (centralEvent.includes('断案') || isRefusalEvent(centralEvent)) {
     return `清晨，${protagonist}把未签的文书推回去。案卷上的疑点被重新打开，冤案还没有结束，但他已经用行动回答：人命面前，权势不能替良知落笔。`;
   }
   const theme = firstCleanSentence(entry.culturalSignificance ?? '', '选择之后，真正的问题才刚刚开始');
@@ -1769,12 +1809,12 @@ function buildSceneConflict(template: SceneTemplate, centralEvent: string, prota
 function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string, quotes: string[], protagonist: string, paragraphs: string[], videoType: VideoType): string {
   // For dramatic video types, extract actual dialogue
   if (['character_story', 'historical_drama', 'ai_comic_drama'].includes(videoType)) {
-    if (centralEvent.includes('拒签')) {
+    if (isRefusalEvent(centralEvent)) {
       if (template.function_label === '钩子开场') return `旁白：案卷上的死罪二字压在案头，${protagonist}却迟迟没有落笔。`;
       if (template.function_label === '主角处境') return `${protagonist}（翻看片页）：证词前后不合，人命不能按催文定夺。`;
       if (template.function_label === '冲突升级') return `知军：此案已定，只等你签。${protagonist}：若证据有疑，这一笔便是误杀。`;
       if (template.function_label === '关键行动') return `${protagonist}：此案有疑，我不能签字。`;
-      if (template.function_label === '高潮') return `${protagonist}：为上官杀人，以媚于人，吾不为也。`;
+      if (template.function_label === '高潮') return `${protagonist}：${REFUSAL_EVENT_QUOTE}`;
       if (template.function_label === '结尾') return `旁白：他退回的不是一页文书，而是一条可能被草率夺走的人命。`;
     }
     if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
@@ -1793,7 +1833,7 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
       if (template.function_label === '结尾') return `旁白：周敦颐守住的不是一纸判文，而是人命面前不能含糊的公道。`;
     }
     if (videoType === 'ai_comic_drama') {
-      const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+      const isCaseEvent = centralEvent.includes('断案') || isRefusalEvent(centralEvent);
       if (isCaseEvent) {
         if (template.function_label === '钩子开场') return `旁白：案卷上的一个疑点，让${protagonist}停住了笔。`;
         if (template.function_label === '人物登场') return `${protagonist}（压低声音）：证词前后不合，不能草草定案。`;
@@ -1904,7 +1944,7 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
     return actionMap[template.function_label] ?? eventWithProtagonist(protagonist, centralEvent);
   }
   if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
-    const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+    const isCaseEvent = centralEvent.includes('断案') || isRefusalEvent(centralEvent);
     const actionMap: Record<string, string> = isCaseEvent ? {
       '人物登场': `${protagonist}发现案卷证词矛盾，拒绝草草落笔`,
       '冲突爆发': `上官催签，${protagonist}当场摊开疑点反驳`,
@@ -1972,7 +2012,7 @@ function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay:
   }
 
   if (['人物登场', '冲突爆发', '反转/觉醒', '高燃收束'].includes(template.function_label)) {
-    const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+    const isCaseEvent = centralEvent.includes('断案') || isRefusalEvent(centralEvent);
     const visualMap: Record<string, string> = isCaseEvent ? {
       '人物登场': `${location}，${timeOfDay}，${protagonist}摊开案卷，证词两页并排，门外人影逼近，中景分镜`,
       '冲突爆发': `${location}，${timeOfDay}，上官推笔、烛油黑痕、${protagonist}按住疑点，近景快速切换`,
@@ -1987,7 +2027,7 @@ function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay:
     return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${protagonist}、${keywords}、表情变化，漫画分镜构图`;
   }
 
-  const isCaseEvent = centralEvent.includes('断案') || centralEvent.includes('拒签');
+  const isCaseEvent = centralEvent.includes('断案') || isRefusalEvent(centralEvent);
   const visualMap: Record<string, string> = isCaseEvent ? {
     '钩子开场': `${location}，${timeOfDay}，木案、烛火、文书、案卷、判词，${protagonist}停笔特写，竖屏近景构图`,
     '主角处境': `${location}，${timeOfDay}，${protagonist}面对案卷和文书，中景展示人物、木案与门外压力`,
@@ -2274,10 +2314,9 @@ function buildCredibilityNote(entry: EntryDetail, knowledgePack?: KnowledgePack,
 
 function generateLogline(entry: EntryDetail, centralEvent: string, videoType: VideoType): string {
   const protagonist = entry.name.split('——')[0].trim();
-  const region = entry.region || '';
 
-  if (centralEvent.includes('拒签')) {
-    return `${region}，${protagonist}${centralEvent}——一份死刑文书面前，他选择了良知而非权势。`;
+  if (isRefusalEvent(centralEvent)) {
+    return `${protagonist}${centralEvent}——一份死刑文书面前，他选择了良知而非权势。`;
   }
   return `${protagonist}${centralEvent}——${entry.summary.substring(0, 40)}…`;
 }
@@ -2369,7 +2408,25 @@ export function validateDramaticStory(result: {
   const isNotBiographySummary = yearParagraphs.length < 3;
   if (!isNotBiographySummary) issues.push('full_text是生平年表——超过3个年份开头段落');
 
-  const passed = hasCentralEvent && hasConflict && hasProtagonistChoice && hasSceneAction && hasClimax && hasEndingTheme && isNotBiographySummary;
+  const refusalEvidenceText = [
+    fullText,
+    ...scenes.flatMap(scene => [scene.plot, scene.dialogue_or_narration ?? '', ...scene.characters]),
+  ].join('\n');
+  const refusalEvidenceFaithful = !isRefusalEvent(result.selectedEvent)
+    || (!/(?:向通书提出|通书不容|通书震怒|为上官杀人|以媚于人)/.test(refusalEvidenceText)
+      && !scenes.some(scene => scene.characters.some(name => ['通书', '慎动', '陈抟'].includes(name))));
+  if (!refusalEvidenceFaithful) {
+    issues.push('拒签史实失真——著作或概念被误作人物，或可证原句遭改写');
+  }
+
+  const passed = hasCentralEvent
+    && hasConflict
+    && hasProtagonistChoice
+    && hasSceneAction
+    && hasClimax
+    && hasEndingTheme
+    && isNotBiographySummary
+    && refusalEvidenceFaithful;
 
   return {
     hasCentralEvent,

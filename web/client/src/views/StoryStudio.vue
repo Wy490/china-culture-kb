@@ -456,11 +456,17 @@
         <section class="story-studio__field">
           <label class="story-studio__label" for="model-profile">创作模型</label>
           <select id="model-profile" v-model="selectedModelProfileId" class="story-studio__select">
-            <option v-for="profile in modelProfiles" :key="profile.id" :value="profile.id">
-              {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}
+            <option
+              v-for="profile in modelProfiles"
+              :key="profile.id"
+              :value="profile.id"
+              :disabled="!modelProfileAvailable(profile.id)"
+            >
+              {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}{{ modelProfileAvailable(profile.id) ? '' : '（当前不可用）' }}
             </option>
           </select>
           <p v-if="selectedModelProfile" class="story-studio__field-hint">{{ selectedModelProfile.description }}</p>
+          <p class="story-studio__field-hint">{{ selectedModelExecutionBoundary }}</p>
         </section>
 
         <!-- Duration select -->
@@ -606,10 +612,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
-import { getModelProfiles, getNarrativePatternCatalog } from '@/api/system'
+import { getModelProfiles, getNarrativePatternCatalog, getStoryGenerationCapabilities } from '@/api/system'
 import { deleteProject, listProjects } from '@/api/projects'
 import type {
   AIModelProfile,
+  StoryGenerationCapabilities,
   EntrySearchResult,
   EntryMatchResult,
   EntryMatchItem,
@@ -851,6 +858,7 @@ const selectedType = ref<GenerationType | null>(null)
 const selectedVideoType = ref<VideoType | null>('ai_comic_drama')
 const selectedPresentationStyle = ref<PresentationStyle | null>(VIDEO_TYPE_CONFIG.ai_comic_drama.default_presentation_style)
 const modelProfiles = ref<AIModelProfile[]>([])
+const storyGenerationCapabilities = ref<StoryGenerationCapabilities | null>(null)
 const narrativePatternCatalog = ref<NarrativePatternCatalog | null>(null)
 const selectedNarrativePatternIds = ref<NarrativePatternId[]>([])
 const selectedModelProfileId = ref('')
@@ -943,6 +951,24 @@ const presentationStyleOptions = computed(() => {
 
 const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
+})
+
+function modelProfileAvailable(profileId: string) {
+  const capability = storyGenerationCapabilities.value?.model_profiles.find(item => item.id === profileId)
+  if (capability) return capability.available
+  return profileId === 'local_story_engine'
+}
+
+const selectedModelExecutionBoundary = computed(() => {
+  const capability = storyGenerationCapabilities.value
+  const selected = capability?.model_profiles.find(item => item.id === selectedModelProfileId.value)
+  if (!capability) return '引擎能力状态不可用；为避免误解，仅建议使用本地故事引擎。'
+  if (!selected) return '请选择已由 capability 端点确认的生成引擎。'
+  if (!selected.available) return `当前不可用：${selected.unavailable_reason ?? '外部 adapter 未就绪'}。`
+  if (selected.effective_engine === 'local_only') {
+    return '实际引擎：本地故事引擎。素材不外发，不产生外部模型费用。'
+  }
+  return `实际引擎：配置的 ${capability.external_adapter.provider} adapter。选择后可能外发 prompt/素材；${capability.external_adapter.authorization_boundary}`
 })
 
 const availableNarrativePatterns = computed<NarrativePattern[]>(() => {
@@ -1186,12 +1212,20 @@ async function handleMultiMatch() {
 onMounted(async () => {
   void loadRecentStoryProjects()
 
-  const modelRes = await getModelProfiles()
+  const [modelRes, capabilityRes] = await Promise.all([
+    getModelProfiles(),
+    getStoryGenerationCapabilities(),
+  ])
+  if (capabilityRes.ok && capabilityRes.data) {
+    storyGenerationCapabilities.value = capabilityRes.data
+  }
   if (modelRes.ok && modelRes.data && modelRes.data.length > 0) {
     modelProfiles.value = modelRes.data
     const storedModelId = localStorage.getItem(MODEL_PROFILE_STORAGE_KEY)
-    const initialModel = modelRes.data.find(profile => profile.id === storedModelId)
-      ?? modelRes.data.find(profile => profile.recommended)
+    const capabilityDefault = storyGenerationCapabilities.value?.default_model_profile_id
+    const initialModel = modelRes.data.find(profile => profile.id === storedModelId && modelProfileAvailable(profile.id))
+      ?? modelRes.data.find(profile => profile.id === capabilityDefault && modelProfileAvailable(profile.id))
+      ?? modelRes.data.find(profile => profile.id === 'local_story_engine')
       ?? modelRes.data[0]
     selectedModelProfileId.value = initialModel.id
   }

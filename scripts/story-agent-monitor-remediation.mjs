@@ -236,6 +236,8 @@ const report = {
     domain_pack_modified: false,
     automatic_relink_performed: false,
     automatic_archive_performed: false,
+    automatic_manifest_generation_performed: false,
+    publishable_delivery_credit_granted: false,
   },
   summary: {
     scanned_story_file_count: storyFiles.length,
@@ -266,6 +268,7 @@ const report = {
       0,
     ),
     series_missing_final_delivery_manifest_count: finalDeliveryManifestGaps.length,
+    final_delivery_manifest_operator_decision_pending_count: finalDeliveryManifestGaps.length,
   },
   relink_candidates: relinkCandidates,
   archive_or_rebuild_candidates: archiveOrRebuildCandidates,
@@ -274,7 +277,26 @@ const report = {
     title: item.title,
     updated_at: item.updated_at,
     final_delivery_dry_run: item.final_delivery_dry_run,
-    remediation: 'rerun_final_delivery_export_to_generate_manifest_without_fabricating_delivery_evidence',
+    operator_disposition_status: 'awaiting_operator_decision',
+    allowed_operator_dispositions: [
+      'preserve_fixture_exclude_from_publishable_delivery',
+      'reexport_after_authorized_dependencies',
+    ],
+    preflight_checks: [
+      'verify_authorized_media_inputs',
+      'verify_cut_subtitle_audio_title_card_dependencies',
+      'verify_output_and_manifest_paths_are_project_scoped',
+    ],
+    preflight_api: {
+      method: 'POST',
+      path: '/api/system/story-agent-final-delivery-manifest-preflight',
+      request_template: {
+        series_project_id: item.project_id,
+        disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+        authorized_media_inputs_attested: false,
+      },
+    },
+    publishable_delivery_credit_granted: false,
   })),
   duplicate_missing_story_ids: duplicateMissingStoryIds,
   notes: [

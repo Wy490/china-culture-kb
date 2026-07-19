@@ -13,6 +13,13 @@ export const GenerationTypeSchema = z.enum([
   'scene_short',
 ]);
 
+export const StoryGenerationModelProfileIdSchema = z.enum([
+  'local_story_engine',
+  'claude_sonnet',
+  'claude_opus',
+  'codex_gpt55',
+]);
+
 // ---------------------------------------------------------------------------
 // Video type (15 成片类型)
 // ---------------------------------------------------------------------------
@@ -414,7 +421,7 @@ export const StoryGenerateRequestSchema = z.object({
   original_user_query: z.string().optional(),
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),
-  model_profile_id: z.string().optional(),
+  model_profile_id: StoryGenerationModelProfileIdSchema.optional(),
   selected_event: z.string().optional(),
   target_video_duration: DurationSchema.optional(),
   tone: z.string().optional(),
@@ -1069,8 +1076,28 @@ export const ProjectIdParamSchema = z.object({
   projectId: ProjectIdValueSchema,
 });
 
+export const MediaArtifactPreviewParamSchema = z.object({
+  projectId: ProjectIdValueSchema,
+  artifactId: z.string().regex(/^media-sha256-[a-f0-9]{64}$/, 'artifactId must be a verified SHA-256 media artifact'),
+});
+
+export const MediaAssetReviewParamSchema = z.object({
+  projectId: ProjectIdValueSchema,
+  assetId: z.string().trim().min(1).max(160),
+});
+
 export const AiComicSeriesProjectIdParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
+});
+
+export const AiComicSeriesMediaArtifactPreviewParamSchema = z.object({
+  seriesProjectId: AiComicSeriesProjectIdValueSchema,
+  artifactId: z.string().regex(/^media-sha256-[a-f0-9]{64}$/, 'artifactId must be a verified SHA-256 media artifact'),
+});
+
+export const AiComicSeriesMediaAssetReviewParamSchema = z.object({
+  seriesProjectId: AiComicSeriesProjectIdValueSchema,
+  assetId: z.string().trim().min(1).max(160),
 });
 
 export const ProjectBatchDeleteRequestSchema = z.object({
@@ -1156,10 +1183,52 @@ export const SeedanceAssetReuseRequestSchema = z.object({
   description: z.string().trim().max(500).optional(),
 });
 
+export const MediaAssetReviewUpdateRequestSchema = z.object({
+  asset_id: z.string().trim().min(1).max(160),
+  expected_content_sha256: z.string().trim().regex(/^[a-f0-9]{64}$/i).optional(),
+  rights_status: z.enum(['pending', 'authorized', 'restricted']).optional(),
+  authorization_reference: z.string().trim().min(1).max(500).optional(),
+  person_consent_reference: z.string().trim().min(1).max(500).optional(),
+  human_review_status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  review_note: z.string().trim().min(1).max(1000).optional(),
+}).superRefine((value, context) => {
+  if (!value.rights_status && !value.human_review_status) {
+    context.addIssue({
+      code: 'custom',
+      path: ['rights_status'],
+      message: 'rights_status or human_review_status is required',
+    });
+  }
+  if (value.rights_status === 'authorized' && !value.authorization_reference) {
+    context.addIssue({
+      code: 'custom',
+      path: ['authorization_reference'],
+      message: 'authorization_reference is required when rights_status is authorized',
+    });
+  }
+  if (value.human_review_status && value.human_review_status !== 'pending') {
+    if (!value.expected_content_sha256) {
+      context.addIssue({
+        code: 'custom',
+        path: ['expected_content_sha256'],
+        message: 'expected_content_sha256 is required for a human visual review decision',
+      });
+    }
+    if (!value.review_note) {
+      context.addIssue({
+        code: 'custom',
+        path: ['review_note'],
+        message: 'review_note is required for a human visual review decision',
+      });
+    }
+  }
+});
+
 const GearsExecutionJobTypeSchema = z.enum([
   'storyboard_image',
   'character_image',
   'scene_image',
+  'prop_image',
   'seedance_video',
   'subtitle_render',
   'audio_mix',
@@ -1196,6 +1265,11 @@ const GearsExecutionProgressValueSchema = z.union([
   z.string().trim().min(1).max(40),
 ]);
 
+const GearsExecutionCostValueSchema = z.union([
+  z.number().finite().nonnegative().max(1_000_000),
+  z.string().trim().regex(/^\d+(?:\.\d+)?$/).max(40),
+]);
+
 const GearsExecutionTimestampValueSchema = z.union([
   z.string().trim().min(1).max(80),
   z.number().finite(),
@@ -1211,15 +1285,32 @@ const GearsExecutionArtifactSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
+const ExternalProviderCallAuthorizationRequestSchema = z.object({
+  authorized: z.literal(true),
+  authorization_reference: z.string().trim().min(1).max(500),
+  max_cost_amount: z.number().finite().nonnegative().max(1_000_000),
+  cost_currency: z.string().trim().regex(/^[A-Z]{3}$/, 'cost_currency must be a 3-letter uppercase currency code'),
+  data_transfer_acknowledged: z.literal(true),
+}).strict();
+
 export const GearsJobSubmitRequestSchema = z.object({
   job_type: GearsExecutionJobTypeSchema.optional().default('seedance_video'),
   source_unit_ids: z.array(z.string().trim().min(1).max(160)).min(1).max(200).optional(),
   source_unit_id: z.string().trim().min(1).max(160).optional(),
   use_gears_api: z.boolean().optional().default(false),
+  external_call_authorization: ExternalProviderCallAuthorizationRequestSchema.optional(),
   overwrite_existing: z.boolean().optional().default(false),
   payload: z.record(z.string(), z.unknown()).optional(),
   callback_url: z.string().trim().url().optional(),
   note: z.string().trim().min(1).max(500).optional(),
+}).superRefine((value, context) => {
+  if (value.use_gears_api && !value.external_call_authorization) {
+    context.addIssue({
+      code: 'custom',
+      path: ['external_call_authorization'],
+      message: 'external_call_authorization is required when use_gears_api=true',
+    });
+  }
 });
 
 export const GearsWorkbenchProjectImportRequestSchema = z.object({
@@ -1261,8 +1352,17 @@ export const GearsJobLocalAcceptanceRequestSchema = z.object({
 export const GearsExecutionLiveSmokeRunRequestSchema = z.object({
   execute: z.boolean().optional().default(false),
   poll_after_submit: z.boolean().optional().default(false),
+  external_call_authorization: ExternalProviderCallAuthorizationRequestSchema.optional(),
   note: z.string().trim().min(1).max(500).optional(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.execute && !value.external_call_authorization) {
+    context.addIssue({
+      code: 'custom',
+      path: ['external_call_authorization'],
+      message: 'external_call_authorization is required when execute=true',
+    });
+  }
+});
 
 function isGearsCallbackObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1385,6 +1485,13 @@ export const GearsJobCallbackRequestSchema = z.object({
   percentage: GearsExecutionProgressValueSchema.optional(),
   progress_ratio: GearsExecutionProgressValueSchema.optional(),
   progressRatio: GearsExecutionProgressValueSchema.optional(),
+  actual_cost_amount: GearsExecutionCostValueSchema.optional(),
+  actualCostAmount: GearsExecutionCostValueSchema.optional(),
+  cost_amount: GearsExecutionCostValueSchema.optional(),
+  costAmount: GearsExecutionCostValueSchema.optional(),
+  cost_currency: z.string().trim().min(3).max(12).optional(),
+  costCurrency: z.string().trim().min(3).max(12).optional(),
+  currency: z.string().trim().min(3).max(12).optional(),
   provider_event_at: GearsExecutionTimestampValueSchema.optional(),
   providerEventAt: GearsExecutionTimestampValueSchema.optional(),
   event_time: GearsExecutionTimestampValueSchema.optional(),
@@ -1720,7 +1827,7 @@ export const StorySceneRegenerateRequestSchema = z.object({
 export const StoryQualityRepairRequestSchema = z.object({
   model_profile_id: z.string().optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
-  target_report: z.enum(['outline', 'pattern', 'gears', 'production_material', 'audience', 'combined']).optional(),
+  target_report: z.enum(['family', 'outline', 'pattern', 'gears', 'production_material', 'audience', 'combined']).optional(),
   repair_action_id: z.string().trim().min(1).max(80).optional(),
 });
 
@@ -1782,6 +1889,7 @@ export const ProductionReadinessPortfolioRunRequestSchema = z.object({
 });
 
 export const StoryAgentGeneratedGovernanceActionKeySchema = z.enum([
+  'review_final_delivery_manifest_gaps',
   'restore_or_relink_series_story_refs',
   'archive_or_rebuild_series_fixtures',
   'generate_first_series_episode',
@@ -1792,10 +1900,19 @@ export const StoryAgentGeneratedGovernanceActionKeySchema = z.enum([
 
 export const StoryAgentGeneratedGovernanceRunRequestSchema = z.object({
   dry_run: z.boolean().optional().default(true),
-  action_keys: z.array(StoryAgentGeneratedGovernanceActionKeySchema).max(6).optional(),
+  action_keys: z.array(StoryAgentGeneratedGovernanceActionKeySchema).max(7).optional(),
   project_ids: z.array(z.string().trim().min(1).max(160)).max(100).optional(),
   max_targets: z.number().int().min(1).max(100).optional().default(20),
 });
+
+export const StoryAgentFinalDeliveryManifestPreflightRequestSchema = z.object({
+  series_project_id: z.string().trim().min(1).max(160),
+  disposition: z.enum([
+    'preserve_fixture_exclude_from_publishable_delivery',
+    'reexport_after_authorized_dependencies',
+  ]),
+  authorized_media_inputs_attested: z.boolean().optional().default(false),
+}).strict();
 
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
@@ -2437,6 +2554,12 @@ export const AiComicSeedanceFinalDeliveryRequestSchema = z.object({
   resolved_note: z.string().trim().min(1).max(500).optional(),
   output_profile: z.enum(['mp4_h264_1080p', 'mp4_h264_720p', 'source_copy']).optional().default('mp4_h264_1080p'),
   output_filename: z.string().trim().regex(/^[0-9A-Za-z._-]+\.mp4$/).optional(),
+});
+
+export const AiComicSeedanceFinalDeliveryRollbackRequestSchema = z.object({
+  release_id: z.string().trim().regex(/^release-[0-9A-Za-z._-]+$/).max(180),
+  confirmed: z.literal(true),
+  reason: z.string().trim().min(8).max(500),
 });
 
 const AiComicSeedanceReviewTargetTypeSchema = z.enum(['shot', 'cut', 'final', 'subtitle', 'audio', 'title_card']);

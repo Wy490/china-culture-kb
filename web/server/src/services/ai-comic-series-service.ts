@@ -1,18 +1,18 @@
 // web/server/src/services/ai-comic-series-service.ts — AI comic series planning
 
 import { execFile } from 'node:child_process';
-import { createHmac, randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { createReadStream, existsSync } from 'node:fs';
 import { promisify } from 'node:util';
-import { dirname, resolve } from 'node:path';
-import { readFile, rm, stat } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
+import { link, lstat, readFile, rm, stat } from 'node:fs/promises';
 import { ErrorCodes, GEARS_CALLBACK_BATCH_ITEM_LIMIT, success, fail } from '@shared/types.js';
 import type { ProductResourceOwnership } from '@shared/product-access.js';
 import {
   FileSeriesProjectRepository,
   SeriesProjectRepositoryConflictError,
 } from '../repositories/series-project-repository.js';
-import { FileArtifactStore } from '../repositories/artifact-store.js';
+import { FileArtifactStore, type ArtifactWriteResult } from '../repositories/artifact-store.js';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import type {
   AiComicContinuityLedger,
@@ -41,8 +41,10 @@ import type {
   AiComicSeedanceProductionStatusUpdateRequest,
   AiComicSeedanceProductionVersionSelectRequest,
   AiComicSeedanceAssetLibrary,
+  AiComicSeedanceAssetFileUploadResult,
   AiComicSeedanceAssetLibraryItem,
   AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeriesMediaAssetReviewUpdateResult,
   AiComicSeedanceAudioLibrary,
   AiComicSeedanceAudioLibraryUpdateRequest,
   AiComicSeedanceAudioMixLedger,
@@ -50,6 +52,9 @@ import type {
   AiComicSeedanceAudioMixRequest,
   AiComicSeedanceFinalDependencyStatus,
   AiComicSeedanceFinalDeliveryLedger,
+  AiComicSeedanceFinalDeliveryReleaseRecord,
+  AiComicSeedanceFinalDeliveryRollbackRequest,
+  AiComicSeedanceFinalDeliveryRollbackResult,
   AiComicSeedanceFinalDeliveryManifest,
   AiComicSeedanceFinalDeliveryManifestDeliverable,
   AiComicSeedanceFinalDeliveryManifestDeliverableStatus,
@@ -181,8 +186,10 @@ import type {
   GearsJobStatusSyncRequest,
   GearsJobSubmitRequest,
   GearsJobSubmitFailure,
+  SeedanceAssetHistoryEvent,
   KnowledgeNeed,
   KnowledgePack,
+  MediaAssetReviewUpdateRequest,
   NarrativePatternId,
   ProductionReadinessGearsSummary,
   ProductionReadinessAutomationRunLedger,
@@ -214,8 +221,11 @@ import {
 import { recommendNarrativePatternsForEntry } from './genre-story-profiles.js';
 import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { inspectMediaAssetUpload } from './asset-ingest-service.js';
 import {
   buildGearsLedgerItem,
+  buildGearsExecutionOperationalMetrics,
+  buildGearsExecutionRecoveryPlan,
   buildLocalGearsJobId,
   buildRejectedGearsLedgerItem,
   gearsSeriesCallbackPath,
@@ -226,14 +236,21 @@ import {
   extractGearsJobCallbackRequests,
   markGearsLedgerPollFailures,
   mergeGearsCallbackEvents,
+  mergeGearsExecutionCostFromCallback,
   mergeGearsLedgerItems,
   normalizeGearsJobCallback,
   normalizeGearsJobLedger,
   pollGearsExecutionJobStatuses,
+  reconcileGearsLedgerExecutionCosts,
   resolveGearsLedgerStatusAfterCallback,
   submitGearsExecutionJobs,
+  summarizeGearsExecutionCostGovernance,
   type GearsExecutionSubmitUnit,
 } from './gears-execution-service.js';
+import {
+  attachGearsProviderAssetHandoffs,
+  type GearsProviderAssetSource,
+} from './gears-provider-asset-handoff-service.js';
 
 const PACING_LABELS: Record<AiComicPacingProfile, string> = {
   fast_hook: '强钩子快节奏',
@@ -3959,6 +3976,23 @@ export async function updateAiComicSeriesSeedanceAssetLibrary(
       reference_slot: item.reference_slot?.trim() || previous?.reference_slot,
       file_url: item.file_url?.trim() || previous?.file_url,
       file_id: item.file_id?.trim() || previous?.file_id,
+      local_path: previous?.local_path,
+      original_filename: previous?.original_filename,
+      mime_type: previous?.mime_type,
+      size_bytes: previous?.size_bytes,
+      provider: previous?.provider,
+      provider_asset_id: previous?.provider_asset_id,
+      content_sha256: previous?.content_sha256,
+      prompt_sha256: previous?.prompt_sha256,
+      model: previous?.model,
+      rights_status: previous?.rights_status,
+      authorization_reference: previous?.authorization_reference,
+      person_consent_reference: previous?.person_consent_reference,
+      human_review_status: previous?.human_review_status,
+      reviewer_id: previous?.reviewer_id,
+      reviewed_at: previous?.reviewed_at,
+      review_note: previous?.review_note,
+      history: previous?.history?.map(event => ({ ...event })),
       description: item.description?.trim() || previous?.description,
       updated_at: updatedAt,
     });
@@ -3980,6 +4014,342 @@ export async function updateAiComicSeriesSeedanceAssetLibrary(
   };
   await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
   return success(detail);
+}
+
+export async function uploadAiComicSeriesSeedanceAssetFile(
+  seriesProjectId: string,
+  request: {
+    asset_id?: string;
+    label?: string;
+    kind?: AiComicSeedanceAssetLibraryItem['kind'];
+    reference_slot?: string;
+    description?: string;
+    file: {
+      original_filename: string;
+      mime_type: string;
+      buffer: Buffer;
+    };
+  },
+): Promise<ApiResponse<AiComicSeedanceAssetFileUploadResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const current = normalizeSeedanceAssetLibrary(existing.seedance_asset_library);
+  const directAssetId = request.asset_id?.trim();
+  const previous = directAssetId
+    ? current.items.find(item => item.asset_id === directAssetId)
+    : undefined;
+  const kind = request.kind ?? previous?.kind;
+  const label = request.label?.trim() || previous?.label;
+  const assetId = directAssetId || (kind && label ? seedanceAssetId(kind, label) : undefined);
+  if (!assetId || !kind || !label) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'asset_id must identify an existing series asset, or label+kind must be provided',
+    );
+  }
+  let ingest;
+  try {
+    ingest = inspectMediaAssetUpload({
+      original_filename: request.file.original_filename,
+      declared_mime_type: request.file.mime_type,
+      expected_modality: 'image',
+      buffer: request.file.buffer,
+    });
+  } catch (error) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      error instanceof Error ? error.message : 'Uploaded series asset failed media inspection',
+    );
+  }
+
+  const fileId = `media-${ingest.content_sha256}`;
+  const filename = `${ingest.content_sha256}${ingest.canonical_extension}`;
+  const projectDirectory = dirname(seriesProjectPath(seriesProjectId));
+  const originalStore = new FileArtifactStore(resolve(projectDirectory, 'media', 'originals'));
+  if (!(await originalStore.exists(filename))) {
+    await originalStore.writeBinary(filename, request.file.buffer, { overwrite: 'forbid' });
+  }
+  const localPath = `ai-comic-series-projects/${seriesProjectId}/media/originals/${filename}`;
+  const updatedAt = nextSeriesProjectUpdatedAt(existing.project.updated_at);
+  const asset: AiComicSeedanceAssetLibraryItem = {
+    asset_id: assetId,
+    kind,
+    label,
+    reference_slot: request.reference_slot?.trim() || previous?.reference_slot,
+    file_url: undefined,
+    file_id: fileId,
+    local_path: localPath,
+    original_filename: request.file.original_filename,
+    mime_type: ingest.detected_mime_type,
+    size_bytes: ingest.byte_size,
+    provider: 'local_upload',
+    provider_asset_id: fileId,
+    content_sha256: ingest.content_sha256,
+    prompt_sha256: previous?.prompt_sha256,
+    model: previous?.model,
+    rights_status: 'pending',
+    authorization_reference: undefined,
+    person_consent_reference: undefined,
+    human_review_status: 'pending',
+    reviewer_id: undefined,
+    reviewed_at: undefined,
+    review_note: undefined,
+    description: request.description?.trim() || previous?.description,
+    updated_at: updatedAt,
+    history: appendAiComicSeriesAssetHistory(previous, {
+      event_id: `series-media-upload-${randomUUID()}`,
+      event_type: 'file_upload',
+      created_at: updatedAt,
+      provider: 'local_upload',
+      provider_asset_id: fileId,
+      file_id: fileId,
+      local_path: localPath,
+      original_filename: request.file.original_filename,
+      mime_type: ingest.detected_mime_type,
+      size_bytes: ingest.byte_size,
+      content_sha256: ingest.content_sha256,
+      rights_status: 'pending',
+      human_review_status: 'pending',
+      note: request.file.original_filename,
+    }),
+  };
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  byId.set(assetId, asset);
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: { ...existing.project, updated_at: updatedAt },
+    seedance_asset_library: {
+      schema_version: 'ai-comic-seedance-asset-library/v1',
+      updated_at: updatedAt,
+      items: [...byId.values()].sort((a, b) => (
+        a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')
+      )),
+    },
+  };
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
+  const previewUrl = `/api/story-outline/ai-comic-series-projects/${seriesProjectId}/media-assets/media-sha256-${ingest.content_sha256}/preview`;
+  return success({
+    detail,
+    asset,
+    file_id: fileId,
+    local_path: localPath,
+    original_filename: request.file.original_filename,
+    mime_type: ingest.detected_mime_type,
+    size_bytes: ingest.byte_size,
+    content_sha256: ingest.content_sha256,
+    preview_url: previewUrl,
+    ingest,
+  });
+}
+
+export interface AiComicSeriesMediaAssetPreviewFile {
+  buffer: Buffer;
+  mime_type: string;
+  byte_size: number;
+  content_sha256: string;
+  filename: string;
+}
+
+export type AiComicSeriesMediaAssetPreviewResult =
+  | { ok: true; data: AiComicSeriesMediaAssetPreviewFile }
+  | { ok: false; status: 400 | 404 | 409; message: string };
+
+export async function readAiComicSeriesMediaAssetPreview(
+  seriesProjectId: string,
+  artifactId: string,
+): Promise<AiComicSeriesMediaAssetPreviewResult> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) return { ok: false, status: 404, message: 'series project not found' };
+  const contentSha256 = /^media-sha256-([a-f0-9]{64})$/.exec(artifactId)?.[1];
+  if (!contentSha256) return { ok: false, status: 404, message: 'verified media artifact not found' };
+  const asset = normalizeSeedanceAssetLibrary(detail.seedance_asset_library).items.find(item => (
+    item.content_sha256?.toLowerCase() === contentSha256
+  ));
+  if (!asset) return { ok: false, status: 404, message: 'verified media artifact not found' };
+  if (!asset.local_path || asset.provider !== 'local_upload') {
+    return { ok: false, status: 409, message: 'media artifact is not available from authenticated local preview' };
+  }
+  if (!asset.mime_type || !['image/png', 'image/jpeg', 'image/webp'].includes(asset.mime_type)) {
+    return { ok: false, status: 409, message: 'media artifact MIME is not previewable' };
+  }
+  const generatedDirectory = resolve(generatedRoot());
+  const target = resolve(generatedDirectory, asset.local_path);
+  const relation = relative(generatedDirectory, target);
+  const expectedPrefix = `ai-comic-series-projects/${seriesProjectId}/media/originals/`;
+  if (isAbsolute(relation) || relation.startsWith('..') || !asset.local_path.startsWith(expectedPrefix)) {
+    return { ok: false, status: 400, message: 'media artifact path is outside the series immutable store' };
+  }
+  let fileStat;
+  try {
+    fileStat = await lstat(target);
+  } catch {
+    return { ok: false, status: 404, message: 'media artifact file not found' };
+  }
+  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+    return { ok: false, status: 400, message: 'media artifact target is not a regular file' };
+  }
+  const buffer = await readFile(target);
+  const digest = createHash('sha256').update(buffer).digest('hex');
+  if (digest !== contentSha256 || buffer.length !== asset.size_bytes) {
+    return { ok: false, status: 409, message: 'media artifact integrity changed after ingest' };
+  }
+  return {
+    ok: true,
+    data: {
+      buffer,
+      mime_type: asset.mime_type,
+      byte_size: buffer.length,
+      content_sha256: digest,
+      filename: basename(target),
+    },
+  };
+}
+
+export async function updateAiComicSeriesMediaAssetReview(
+  seriesProjectId: string,
+  request: MediaAssetReviewUpdateRequest,
+  reviewer: {
+    actor_id: string;
+    authentication_method: 'static_registry_token' | 'signed_session';
+  },
+): Promise<ApiResponse<AiComicSeriesMediaAssetReviewUpdateResult>> {
+  const existing = await readSeriesProject(seriesProjectId);
+  if (!existing) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const current = normalizeSeedanceAssetLibrary(existing.seedance_asset_library);
+  const asset = current.items.find(item => item.asset_id === request.asset_id);
+  if (!asset) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Media asset "${request.asset_id}" is not in the series asset library`);
+  }
+  if (!request.rights_status && !request.human_review_status) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'rights_status or human_review_status is required');
+  }
+  if (request.expected_content_sha256) {
+    const expected = request.expected_content_sha256.toLowerCase();
+    if (!asset.content_sha256 || asset.content_sha256.toLowerCase() !== expected) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'Media asset content changed or does not match expected_content_sha256; review the current immutable file',
+      );
+    }
+  }
+  if (request.rights_status === 'authorized' && !request.authorization_reference?.trim()) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'authorization_reference is required for authorized media rights');
+  }
+  if (request.human_review_status && request.human_review_status !== 'pending') {
+    if (!request.expected_content_sha256 || !request.review_note?.trim()) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'expected_content_sha256 and review_note are required for a human visual review decision',
+      );
+    }
+    const preview = await readAiComicSeriesMediaAssetPreview(
+      seriesProjectId,
+      `media-sha256-${request.expected_content_sha256.toLowerCase()}`,
+    );
+    if (!preview.ok) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'Human visual review requires a locally ingested immutable artifact with verified bytes',
+      );
+    }
+  }
+
+  const reviewedAt = nextSeriesProjectUpdatedAt(existing.project.updated_at);
+  const humanReviewStatus = request.human_review_status ?? asset.human_review_status ?? 'pending';
+  let reviewedAsset: AiComicSeedanceAssetLibraryItem = {
+    ...asset,
+    rights_status: request.rights_status ?? asset.rights_status ?? 'pending',
+    authorization_reference: request.authorization_reference?.trim() ?? asset.authorization_reference,
+    person_consent_reference: request.person_consent_reference?.trim() ?? asset.person_consent_reference,
+    human_review_status: humanReviewStatus,
+    reviewer_id: request.human_review_status && request.human_review_status !== 'pending'
+      ? reviewer.actor_id
+      : request.human_review_status === 'pending' ? undefined : asset.reviewer_id,
+    reviewed_at: request.human_review_status && request.human_review_status !== 'pending'
+      ? reviewedAt
+      : request.human_review_status === 'pending' ? undefined : asset.reviewed_at,
+    review_note: request.human_review_status && request.human_review_status !== 'pending'
+      ? request.review_note?.trim()
+      : request.human_review_status === 'pending' ? undefined : asset.review_note,
+    updated_at: reviewedAt,
+  };
+  if (request.rights_status) {
+    reviewedAsset = {
+      ...reviewedAsset,
+      history: appendAiComicSeriesAssetHistory(reviewedAsset, {
+        event_id: `series-media-rights-${randomUUID()}`,
+        event_type: 'rights_review',
+        created_at: reviewedAt,
+        content_sha256: reviewedAsset.content_sha256,
+        rights_status: reviewedAsset.rights_status,
+        authorization_reference: reviewedAsset.authorization_reference,
+        person_consent_reference: reviewedAsset.person_consent_reference,
+        reviewer_id: reviewer.actor_id,
+        note: request.authorization_reference?.trim() ?? `rights_status=${request.rights_status}`,
+      }),
+    };
+  }
+  if (request.human_review_status) {
+    reviewedAsset = {
+      ...reviewedAsset,
+      history: appendAiComicSeriesAssetHistory(reviewedAsset, {
+        event_id: `series-media-review-${randomUUID()}`,
+        event_type: 'human_visual_review',
+        created_at: reviewedAt,
+        content_sha256: reviewedAsset.content_sha256,
+        human_review_status: reviewedAsset.human_review_status,
+        reviewer_id: request.human_review_status === 'pending' ? undefined : reviewer.actor_id,
+        reviewed_at: request.human_review_status === 'pending' ? undefined : reviewedAt,
+        note: request.review_note?.trim() ?? `human_review_status=${request.human_review_status}`,
+      }),
+    };
+  }
+  const detail: AiComicSeriesProjectDetail = {
+    ...existing,
+    project: { ...existing.project, updated_at: reviewedAt },
+    seedance_asset_library: {
+      schema_version: 'ai-comic-seedance-asset-library/v1',
+      updated_at: reviewedAt,
+      items: current.items
+        .map(item => item.asset_id === reviewedAsset.asset_id ? reviewedAsset : item)
+        .sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')),
+    },
+  };
+  await seriesProjectRepository().replace(detail, { updated_at: existing.project.updated_at });
+  return success({
+    detail,
+    asset: reviewedAsset,
+    reviewer_id: reviewer.actor_id,
+    reviewed_at: reviewedAt,
+    production_credit_granted: aiComicSeriesAssetProductionCreditGranted(reviewedAsset),
+  });
+}
+
+function appendAiComicSeriesAssetHistory(
+  existing: Pick<AiComicSeedanceAssetLibraryItem, 'history'> | undefined,
+  event: SeedanceAssetHistoryEvent,
+): SeedanceAssetHistoryEvent[] {
+  return [...(existing?.history ?? []).map(item => ({ ...item })), event].slice(-25);
+}
+
+function aiComicSeriesAssetProductionCreditGranted(item: AiComicSeedanceAssetLibraryItem): boolean {
+  return Boolean(
+    item.provider === 'local_upload'
+    && item.local_path
+    && item.content_sha256
+    && /^[a-f0-9]{64}$/i.test(item.content_sha256)
+    && item.rights_status === 'authorized'
+    && item.human_review_status === 'approved',
+  );
+}
+
+function nextSeriesProjectUpdatedAt(previous: string): string {
+  const previousTime = Date.parse(previous);
+  return new Date(Math.max(Date.now(), Number.isFinite(previousTime) ? previousTime + 1 : 0)).toISOString();
 }
 
 export async function updateAiComicSeriesSeedanceAudioLibrary(
@@ -4558,6 +4928,7 @@ function aiComicSeriesGearsJobTypeLabel(jobType: GearsExecutionJobType): string 
     storyboard_image: '故事板图',
     character_image: '人物图',
     scene_image: '场景图',
+    prop_image: '道具图',
     seedance_video: '视频返修/重试',
     subtitle_render: '字幕渲染',
     audio_mix: '混音',
@@ -4572,6 +4943,7 @@ function aiComicSeriesGearsSubmitIntent(jobType: GearsExecutionJobType): string 
     storyboard_image: '从分集 GEARS delivery 提交 GEARS v2 故事板图片任务',
     character_image: '从分集 GEARS delivery 人物资产提交 GEARS v2 人物图片任务',
     scene_image: '从分集 GEARS delivery 场景资产提交 GEARS v2 场景图片任务',
+    prop_image: '从分集制作资产提交 GEARS v2 道具参考图片任务',
     seedance_video: '从 AI 漫剧 Seedance 重试执行计划提交 GEARS v2 视频返修/重试任务',
     subtitle_render: '从字幕包提交 GEARS v2 字幕渲染任务',
     audio_mix: '从音频计划提交 GEARS v2 混音任务',
@@ -4886,7 +5258,37 @@ async function aiComicSeriesGearsUnitsFromPostProduction(input: {
   } else if (input.jobType === 'scene_image') {
     const entries = await aiComicSeriesGeneratedStoryDeliveries(input.detail);
     entries.forEach(({ episode, story, delivery }) => {
-      delivery.scene_assets.forEach(scene => addUnit({
+      const seedancePackage = buildSeedancePromptPackage(story);
+      const scenesByName = new Map(delivery.scene_assets.map(scene => [scene.name, scene]));
+      delivery.units.forEach(unit => {
+        if (scenesByName.has(unit.scene_name)) return;
+        const sourceScene = story.scene_breakdown.find(scene => scene.scene_id === unit.source_scene_id);
+        scenesByName.set(unit.scene_name, {
+          name: unit.scene_name,
+          scene_type: '不限',
+          description: unit.visual_prompt
+            ?? sourceScene?.visual_prompt
+            ?? sourceScene?.plot
+            ?? unit.script_text,
+          environment_props: sourceScene?.key_action,
+          atmosphere: '中性',
+        });
+      });
+      seedancePackage.shot_units.forEach(unit => {
+        if (!unit.location || unit.location === '未指定场景' || scenesByName.has(unit.location)) return;
+        const sourceScene = story.scene_breakdown.find(scene => scene.scene_id === unit.source_scene_id);
+        scenesByName.set(unit.location, {
+          name: unit.location,
+          scene_type: '不限',
+          description: unit.visual_prompt
+            || sourceScene?.visual_prompt
+            || sourceScene?.plot
+            || unit.script_text,
+          environment_props: sourceScene?.key_action,
+          atmosphere: '中性',
+        });
+      });
+      [...scenesByName.values()].forEach(scene => addUnit({
         source_unit_id: `episode:${episode.episode_no}:scene:${scene.name}`,
         source_unit_label: `E${episode.episode_no} ${scene.name}`,
         payload_summary: summarizeText(`${scene.name} ${scene.description}`, 160),
@@ -4897,7 +5299,12 @@ async function aiComicSeriesGearsUnitsFromPostProduction(input: {
           story_id: story.storyId,
           story_title: story.title,
           scene,
-          related_delivery_units: delivery.units.filter(unit => unit.scene_name === scene.name),
+          related_delivery_units: delivery.units.filter(unit => (
+            unit.scene_name === scene.name
+            || seedancePackage.shot_units.some(shot => (
+              shot.location === scene.name && shot.source_scene_id === unit.source_scene_id
+            ))
+          )),
           request_payload: requestPayload,
         },
       }, [
@@ -5135,6 +5542,33 @@ export async function submitAiComicSeriesGearsJobs(
     return success({ ...result, markdown: buildAiComicSeriesGearsSubmitMarkdown(result) });
   }
 
+  let submitUnits = units;
+  if (
+    request.use_gears_api
+    && request.external_call_authorization?.authorized === true
+    && jobType === 'seedance_video'
+  ) {
+    const assets: GearsProviderAssetSource[] = normalizeSeedanceAssetLibrary(existing.seedance_asset_library).items
+      .map(item => ({
+        asset_id: item.asset_id,
+        label: item.label,
+        modality: 'image',
+        file_url: item.file_url,
+        provider: item.provider,
+        provider_asset_id: item.provider_asset_id,
+        content_sha256: item.content_sha256,
+        rights_status: item.rights_status,
+        authorization_reference: item.authorization_reference,
+        human_review_status: item.human_review_status,
+        reviewer_id: item.reviewer_id,
+        reviewed_at: item.reviewed_at,
+        production_credit_granted: aiComicSeriesAssetProductionCreditGranted(item),
+      }));
+    const handoff = attachGearsProviderAssetHandoffs({ units: submitUnits, assets, verified_at: submittedAt });
+    if (!handoff.ok) return fail(ErrorCodes.VALIDATION_ERROR, handoff.message, handoff.details);
+    submitUnits = handoff.units;
+  }
+
   const adapterRes = await submitGearsExecutionJobs({
     seriesProjectId,
     title: existing.plan.series_title,
@@ -5143,8 +5577,9 @@ export async function submitAiComicSeriesGearsJobs(
     callbackUrl: request.callback_url ?? gearsSeriesCallbackUrl(seriesProjectId),
     note: request.note,
     useGearsApi: Boolean(request.use_gears_api),
+    externalCallAuthorization: request.external_call_authorization,
     payload: request.payload,
-    units,
+    units: submitUnits,
   });
   if (!adapterRes.ok || !adapterRes.data) {
     return fail(
@@ -5156,8 +5591,9 @@ export async function submitAiComicSeriesGearsJobs(
     );
   }
   failures.push(...adapterRes.data.failures);
+  const externalCallAuthorization = adapterRes.data.summary.external_call_authorization;
 
-  const unitById = new Map(units.map(unit => [unit.source_unit_id, unit]));
+  const unitById = new Map(submitUnits.map(unit => [unit.source_unit_id, unit]));
   const submittedJobs = adapterRes.data.accepted
     .map(accepted => {
       const unit = unitById.get(accepted.source_unit_id);
@@ -5169,6 +5605,7 @@ export async function submitAiComicSeriesGearsJobs(
         unit,
         accepted,
         submittedAt,
+        externalCallAuthorization,
         note: request.note,
       });
     })
@@ -5185,6 +5622,7 @@ export async function submitAiComicSeriesGearsJobs(
         unit,
         failure,
         submittedAt,
+        externalCallAuthorization,
         note: request.note,
       });
     })
@@ -5333,6 +5771,7 @@ function updateAiComicGearsLedgerItemFromCallback(input: {
     last_poll_error_code: undefined,
     updated_at: input.receivedAt,
     completed_at: completedAt,
+    execution_cost: mergeGearsExecutionCostFromCallback(input),
     callback_events: mergeGearsCallbackEvents({
       existing: input.item.callback_events,
       callback: input.callback,
@@ -5495,11 +5934,159 @@ function applyAiComicSeriesGearsPostProductionCallback(input: {
         dry_run: false,
         output_profile: existing?.output_profile ?? 'mp4_h264_1080p',
         dependency_status: dependencyStatus,
+        current_release: existing?.current_release,
+        release_history: existing?.release_history ?? [],
+        rollback_events: existing?.rollback_events ?? [],
       },
     };
   }
 
   return input.detail;
+}
+
+function archiveAiComicSeriesImageCallback(input: {
+  detail: AiComicSeriesProjectDetail;
+  item: GearsJobLedgerItem;
+  callbackStatus: GearsJobLedgerItem['status'];
+  receivedAt: string;
+  duplicate: boolean;
+}): AiComicSeriesProjectDetail {
+  if (
+    input.duplicate
+    || input.callbackStatus !== 'ready'
+    || input.item.status !== 'ready'
+    || !['storyboard_image', 'character_image', 'scene_image'].includes(input.item.job_type)
+  ) {
+    return input.detail;
+  }
+  const target = aiComicSeriesImageAssetTarget(input.item);
+  if (!target) return input.detail;
+  const artifact = input.item.artifacts?.find(item => aiComicSeriesExternalArtifactUrl(item.url));
+  const artifactUrl = artifact?.url ?? input.item.artifact_urls.find(aiComicSeriesExternalArtifactUrl);
+  if (!artifactUrl) return input.detail;
+
+  const current = normalizeSeedanceAssetLibrary(input.detail.seedance_asset_library);
+  const byId = new Map(current.items.map(item => [item.asset_id, item]));
+  const existing = byId.get(target.asset_id);
+  const providerAssetId = artifact?.artifact_id ?? input.item.gears_job_id;
+  const model = aiComicArtifactMetadataString(artifact?.metadata, 'model');
+  const asset: AiComicSeedanceAssetLibraryItem = {
+    asset_id: target.asset_id,
+    kind: target.kind,
+    label: target.label,
+    reference_slot: existing?.reference_slot,
+    file_url: artifactUrl,
+    mime_type: artifact?.mime_type,
+    provider: 'gears',
+    provider_asset_id: providerAssetId,
+    content_sha256: undefined,
+    prompt_sha256: input.item.payload_summary
+      ? createHash('sha256').update(input.item.payload_summary, 'utf8').digest('hex')
+      : undefined,
+    model,
+    rights_status: 'pending',
+    human_review_status: 'pending',
+    description: existing?.description ?? input.item.payload_summary,
+    updated_at: input.receivedAt,
+  };
+  const historyEvent: SeedanceAssetHistoryEvent = {
+    event_id: `series-media-callback-${randomUUID()}`,
+    event_type: 'provider_callback',
+    created_at: input.receivedAt,
+    provider: 'gears',
+    provider_asset_id: providerAssetId,
+    file_url: artifactUrl,
+    mime_type: artifact?.mime_type,
+    rights_status: 'pending',
+    human_review_status: 'pending',
+    note: `GEARS ${input.item.job_type} callback: ${input.item.gears_job_id}`,
+  };
+  byId.set(target.asset_id, {
+    ...asset,
+    history: [...(existing?.history ?? []), historyEvent].slice(-25),
+  });
+  return {
+    ...input.detail,
+    project: {
+      ...input.detail.project,
+      updated_at: input.receivedAt,
+    },
+    seedance_asset_library: {
+      schema_version: 'ai-comic-seedance-asset-library/v1',
+      updated_at: input.receivedAt,
+      items: [...byId.values()].sort((a, b) => (
+        a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')
+      )),
+    },
+  };
+}
+
+function aiComicSeriesImageAssetTarget(item: GearsJobLedgerItem): {
+  asset_id: string;
+  kind: AiComicSeedanceAssetLibraryItem['kind'];
+  label: string;
+} | undefined {
+  const match = /^episode:(\d+):(character|scene|storyboard):(.+)$/.exec(item.source_unit_id);
+  if (!match) return undefined;
+  const episodeNo = Number(match[1]);
+  const sourceKind = match[2];
+  const value = match[3]?.trim();
+  if (!value) return undefined;
+  if (sourceKind === 'character') {
+    return { asset_id: seedanceAssetId('character', value), kind: 'character', label: value };
+  }
+  if (sourceKind === 'scene') {
+    return { asset_id: seedanceAssetId('location', value), kind: 'location', label: value };
+  }
+  return {
+    asset_id: `gears-storyboard-${episodeNo}-${slugifyConstraintKey(value)}`,
+    kind: 'unknown',
+    label: item.source_unit_label ?? `E${episodeNo} storyboard ${value}`,
+  };
+}
+
+function aiComicSeriesExternalArtifactUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (
+      host === 'localhost'
+      || host.endsWith('.localhost')
+      || host.endsWith('.local')
+      || host === 'host.docker.internal'
+      || host === '0.0.0.0'
+      || host === '::1'
+      || host === 'example.com'
+      || host === 'example.test'
+      || host.endsWith('.example')
+      || host.endsWith('.example.com')
+      || host.endsWith('.example.test')
+      || value.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL)
+    ) return false;
+    const ipv4 = host.split('.').map(part => Number.parseInt(part, 10));
+    if (ipv4.length === 4 && ipv4.every(part => Number.isFinite(part))) {
+      const [first, second] = ipv4;
+      if (
+        first === 10
+        || first === 127
+        || (first === 169 && second === 254)
+        || (first === 172 && second >= 16 && second <= 31)
+        || (first === 192 && second === 168)
+      ) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function aiComicArtifactMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 160) : undefined;
 }
 
 export async function importAiComicSeriesGearsCallback(
@@ -5566,10 +6153,19 @@ export async function importAiComicSeriesGearsCallback(
       receivedAt,
     });
   }
+  updatedDetail = archiveAiComicSeriesImageCallback({
+    detail: updatedDetail,
+    item: updatedItem,
+    callbackStatus: callback.status,
+    receivedAt,
+    duplicate: duplicateCount > 0,
+  });
   const nextLedger: GearsJobLedger = {
     schema_version: 'gears-job-ledger/v1',
     updated_at: receivedAt,
-    items: ledger.items.map(item => item.ledger_id === match.ledger_id ? updatedItem : item),
+    items: reconcileGearsLedgerExecutionCosts(
+      ledger.items.map(item => item.ledger_id === match.ledger_id ? updatedItem : item),
+    ),
   };
   updatedDetail = {
     ...updatedDetail,
@@ -6806,6 +7402,40 @@ export async function renderAiComicSeriesSeedanceTitleCards(
   });
 }
 
+const SEEDANCE_FINAL_DELIVERY_RELEASE_HISTORY_LIMIT = 20;
+
+function seedanceFinalDeliveryReleaseId(createdAt: string): string {
+  const timestamp = createdAt.replace(/[^0-9]/g, '').slice(0, 17);
+  return `release-${timestamp}-${randomUUID().slice(0, 8)}`;
+}
+
+async function archiveSeedanceFinalDeliveryArtifact(input: {
+  artifactStore: FileArtifactStore;
+  sourceAbsolutePath: string;
+  archivedPath: string;
+}): Promise<ArtifactWriteResult> {
+  const source = await lstat(input.sourceAbsolutePath);
+  if (source.isSymbolicLink() || !source.isFile()) {
+    throw new Error(`Final delivery release source is not a regular file: ${input.sourceAbsolutePath}`);
+  }
+  const session = await input.artifactStore.prepareExternalWrite(input.archivedPath, { overwrite: 'forbid' });
+  try {
+    await link(input.sourceAbsolutePath, session.staging_absolute_path);
+    return await input.artifactStore.publishExternalWrite(session);
+  } finally {
+    await input.artifactStore.abortExternalWrite(session);
+  }
+}
+
+function mergeSeedanceFinalDeliveryReleaseHistory(
+  existing: AiComicSeedanceFinalDeliveryReleaseRecord[] | undefined,
+  release: AiComicSeedanceFinalDeliveryReleaseRecord | undefined,
+): AiComicSeedanceFinalDeliveryReleaseRecord[] {
+  const history = [...(existing ?? [])];
+  if (release && !history.some(item => item.release_id === release.release_id)) history.push(release);
+  return history.slice(-SEEDANCE_FINAL_DELIVERY_RELEASE_HISTORY_LIMIT);
+}
+
 export async function assembleAiComicSeriesSeedanceFinalDelivery(
   seriesProjectId: string,
   request: AiComicSeedanceFinalDeliveryRequest = {},
@@ -6872,6 +7502,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
   const runner = options.runner ?? runFfmpegFinalDelivery;
   let status: AiComicSeriesSeedanceFinalDeliveryResult['status'] = dryRun ? 'planned' : 'assembled';
   let failureReason: string | undefined;
+  let outputWriteResult: ArtifactWriteResult | undefined;
 
   try {
     if (useConcat) {
@@ -6904,7 +7535,7 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
           outputProfile,
           useConcat,
         });
-        await artifactStore.publishExternalWrite(outputSession);
+        outputWriteResult = await artifactStore.publishExternalWrite(outputSession);
       } finally {
         await artifactStore.abortExternalWrite(outputSession);
       }
@@ -6933,8 +7564,9 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     failureReason,
     manifestDeliverableStatus: 'ready',
   });
+  let manifestWriteResult: ArtifactWriteResult | undefined;
   try {
-    await artifactStore.writeText(
+    manifestWriteResult = await artifactStore.writeText(
       manifestPath,
       JSON.stringify(manifest, null, 2),
       { overwrite: 'replace' },
@@ -6961,6 +7593,77 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
       failureReason,
       manifestDeliverableStatus: 'failed',
     });
+  }
+
+  const existingDelivery = normalizeSeedanceFinalDeliveryLedger(detail.seedance_final_delivery);
+  let releaseRecord = status === 'skipped' ? existingDelivery?.current_release : undefined;
+  if (!dryRun && (status === 'assembled' || status === 'skipped') && !releaseRecord) {
+    const releaseId = seedanceFinalDeliveryReleaseId(executedAt);
+    const releaseRoot = `delivery/${seriesProjectId}/releases/${releaseId}`;
+    const archivedOutputPath = `${releaseRoot}/${outputFilename}`;
+    const archivedManifestPath = `${releaseRoot}/${basename(manifestPath)}`;
+    try {
+      const archivedOutput = await archiveSeedanceFinalDeliveryArtifact({
+        artifactStore,
+        sourceAbsolutePath: resolveSeedanceProjectOutputPath(projectDir, outputPath),
+        archivedPath: archivedOutputPath,
+      });
+      const archivedManifest = await artifactStore.writeText(
+        archivedManifestPath,
+        JSON.stringify(manifest, null, 2),
+        { overwrite: 'forbid' },
+      );
+      if (outputWriteResult && archivedOutput.sha256 !== outputWriteResult.sha256) {
+        throw new Error('Final delivery archive output SHA-256 does not match the published output');
+      }
+      if (manifestWriteResult && archivedManifest.sha256 !== manifestWriteResult.sha256) {
+        throw new Error('Final delivery archive manifest SHA-256 does not match the published manifest');
+      }
+      releaseRecord = {
+        schema_version: 'ai-comic-seedance-final-delivery-release/v1',
+        release_id: releaseId,
+        created_at: executedAt,
+        source: 'local_assembly',
+        immutable: true,
+        canonical_output_path: outputPath,
+        canonical_manifest_path: manifestPath,
+        archived_output_path: archivedOutput.relative_path,
+        archived_manifest_path: archivedManifest.relative_path,
+        output_sha256: archivedOutput.sha256,
+        manifest_sha256: archivedManifest.sha256,
+        output_byte_size: archivedOutput.byte_size,
+        manifest_byte_size: archivedManifest.byte_size,
+        output_profile: outputProfile,
+      };
+    } catch (err) {
+      status = 'failed';
+      failureReason = `Final delivery immutable release archive failed: ${err instanceof Error ? err.message : String(err)}`;
+      releaseRecord = undefined;
+      manifest = buildSeedanceFinalDeliveryManifest({
+        project: detail.project,
+        seriesTitle: detail.plan.series_title,
+        generatedAt: executedAt,
+        dryRun,
+        status,
+        outputProfile,
+        outputPath,
+        outputFilename,
+        manifestPath,
+        concatListPath: useConcat ? concatListPath : undefined,
+        ffmpegCommand,
+        dependencyStatus,
+        includeSubtitles,
+        includeAudioMix,
+        includeTitleCards,
+        failureReason,
+        manifestDeliverableStatus: 'failed',
+      });
+      manifestWriteResult = await artifactStore.writeText(
+        manifestPath,
+        JSON.stringify(manifest, null, 2),
+        { overwrite: 'replace' },
+      ).catch(() => manifestWriteResult);
+    }
   }
 
   const resolvedReviewLedger = status === 'assembled' && resolveReassembleReviews
@@ -6992,6 +7695,12 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
     dry_run: dryRun,
     output_profile: outputProfile,
     dependency_status: dependencyStatus,
+    current_release: releaseRecord ?? existingDelivery?.current_release,
+    release_history: mergeSeedanceFinalDeliveryReleaseHistory(
+      existingDelivery?.release_history,
+      releaseRecord,
+    ),
+    rollback_events: [...(existingDelivery?.rollback_events ?? [])],
   };
   const updatedDetail: AiComicSeriesProjectDetail = {
     ...detail,
@@ -7031,6 +7740,158 @@ export async function assembleAiComicSeriesSeedanceFinalDelivery(
       dependency_status: dependencyStatus,
       ffmpeg_command: ffmpegCommand,
     }),
+  });
+}
+
+async function sha256RegularFile(path: string): Promise<{ sha256: string; byte_size: number }> {
+  const file = await lstat(path);
+  if (file.isSymbolicLink() || !file.isFile()) {
+    throw new Error(`Release rollback source is not a regular file: ${path}`);
+  }
+  const hash = createHash('sha256');
+  await new Promise<void>((resolvePromise, rejectPromise) => {
+    const stream = createReadStream(path);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('error', rejectPromise);
+    stream.on('end', resolvePromise);
+  });
+  return { sha256: hash.digest('hex'), byte_size: file.size };
+}
+
+async function restoreSeedanceFinalDeliveryArtifact(input: {
+  artifactStore: FileArtifactStore;
+  sourceAbsolutePath: string;
+  canonicalPath: string;
+}): Promise<ArtifactWriteResult> {
+  const session = await input.artifactStore.prepareExternalWrite(input.canonicalPath, { overwrite: 'replace' });
+  try {
+    await link(input.sourceAbsolutePath, session.staging_absolute_path);
+    return await input.artifactStore.publishExternalWrite(session);
+  } finally {
+    await input.artifactStore.abortExternalWrite(session);
+  }
+}
+
+export async function rollbackAiComicSeriesSeedanceFinalDelivery(
+  seriesProjectId: string,
+  request: AiComicSeedanceFinalDeliveryRollbackRequest,
+  actor: { actor_id: string; authentication_method: string },
+): Promise<ApiResponse<AiComicSeedanceFinalDeliveryRollbackResult>> {
+  if (request.confirmed !== true) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Final delivery rollback requires confirmed=true');
+  }
+  if (!request.reason?.trim() || request.reason.trim().length < 8) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Final delivery rollback requires an operator reason');
+  }
+  if (!actor.actor_id?.trim() || actor.authentication_method === 'local_bypass') {
+    return fail(ErrorCodes.ACCESS_FORBIDDEN, 'Final delivery rollback requires a verified operator session');
+  }
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+  const existing = normalizeSeedanceFinalDeliveryLedger(detail.seedance_final_delivery);
+  const target = existing?.release_history?.find(item => item.release_id === request.release_id.trim());
+  if (!existing || !target) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Immutable final delivery release "${request.release_id}" was not found`);
+  }
+  if (existing.current_release?.release_id === target.release_id) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `Final delivery release "${target.release_id}" is already current`);
+  }
+
+  const projectDir = dirname(seriesProjectPath(seriesProjectId));
+  const archivedOutputAbsolutePath = resolveSeedanceProjectOutputPath(projectDir, target.archived_output_path);
+  const archivedManifestAbsolutePath = resolveSeedanceProjectOutputPath(projectDir, target.archived_manifest_path);
+  let outputInspection: { sha256: string; byte_size: number };
+  let manifestInspection: { sha256: string; byte_size: number };
+  try {
+    [outputInspection, manifestInspection] = await Promise.all([
+      sha256RegularFile(archivedOutputAbsolutePath),
+      sha256RegularFile(archivedManifestAbsolutePath),
+    ]);
+  } catch (err) {
+    return fail(
+      ErrorCodes.ARTIFACT_STORAGE_UNAVAILABLE,
+      `Final delivery rollback archive inspection failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (
+    outputInspection.sha256 !== target.output_sha256
+    || outputInspection.byte_size !== target.output_byte_size
+    || manifestInspection.sha256 !== target.manifest_sha256
+    || manifestInspection.byte_size !== target.manifest_byte_size
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Final delivery rollback archive hash or byte size no longer matches the immutable release record',
+    );
+  }
+
+  const artifactStore = new FileArtifactStore(projectDir);
+  let restoredOutput: ArtifactWriteResult;
+  let restoredManifest: ArtifactWriteResult;
+  try {
+    restoredManifest = await restoreSeedanceFinalDeliveryArtifact({
+      artifactStore,
+      sourceAbsolutePath: archivedManifestAbsolutePath,
+      canonicalPath: target.canonical_manifest_path,
+    });
+    restoredOutput = await restoreSeedanceFinalDeliveryArtifact({
+      artifactStore,
+      sourceAbsolutePath: archivedOutputAbsolutePath,
+      canonicalPath: target.canonical_output_path,
+    });
+  } catch (err) {
+    return fail(
+      ErrorCodes.ARTIFACT_STORAGE_UNAVAILABLE,
+      `Final delivery rollback publish failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (restoredOutput.sha256 !== target.output_sha256 || restoredManifest.sha256 !== target.manifest_sha256) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Final delivery rollback publish SHA-256 verification failed');
+  }
+
+  const rolledBackAt = new Date().toISOString();
+  const rollbackEvent = {
+    event_id: `final-delivery-rollback-${randomUUID()}`,
+    rolled_back_at: rolledBackAt,
+    target_release_id: target.release_id,
+    previous_release_id: existing.current_release?.release_id,
+    actor_id: actor.actor_id.trim(),
+    authentication_method: actor.authentication_method,
+    reason: request.reason.trim(),
+    output_sha256_verified: true as const,
+    manifest_sha256_verified: true as const,
+  };
+  const nextLedger: AiComicSeedanceFinalDeliveryLedger = {
+    ...existing,
+    updated_at: rolledBackAt,
+    status: 'ready',
+    output_path: target.canonical_output_path,
+    output_filename: basename(target.canonical_output_path),
+    manifest_path: target.canonical_manifest_path,
+    output_profile: target.output_profile,
+    delivered_at: rolledBackAt,
+    failure_reason: undefined,
+    dry_run: false,
+    current_release: { ...target },
+    release_history: existing.release_history?.map(item => ({ ...item })) ?? [],
+    rollback_events: [...(existing.rollback_events ?? []), rollbackEvent].slice(-50),
+  };
+  const updatedDetail: AiComicSeriesProjectDetail = {
+    ...detail,
+    project: { ...detail.project, updated_at: rolledBackAt },
+    seedance_final_delivery: nextLedger,
+  };
+  await seriesProjectRepository().replace(updatedDetail, { updated_at: detail.project.updated_at });
+  return success({
+    schema_version: 'ai-comic-series-seedance-final-delivery-rollback-result/v1',
+    project: updatedDetail.project,
+    series_title: updatedDetail.plan.series_title,
+    rolled_back_at: rolledBackAt,
+    previous_release_id: rollbackEvent.previous_release_id,
+    target_release: target,
+    seedance_final_delivery: nextLedger,
   });
 }
 
@@ -7307,6 +8168,9 @@ export async function getAiComicSeriesProductionReadiness(
   const dashboard = dashboardRes.data;
   const audit = detail.series_quality_audit;
   const gearsSummary = summarizeAiComicProductionReadinessGears(detail.gears_job_ledger);
+  const gearsCostGovernance = summarizeGearsExecutionCostGovernance(detail.gears_job_ledger);
+  const gearsOperationalMetrics = buildGearsExecutionOperationalMetrics(detail.gears_job_ledger);
+  const gearsRecoveryPlan = buildGearsExecutionRecoveryPlan(detail.gears_job_ledger);
   const issues: ProductionReadinessIssue[] = [];
   const nextActions: ProductionReadinessNextAction[] = [];
   const generatedEpisodeCount = Object.keys(detail.generated_episode_story_ids ?? {}).length;
@@ -7418,6 +8282,26 @@ export async function getAiComicSeriesProductionReadiness(
       lane_key: 'gears_execution',
     });
   } else {
+    if (gearsCostGovernance.boundary_violation_count > 0) {
+      addIssue({
+        issue_id: 'series-gears-execution-cost-boundary-violated',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsCostGovernance.boundary_violation_count} 个系列 GEARS job 费用越界`,
+        detail: `实际费用账本存在超授权 ${gearsCostGovernance.exceeded_authorization_count}、币种不一致 ${gearsCostGovernance.currency_mismatch_count}、缺失授权 ${gearsCostGovernance.authorization_missing_count}；完成财务复核与重新授权前不得交付。`,
+        action_label: '复核并重新授权外部费用',
+      });
+    }
+    if (gearsCostGovernance.pending_terminal_cost_report_count > 0) {
+      addIssue({
+        issue_id: 'series-gears-execution-cost-settlement-pending',
+        severity: 'blocking',
+        lane_key: 'gears_execution',
+        label: `${gearsCostGovernance.pending_terminal_cost_report_count} 个终态系列 GEARS job 待费用结算`,
+        detail: '已授权的外部 job 已进入终态，但 Provider 尚未通过 callback/status poll 回传实际费用与币种；结算完成前不得最终交付。',
+        action_label: '同步 Provider 实际费用',
+      });
+    }
     if (gearsSummary.failed + gearsSummary.rejected + gearsSummary.canceled > 0) {
       addIssue({
         issue_id: 'series-gears-terminal-failures',
@@ -7623,6 +8507,8 @@ export async function getAiComicSeriesProductionReadiness(
       openReviewCount: dashboard.summary.open_review_count,
       gearsSummary,
     }),
+    gears_operational_metrics: gearsOperationalMetrics,
+    gears_recovery_plan: gearsRecoveryPlan,
     lanes,
     issues,
     next_actions: sortedNextActions,
@@ -8074,6 +8960,25 @@ function buildAiComicSeriesProductionReadinessMarkdown(
     `- shots: ready ${report.summary.ready_shot_count}/${report.summary.total_shot_count}`,
     `- GEARS jobs: ${report.summary.gears_job_count}`,
     `- blockers: ${report.summary.blocker_count}`,
+    '',
+    '## GEARS Operational Metrics',
+    '',
+    `- scope: ${report.gears_operational_metrics.scope}`,
+    `- authorized external jobs: ${report.gears_operational_metrics.authorized_external_job_count}`,
+    `- actual output rate: ${report.gears_operational_metrics.actual_output_rate_percent}%`,
+    `- failure rate: ${report.gears_operational_metrics.failure_rate_percent}%`,
+    `- execution p50/p95: ${report.gears_operational_metrics.execution_duration_ms.p50}/${report.gears_operational_metrics.execution_duration_ms.p95} ms`,
+    `- callback latency p50/p95: ${report.gears_operational_metrics.callback_delivery_latency_ms.p50}/${report.gears_operational_metrics.callback_delivery_latency_ms.p95} ms`,
+    `- actual cost: ${Object.entries(report.gears_operational_metrics.actual_cost_by_currency).map(([currency, amount]) => `${amount} ${currency}`).join(' + ') || 'none'}`,
+    `- local acceptance excluded: ${report.gears_operational_metrics.local_acceptance_excluded}`,
+    '',
+    '## GEARS Recovery Plan',
+    '',
+    `- recovery items: ${report.gears_recovery_plan.item_count}`,
+    `- retry eligible: ${report.gears_recovery_plan.retry_eligible_count}`,
+    `- status resync: ${report.gears_recovery_plan.status_resync_count}`,
+    `- operator intervention: ${report.gears_recovery_plan.operator_intervention_count}`,
+    ...report.gears_recovery_plan.items.map(item => `- ${item.source_unit_id} · ${item.failure_category} · ${item.strategy} · auto=${item.can_auto_execute}: ${item.reason}`),
     '',
     '## Lanes',
     '',
@@ -9374,6 +10279,23 @@ function normalizeSeedanceAssetLibrary(
         reference_slot: item.reference_slot,
         file_url: item.file_url,
         file_id: item.file_id,
+        local_path: item.local_path,
+        original_filename: item.original_filename,
+        mime_type: item.mime_type,
+        size_bytes: item.size_bytes,
+        provider: item.provider,
+        provider_asset_id: item.provider_asset_id,
+        content_sha256: item.content_sha256,
+        prompt_sha256: item.prompt_sha256,
+        model: item.model,
+        rights_status: item.rights_status,
+        authorization_reference: item.authorization_reference,
+        person_consent_reference: item.person_consent_reference,
+        human_review_status: item.human_review_status,
+        reviewer_id: item.reviewer_id,
+        reviewed_at: item.reviewed_at,
+        review_note: item.review_note,
+        history: item.history?.map(event => ({ ...event })),
         description: item.description,
         updated_at: item.updated_at ?? library?.updated_at ?? new Date(0).toISOString(),
       })),
@@ -9386,7 +10308,10 @@ function cloneSeedanceAssetLibrary(
   const normalized = normalizeSeedanceAssetLibrary(library);
   return {
     ...normalized,
-    items: normalized.items.map(item => ({ ...item })),
+    items: normalized.items.map(item => ({
+      ...item,
+      history: item.history?.map(event => ({ ...event })),
+    })),
   };
 }
 
@@ -9580,6 +10505,9 @@ function normalizeSeedanceFinalDeliveryLedger(
       missing_dependencies: [],
       warnings: [],
     },
+    current_release: ledger.current_release ? { ...ledger.current_release } : undefined,
+    release_history: ledger.release_history?.map(item => ({ ...item })) ?? [],
+    rollback_events: ledger.rollback_events?.map(item => ({ ...item })) ?? [],
   };
 }
 
@@ -9597,6 +10525,9 @@ function cloneSeedanceFinalDeliveryLedger(
           missing_dependencies: [...normalized.dependency_status.missing_dependencies],
           warnings: [...normalized.dependency_status.warnings],
         },
+        current_release: normalized.current_release ? { ...normalized.current_release } : undefined,
+        release_history: normalized.release_history?.map(item => ({ ...item })) ?? [],
+        rollback_events: normalized.rollback_events?.map(item => ({ ...item })) ?? [],
       }
     : undefined;
 }

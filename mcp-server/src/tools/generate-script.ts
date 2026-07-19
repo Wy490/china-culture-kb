@@ -100,5 +100,8 @@ export async function generateScript(input: GenerateScriptInput): Promise<Genera
     targetDuration: targetDuration || DEFAULT_DURATIONS[scriptType],
     creation_contract: creationContract,
     material_sufficiency: creationContract.material_sufficiency,
+    legacy_writer: true,
+    canonical_tool: 'kb_story_agent_generate',
+    counts_as_canonical_generation: false,
   };
 }

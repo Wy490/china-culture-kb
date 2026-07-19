@@ -201,6 +201,7 @@ function classify(path) {
     lower === "web/server/src/services/ai-comic-series-service.ts" ||
     lower === "web/package.json" ||
     lower === "web/package-lock.json" ||
+    lower === "web/server/package.json" ||
     lower === "web/playwright.config.ts" ||
     lower === "web/server/src/__tests__/api.test.ts" ||
     lower.includes("mao-growth-story-e2e") ||
@@ -243,12 +244,16 @@ function classify(path) {
     lower.startsWith(".github/workflows/") ||
     lower.startsWith("data/domain-packs/") ||
     lower.startsWith("data/reports/") ||
+    lower.startsWith("web/generated/") ||
     lower.startsWith("scripts/") ||
     lower.includes("generated-health") ||
     lower.includes("governance") ||
     lower.includes("relink") ||
     lower.includes("archive") ||
     lower.includes("monitor-remediation") ||
+    lower.includes("final-delivery-manifest-preflight") ||
+    lower.includes("story-generation-attempt") ||
+    lower.includes("story-generation-activity") ||
     lower.includes("gears-delivery") ||
     lower.includes("domain-pack")
   ) {

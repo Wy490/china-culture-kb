@@ -16,7 +16,7 @@ import {
 } from '../../services/creation-contract-service.js';
 import { selectCentralEvent } from '../../services/dramatic-story.js';
 import { resolveGenreStoryMatrix } from '../../services/genre-story-profiles.js';
-import { resolveModelProfile } from '../../services/model-catalog.js';
+import { resolveStoryGenerationModelProfile } from '../../services/model-catalog.js';
 import { getProductionMaterialPack } from '../../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../../services/production-material-readiness-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
@@ -114,7 +114,7 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
       entry.keywords.join(' '),
     ].filter((item): item is string => Boolean(item)).join('\n'),
   });
-  const selectedModelProfile = resolveModelProfile(request.model_profile_id);
+  const selectedModelProfile = resolveStoryGenerationModelProfile(request.model_profile_id);
   const boldEvents = extractChinaCultureBoldEvents(entry.story);
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
   const preliminaryStoryBlueprint = buildStoryBlueprint({

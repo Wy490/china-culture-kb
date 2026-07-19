@@ -119,8 +119,12 @@ describe('updateGearsDeliveryMarkdown', () => {
 
     const storedSnapshot = JSON.parse(await readFile(versionPath, 'utf-8')) as StoryProjectVersionSnapshot;
     expect(storedSnapshot.story.gears_delivery?.markdown).toBe('edited markdown');
+    expect(storedSnapshot.story.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
+    expect(storedSnapshot.quality_report).toEqual(storedSnapshot.story.quality_report);
 
     const storedMeta = JSON.parse(await readFile(metaPath, 'utf-8')) as StoryProjectMeta;
     expect(storedMeta.updated_at).not.toBe(meta.updated_at);
+    expect(storedMeta.story_publishable).toBe(storedSnapshot.story.quality_report?.quality_gates?.story_publishable);
+    expect(storedMeta.production_ready).toBe(storedSnapshot.story.quality_report?.quality_gates?.production_ready);
   });
 });

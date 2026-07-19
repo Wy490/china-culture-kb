@@ -152,6 +152,16 @@ export async function generateScenePatchWithAdapter(input: {
   modelProfileId?: string;
 }): Promise<SceneRegenerationModelResult> {
   const provider = process.env.SCENE_REGEN_PROVIDER?.trim() || 'command_json';
+  const selectedProfile = getModelProfileById(input.modelProfileId);
+
+  if (selectedProfile?.runtime === 'local') {
+    return {
+      provider: 'local_only',
+      patch: null,
+      used_fallback: false,
+      reason: '已显式选择本地故事引擎',
+    };
+  }
 
   if (provider === 'command_json') {
     return runCommandAdapter(input);

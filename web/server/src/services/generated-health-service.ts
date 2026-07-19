@@ -15,6 +15,7 @@ import type {
 } from '@shared/types.js';
 import { exportProjectSupplementCandidatePackage } from './project-service.js';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
+import { inspectStoryGenerationActivity } from './story-generation-activity-service.js';
 
 interface GeneratedHealthOptions {
   limit?: number;
@@ -512,6 +513,7 @@ function boundedLimit(limit: number | undefined): number | undefined {
 }
 
 function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>): string {
+  const activity = report.generation_activity;
   return [
     '# Story Agent Generated Health',
     '',
@@ -557,6 +559,49 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
     `- series_seedance_test_fixture_failure_projects: ${report.summary.series_seedance_test_fixture_failure_project_count ?? 0}`,
     `- series_seedance_test_fixture_failure_items: ${report.summary.series_seedance_test_fixture_failure_item_count ?? 0}`,
+    '',
+    '## Generation Activity',
+    '',
+    `- diagnosis: ${activity?.diagnosis ?? 'unavailable'}`,
+    `- latest_persisted_activity_kind: ${activity?.latest_persisted_activity_kind ?? 'none'}`,
+    `- latest_story_id: ${activity?.latest_story?.story_id ?? 'none'}`,
+    `- latest_story_created_at: ${activity?.latest_story?.created_at ?? 'none'}`,
+    `- latest_project_version: ${activity?.latest_project_version?.version_id ?? 'none'}`,
+    `- latest_project_version_created_at: ${activity?.latest_project_version?.created_at ?? 'none'}`,
+    `- project_revisions_after_latest_story: ${activity?.summary.project_revision_after_latest_story_count ?? 0}`,
+    `- reports_after_latest_story: ${activity?.summary.report_after_latest_story_count ?? 0}`,
+    `- pending_transactions: ${activity?.summary.pending_transaction_count ?? 0}`,
+    `- legacy_stories: ${activity?.summary.legacy_story_count ?? 0}`,
+    `- durable_attempt_history: ${activity?.signals.durable_generation_attempt_history_available ?? false}`,
+    `- latest_generation_attempt_id: ${activity?.latest_generation_attempt?.attempt_id ?? 'none'}`,
+    `- latest_generation_attempt_status: ${activity?.latest_generation_attempt?.status ?? 'none'}`,
+    `- generation_attempts: ${activity?.summary.generation_attempt_count ?? 0}`,
+    `- generation_attempt_failures: ${activity?.summary.generation_attempt_failed_count ?? 0}`,
+    `- generation_attempts_incomplete: ${activity?.summary.generation_attempt_incomplete_count ?? 0}`,
+    `- attempt_audit_readiness: ${activity?.attempt_audit_readiness.status ?? 'unavailable'}`,
+    `- attempt_audit_history_integrity: ${activity?.attempt_audit_readiness.history_integrity ?? 'unavailable'}`,
+    `- attempt_audit_lock_status: ${activity?.attempt_audit_readiness.lock_status ?? 'absent'}`,
+    `- attempt_audit_current_file_bytes: ${activity?.attempt_audit_readiness.current_file_bytes ?? 0}`,
+    `- attempt_audit_archive_count: ${activity?.attempt_audit_readiness.archive_count ?? 0}`,
+    `- attempt_audit_lock_timeout_ms: ${activity?.attempt_audit_readiness.configured_lock_timeout_ms ?? 0}`,
+    `- attempt_audit_lock_retry_ms: ${activity?.attempt_audit_readiness.configured_lock_retry_ms ?? 0}`,
+    `- attempt_audit_lock_stale_ms: ${activity?.attempt_audit_readiness.configured_lock_stale_ms ?? 0}`,
+    `- attempt_audit_configuration_valid: ${activity?.attempt_audit_readiness.configuration_valid ?? false}`,
+    `- attempt_audit_configuration_warnings: ${activity?.attempt_audit_readiness.configuration_warnings.join(', ') || 'none'}`,
+    `- attempt_audit_permission_policy: ${activity?.attempt_audit_readiness.permission_policy ?? 'owner_only'}`,
+    `- attempt_audit_permission_policy_satisfied: ${activity?.attempt_audit_readiness.permission_policy_satisfied ?? false}`,
+    `- attempt_audit_event_file_sync_required: ${activity?.attempt_audit_readiness.event_file_sync_required ?? true}`,
+    `- attempt_audit_no_follow_open_required: ${activity?.attempt_audit_readiness.no_follow_open_required ?? true}`,
+    `- attempt_audit_directory_entry_sync_guaranteed: ${activity?.attempt_audit_readiness.directory_entry_sync_guaranteed ?? true}`,
+    `- attempt_audit_blockers: ${activity?.attempt_audit_readiness.blockers.join(', ') || 'none'}`,
+    `- attempt_audit_operator_actions: ${activity?.attempt_audit_readiness.operator_actions.join(', ') || 'none'}`,
+    `- attempt_audit_automatic_repair_allowed: ${activity?.attempt_audit_readiness.automatic_repair_allowed ?? false}`,
+    `- attempt_audit_destructive_action_performed: ${activity?.attempt_audit_readiness.destructive_action_performed ?? false}`,
+    `- no_generation_request_confirmed: ${activity?.signals.no_generation_request_confirmed ?? false}`,
+    `- generation_pipeline_failure_confirmed: ${activity?.signals.generation_pipeline_failure_confirmed ?? false}`,
+    `- generation_attempt_incomplete_detected: ${activity?.signals.generation_attempt_incomplete_detected ?? false}`,
+    `- generated_files_modified: ${activity?.safety.generated_files_modified ?? false}`,
+    `- model_invoked: ${activity?.safety.model_invoked ?? false}`,
     '',
     '## Priority Items',
     '',
@@ -786,11 +831,12 @@ function renderStoryAgentBacklogHandoffMarkdown(
 export async function getStoryAgentGeneratedHealth(
   options: GeneratedHealthOptions = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
-  const [storyRecords, seriesRecords, availableStoryIds, signoffExcludedSeriesIds] = await Promise.all([
+  const [storyRecords, seriesRecords, availableStoryIds, signoffExcludedSeriesIds, generationActivity] = await Promise.all([
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'projects'))),
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'ai-comic-series-projects'))),
     readGeneratedStoryIds(),
     readSignoffExcludedSeriesIds(),
+    inspectStoryGenerationActivity(),
   ]);
   const storyItems = await Promise.all(storyRecords.map(buildStoryHealthItem));
   const seriesItems = seriesRecords.map(record => buildSeriesHealthItem(
@@ -801,6 +847,9 @@ export async function getStoryAgentGeneratedHealth(
   const allItems = [...storyItems, ...seriesItems].sort((a, b) => {
     const signoffDiff = Number(a.signoff_eligible === false) - Number(b.signoff_eligible === false);
     if (signoffDiff !== 0) return signoffDiff;
+    const manifestGapDiff = Number(b.final_delivery_manifest_missing === true)
+      - Number(a.final_delivery_manifest_missing === true);
+    if (manifestGapDiff !== 0) return manifestGapDiff;
     const rankDiff = statusRank(a.status) - statusRank(b.status);
     if (rankDiff !== 0) return rankDiff;
     const riskDiff = b.risk_score - a.risk_score;
@@ -849,6 +898,7 @@ export async function getStoryAgentGeneratedHealth(
   const report: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'story-agent-generated-health/v1',
     generated_at: new Date().toISOString(),
+    generation_activity: generationActivity,
     summary: {
       scanned_story_project_count: storyRecords.length,
       scanned_series_project_count: seriesRecords.length,

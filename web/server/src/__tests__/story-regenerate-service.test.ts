@@ -277,12 +277,21 @@ describe('story-regenerate-service', () => {
 
     expect(updated.scene_breakdown[1].plot).toContain('把丢官的风险写得更明确');
     expect(updated.scene_breakdown[1].plot).toContain('高潮');
-    expect(updated.gears_segments.find(seg => seg.source_scene_id === 2)?.script_text).toContain('冲突升级');
+    expect(updated.gears_segments.find(seg => seg.source_scene_id === 2)?.script_text)
+      .toContain('把丢官的风险写得更明确');
+    expect(updated.gears_segments.find(seg => seg.source_scene_id === 2)?.script_text)
+      .not.toContain('冲突升级');
     expect(updated.full_text).toContain('把丢官的风险写得更明确');
     expect(updated.reference_trace?.at(-1)?.applied_rules[0]).toBe('scene_regeneration:tighten_conflict');
     expect(updated.reference_trace?.at(-1)?.applied_rules).toContain('provider:local_fallback');
     expect(updated.quality_report).toBeTruthy();
     expect(typeof updated.quality_report?.genre_score).toBe('number');
+    expect(updated.quality_report?.audience_text_report?.schema_version).toBe('audience-text/v1');
+    expect(updated.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
+    expect(updated.quality_report?.quality_gates?.narrative_gate.status).toMatch(/passed|failed/);
+    expect(updated.gears_delivery?.units.every(unit => unit.shot_id === `shot-${unit.unit_id}`)).toBe(true);
+    expect(updated.gears_delivery?.units.filter(unit => unit.source_scene_id === 2).map(unit => unit.script_text).join('\n'))
+      .toContain('把丢官的风险写得更明确');
     expect(updated.story_blueprint?.genre_beats.find(beat => beat.scene_id === 2)?.function_label).toBe('冲突升级');
   });
 
@@ -338,7 +347,7 @@ describe('story-regenerate-service', () => {
 
     expect(updated.scene_breakdown[1].dialogue_or_narration).toContain('同窗说');
     expect(updated.scene_breakdown[1].plot).toContain('口述');
-    expect(updated.gears_segments.find(seg => seg.source_scene_id === 2)?.purpose).toContain('回忆线');
+    expect(updated.gears_segments.find(seg => seg.source_scene_id === 2)?.purpose).toBe('见证人回忆');
     expect(updated.full_text).toContain('【回忆】');
     expect(updated.reference_trace?.at(-1)?.applied_rules[1]).toContain('回忆线');
     expect(updated.quality_report).toBeTruthy();
@@ -363,6 +372,25 @@ describe('story-regenerate-service', () => {
     expect(updated.scene_breakdown[1].dialogue_or_narration).toBe('模型旁白')
     expect(updated.reference_trace?.at(-1)?.applied_rules).toContain('provider:command_json')
     expect(updated.reference_trace?.at(-1)?.applied_rules).toContain('provider_output_applied')
+  })
+
+  it('does not invoke a configured scene adapter when the explicit local engine is selected', async () => {
+    process.env.SCENE_REGEN_PROVIDER = 'command_json'
+    process.env.SCENE_REGEN_COMMAND = process.execPath
+    process.env.SCENE_REGEN_COMMAND_ARGS = JSON.stringify([
+      '-e', "process.stdout.write(JSON.stringify({plot:'should not run',key_action:'x',dialogue_or_narration:'x',visual_prompt:'x',camera_suggestion:'x'}));",
+    ])
+
+    const updated = await regenerateSceneInStory(makeDramaticStory(), {
+      scene_id: 2,
+      intent: 'tighten_conflict',
+      model_profile_id: 'local_story_engine',
+      user_note: '保持本地重写',
+    })
+
+    expect(updated.scene_breakdown[1].plot).not.toContain('should not run')
+    expect(updated.scene_breakdown[1].plot).toContain('保持本地重写')
+    expect(updated.reference_trace?.at(-1)?.applied_rules).toContain('provider:local_only')
   })
 
   it('preserves the original full-generation model_profile_id during scene regeneration', async () => {

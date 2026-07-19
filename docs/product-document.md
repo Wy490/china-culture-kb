@@ -837,9 +837,9 @@ draft（刚生成，分段数据已就绪）
 
 ---
 
-## 10. MCP 工具能力（保留不变）
+## 10. MCP 工具能力
 
-MCP Server 提供 14 个工具，供 Claude Code 直接调用：
+MCP Server 提供素材、Story Agent、质量修复和生产指挥工具，供 MCP 客户端调用。故事正式生成的唯一 canonical 入口是 `kb_story_agent_generate`：
 
 | 工具 | 能力 |
 |------|------|
@@ -852,9 +852,12 @@ MCP Server 提供 14 个工具，供 Claude Code 直接调用：
 | kb_verify_source | 来源可信度核查 |
 | kb_fetch_article / kb_fetch_video | 网页/视频内容抓取 |
 | kb_ingest_video | B站视频一键录入 |
-| kb_generate_script | 脚本骨架生成 |
-| kb_generate_story | 故事文本生成 |
+| kb_story_agent_generate | 调用 Web application service 的 canonical 故事生成链 |
+| kb_generate_script | Legacy writer：生成并写入 Markdown 脚本骨架 |
+| kb_generate_story | Legacy writer：将已有 story_text 写入 Markdown，不计 canonical 生成 |
 | kb_query_index | 类型/关键词/地区聚合查询 |
+
+`kb_story_agent_generate` 要求配置 `STORY_AGENT_BASE_URL`；启用 Web 生产访问控制时，通过 `STORY_AGENT_MCP_ACCESS_TOKEN` 提供 Bearer token。凭据不应作为工具参数传入。
 
 **MCP 约束**：Web 端只 import `mcp-server/src/tools/*` 和 `mcp-server/src/lib/*` 中的纯函数，禁止 import `mcp-server/src/index.ts`。
 

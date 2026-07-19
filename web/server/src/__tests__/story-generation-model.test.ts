@@ -230,6 +230,26 @@ describe('generateStoryWithAdapter', () => {
     expect(result.reason).toContain('STORY_GEN_COMMAND');
   });
 
+  it('never invokes a configured external command when the explicit local engine is selected', async () => {
+    process.env.STORY_GEN_PROVIDER = 'command_json';
+    process.env.STORY_GEN_COMMAND = process.execPath;
+    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
+      '-e', "process.stdout.write(JSON.stringify({title:'should not run'}));",
+    ]);
+
+    const result = await generateStoryWithAdapter({
+      pkg: {} as StoryGenerationPromptPackage,
+      modelProfileId: 'local_story_engine',
+    });
+
+    expect(result).toMatchObject({
+      provider: 'local_only',
+      output: null,
+      used_fallback: false,
+      reason: '已显式选择本地故事引擎',
+    });
+  });
+
   it('does not auto-discover or invoke a bundled bridge in production without explicit opt-in', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     delete process.env.STORY_GEN_COMMAND;

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryGenerateResult } from '@shared/types.js';
+import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
+import { ensureGearsDeliveryPackage } from '../services/gears-delivery-service.js';
+import { buildStoryProductionBoard } from '../services/production-board-service.js';
 import { buildSeedancePromptPackage } from '../services/seedance-prompt-service.js';
 
 const DELIVERY_PROMPT_INTERNAL_PATTERN =
@@ -49,6 +52,162 @@ function makeStory(): StoryGenerateResult {
 }
 
 describe('seedance-prompt-service', () => {
+  it('builds an auditable character, location, and prop image job plan without granting execution credit', () => {
+    const board = buildStoryProductionBoard(makeStory());
+    const plan = board.image_asset_job_plan;
+
+    expect(plan).toMatchObject({
+      schema_version: 'story-image-asset-job-plan/v1',
+      provider_invoked: false,
+      production_credit_count: 0,
+      summary: {
+        character_requirement_count: 2,
+        location_requirement_count: 1,
+      },
+    });
+    expect(plan.summary.prop_requirement_count).toBeGreaterThan(0);
+    expect(plan.requirements.map(item => item.asset_kind)).toEqual(expect.arrayContaining([
+      'character',
+      'location',
+      'prop',
+    ]));
+    expect(plan.requirements.find(item => item.asset_kind === 'character')).toMatchObject({
+      job_type: 'character_image',
+      source_scene_ids: [1],
+    });
+    expect(plan.requirements.find(item => item.asset_kind === 'location')).toMatchObject({
+      job_type: 'scene_image',
+      source_scene_ids: [1],
+    });
+    expect(plan.requirements.find(item => item.asset_kind === 'prop')).toMatchObject({
+      job_type: 'prop_image',
+      source_scene_ids: [1],
+    });
+    for (const requirement of plan.requirements) {
+      expect(requirement.source_shot_ids.length).toBeGreaterThan(0);
+      expect(requirement.prompt).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+      expect(requirement.negative_constraints.length).toBeGreaterThan(0);
+      expect(requirement.provider_invoked).toBe(false);
+      expect(requirement.production_credit_granted).toBe(false);
+    }
+    expect(board.delivery_manifest.stage).toBe('needs_repair');
+    expect(board.delivery_manifest.artifacts.find(item => item.kind === 'media_asset_library')).toMatchObject({
+      status: 'needs_repair',
+    });
+    expect(board.delivery_manifest.artifacts.find(item => item.kind === 'image_asset_job_plan')).toMatchObject({
+      status: 'ready',
+    });
+    expect(board.delivery_manifest.next_action).toContain('媒体资产完整性、版权授权和真人视觉审核');
+  });
+
+  it('uses every GEARS delivery unit as one canonical shot across Seedance, Production Board, assets, and ledger', () => {
+    const story = makeStory();
+    const delivery = ensureGearsDeliveryPackage(story);
+    const seedance = buildSeedancePromptPackage(story);
+    const board = buildStoryProductionBoard(story);
+    const canonicalShotIds = seedance.shot_units.map(unit => unit.shot_id);
+
+    expect(delivery.units).toHaveLength(2);
+    expect(delivery.units.map(unit => unit.shot_id)).toEqual(canonicalShotIds);
+    expect(board.shot_units.map(unit => unit.shot_id)).toEqual(canonicalShotIds);
+    expect(board.seedance_shot_ledger.items.map(item => item.shot_id)).toEqual(canonicalShotIds);
+    expect(board.shot_units.map(unit => unit.source_unit_id)).toEqual(delivery.units.map(unit => unit.unit_id));
+    for (const asset of seedance.asset_references) {
+      expect(asset.source_shot_ids.every(shotId => canonicalShotIds.includes(shotId))).toBe(true);
+    }
+  });
+
+  it('keeps canonical shot identity aligned after stale Story derivatives are rebuilt', async () => {
+    const story = makeStory();
+    const staleDelivery = ensureGearsDeliveryPackage(story);
+    story.gears_delivery = {
+      ...staleDelivery,
+      units: [{
+        ...staleDelivery.units[0],
+        unit_id: '1',
+        shot_id: 'shot-1',
+        script_text: '旧版本：少年已经离开书院，不再追查旧案。',
+      }],
+    };
+    story.gears_segments = [{
+      segment_id: 9,
+      source_scene_id: 1,
+      duration_sec: 24,
+      panel_count: 6,
+      script_text: '旧版本：少年已经离开书院，不再追查旧案。',
+      purpose: '旧用途',
+      visual_focus: ['旧场景'],
+      cultural_constraints: [],
+      video_type: story.video_type,
+      presentation_style: story.presentation_style,
+      segment_prompt_hint: '保留人工镜头节奏覆盖层。',
+    }];
+
+    const rebuilt = await rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+    });
+    const delivery = rebuilt.gears_delivery!;
+    const seedance = buildSeedancePromptPackage(rebuilt);
+    const board = buildStoryProductionBoard(rebuilt);
+    const canonicalShotIds = delivery.units.map(unit => unit.shot_id);
+    const canonicalUnitIds = delivery.units.map(unit => unit.unit_id);
+
+    expect(canonicalShotIds).toEqual(['shot-1.1', 'shot-1.2']);
+    expect(seedance.shot_units.map(unit => unit.shot_id)).toEqual(canonicalShotIds);
+    expect(board.shot_units.map(unit => unit.shot_id)).toEqual(canonicalShotIds);
+    expect(board.seedance_shot_ledger.items.map(item => item.shot_id)).toEqual(canonicalShotIds);
+    expect(board.shot_units.map(unit => unit.source_unit_id)).toEqual(canonicalUnitIds);
+    expect(rebuilt.gears_segments[0].segment_id).toBe(9);
+    expect(rebuilt.gears_segments[0].segment_prompt_hint).toContain('保留人工镜头节奏覆盖层');
+
+    const rebuiltProductionText = [
+      ...delivery.units.map(unit => unit.script_text),
+      ...rebuilt.gears_segments.map(segment => segment.script_text),
+      ...seedance.shot_units.map(unit => unit.script_text),
+      ...board.shot_units.map(unit => unit.script_text),
+    ].join('\n');
+    expect(rebuiltProductionText).toContain('少年抱着书箱站在雨里');
+    expect(rebuiltProductionText).not.toContain('少年已经离开书院');
+
+    for (const asset of seedance.asset_references) {
+      expect(asset.source_shot_ids.every(shotId => canonicalShotIds.includes(shotId))).toBe(true);
+    }
+  });
+
+  it('deterministically migrates a v1 scene-level ledger item without crediting every split shot', () => {
+    const story = makeStory();
+    const board = buildStoryProductionBoard(story, {
+      seedanceShotLedger: {
+        schema_version: 'seedance-shot-ledger/v1',
+        updated_at: '2026-07-18T00:00:00.000Z',
+        items: [{
+          production_id: 'seedance-shot-shot-1',
+          shot_id: 'shot-1',
+          source_scene_id: 1,
+          status: 'ready',
+          updated_at: '2026-07-18T00:00:00.000Z',
+          video_url: 'https://media.example.test/legacy-scene-1.mp4',
+          retry_count: 0,
+          notes: ['v1 ledger item'],
+          versions: [],
+        }],
+      },
+    });
+
+    expect(board.seedance_shot_ledger.items).toHaveLength(2);
+    expect(board.seedance_shot_ledger.items[0]).toMatchObject({
+      shot_id: 'shot-1.1',
+      status: 'ready',
+      video_url: 'https://media.example.test/legacy-scene-1.mp4',
+    });
+    expect(board.seedance_shot_ledger.items[0].notes.join('\n')).toContain('确定性迁移');
+    expect(board.seedance_shot_ledger.items[1]).toMatchObject({
+      shot_id: 'shot-1.2',
+      status: 'prompt_exported',
+    });
+    expect(board.seedance_shot_ledger.items[1].video_url).toBeUndefined();
+  });
+
   it('builds shot-level Seedance prompts from story and GEARS delivery data', () => {
     const pkg = buildSeedancePromptPackage(makeStory());
 
@@ -203,5 +362,50 @@ describe('seedance-prompt-service', () => {
       slot.kind === 'location' && slot.label === '湘江夜渡'
     )).toBe(true);
     expect(pkg.markdown).not.toMatch(DELIVERY_PROMPT_INTERNAL_PATTERN);
+  });
+
+  it('keeps knowledge-entry summaries out of location reference descriptions', () => {
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      scene_breakdown: [
+        ...makeStory().scene_breakdown,
+        {
+          ...makeStory().scene_breakdown[0],
+          scene_id: 2,
+          title: '同地收束',
+          visual_prompt: '结尾意象提及濂溪与理学，但显式地点仍是书院门外。',
+        },
+      ],
+      knowledge_pack: {
+        primary_entries: [{
+          entry_name: '测试条目',
+          province: '湖南',
+          region: '书院门外',
+          type: '历史人物',
+          summary: '关键词：通书、慎动、陈抟；核验：这些全条目字段不属于书院门外的场景参考图。',
+          score: 1,
+          role_in_story: 'primary_entry',
+          match_reason: '用户指定来源条目',
+          keywords: ['通书', '慎动', '陈抟'],
+          asset_split: {
+            characters: [],
+            scenes: ['书院门外：木门、石阶、灯笼与雨水构成夜间空间。'],
+            character_props: [],
+            scene_props: [],
+          },
+        }],
+        supporting_entries: [],
+        missing_needs: [],
+        overall_confidence: 1,
+      },
+    };
+
+    const pkg = buildSeedancePromptPackage(story);
+    const location = pkg.asset_references.find(item => item.kind === 'location' && item.label === '书院门外');
+
+    expect(location?.description).toContain('木门');
+    expect(location?.description).not.toMatch(/关键词|核验|通书|慎动|陈抟|濂溪|理学/);
+    expect(pkg.asset_reference_plan.join('\n')).not.toMatch(/关键词|核验|通书|慎动|陈抟|濂溪|理学/);
+    expect(pkg.asset_references.some(item => item.kind === 'location' && item.label === '濂溪畔')).toBe(false);
   });
 });

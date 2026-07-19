@@ -14,13 +14,8 @@ import {
 } from '@shared/types.js';
 import { buildSceneRegenerationPromptPackage } from './scene-regeneration-prompt.js';
 import { generateScenePatchWithAdapter } from './scene-regeneration-model.js';
-import { validateDramaticStory } from './dramatic-story.js';
-import { validateMemoryMosaicStory } from './memory-mosaic-service.js';
-import { combineQualityReports, validateReferenceSafety } from './reference-quality-service.js';
 import { resolveModelProfile } from './model-catalog.js';
-import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
-import { attachBlueprintScenes } from './story-blueprint-service.js';
-import { validateGenreStoryQuality } from './genre-quality-service.js';
+import { rebuildDerivedStoryState } from './derived-story-state-service.js';
 
 const REALITY_LINE_FUNCTIONS = new Set([
   '现实钩子',
@@ -415,46 +410,16 @@ export async function regenerateSceneInStory(
     source_story_structure: story.story_structure ?? 'single_event_drama',
   };
 
-  const structuralQuality = story.story_structure === 'memory_mosaic_biography'
-    ? validateMemoryMosaicStory({
-        full_text: updatedStory.full_text,
-        scene_breakdown: updatedScenes,
-        memory_seed: updatedStory.memory_mosaic_seed,
-      })
-    : validateDramaticStory({
-        full_text: updatedStory.full_text,
-        scene_breakdown: updatedScenes,
-        title: updatedStory.title,
-        selectedEvent: updatedStory.title,
-        videoType: updatedStory.video_type,
-      });
-
-  const referenceSafety = validateReferenceSafety({
-    generated_text: updatedStory.full_text,
-    reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
-  });
-
-  const updatedBlueprint = updatedStory.story_blueprint
-    ? attachBlueprintScenes(updatedStory.story_blueprint, updatedScenes, updatedStory.storyId)
-    : undefined;
-  const combinedQuality = combineQualityReports(structuralQuality, referenceSafety);
-
-  const finalStory = {
+  const finalStory: StoryGenerateResult = {
     ...updatedStory,
-    story_blueprint: updatedBlueprint ?? updatedStory.story_blueprint,
     reference_trace: [...(updatedStory.reference_trace ?? []), regenerationTrace],
     ...syncDerivedFields(updatedStory, updatedScenes),
   };
-  finalStory.quality_report = validateGenreStoryQuality({
-    story: finalStory,
-    baseReport: combinedQuality,
-    blueprint: updatedBlueprint,
+  return rebuildDerivedStoryState(finalStory, {
+    // This service prepares a candidate. The project persistence boundary owns
+    // authoritative domain revalidation so failed candidates never create versions.
+    revalidateDomainSafety: false,
   });
-
-  return {
-    ...finalStory,
-    gears_delivery: buildGearsDeliveryPackage(finalStory),
-  };
 }
 
 export function buildRegenerationNote(request: StorySceneRegenerateRequest): string {

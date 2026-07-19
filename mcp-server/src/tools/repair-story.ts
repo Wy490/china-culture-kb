@@ -671,7 +671,7 @@ function buildRiskNotes(
 ): string[] {
   const notes = [
     applied
-      ? 'auto_apply 已通过 kb_update_project_version 写入新项目版本；旧版本未覆盖。'
+      ? 'auto_apply 已通过 Story Agent canonical application service 创建新项目版本；MCP 未直接写文件，旧版本未覆盖。'
       : 'dry-run 阶段未修改项目文件、版本快照或故事 JSON。',
   ];
   notes.push(...autoApplyNotes);

@@ -615,8 +615,26 @@ describe('gears-delivery-service', () => {
     expect(pkg.character_assets[0].signature_objects).toContain('书');
     expect(pkg.scene_assets[0].description).toContain('溪水、旧书、毛笔');
     expect(pkg.scene_assets[0].description).not.toContain('幼年丧父');
+    expect(pkg.scene_assets[0].description).not.toContain('基于');
     expect(pkg.scene_assets[0].environment_props).toContain('旧书');
     expect(pkg.markdown).toContain('周敦颐出身道县楼田村书香门第');
+  });
+
+  it('refreshes persisted scene assets that contain knowledge-summary metadata', () => {
+    const story = makeKnowledgeBackedStory();
+    const current = buildGearsDeliveryPackage(story);
+    const contaminated: GearsDeliveryPackage = {
+      ...current,
+      scene_assets: current.scene_assets.map(asset => ({
+        ...asset,
+        description: `${asset.description}；关键词：通书、慎动、陈抟；基于周敦颐——理学开山鼻祖中拒签冤案相关内容`,
+      })),
+    };
+
+    const refreshed = ensureGearsDeliveryPackage({ ...story, gears_delivery: contaminated });
+
+    expect(refreshed.scene_assets[0].description).not.toMatch(/关键词|通书|慎动|陈抟|基于/);
+    expect(refreshed.scene_assets[0].description).toContain('溪水、旧书、毛笔');
   });
 
   it('adds validation notes for assets that still need source detail', () => {

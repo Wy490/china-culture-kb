@@ -240,6 +240,32 @@ describe('platform story repair orchestration', () => {
     });
   });
 
+  it('rejects a no-op repair even when its genre score does not decrease', async () => {
+    const appliedTitles: string[] = [];
+    const result = await orchestrateStoryRepair(
+      makeInput({
+        applyStoryAssembly: assembly => appliedTitles.push(assembly.title),
+        evaluateStoryQuality: () => makeQuality(50),
+      }),
+      {
+        generateWithAdapter: async () => ({
+          provider: 'test',
+          output: makeModelOutput(makeAssembly()),
+          used_fallback: false,
+        }),
+      },
+    );
+
+    expect(appliedTitles).toEqual(['原故事', '原故事']);
+    expect(result.storyResult.title).toBe('原故事');
+    expect(result.repairTrace[0]).toMatchObject({
+      applied: false,
+      reason: 'repair_no_content_change',
+      before_genre_score: 50,
+      after_genre_score: 50,
+    });
+  });
+
   it('restores the original assembly and quality when the repair score decreases', async () => {
     const applied: Array<{ title: string; modelTitle?: string }> = [];
     const repaired = makeAssembly('退步修复');

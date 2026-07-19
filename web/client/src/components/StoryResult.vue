@@ -10,6 +10,12 @@
         <span v-else-if="result.model_profile_id" class="story-result__model-normal"> · 模型: {{ result.model_profile_id }}</span>
         <span v-if="result.credibility_note"> · 可信度: {{ result.credibility_note }}</span>
       </p>
+      <p v-if="result.effective_engine" class="story-result__meta">
+        请求模型：{{ result.requested_model_profile_id ?? '未指定（安全默认本地）' }}
+        · 实际引擎：{{ effectiveEngineLabel }}
+        · 外部模型调用：{{ result.external_model_call_performed ? '是' : '否' }}
+        <span v-if="result.generation_reason"> · 原因：{{ result.generation_reason }}</span>
+      </p>
       <GearsWebhookStatus v-if="showGearsWebhookStatus" :status="result.gears_webhook" />
       <GearsVideoStatus v-if="showGearsVideoStatus" :video="result.gears_video" />
     </header>
@@ -41,20 +47,27 @@
         <div v-if="result.material_sufficiency" class="story-result__sufficiency">
           <div class="story-result__sufficiency-head">
             <article>
-              <span>目标阶段</span>
+              <span>输入目标</span>
               <strong>{{ sufficiencyStageLabel(result.material_sufficiency.stage) }}</strong>
             </article>
             <article>
-              <span>可推进到</span>
+              <span>输入可推进</span>
               <strong>{{ result.material_sufficiency.active_stage ? sufficiencyStageLabel(result.material_sufficiency.active_stage) : '未记录' }}</strong>
             </article>
             <article>
-              <span>素材评分</span>
+              <span>输入素材</span>
               <strong>{{ result.material_sufficiency.score }}/100</strong>
             </article>
             <article>
-              <span>生成姿态</span>
+              <span>初始姿态</span>
               <strong>{{ generationPostureLabel(result.material_sufficiency.generation_posture) }}</strong>
+            </article>
+            <article v-if="result.production_material_readiness">
+              <span>生产素材</span>
+              <strong>
+                {{ productionMaterialStatusLabel(result.production_material_readiness.status) }}
+                · {{ result.production_material_readiness.score }}/100
+              </strong>
             </article>
           </div>
           <p v-if="result.material_sufficiency.needs_verification" class="story-result__sufficiency-note">
@@ -291,31 +304,51 @@
       </div>
     </section>
 
-    <!-- Quality report (new) -->
+    <!-- Story publication and production readiness are independent gates. -->
     <section v-if="result.quality_report" class="story-result__section">
-      <h3 class="story-result__section-title">故事质量校验</h3>
-      <div :class="['story-result__quality', result.quality_report.passed ? 'story-result__quality--pass' : 'story-result__quality--fail']">
+      <h3 class="story-result__section-title">故事发布与生产状态</h3>
+      <div :class="['story-result__quality', storyPublishable ? 'story-result__quality--pass' : 'story-result__quality--fail']">
         <div class="story-result__quality-summary">
           <article>
-            <span>状态</span>
-            <strong>{{ result.quality_report.passed ? '通过' : '需调整' }}</strong>
+            <span>故事发布</span>
+            <strong>{{ storyPublishable ? '可发布' : '需修订' }}</strong>
+          </article>
+          <article>
+            <span>生产交付</span>
+            <strong>{{ productionReadinessLabel }}</strong>
           </article>
           <article>
             <span>类型匹配度</span>
             <strong>{{ typeof result.quality_report.genre_score === 'number' ? `${result.quality_report.genre_score}/100` : '未记录' }}</strong>
           </article>
           <article>
-            <span>质量问题</span>
-            <strong>{{ result.quality_report.issues.length }}</strong>
-          </article>
-          <article>
-            <span>节拍问题</span>
-            <strong>{{ qualityBeatIssues.length }}</strong>
+            <span>故事 / 生产阻断</span>
+            <strong>{{ storyGateIssues.length }} / {{ productionGateIssues.length }}</strong>
           </article>
         </div>
-        <ul v-if="result.quality_report.issues.length > 0" class="story-result__quality-issues">
-          <li v-for="issue in result.quality_report.issues" :key="issue">{{ issue }}</li>
-        </ul>
+        <div v-if="qualityGateItems.length > 0" class="story-result__gate-grid">
+          <article
+            v-for="gate in qualityGateItems"
+            :key="gate.gate_id"
+            :class="['story-result__gate-card', `story-result__gate-card--${gate.status}`]"
+          >
+            <span>{{ qualityGateLabel(gate.gate_id) }}</span>
+            <strong>{{ qualityGateStatusLabel(gate.status) }}</strong>
+            <small>{{ gate.summary }}</small>
+          </article>
+        </div>
+        <div v-if="storyGateIssues.length > 0" class="story-result__quality-actions story-result__quality-actions--story">
+          <strong>故事发布阻断</strong>
+          <ul>
+            <li v-for="issue in storyGateIssues" :key="issue">{{ issue }}</li>
+          </ul>
+        </div>
+        <div v-if="productionGateIssues.length > 0" class="story-result__quality-actions story-result__quality-actions--production">
+          <strong>生产就绪缺口（不影响故事本身判定）</strong>
+          <ul>
+            <li v-for="issue in productionGateIssues" :key="issue">{{ issue }}</li>
+          </ul>
+        </div>
         <div v-if="result.quality_report.missing_required_elements?.length" class="story-result__quality-actions">
           <strong>缺少的类型要素</strong>
           <ul>
@@ -352,11 +385,25 @@
     </section>
 
     <section
-      v-if="result.quality_report?.outline_coverage_report || result.quality_report?.pattern_quality_report || result.quality_report?.gears_readiness_report || result.quality_report?.production_material_readiness_report || result.quality_report?.audience_text_report"
+      v-if="result.quality_report?.family_quality_report || result.quality_report?.outline_coverage_report || result.quality_report?.pattern_quality_report || result.quality_report?.gears_readiness_report || result.quality_report?.production_material_readiness_report || result.quality_report?.audience_text_report || result.quality_report?.human_review_alignment"
       class="story-result__section"
     >
       <h3 class="story-result__section-title">可修复质量报告</h3>
       <div class="story-result__report-grid">
+        <article v-if="result.quality_report.family_quality_report" class="story-result__report-card">
+          <span>片型家族</span>
+          <strong>{{ result.quality_report.family_quality_report.passed ? '通过' : '需修订' }}</strong>
+          <p>{{ result.quality_report.family_quality_report.family_label }}</p>
+          <ul v-if="result.quality_report.family_quality_report.blocking_check_ids.length > 0">
+            <li
+              v-for="check in result.quality_report.family_quality_report.checks.filter(item => item.status === 'failed').slice(0, 4)"
+              :key="check.check_id"
+            >
+              {{ check.label }}：{{ check.summary }}
+            </li>
+          </ul>
+        </article>
+
         <article v-if="result.quality_report.outline_coverage_report" class="story-result__report-card">
           <span>Outline Coverage</span>
           <strong>{{ result.quality_report.outline_coverage_report.coverage_score }}/100</strong>
@@ -381,6 +428,12 @@
               :key="signal.signal_id"
             >
               {{ signal.label }}：{{ signal.repair_hint }}
+              <small v-if="signal.evidence_scene_ids?.length">
+                证据场景：{{ signal.evidence_scene_ids.join('、') }}；置信度 {{ Math.round(signal.confidence * 100) }}%
+              </small>
+              <small v-else-if="signal.counter_evidence?.length">
+                {{ signal.counter_evidence[0] }}；置信度 {{ Math.round(signal.confidence * 100) }}%
+              </small>
             </li>
           </ul>
         </article>
@@ -443,6 +496,50 @@
             {{ action.label }}：{{ action.expected_effect }}
           </li>
         </ul>
+      </div>
+
+      <div v-if="result.quality_report.human_review_alignment" class="story-result__human-review">
+        <header>
+          <div>
+            <span>HUMAN REVIEW ALIGNMENT</span>
+            <strong>三角色真人评审表 · {{ result.quality_report.human_review_alignment.family_label }}</strong>
+          </div>
+          <b>待真人评审</b>
+        </header>
+        <p class="story-result__human-review-boundary">
+          {{ result.quality_report.human_review_alignment.credit_boundary }}
+        </p>
+        <div class="story-result__human-review-grid">
+          <article
+            v-for="section in result.quality_report.human_review_alignment.sections"
+            :key="section.role"
+          >
+            <h4>{{ section.role_label }}</h4>
+            <p>真人结论：未评审 · 真人信用：0</p>
+            <ul>
+              <li
+                v-for="criterion in section.criteria"
+                :key="criterion.criterion_id"
+                :class="`story-result__human-review-item--${criterion.machine_status}`"
+              >
+                <div>
+                  <strong>{{ criterion.dimension_label }}</strong>
+                  <span>权重 {{ criterion.weight }}%</span>
+                </div>
+                <small>{{ machineReviewStatusLabel(criterion.machine_status) }} · 真人分数 —</small>
+                <small v-if="criterion.machine_counter_evidence.length > 0">
+                  待核：{{ criterion.machine_counter_evidence[0] }}
+                </small>
+                <small v-else-if="criterion.machine_evidence.length > 0">
+                  机器证据：{{ criterion.machine_evidence[0] }}
+                </small>
+                <small v-if="criterion.evidence_scene_ids.length > 0">
+                  场景 {{ criterion.evidence_scene_ids.join('、') }}
+                </small>
+              </li>
+            </ul>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -675,6 +772,9 @@ import type {
   MaterialBlockingLevel,
   MaterialPurpose,
   MaterialSourceType,
+  StoryQualityGateId,
+  StoryQualityGateStatus,
+  StoryMachineReviewStatus,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
@@ -841,6 +941,12 @@ function productionMaterialStatusLabel(status: string) {
   return '待补素材'
 }
 
+function machineReviewStatusLabel(status: StoryMachineReviewStatus) {
+  if (status === 'supporting_evidence') return '机器证据可供核验'
+  if (status === 'attention_required') return '机器标记待重点核验'
+  return '机器未评估'
+}
+
 const videoTypeLabel = computed(() => {
   if (!props.result) return ''
   return VIDEO_TYPE_CONFIG[props.result.video_type]?.label ?? props.result.video_type
@@ -863,6 +969,12 @@ const generationModelClass = computed(() => {
   const mode = props.result?.generation_mode ?? 'local_only'
   if (mode === 'local_only') return 'story-result__model-neutral'
   return 'story-result__model-normal'
+})
+
+const effectiveEngineLabel = computed(() => {
+  if (props.result?.effective_engine === 'external_model') return '外部模型 adapter'
+  if (props.result?.effective_engine === 'local_fallback') return '本地回退引擎'
+  return '本地故事引擎'
 })
 
 const fullTextParagraphs = computed(() => {
@@ -916,6 +1028,56 @@ const materialGroups = computed(() => {
   ].filter(group => group.items.length > 0)
 })
 
+const qualityGates = computed(() => props.result?.quality_report?.quality_gates ?? null)
+
+const storyPublishable = computed(() => (
+  qualityGates.value?.story_publishable
+    ?? props.result?.quality_report?.passed
+    ?? false
+))
+
+const productionReadinessLabel = computed(() => {
+  if (!qualityGates.value) return '未评估'
+  return qualityGates.value.production_ready ? '可交付' : '未就绪'
+})
+
+const qualityGateItems = computed(() => {
+  const gates = qualityGates.value
+  if (!gates) return []
+  return [
+    gates.narrative_gate,
+    gates.factual_cultural_gate,
+    gates.outline_gate,
+    gates.audience_text_gate,
+    gates.production_material_gate,
+    gates.gears_contract_gate,
+    gates.asset_gate,
+    gates.external_provider_gate,
+  ]
+})
+
+const storyGateIssues = computed(() => {
+  const gates = qualityGates.value
+  if (!gates) return props.result?.quality_report?.issues ?? []
+  return uniqueQualityIssues([
+    gates.narrative_gate,
+    gates.factual_cultural_gate,
+    gates.outline_gate,
+    gates.audience_text_gate,
+  ].flatMap(gate => gate.passed ? [] : gate.issues.length > 0 ? gate.issues : [gate.summary]))
+})
+
+const productionGateIssues = computed(() => {
+  const gates = qualityGates.value
+  if (!gates || gates.production_ready) return []
+  return uniqueQualityIssues([
+    gates.production_material_gate,
+    gates.gears_contract_gate,
+    gates.asset_gate,
+    gates.external_provider_gate,
+  ].flatMap(gate => gate.passed ? [] : gate.issues.length > 0 ? gate.issues : [gate.summary]))
+})
+
 const qualityBeatIssues = computed(() => {
   const report = props.result?.quality_report
   const beats = props.result?.story_blueprint?.genre_beats ?? []
@@ -930,6 +1092,30 @@ const qualityBeatIssues = computed(() => {
     }
   })
 })
+
+function uniqueQualityIssues(items: string[]): string[] {
+  return items.filter((item, index, all) => item && all.indexOf(item) === index)
+}
+
+function qualityGateLabel(gateId: StoryQualityGateId): string {
+  const labels: Record<StoryQualityGateId, string> = {
+    narrative_gate: '叙事',
+    factual_cultural_gate: '事实文化',
+    outline_gate: '大纲',
+    audience_text_gate: '观众文本',
+    production_material_gate: '生产素材',
+    gears_contract_gate: 'GEARS 合同',
+    asset_gate: '真实资产',
+    external_provider_gate: '外部 Provider',
+  }
+  return labels[gateId]
+}
+
+function qualityGateStatusLabel(status: StoryQualityGateStatus): string {
+  if (status === 'passed') return '通过'
+  if (status === 'failed') return '阻断'
+  return '待评估'
+}
 
 const qualityNotesByScene = computed(() => {
   const map = new Map<number, string[]>()
@@ -1420,6 +1606,34 @@ function showCopyMessage(msg: string) {
   color: #2c3e50;
   font-size: 16px;
 }
+.story-result__gate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.story-result__gate-card {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid #d7dde2;
+  border-left-width: 4px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.72);
+}
+.story-result__gate-card--passed { border-left-color: #27ae60; }
+.story-result__gate-card--failed { border-left-color: #c0392b; }
+.story-result__gate-card--not_evaluated { border-left-color: #95a5a6; }
+.story-result__gate-card span,
+.story-result__gate-card small {
+  color: #65737e;
+  font-size: 12px;
+}
+.story-result__gate-card strong {
+  color: #2c3e50;
+  font-size: 14px;
+}
+.story-result__gate-card small { line-height: 1.35; }
 .story-result__quality-score {
   margin-top: 6px !important;
   color: #2c3e50;
@@ -1442,6 +1656,8 @@ function showCopyMessage(msg: string) {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+.story-result__quality-actions--story { color: #9f2f25; }
+.story-result__quality-actions--production { color: #8a5a00; }
 .story-result__quality-preview {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1488,6 +1704,106 @@ function showCopyMessage(msg: string) {
   font-size: 13px;
   line-height: 1.5;
 }
+.story-result__report-card li small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7780;
+  font-size: 12px;
+}
+.story-result__human-review {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #d6c6a5;
+  border-radius: 7px;
+  background: #fffdf7;
+}
+.story-result__human-review > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.story-result__human-review > header span {
+  display: block;
+  color: #8a6d3b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.story-result__human-review > header strong {
+  display: block;
+  margin-top: 3px;
+  color: #3f3423;
+  font-size: 17px;
+}
+.story-result__human-review > header b {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f4e4b8;
+  color: #76561c;
+  font-size: 12px;
+}
+.story-result__human-review-boundary {
+  margin: 10px 0 12px;
+  color: #725f3c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.story-result__human-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.story-result__human-review-grid > article {
+  padding: 10px;
+  border: 1px solid #e5ddcc;
+  border-radius: 6px;
+  background: #fff;
+}
+.story-result__human-review-grid h4 {
+  margin: 0;
+  color: #3d4b55;
+  font-size: 14px;
+}
+.story-result__human-review-grid article > p {
+  margin: 4px 0 8px;
+  color: #7b8790;
+  font-size: 12px;
+}
+.story-result__human-review-grid ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.story-result__human-review-grid li {
+  padding: 7px 8px;
+  border-left: 3px solid #95a5a6;
+  background: #f7f9fa;
+}
+.story-result__human-review-grid li.story-result__human-review-item--supporting_evidence { border-left-color: #27ae60; }
+.story-result__human-review-grid li.story-result__human-review-item--attention_required { border-left-color: #d68910; }
+.story-result__human-review-grid li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.story-result__human-review-grid li strong {
+  color: #34495e;
+  font-size: 12px;
+}
+.story-result__human-review-grid li span,
+.story-result__human-review-grid li small {
+  color: #71808a;
+  font-size: 11px;
+}
+.story-result__human-review-grid li small {
+  display: block;
+  margin-top: 3px;
+  line-height: 1.35;
+}
 .story-result__inline-scene-btn {
   border: 1px solid #d7dee5;
   border-radius: 4px;
@@ -1507,7 +1823,13 @@ function showCopyMessage(msg: string) {
   .story-result__quality-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .story-result__gate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .story-result__report-grid {
+    grid-template-columns: 1fr;
+  }
+  .story-result__human-review-grid {
     grid-template-columns: 1fr;
   }
 }

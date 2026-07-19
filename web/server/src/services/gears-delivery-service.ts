@@ -18,6 +18,7 @@ import type {
   StoryScene,
 } from '@shared/types.js';
 import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
+import { canonicalShotIdForUnit } from './production-shot-plan-service.js';
 
 const VALID_PANEL_COUNTS: PanelCount[] = [4, 6, 8, 9, 10, 12];
 
@@ -55,7 +56,9 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
 
   const fresh = buildGearsDeliveryPackage(story);
   const characterAssets = mergeCharacterAssets(current.character_assets, fresh.character_assets);
-  const sceneAssets = current.scene_assets?.length ? current.scene_assets : fresh.scene_assets;
+  const sceneAssets = current.scene_assets?.length && !hasPollutedSceneAssetMetadata(current.scene_assets)
+    ? current.scene_assets
+    : fresh.scene_assets;
   const units = mergeDeliveryUnits(current.units, fresh.units);
   const validationNotes = [
     ...validateDeliveryPackage(characterAssets, sceneAssets, units),
@@ -92,13 +95,14 @@ function mergeDeliveryUnits(
   freshUnits: GearsDeliveryUnit[],
 ): GearsDeliveryUnit[] {
   if (!currentUnits?.length) return freshUnits;
-  const freshById = new Map(freshUnits.map(unit => [unit.unit_id, unit]));
-  return currentUnits.map((unit) => {
-    const fresh = freshById.get(unit.unit_id);
-    if (!fresh) return unit;
+  const currentById = new Map(currentUnits.map(unit => [unit.unit_id, unit]));
+  return freshUnits.map((fresh) => {
+    const unit = currentById.get(fresh.unit_id);
+    if (!unit) return fresh;
     return {
       ...fresh,
-      ...unit,
+      // Identity, source text, duration and panel counts are canonical derived
+      // fields. Only explicitly editable workbench overlays survive a rebuild.
       visual_prompt: unit.visual_prompt ?? fresh.visual_prompt,
       camera_suggestion: unit.camera_suggestion ?? fresh.camera_suggestion,
       segment_prompt_hint: unit.segment_prompt_hint ?? fresh.segment_prompt_hint,
@@ -355,11 +359,10 @@ function buildSceneAssets(story: StoryGenerateResult): GearsSceneAsset[] {
     const rawDescriptionParts = relatedScenes.flatMap(scene => compactStrings([
       scene.location,
       scene.visual_prompt,
-      ...findKnowledgeSnippets(story, [
+      ...findKnowledgeSceneAssetSnippets(story, [
         name,
         scene.location,
         scene.title,
-        ...(scene.source_entries ?? []),
       ]),
       ...findSupplementSnippets(story, [
         name,
@@ -367,9 +370,6 @@ function buildSceneAssets(story: StoryGenerateResult): GearsSceneAsset[] {
         scene.title,
         ...(scene.characters ?? []),
       ]),
-      scene.factual_basis,
-      scene.cultural_note,
-      scene.plot,
     ]));
     const descriptionParts = filterSceneDescriptionParts(name, rawDescriptionParts);
     const supplementalSceneParts = compactStrings([
@@ -395,6 +395,13 @@ function compactStrings(values: Array<string | undefined>): string[] {
   return values
     .map(value => value?.trim())
     .filter((value): value is string => Boolean(value));
+}
+
+function hasPollutedSceneAssetMetadata(sceneAssets: GearsSceneAsset[]): boolean {
+  return sceneAssets.some(asset =>
+    /(?:关键词|核验)[:：]/.test(asset.description)
+    || /基于[^；\n]{1,120}中[^；\n]{1,80}相关内容/.test(asset.description)
+  );
 }
 
 function buildStoryContext(story: StoryGenerateResult): string {
@@ -462,6 +469,30 @@ function findKnowledgeSnippets(story: StoryGenerateResult, needles: Array<string
     })
     .map(entry => entry.summary || entry.match_reason || entry.role_in_story)
     .filter(Boolean);
+}
+
+function findKnowledgeSceneAssetSnippets(
+  story: StoryGenerateResult,
+  needles: Array<string | undefined>,
+): string[] {
+  const normalizedNeedles = needles
+    .map(needle => normalizeSceneAssetMatchText(needle ?? ''))
+    .filter(Boolean);
+  if (normalizedNeedles.length === 0) return [];
+
+  return knowledgeEntries(story)
+    .flatMap(entry => entry.asset_split?.scenes ?? [])
+    .filter(sceneAsset => {
+      const normalizedAsset = normalizeSceneAssetMatchText(sceneAsset);
+      return normalizedNeedles.some(needle => normalizedAsset.includes(needle) || needle.includes(normalizedAsset));
+    });
+}
+
+function normalizeSceneAssetMatchText(value: string): string {
+  return stripMarkdown(value)
+    .replace(/官署|衙门|衙/g, '')
+    .replace(/[，,。；;：:\s]/g, '')
+    .trim();
 }
 
 function supplementEntries(story: StoryGenerateResult): string[] {
@@ -555,13 +586,13 @@ function isLikelyNonCharacterName(name: string, story: StoryGenerateResult): boo
 }
 
 function normalizeSceneName(name: string, scene: StoryScene): string {
-  const text = stripMarkdown(`${name} ${scene.title ?? ''} ${scene.plot ?? ''} ${scene.visual_prompt ?? ''}`);
-  if (text.includes('月岩') || text.includes('天然溶洞') || text.includes('溶洞')) return '月岩洞';
-  if (text.includes('濂溪')) return '濂溪畔';
-  if (text.includes('南安军衙')) return '南安军衙';
-  const colonMatch = stripMarkdown(name).match(/^[^：:]{2,24}[：:](.+)$/);
+  const explicitName = stripMarkdown(name);
+  if (explicitName.includes('南安军衙') || explicitName.includes('南安军官署')) return '南安军衙';
+  if (explicitName.includes('月岩') || explicitName.includes('天然溶洞') || explicitName.includes('溶洞')) return '月岩洞';
+  if (explicitName.includes('濂溪')) return '濂溪畔';
+  const colonMatch = explicitName.match(/^[^：:]{2,24}[：:](.+)$/);
   if (colonMatch?.[1]?.trim()) return normalizeAssetName(colonMatch[1].trim()).substring(0, 80);
-  const withoutPrefix = stripMarkdown(name)
+  const withoutPrefix = explicitName
     .replace(/^[^：:]{2,24}[：:]/, '')
     .replace(/^(道县有著名|著名|天然)/, '')
     .replace(/["“”]/g, '')
@@ -629,7 +660,7 @@ function buildSceneDescription(sceneName: string, parts: string[]): string {
       ...extraParts,
     ], 3).join('；');
   }
-  return uniqueShortParts(parts, 4).join('；');
+  return uniqueShortParts(parts, 3).join('；');
 }
 
 function inferEnvironmentProps(sceneName: string, text: string): string | undefined {
@@ -704,6 +735,7 @@ function buildDeliveryUnits(
       const unitDuration = chooseSuggestedDuration(targetDuration, chunk);
       units.push({
         unit_id: chunks.length > 1 ? `${scene.scene_id}.${index + 1}` : `${scene.scene_id}`,
+        shot_id: canonicalShotIdForUnit(chunks.length > 1 ? `${scene.scene_id}.${index + 1}` : `${scene.scene_id}`),
         source_scene_id: scene.scene_id,
         scene_name: normalizeSceneName(scene.location || scene.title || `场景${scene.scene_id}`, scene),
         character_names: (scene.characters ?? [])

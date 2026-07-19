@@ -51,6 +51,54 @@ describe('china_culture story source service', () => {
     }
   });
 
+  it('derives a concise dramatic title instead of turning the opening sentence into a character name', async () => {
+    const result = await resolveChinaCultureStorySource({
+      original_user_query: '北宋南安，一名年轻书吏被迫在冤案文书上落笔；周敦颐拒绝签押，以“杀人以媚人，吾不为也”守住底线。请写成节奏紧凑的文化故事。',
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      primaryEntryName: '周敦颐拒绝签押——用户原创故事种子',
+      entry: {
+        name: '周敦颐拒绝签押——用户原创故事种子',
+      },
+    });
+  });
+
+  it('accepts a frontend theme as unverified project material for institutional factual reconstruction', async () => {
+    const result = await resolveChinaCultureStorySource({
+      outline: '标题：周敦颐拒绝签押。北宋南安的刑狱压力下，周敦颐发现案卷疑点并拒绝签押。',
+      creation_use_case: 'institutional_promo',
+      truth_mode: 'factual_reconstruction',
+      video_type: 'historical_drama',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      primaryEntryName: '周敦颐拒绝签押——用户项目素材',
+      entry: {
+        type: '用户素材',
+        credibility: '用户提供',
+      },
+    });
+    if (result.ok) {
+      expect(result.entry.verificationMethod).toContain('必须核验');
+      expect(result.entry.story).not.toContain('标题：');
+      expect(result.entry.keywords).not.toContain('标题');
+      expect(result.entry.keywords.slice(0, 5)).toEqual([
+        '周敦颐拒绝签押',
+        '周敦颐',
+        '拒绝签押',
+        '北宋',
+        '南安',
+      ]);
+      expect(result.entry.keywords).not.toContain('宋南');
+      expect(result.entry.keywords).not.toContain('安的');
+    }
+  });
+
   it('builds a material-pack EntryDetail with text keywords, uncertainty and confidence semantics intact', async () => {
     const result = await resolveChinaCultureStorySource({ material_pack: materialPack() });
 

@@ -383,7 +383,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_writeback_needs_revision_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(28);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(27);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -461,7 +461,8 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=28'),
+      expect.stringContaining('tool_count=27'),
+      expect.stringContaining('kb_story_agent_generate'),
       expect.stringContaining('kb_get_story_agent_backlog_handoff'),
       expect.stringContaining('kb_get_production_material_pack_health'),
       expect.stringContaining('kb_get_domain_pack_production_health'),

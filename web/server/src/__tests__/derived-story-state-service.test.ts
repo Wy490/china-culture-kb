@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import type { StoryGenerateResult } from '@shared/types.js';
+import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
+
+function makeStoryWithStaleLegacySegment(): StoryGenerateResult {
+  return {
+    storyId: '20260719-derived-state-legacy-segment',
+    title: '拒签后的选择',
+    generation_type: 'character_story',
+    video_type: 'character_story',
+    presentation_style: 'cinematic',
+    source_entry: '测试条目',
+    logline: '少年面对催签，公开证据并承担后果。',
+    theme: '选择与担当',
+    full_text: '少年面对催签，摊开案卷指出疑点，拒绝落笔并决定承担后果。',
+    scene_breakdown: [{
+      scene_id: 1,
+      title: '堂前拒签',
+      duration_sec: 20,
+      location: '军衙堂前',
+      time_of_day: '白天',
+      dramatic_function: '高潮选择',
+      plot: '少年面对催签，摊开案卷指出疑点，拒绝落笔并决定承担后果。',
+      key_action: '摊开案卷公开疑点',
+      conflict: '服从上官或坚持重查',
+      dialogue_or_narration: '少年：此案有疑，我不能签。',
+      characters: ['少年', '上官'],
+      visual_prompt: '军衙堂前，少年摊开案卷，上官逼近，白日侧光',
+      camera_suggestion: '中近景对切后推进案卷特写',
+      cultural_note: '服饰与衙署陈设保持时代一致。',
+    }],
+    gears_segments: [{
+      segment_id: 7,
+      source_scene_id: 1,
+      duration_sec: 20,
+      panel_count: 6,
+      script_text: '旧版本：少年已经签下文书。',
+      purpose: '旧用途',
+      visual_focus: ['旧场景'],
+      cultural_constraints: [],
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      segment_prompt_hint: '保留人工镜头节奏覆盖层。',
+    }],
+    gears_segments_url: '/api/stories/20260719-derived-state-legacy-segment/gears-segments',
+    cultural_constraints: [],
+    credibility_note: '测试故事。',
+    story_structure: 'single_event_drama',
+  };
+}
+
+describe('derived-story-state-service', () => {
+  it('rebuilds stale legacy GEARS segment text while preserving its stable id and prompt overlay', async () => {
+    const rebuilt = await rebuildDerivedStoryState(makeStoryWithStaleLegacySegment(), {
+      revalidateDomainSafety: false,
+    });
+
+    expect(rebuilt.gears_segments).toHaveLength(1);
+    expect(rebuilt.gears_segments[0].segment_id).toBe(7);
+    expect(rebuilt.gears_segments[0].script_text).toContain('摊开案卷指出疑点');
+    expect(rebuilt.gears_segments[0].script_text).not.toContain('已经签下文书');
+    expect(rebuilt.gears_segments[0].purpose).toBe('高潮选择');
+    expect(rebuilt.gears_segments[0].segment_prompt_hint).toContain('保留人工镜头节奏覆盖层');
+    expect(rebuilt.gears_delivery?.units.map(unit => unit.script_text).join('\n')).toContain('摊开案卷指出疑点');
+    expect(rebuilt.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
+  });
+});

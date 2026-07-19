@@ -350,6 +350,9 @@ export interface GenerateStoryResult {
   storyText: string;
   creation_contract?: CreationContract;
   material_sufficiency?: MaterialSufficiencyReport;
+  legacy_writer: true;
+  canonical_tool: 'kb_story_agent_generate';
+  counts_as_canonical_generation: false;
 }
 
 export interface GenerateScriptResult {
@@ -361,6 +364,9 @@ export interface GenerateScriptResult {
   targetDuration: string;
   creation_contract?: CreationContract;
   material_sufficiency?: MaterialSufficiencyReport;
+  legacy_writer: true;
+  canonical_tool: 'kb_story_agent_generate';
+  counts_as_canonical_generation: false;
 }
 
 export interface QueryIndexResult {

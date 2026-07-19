@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { resolve } from 'path';
-import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import supertest from 'supertest';
@@ -51,6 +51,10 @@ const ORIGINAL_SEEDANCE_PROVIDER_CALLBACK_BASE_URL = process.env.SEEDANCE_PROVID
 const ORIGINAL_SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_SUBMIT_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_REQUEST_MODE = process.env.SEEDANCE_PROVIDER_POLL_REQUEST_MODE;
 const ORIGINAL_SEEDANCE_PROVIDER_POLL_HTTP_METHOD = process.env.SEEDANCE_PROVIDER_POLL_HTTP_METHOD;
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
 const DEFAULT_PROJECTS_ROOT = resolve(storyDefaultGeneratedRoot(), 'projects');
 let testWorkspaceRoot = '';
 let defaultProjectDirsBefore = new Set<string>();
@@ -288,6 +292,28 @@ app.use('/api/story-outline', outlineRouter);
 app.use(errorHandler);
 
 const request = supertest(app);
+
+describe('GET /api/system/story-generation-capabilities', () => {
+  it('returns the non-executing model availability and engine boundary contract', async () => {
+    const res = await request.get('/api/system/story-generation-capabilities');
+
+    expect(res.status).toBe(200);
+    expectSuccess(res.body);
+    expect(res.body.data).toMatchObject({
+      schema_version: 'story-generation-capabilities/v1',
+      request_contract: {
+        schema: 'StoryGenerateRequestSchema',
+        unknown_model_profile_rejected: true,
+        omitted_model_profile_uses_local_engine: true,
+      },
+      real_external_generation_performed: false,
+    });
+    expect(res.body.data.model_profiles).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'local_story_engine', available: true }),
+      expect.objectContaining({ id: 'claude_sonnet' }),
+    ]));
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Helper: check unified response envelope
@@ -631,6 +657,13 @@ describe('System API', () => {
         },
       });
       expect(liveRunRes.body.data.latest_portfolio_automation_run.targets[0].project_id).toBe(enriched.project_id);
+      const automationLedgerPath = resolve(
+        process.env.WEB_GENERATED_ROOT!,
+        'system',
+        'production-readiness-portfolio-automation-ledger.json',
+      );
+      expect((await stat(resolve(automationLedgerPath, '..'))).mode & 0o777).toBe(0o700);
+      expect((await stat(automationLedgerPath)).mode & 0o777).toBe(0o600);
 
       const afterRunRes = await request.get('/api/system/production-readiness-portfolio?limit=10');
       expect(afterRunRes.status).toBe(200);
@@ -1673,6 +1706,37 @@ describe('System API', () => {
       expectSuccess(res.body);
       expect(res.body.data).toMatchObject({
         schema_version: 'story-agent-generated-health/v1',
+        generation_activity: {
+          schema_version: 'story-agent-generation-activity/v1',
+          diagnosis: expect.any(String),
+          latest_persisted_activity_kind: expect.any(String),
+          summary: expect.objectContaining({
+            story_count: expect.any(Number),
+            project_count: expect.any(Number),
+            version_count: expect.any(Number),
+            report_count: expect.any(Number),
+            project_revision_after_latest_story_count: expect.any(Number),
+            report_after_latest_story_count: expect.any(Number),
+            pending_transaction_count: expect.any(Number),
+            legacy_story_count: expect.any(Number),
+            legacy_project_count: expect.any(Number),
+          }),
+          signals: {
+            durable_generation_attempt_history_available: false,
+            generation_attempt_audit_ready_for_next_request: true,
+            no_generation_request_confirmed: false,
+            generation_pipeline_failure_confirmed: false,
+            generation_attempt_incomplete_detected: false,
+            storage_root_switch_detected: expect.any(Boolean),
+            report_only_activity_detected: expect.any(Boolean),
+            project_revision_only_activity_detected: expect.any(Boolean),
+          },
+          safety: {
+            read_only: true,
+            generated_files_modified: false,
+            model_invoked: false,
+          },
+        },
         summary: expect.objectContaining({
           scanned_story_project_count: expect.any(Number),
           scanned_series_project_count: expect.any(Number),
@@ -1716,6 +1780,10 @@ describe('System API', () => {
       expect(res.body.data.summary.series_seedance_test_fixture_failure_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_test_fixture_failure_item_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_missing_final_delivery_manifest_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.items[0]).toMatchObject({
+        project_id: 'health-manifest-gap-series',
+        final_delivery_manifest_missing: true,
+      });
       expect(res.body.data.items).toEqual(expect.arrayContaining([
         expect.objectContaining({
           scope: 'story_project',
@@ -1763,6 +1831,21 @@ describe('System API', () => {
         }),
       ]));
       expect(res.body.data.markdown).toContain('# Story Agent Generated Health');
+      expect(res.body.data.markdown).toContain('## Generation Activity');
+      expect(res.body.data.markdown).toContain('durable_attempt_history: false');
+      expect(res.body.data.markdown).toContain('attempt_audit_operator_actions: no_action_required');
+      expect(res.body.data.markdown).toContain('attempt_audit_lock_timeout_ms: 5000');
+      expect(res.body.data.markdown).toContain('attempt_audit_lock_retry_ms: 10');
+      expect(res.body.data.markdown).toContain('attempt_audit_lock_stale_ms: 30000');
+      expect(res.body.data.markdown).toContain('attempt_audit_configuration_valid: true');
+      expect(res.body.data.markdown).toContain('attempt_audit_configuration_warnings: none');
+      expect(res.body.data.markdown).toContain('attempt_audit_permission_policy: owner_only');
+      expect(res.body.data.markdown).toContain('attempt_audit_permission_policy_satisfied: true');
+      expect(res.body.data.markdown).toContain('attempt_audit_event_file_sync_required: true');
+      expect(res.body.data.markdown).toContain('attempt_audit_no_follow_open_required: true');
+      expect(res.body.data.markdown).toContain('attempt_audit_directory_entry_sync_guaranteed: true');
+      expect(res.body.data.markdown).toContain('attempt_audit_automatic_repair_allowed: false');
+      expect(res.body.data.markdown).toContain('attempt_audit_destructive_action_performed: false');
       expect(res.body.data.markdown).toContain('series_governance_attention');
       expect(res.body.data.markdown).toContain('series_relink_candidates');
       expect(res.body.data.markdown).toContain('series_soft_archive_excluded');
@@ -1821,6 +1904,7 @@ describe('System API', () => {
           series_archive_or_rebuild_candidate_count: expect.any(Number),
           series_planned_only_count: expect.any(Number),
           series_contract_repair_candidate_count: expect.any(Number),
+          series_final_delivery_manifest_review_candidate_count: expect.any(Number),
           story_ref_repair_candidate_count: expect.any(Number),
           ready_gears_signoff_candidate_count: expect.any(Number),
         }),
@@ -1832,8 +1916,21 @@ describe('System API', () => {
       expect(governanceRes.body.data.summary.series_archive_or_rebuild_candidate_count).toBeGreaterThanOrEqual(1);
       expect(governanceRes.body.data.summary.series_planned_only_count).toBeGreaterThanOrEqual(1);
       expect(governanceRes.body.data.summary.series_contract_repair_candidate_count).toBeGreaterThanOrEqual(1);
+      expect(governanceRes.body.data.summary.series_final_delivery_manifest_review_candidate_count).toBeGreaterThanOrEqual(1);
       expect(governanceRes.body.data.summary.story_ref_repair_candidate_count).toBeGreaterThanOrEqual(1);
       expect(governanceRes.body.data.actions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          action_key: 'review_final_delivery_manifest_gaps',
+          runner: 'operator',
+          can_auto_apply: false,
+          sample_targets: expect.arrayContaining([
+            expect.objectContaining({
+              project_id: 'health-manifest-gap-series',
+              final_delivery_manifest_missing: true,
+              final_delivery_dry_run: true,
+            }),
+          ]),
+        }),
         expect.objectContaining({
           action_key: 'restore_or_relink_series_story_refs',
           can_auto_apply: false,
@@ -1902,6 +1999,242 @@ describe('System API', () => {
       });
       expect(governanceRunRes.body.data.markdown).toContain('Story Agent Generated Governance Run');
 
+      const manifestQueueRes = await request
+        .post('/api/system/story-agent-generated-governance-plan/run')
+        .send({
+          dry_run: true,
+          action_keys: ['review_final_delivery_manifest_gaps'],
+          project_ids: ['health-manifest-gap-series'],
+          max_targets: 1,
+        });
+      expect(manifestQueueRes.status).toBe(200);
+      expectSuccess(manifestQueueRes.body);
+      expect(manifestQueueRes.body.data).toMatchObject({
+        dry_run: true,
+        selected_target_count: 1,
+        manifest: {
+          dry_run: true,
+          items: [expect.objectContaining({
+            action_key: 'review_final_delivery_manifest_gaps',
+            project_id: 'health-manifest-gap-series',
+            status: 'planned',
+            expected_file_changes: [],
+            requires_operator_review: true,
+            operator_disposition_status: 'awaiting_operator_decision',
+            allowed_operator_dispositions: [
+              'preserve_fixture_exclude_from_publishable_delivery',
+              'reexport_after_authorized_dependencies',
+            ],
+            preflight_checks: expect.arrayContaining([
+              'verify_authorized_media_inputs',
+              'verify_cut_subtitle_audio_title_card_dependencies',
+              'verify_output_and_manifest_paths_are_project_scoped',
+            ]),
+            publishable_delivery_credit_granted: false,
+            preflight_api: {
+              method: 'POST',
+              path: '/api/system/story-agent-final-delivery-manifest-preflight',
+              request_template: {
+                series_project_id: 'health-manifest-gap-series',
+                disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+                authorized_media_inputs_attested: false,
+              },
+            },
+          })],
+        },
+      });
+      expect(manifestQueueRes.body.data.markdown).toContain('awaiting_operator_decision');
+
+      const preservePreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({
+          series_project_id: 'health-manifest-gap-series',
+          disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+        });
+      expect(preservePreflightRes.status).toBe(200);
+      expectSuccess(preservePreflightRes.body);
+      expect(preservePreflightRes.body.data).toMatchObject({
+        schema_version: 'story-agent-final-delivery-manifest-preflight/v1',
+        series_project_id: 'health-manifest-gap-series',
+        disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+        status: 'ready',
+        eligible_for_selected_disposition: true,
+        operator_review_required: true,
+        publishable_delivery_credit_granted: false,
+        generated_files_modified: false,
+        final_assemble_invoked: false,
+        manifest_written: false,
+        project_json_written: false,
+      });
+
+      const reexportPreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({
+          series_project_id: 'health-manifest-gap-series',
+          disposition: 'reexport_after_authorized_dependencies',
+          authorized_media_inputs_attested: true,
+        });
+      expect(reexportPreflightRes.status).toBe(200);
+      expectSuccess(reexportPreflightRes.body);
+      expect(reexportPreflightRes.body.data).toMatchObject({
+        status: 'blocked',
+        eligible_for_selected_disposition: false,
+        publishable_delivery_credit_granted: false,
+        generated_files_modified: false,
+        checks: expect.arrayContaining([
+          expect.objectContaining({ key: 'project_scoped_paths', status: 'failed' }),
+          expect.objectContaining({ key: 'audio_mix_output', status: 'failed' }),
+          expect.objectContaining({ key: 'title_card_outputs', status: 'failed' }),
+        ]),
+      });
+      expect(reexportPreflightRes.body.data.missing_dependencies.length).toBeGreaterThan(0);
+
+      const unknownPreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({
+          series_project_id: 'unknown-series',
+          disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+        });
+      expect(unknownPreflightRes.status).toBe(200);
+      expectSuccess(unknownPreflightRes.body);
+      expect(unknownPreflightRes.body.data).toMatchObject({
+        status: 'blocked',
+        eligible_for_selected_disposition: false,
+        checks: expect.arrayContaining([
+          expect.objectContaining({ key: 'target_exists', status: 'failed' }),
+        ]),
+      });
+
+      const nonGapPreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({
+          series_project_id: 'health-relink-series',
+          disposition: 'preserve_fixture_exclude_from_publishable_delivery',
+        });
+      expect(nonGapPreflightRes.status).toBe(200);
+      expectSuccess(nonGapPreflightRes.body);
+      expect(nonGapPreflightRes.body.data).toMatchObject({
+        status: 'blocked',
+        eligible_for_selected_disposition: false,
+        checks: expect.arrayContaining([
+          expect.objectContaining({ key: 'target_exists', status: 'passed' }),
+          expect.objectContaining({ key: 'manifest_gap_confirmed', status: 'failed' }),
+        ]),
+      });
+
+      const readyPreflightProjectId = 'health-preflight-ready-series';
+      const readyPreflightSeriesDir = resolve(
+        generatedRoot,
+        'ai-comic-series-projects',
+        readyPreflightProjectId,
+      );
+      const readyPreflightPaths = {
+        cut: `cuts/${readyPreflightProjectId}/cut.mp4`,
+        subtitle: `cuts/${readyPreflightProjectId}/subtitled.mp4`,
+        srt: `subtitles/${readyPreflightProjectId}/subtitles.srt`,
+        audio: `cuts/${readyPreflightProjectId}/audio-mix.mp4`,
+        title: `title-cards/${readyPreflightProjectId}/opening.mp4`,
+        final: `delivery/${readyPreflightProjectId}/final.mp4`,
+      };
+      await mkdir(readyPreflightSeriesDir, { recursive: true });
+      for (const generatedPath of [
+        readyPreflightPaths.cut,
+        readyPreflightPaths.subtitle,
+        readyPreflightPaths.srt,
+        readyPreflightPaths.audio,
+        readyPreflightPaths.title,
+      ]) {
+        const absolutePath = resolve(generatedRoot, generatedPath);
+        await mkdir(resolve(absolutePath, '..'), { recursive: true });
+        await writeFile(absolutePath, 'verified fixture');
+      }
+      await writeFile(resolve(readyPreflightSeriesDir, 'project.json'), JSON.stringify({
+        project: { series_project_id: readyPreflightProjectId, title: 'Preflight Ready Series' },
+        seedance_cut_assembly: {
+          status: 'ready',
+          dry_run: false,
+          output_path: readyPreflightPaths.cut,
+          missing_shot_count: 0,
+        },
+        seedance_subtitle_render: {
+          status: 'ready',
+          dry_run: false,
+          output_path: readyPreflightPaths.subtitle,
+          srt_path: readyPreflightPaths.srt,
+          cue_count: 1,
+        },
+        seedance_audio_mix: {
+          status: 'ready',
+          dry_run: false,
+          output_path: readyPreflightPaths.audio,
+          missing_audio_count: 0,
+        },
+        seedance_title_card_render: {
+          status: 'ready',
+          dry_run: false,
+          output_paths: [readyPreflightPaths.title],
+          card_count: 1,
+          rendered_count: 1,
+        },
+        seedance_final_delivery: {
+          status: 'planned',
+          dry_run: true,
+          output_path: readyPreflightPaths.final,
+        },
+      }));
+      const readyReexportPreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({
+          series_project_id: readyPreflightProjectId,
+          disposition: 'reexport_after_authorized_dependencies',
+          authorized_media_inputs_attested: true,
+        });
+      expect(readyReexportPreflightRes.status).toBe(200);
+      expectSuccess(readyReexportPreflightRes.body);
+      expect(readyReexportPreflightRes.body.data).toMatchObject({
+        status: 'ready',
+        eligible_for_selected_disposition: true,
+        missing_dependencies: [],
+        unsafe_paths: [],
+        publishable_delivery_credit_granted: false,
+        generated_files_modified: false,
+        final_assemble_invoked: false,
+      });
+      expect(readyReexportPreflightRes.body.data.checks.every(
+        (check: { status: string }) => check.status === 'passed',
+      )).toBe(true);
+
+      const missingDispositionPreflightRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-preflight')
+        .send({ series_project_id: 'health-manifest-gap-series' });
+      expect(missingDispositionPreflightRes.status).toBe(400);
+
+      const blockedManifestQueueRes = await request
+        .post('/api/system/story-agent-generated-governance-plan/run')
+        .send({
+          dry_run: false,
+          action_keys: ['review_final_delivery_manifest_gaps'],
+          project_ids: ['health-manifest-gap-series'],
+          max_targets: 1,
+        });
+      expect(blockedManifestQueueRes.status).toBe(200);
+      expectSuccess(blockedManifestQueueRes.body);
+      expect(blockedManifestQueueRes.body.data).toMatchObject({
+        status: 'blocked',
+        dry_run: false,
+        planned_target_count: 0,
+        blocked_target_count: 1,
+        manifest: {
+          items: [expect.objectContaining({
+            project_id: 'health-manifest-gap-series',
+            status: 'blocked',
+            expected_file_changes: [],
+            operator_disposition_status: 'awaiting_operator_decision',
+            publishable_delivery_credit_granted: false,
+          })],
+        },
+      });
+
       const blockedRunRes = await request
         .post('/api/system/story-agent-generated-governance-plan/run')
         .send({
@@ -1920,6 +2253,11 @@ describe('System API', () => {
       await rm(plannedSeriesDir, { recursive: true, force: true });
       await rm(gapSeriesDir, { recursive: true, force: true });
       await rm(relinkSeriesDir, { recursive: true, force: true });
+      await rm(manifestGapSeriesDir, { recursive: true, force: true });
+      await rm(readyPreflightSeriesDir, { recursive: true, force: true });
+      await rm(resolve(generatedRoot, 'cuts', readyPreflightProjectId), { recursive: true, force: true });
+      await rm(resolve(generatedRoot, 'subtitles', readyPreflightProjectId), { recursive: true, force: true });
+      await rm(resolve(generatedRoot, 'title-cards', readyPreflightProjectId), { recursive: true, force: true });
       await rm(archiveSeriesDir, { recursive: true, force: true });
       await rm(resolve(storyFileDir, '20260622-story-health-series-1.json'), { force: true });
     });
@@ -2248,7 +2586,8 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=28'),
+        expect.stringContaining('tool_count=27'),
+        expect.stringContaining('kb_story_agent_generate'),
         expect.stringContaining('kb_get_story_agent_backlog_handoff'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
         expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
@@ -2696,6 +3035,7 @@ describe('System API', () => {
         });
         expect(res.body.data.supported_job_types).toEqual(expect.arrayContaining([
           'storyboard_image',
+          'prop_image',
           'seedance_video',
           'final_assemble',
         ]));
@@ -2788,6 +3128,15 @@ describe('System API', () => {
           schema_version: 'gears-execution-worker-capabilities/v1',
           required_before_submit_and_poll: true,
         },
+        portability: {
+          backward_compatible_capability_schema: 'gears-execution-worker-capabilities/v1',
+          provider_asset_input_schema: 'gears-provider-asset-input/v1',
+          provider_asset_handoff_attestation_field: 'provider_asset_handoff_supported',
+          provider_asset_handoff_required_when_inputs_present: true,
+          missing_handoff_attestation_behavior: 'fail_closed_before_submit',
+          persisted_handoff_audit_schema: 'gears-provider-asset-handoff-audit/v1',
+          signed_url_query_persisted: false,
+        },
         submit: {
           method: 'POST',
           path: '/gears/jobs',
@@ -2820,6 +3169,9 @@ describe('System API', () => {
         'payload.units[].previous_provider_job_id',
         'payload.units[].last_video_url',
         'payload.units[].review_issues',
+        'payload.units[].provider_asset_inputs[]',
+        'payload.units[].provider_asset_inputs[].content_sha256',
+        'payload.units[].provider_asset_inputs[].transport',
       ]));
       expect(res.body.data.submit.accepted_response_shapes).toEqual(expect.arrayContaining([
         '{ data: { acceptedUnits: [...], rejectedUnits: [...] } }',
@@ -2858,6 +3210,8 @@ describe('System API', () => {
         'external_id | externalId',
         'custom_id | customId',
         'production_id | productionId',
+        'actual_cost_amount | actualCostAmount | cost_amount | costAmount',
+        'cost_currency | costCurrency | currency',
         'idempotency_key | idempotencyKey',
       ]));
       expect(res.body.data.callback.accepted_artifact_fields).toEqual(expect.arrayContaining([
@@ -2869,7 +3223,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.callback.idempotency_fields).toEqual(expect.arrayContaining([
         'event_id | eventId | callback_id | callbackId',
-        'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/message are preserved)',
+        'idempotency_key | idempotencyKey (job match key; lifecycle callbacks with changed status/progress/cost/message are preserved)',
       ]));
       expect(res.body.data.callback.max_batch_items).toBe(GEARS_CALLBACK_BATCH_ITEM_LIMIT);
       expect(res.body.data.callback.accepted_time_fields).toEqual(expect.arrayContaining([
@@ -2883,6 +3237,9 @@ describe('System API', () => {
         'gears_job_ledger.items[].last_poll_error',
         'gears_job_ledger.items[].last_poll_failure_category',
         'gears_job_ledger.items[].completed_at',
+        'gears_job_ledger.items[].execution_cost.actual_cost_amount',
+        'gears_job_ledger.items[].execution_cost.authorization_total_actual_cost_amount',
+        'gears_job_ledger.items[].execution_cost.boundary_status',
         'gears_job_ledger.items[].callback_events[].event_id_source',
         'gears_job_ledger.items[].callback_events[].provider_event_at',
         'gears_job_ledger.items[].callback_events[].previous_status',
@@ -2911,6 +3268,8 @@ describe('System API', () => {
         expect.objectContaining({
           externalId: 'shot-1',
           idempotencyKey: 'seedance_video:shot-1',
+          actualCostAmount: 8.5,
+          currency: 'CNY',
         }),
         expect.objectContaining({
           jobType: 'final_assemble',
@@ -6033,7 +6392,18 @@ describe('System API', () => {
 
         const res = await request
           .post('/api/system/gears-execution-live-smoke-run')
-          .send({ execute: true, poll_after_submit: true, note: 'api live smoke' });
+          .send({
+            execute: true,
+            poll_after_submit: true,
+            external_call_authorization: {
+              authorized: true,
+              authorization_reference: 'test-approval://gears-live-smoke-001',
+              max_cost_amount: 5,
+              cost_currency: 'CNY',
+              data_transfer_acknowledged: true,
+            },
+            note: 'api live smoke',
+          });
         expect(res.status).toBe(200);
         expectSuccess(res.body);
         expect(res.body.data).toMatchObject({
@@ -6045,6 +6415,12 @@ describe('System API', () => {
           accepted_count: 1,
           rejected_count: 1,
           failed_count: 0,
+          external_call_authorization: {
+            authorization_reference: 'test-approval://gears-live-smoke-001',
+            max_cost_amount: 5,
+            cost_currency: 'CNY',
+            data_transfer_acknowledged: true,
+          },
         });
         expect(res.body.data.steps).toEqual(expect.arrayContaining([
           expect.objectContaining({
@@ -6065,6 +6441,8 @@ describe('System API', () => {
           }),
         ]));
         expect(res.body.data.markdown).toContain('gears-live-smoke-accepted-001');
+        expect(res.body.data.markdown).toContain('test-approval://gears-live-smoke-001');
+        expect(res.body.data.markdown).toContain('5 CNY');
         expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-api-token-123');
         expect(JSON.stringify(res.body.data)).not.toContain('private-live-smoke-callback-token-456');
         expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -6088,6 +6466,18 @@ describe('System API', () => {
       expect(res.status).toBe(400);
       expect(res.body.ok).toBe(false);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('requires explicit cost-bounded authorization before executing live smoke', async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      const res = await request
+        .post('/api/system/gears-execution-live-smoke-run')
+        .send({ execute: true, poll_after_submit: true });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+      expect(JSON.stringify(res.body)).toContain('external_call_authorization');
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 
@@ -7231,7 +7621,7 @@ describe('Projects API', () => {
         .field('modality', uploadAsset.modality)
         .field('role', uploadAsset.role)
         .field('reference_slot', uploadAsset.reference_slot ?? '')
-        .attach('file', Buffer.from('api-seedance-upload-binary'), {
+        .attach('file', ONE_PIXEL_PNG, {
           filename: 'api-seedance-upload.png',
           contentType: 'image/png',
         });
@@ -7244,12 +7634,49 @@ describe('Projects API', () => {
         mime_type: 'image/png',
         provider: 'local_upload',
         upload_status: 'uploaded',
+        content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
         history: [expect.objectContaining({
           event_type: 'file_upload',
           original_filename: 'api-seedance-upload.png',
         })],
       });
-      expect(uploadRes.body.data.local_path).toContain(`projects/${enriched.project_id}/seedance-assets/uploads/`);
+      expect(uploadRes.body.data.local_path).toContain(`projects/${enriched.project_id}/media/originals/`);
+      expect(uploadRes.body.data.preview_url).toContain('/production-board/media-assets/media-sha256-');
+      const previewRes = await request.get(uploadRes.body.data.preview_url);
+      expect(previewRes.status).toBe(200);
+      expect(previewRes.headers['content-type']).toContain('image/png');
+      expect(previewRes.headers['x-content-type-options']).toBe('nosniff');
+      expect(previewRes.headers.etag).toBe(`"sha256-${uploadRes.body.data.content_sha256}"`);
+      expect(Buffer.from(previewRes.body)).toEqual(ONE_PIXEL_PNG);
+
+      const localBypassReviewRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/media-assets/${encodeURIComponent(uploadAsset.asset_id)}/review`)
+        .send({
+          asset_id: uploadAsset.asset_id,
+          expected_content_sha256: uploadRes.body.data.content_sha256,
+          rights_status: 'authorized',
+          authorization_reference: 'api-test-license-001',
+          human_review_status: 'approved',
+          review_note: 'API local bypass must not receive human review credit.',
+        });
+      expect(localBypassReviewRes.status).toBe(403);
+      expect(localBypassReviewRes.body.error?.code).toBe('ACCESS_FORBIDDEN');
+      expect(localBypassReviewRes.body.error?.message).toContain('verified reviewer session');
+
+      const fakeUploadRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-board/seedance-assets/upload`)
+        .field('asset_id', uploadAsset.asset_id)
+        .field('kind', uploadAsset.kind)
+        .field('label', uploadAsset.label)
+        .field('modality', uploadAsset.modality)
+        .field('role', uploadAsset.role)
+        .field('reference_slot', uploadAsset.reference_slot ?? '')
+        .attach('file', Buffer.from('plain text disguised as png'), {
+          filename: 'fake.png',
+          contentType: 'image/png',
+        });
+      expect(fakeUploadRes.status).toBe(400);
+      expect(fakeUploadRes.body.error?.message).toContain('unsupported or unrecognized media signature');
       const uploadBoardRes = await request.get(`/api/projects/${enriched.project_id}/production-board`);
       expect(uploadBoardRes.status).toBe(200);
       expectSuccess(uploadBoardRes.body);
@@ -7484,6 +7911,26 @@ describe('Projects API', () => {
         updated_count: 0,
         timed_out_shots: [],
       });
+    });
+  });
+
+  describe('POST GEARS jobs with external execution authorization', () => {
+    it.each([
+      '/api/projects/20260617-story-gate1--character_story/production-board/gears-jobs/submit',
+      '/api/story-outline/ai-comic-series-projects/20260617-series-gate1/gears-jobs/submit',
+    ])('rejects use_gears_api without explicit authorization before route execution: %s', async path => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await request.post(path).send({
+        job_type: 'seedance_video',
+        use_gears_api: true,
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+      expect(JSON.stringify(res.body)).toContain('external_call_authorization');
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 
@@ -9123,6 +9570,19 @@ describe('Story Outline API', () => {
   });
 
   describe('AI comic series project persistence', () => {
+    it('rejects final delivery rollback from the local bypass identity', async () => {
+      const res = await request
+        .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-final/rollback')
+        .send({
+          release_id: 'release-20260719000000000-deadbeef',
+          confirmed: true,
+          reason: 'API 回归：本地绕过身份不得执行发布回滚。',
+        });
+
+      expect(res.status).toBe(403);
+      expectFailure(res.body, 'ACCESS_FORBIDDEN');
+    });
+
     it('saves, loads, and reports production readiness for a series project', async () => {
       const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
         outline: '周敦颐少年在濂溪读书，面对冤案和师友关系，一步步形成自己的选择。',
@@ -9151,6 +9611,61 @@ describe('Story Outline API', () => {
       expect(getRes.body.data.plan.series_title).toBe('濂溪漫剧');
       expect(getRes.body.data.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
       expect(getRes.body.data.continuity_ledger.character_state_current.length).toBeGreaterThan(0);
+
+      const seriesAssetId = 'seedance-asset-character-series-api';
+      const seriesUploadRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/seedance-assets/upload`)
+        .field('asset_id', seriesAssetId)
+        .field('kind', 'character')
+        .field('label', '周敦颐')
+        .field('reference_slot', '@图片1')
+        .attach('file', ONE_PIXEL_PNG, {
+          filename: 'series-api-reference.png',
+          contentType: 'image/png',
+        });
+      expect(seriesUploadRes.status).toBe(200);
+      expectSuccess(seriesUploadRes.body);
+      expect(seriesUploadRes.body.data.asset).toMatchObject({
+        asset_id: seriesAssetId,
+        provider: 'local_upload',
+        original_filename: 'series-api-reference.png',
+        mime_type: 'image/png',
+        content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        rights_status: 'pending',
+        human_review_status: 'pending',
+      });
+      expect(seriesUploadRes.body.data.local_path).toContain(
+        `ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/media/originals/`,
+      );
+      const seriesPreviewRes = await request.get(seriesUploadRes.body.data.preview_url);
+      expect(seriesPreviewRes.status).toBe(200);
+      expect(seriesPreviewRes.headers['content-type']).toContain('image/png');
+      expect(seriesPreviewRes.headers['x-content-type-options']).toBe('nosniff');
+      expect(Buffer.from(seriesPreviewRes.body)).toEqual(ONE_PIXEL_PNG);
+
+      const seriesLocalBypassReviewRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/media-assets/${seriesAssetId}/review`)
+        .send({
+          asset_id: seriesAssetId,
+          expected_content_sha256: seriesUploadRes.body.data.content_sha256,
+          rights_status: 'authorized',
+          authorization_reference: 'api-series-license-001',
+          human_review_status: 'approved',
+          review_note: 'Local bypass must not sign series media.',
+        });
+      expect(seriesLocalBypassReviewRes.status).toBe(403);
+      expect(seriesLocalBypassReviewRes.body.error?.code).toBe('ACCESS_FORBIDDEN');
+      expect(seriesLocalBypassReviewRes.body.error?.message).toContain('verified reviewer session');
+
+      const fakeSeriesUploadRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/seedance-assets/upload`)
+        .field('asset_id', seriesAssetId)
+        .attach('file', Buffer.from('plain text disguised as png'), {
+          filename: 'series-fake.png',
+          contentType: 'image/png',
+        });
+      expect(fakeSeriesUploadRes.status).toBe(400);
+      expect(fakeSeriesUploadRes.body.error?.message).toContain('unsupported or unrecognized media signature');
 
       const readinessRes = await request.get(
         `/api/story-outline/ai-comic-series-projects/${saveRes.body.data.project.series_project_id}/production-readiness`,
@@ -9647,6 +10162,17 @@ describe('Stories API', () => {
       expectFailure(res.body, 'VALIDATION_ERROR');
     });
 
+    it('rejects an unknown model profile instead of silently selecting a recommended model', async () => {
+      const res = await request.post('/api/stories/generate').send({
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'character_story',
+        model_profile_id: 'not-a-real-model',
+      });
+
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
     it('accepts an explicit china_culture generation domain', async () => {
       const res = await request.post('/api/stories/generate').send({
         domain: 'china_culture',
@@ -9669,6 +10195,40 @@ describe('Stories API', () => {
       expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
     });
 
+    it('durably audits the canonical Web generation entrypoint without request content', async () => {
+      const generatedRoot = resolve(testWorkspaceRoot, 'web', 'generated', 'generation-audit-route');
+      process.env.WEB_GENERATED_ROOT = generatedRoot;
+      try {
+        const res = await request.post('/api/stories/generate').send({
+          domain: 'unregistered_domain',
+          entry_name: 'PRIVATE ENTRY FOR AUDIT TEST',
+          original_user_query: 'PRIVATE QUERY FOR AUDIT TEST',
+          generation_type: 'character_story',
+        });
+
+        expect(res.status).toBe(404);
+        expectFailure(res.body, 'DOMAIN_PACK_NOT_FOUND');
+        const raw = await readFile(resolve(
+          generatedRoot,
+          'system',
+          'story-generation-attempts.jsonl',
+        ), 'utf8');
+        const events = raw.trim().split('\n').map(line => JSON.parse(line));
+        expect(events.map(event => event.status)).toEqual(['started', 'failed']);
+        expect(events[0]).toMatchObject({
+          entrypoint: 'web_api_stories_generate',
+          source_domain: 'unregistered_domain',
+          video_type: 'character_story',
+        });
+        expect(events[1].error_code).toBe('DOMAIN_PACK_NOT_FOUND');
+        expect(raw).not.toContain('PRIVATE ENTRY FOR AUDIT TEST');
+        expect(raw).not.toContain('PRIVATE QUERY FOR AUDIT TEST');
+        expect(raw).not.toContain(generatedRoot);
+      } finally {
+        process.env.WEB_GENERATED_ROOT = resolve(testWorkspaceRoot, 'web', 'generated');
+      }
+    });
+
     it('generates original AI comic from outline-only material', async () => {
       const res = await request.post('/api/stories/generate').send({
         outline: '一个年轻修复师回到古城，发现祖父留下的旧戏台图纸，决定用一场原创漫剧唤回街坊对非遗戏曲的记忆。',
@@ -9684,11 +10244,22 @@ describe('Stories API', () => {
       expectSuccess(res.body);
       const story = res.body.data;
       expect(story.source_entry).toContain('用户原创故事种子');
+      expect(story).toMatchObject({
+        model_profile_id: 'local_story_engine',
+        effective_engine: 'local_story_engine',
+        external_model_call_performed: false,
+        generation_mode: 'local_only',
+      });
+      expect(story.requested_model_profile_id).toBeUndefined();
       expect(story.creation_use_case).toBe('original_ai_comic');
       expect(story.truth_mode).toBe('fictional_original');
       expect(story.creation_contract.creation_use_case).toBe('original_ai_comic');
       expect(story.material_pack.schema_version).toBe('material-pack/v1');
       expect(story.adaptation_analysis).toBeUndefined();
+      expect(story.quality_report.quality_gates.schema_version).toBe('quality-gates/v2');
+      expect(story.quality_report.quality_gates.factual_cultural_gate.status).toBe('passed');
+      expect(story.quality_report.quality_gates.story_publishable).toBe(true);
+      expect(story.quality_report.quality_gates.production_ready).toBe(false);
     });
 
     it('fails closed without creating a project when memory mosaic has no source witness', async () => {

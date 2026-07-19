@@ -23,6 +23,7 @@ import {
   getNarrativePatternQualitySignals,
   getNarrativePatternRequirementLines,
 } from './narrative-pattern-library.js';
+import { inferProtagonist } from './dramatic-story.js';
 
 const DURATION_SEC_MAP: Record<string, number> = {
   '30秒': 30,
@@ -50,7 +51,7 @@ export function buildStoryBlueprint(input: {
   genreMatrix?: GenreStoryMatrixResolution;
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
-  const protagonist = input.entry.name.split('——')[0].trim();
+  const protagonist = inferProtagonist(input.entry, input.videoType);
   const evidenceBoundaries = buildEvidenceBoundaries(input.entry, input.knowledgePack, input.centralEvent);
   const sceneCount = input.scenes?.length ?? estimateSceneCount(input.targetDuration, profile.dramatic_structure.min_scenes, profile.dramatic_structure.max_scenes);
   const templates = expandTemplates(profile.dramatic_structure.scene_templates, sceneCount);

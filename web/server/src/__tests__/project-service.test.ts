@@ -9,6 +9,7 @@ import {
   type StoryProjectMeta,
   type StoryProjectVersionSnapshot,
 } from '@shared/types.js';
+
 import {
   acceptProjectLocalGearsArtifacts,
   addProjectMaterialPackMaterial,
@@ -46,6 +47,7 @@ import {
   regenerateProjectScene,
   recoverProjectSeedanceProviderQueue,
   repairAndExportProjectProductionBoard,
+  repairProjectQuality,
   repairProjectProductionBoard,
   reuseProjectSeedanceAsset,
   retainRecentProjects,
@@ -56,12 +58,18 @@ import {
   submitProjectSeedanceShotsToProvider,
   syncProjectGearsJobStatuses,
   updateProjectSeedanceAssetLibrary,
+  updateProjectMediaAssetReview,
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
   uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
+
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
 import {
   getGearsExternalCallbackHandoffQueue,
   preflightGearsExternalCallbackBatch,
@@ -109,6 +117,7 @@ function gearsExecutionWorkerCapabilityResponse(): Response {
     idempotent_submit: true,
     status_poll_supported: true,
     callback_delivery_supported: true,
+    provider_asset_handoff_supported: true,
     supported_job_types: ['seedance_video'],
     endpoints: {
       capabilities: { method: 'GET', path: '/gears/capabilities' },
@@ -394,6 +403,58 @@ afterEach(async () => {
   }
 });
 
+async function prepareProjectGearsProviderAssets(projectId: string, shotIds: string[]): Promise<void> {
+  const boardRes = await getProjectProductionBoard(projectId);
+  expect(boardRes.ok).toBe(true);
+  const requiredSlots = boardRes.data?.shot_units
+    .filter(shot => shotIds.includes(shot.shot_id))
+    .flatMap(shot => shot.seedance_asset_slots.filter(slot => slot.required)) ?? [];
+  const uniqueSlots = [...new Map(requiredSlots.map(slot => [slot.asset_id, slot])).values()];
+  expect(uniqueSlots.length).toBeGreaterThan(0);
+  for (const [index, slot] of uniqueSlots.entries()) {
+    const target = boardRes.data?.seedance_asset_report.assets.find(asset => asset.asset_id === slot.asset_id);
+    expect(target).toBeTruthy();
+    const upload = await uploadProjectSeedanceAssetFile(projectId, {
+      asset_id: target!.asset_id,
+      label: target!.label,
+      kind: target!.kind,
+      modality: target!.modality,
+      role: target!.role,
+      reference_slot: target!.reference_slot,
+      file: {
+        original_filename: `gears-provider-helper-${index + 1}.png`,
+        mime_type: 'image/png',
+        buffer: ONE_PIXEL_PNG,
+      },
+    });
+    expect(upload.ok).toBe(true);
+    const review = await updateProjectMediaAssetReview(projectId, {
+      asset_id: target!.asset_id,
+      expected_content_sha256: upload.data!.content_sha256,
+      rights_status: 'authorized',
+      authorization_reference: `contract://gears-provider-helper/${index + 1}`,
+      human_review_status: 'approved',
+      review_note: '已核对不可变原图，可交付 GEARS 外部执行。',
+    }, {
+      actor_id: 'gears-provider-helper-reviewer',
+      authentication_method: 'signed_session',
+    });
+    expect(review.ok).toBe(true);
+    const bind = await updateProjectSeedanceAssetLibrary(projectId, {
+      items: [{
+        asset_id: target!.asset_id,
+        label: target!.label,
+        kind: target!.kind,
+        modality: target!.modality,
+        role: target!.role,
+        reference_slot: target!.reference_slot,
+        file_url: `https://assets.culture-production.cn/project-helper/${index + 1}.png?signature=test-only`,
+      }],
+    });
+    expect(bind.ok).toBe(true);
+  }
+}
+
 describe('project-service', () => {
   it('creates a real project and reads it back', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
@@ -434,6 +495,51 @@ describe('project-service', () => {
     expect(snapshot.quality_report?.genre_score).toBe(92);
     expect(snapshot.quality_report?.passed).toBe(true);
     expect(snapshot.story.sourceDomain).toBe('china_culture');
+  });
+
+  it('persists quality-gates/v2 summaries separately from legacy quality_passed', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const base = makeStory();
+    const story = {
+      ...base,
+      storyId: '20260719-story-quality-gates',
+      gears_segments_url: '/api/stories/20260719-story-quality-gates/gears-segments',
+      quality_report: {
+        ...base.quality_report!,
+        passed: false,
+        quality_gates: {
+          schema_version: 'quality-gates/v2',
+          narrative_gate: { gate_id: 'narrative_gate', scope: 'story', status: 'passed', passed: true, summary: '正文结构通过。', issues: [] },
+          factual_cultural_gate: { gate_id: 'factual_cultural_gate', scope: 'story', status: 'passed', passed: true, summary: '事实文化边界通过。', issues: [] },
+          outline_gate: { gate_id: 'outline_gate', scope: 'story', status: 'passed', passed: true, summary: '大纲通过。', issues: [] },
+          audience_text_gate: { gate_id: 'audience_text_gate', scope: 'story', status: 'passed', passed: true, summary: '观众文本通过。', issues: [] },
+          production_material_gate: { gate_id: 'production_material_gate', scope: 'production', status: 'failed', passed: false, summary: '缺参考图。', issues: ['缺参考图'] },
+          gears_contract_gate: { gate_id: 'gears_contract_gate', scope: 'production', status: 'passed', passed: true, summary: 'GEARS 合同通过。', issues: [] },
+          asset_gate: { gate_id: 'asset_gate', scope: 'production', status: 'not_evaluated', passed: false, summary: '待生产板评估。', issues: [] },
+          external_provider_gate: { gate_id: 'external_provider_gate', scope: 'production', status: 'not_evaluated', passed: false, summary: '待 provider preflight。', issues: [] },
+          story_publishable: true,
+          production_ready: false,
+          story_blocking_gate_ids: [],
+          production_blocking_gate_ids: ['production_material_gate', 'asset_gate', 'external_provider_gate'],
+          legacy_passed: false,
+        },
+      },
+    } as StoryGenerateResult;
+
+    const enriched = await createProjectFromGeneratedStory(story, '2026-07-19T10:00:00.000Z');
+    const detail = await getProject(enriched.project_id!);
+
+    expect(detail.data?.project.quality_passed).toBe(false);
+    expect(detail.data?.project.story_publishable).toBe(true);
+    expect(detail.data?.project.production_ready).toBe(false);
+    expect(detail.data?.versions[0]).toMatchObject({
+      quality_passed: false,
+      story_publishable: true,
+      production_ready: false,
+    });
   });
 
   it('persists the producing Domain Pack instead of relabeling every project as china_culture', async () => {
@@ -680,6 +786,18 @@ describe('project-service', () => {
     expect(boardRes.data?.shot_units[0].seedance_asset_slots.length).toBeGreaterThan(0);
     expect(boardRes.data?.shot_units[0].seedance_material_validation.prompt_complexity_score).toBeGreaterThan(0);
     expect(boardRes.data?.seedance_asset_report.total_asset_count).toBeGreaterThan(0);
+    expect(boardRes.data?.media_asset_library).toMatchObject({
+      schema_version: 'media-asset-library/v1',
+      project_id: enriched.project_id,
+      story_id: story.storyId,
+      summary: {
+        production_credit_binding_count: 0,
+      },
+    });
+    expect(boardRes.data?.media_asset_library.bindings.every(binding => (
+      binding.production_credit_granted === false
+      && binding.source_shot_ids.every(shotId => boardRes.data?.shot_units.some(shot => shot.shot_id === shotId))
+    ))).toBe(true);
     expect(boardRes.data?.seedance_asset_report.upload_required_count).toBeGreaterThan(0);
     expect(boardRes.data?.seedance_asset_report.shots[0].missing_asset_ids.length).toBeGreaterThan(0);
     expect(boardRes.data?.seedance_shot_ledger.schema_version).toBe('seedance-shot-ledger/v1');
@@ -696,6 +814,8 @@ describe('project-service', () => {
     expect(boardRes.data?.delivery_manifest.stage).toBe('needs_repair');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_prompts');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_asset_report');
+    expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('media_asset_library');
+    expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('image_asset_job_plan');
     expect(boardRes.data?.delivery_manifest.artifacts.map(artifact => artifact.kind)).toContain('seedance_shot_ledger');
     expect(boardRes.data?.qa_report.score).toBeGreaterThanOrEqual(0);
     expect(boardRes.data?.qa_report.issues.some(issue => issue.includes('连续性约束不足'))).toBe(true);
@@ -795,7 +915,7 @@ describe('project-service', () => {
       file: {
         original_filename: 'seedance-upload-test.png',
         mime_type: 'image/png',
-        buffer: Buffer.from('seedance-upload-binary'),
+        buffer: ONE_PIXEL_PNG,
       },
     });
     expect(uploadRes.ok).toBe(true);
@@ -803,7 +923,8 @@ describe('project-service', () => {
       asset_id: uploadAsset!.asset_id,
       original_filename: 'seedance-upload-test.png',
       mime_type: 'image/png',
-      size_bytes: Buffer.from('seedance-upload-binary').length,
+      size_bytes: ONE_PIXEL_PNG.length,
+      content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       provider: 'local_upload',
       upload_status: 'uploaded',
       history: [expect.objectContaining({
@@ -811,9 +932,10 @@ describe('project-service', () => {
         original_filename: 'seedance-upload-test.png',
       })],
     });
-    expect(uploadRes.data?.local_path).toContain(`projects/${enriched.project_id}/seedance-assets/uploads/`);
+    expect(uploadRes.data?.local_path).toContain(`projects/${enriched.project_id}/media/originals/`);
+    expect(uploadRes.data?.preview_url).toBe(`/api/projects/${enriched.project_id}/production-board/media-assets/media-sha256-${uploadRes.data?.content_sha256}/preview`);
     const uploadedFilePath = resolve(root, 'web', 'generated', uploadRes.data!.local_path);
-    expect(await readFile(uploadedFilePath, 'utf-8')).toBe('seedance-upload-binary');
+    expect(await readFile(uploadedFilePath)).toEqual(ONE_PIXEL_PNG);
     const uploadBoardRes = await getProjectProductionBoard(enriched.project_id!);
     expect(uploadBoardRes.ok).toBe(true);
     expect(uploadBoardRes.data?.seedance_asset_report.assets.find(asset =>
@@ -825,6 +947,14 @@ describe('project-service', () => {
       provider: 'local_upload',
       upload_status: 'uploaded',
       original_filename: 'seedance-upload-test.png',
+    });
+    expect(uploadBoardRes.data?.media_asset_library.bindings.find(binding =>
+      binding.asset_id === uploadAsset!.asset_id
+    )).toMatchObject({
+      status: 'rights_pending',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+      production_credit_granted: false,
     });
 
     const targetStory: StoryGenerateResult = {
@@ -1151,6 +1281,20 @@ describe('project-service', () => {
     });
   });
 
+  it('does not create a project version when quality repair is a no-op', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const enriched = await createProjectFromGeneratedStory(makeStory(), '2026-06-09T10:00:00.000Z');
+    const before = await getProject(enriched.project_id!);
+    const result = await repairProjectQuality(enriched.project_id!, {});
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.project.current_version_id).toBe(before.data?.project.current_version_id);
+    expect(result.data?.versions).toHaveLength(before.data?.versions.length ?? 0);
+  });
+
   it('drafts local Seedance placeholder assets and clears asset binding gaps', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -1265,11 +1409,22 @@ describe('project-service', () => {
       runner: 'gears_worker',
       mode: 'external_execution',
       can_auto_execute: false,
+      payload_hint: {
+        use_gears_api: true,
+        external_call_authorization: {
+          authorized: '<operator_confirmation_required>',
+          authorization_reference: '<approval_or_ticket_reference>',
+          max_cost_amount: '<non_negative_cost_limit>',
+          cost_currency: '<ISO_4217_currency>',
+          data_transfer_acknowledged: '<operator_confirmation_required>',
+        },
+      },
       api: {
         method: 'POST',
         path: `/api/projects/${enriched.project_id}/production-board/gears-jobs/submit`,
       },
     });
+    expect(submitStep?.prerequisites.join(' ')).toContain('public HTTPS URL or provider asset ID');
     expect(initialReadiness.data?.markdown).toContain('制作 readiness');
     expect(initialReadiness.data?.markdown).toContain('Automation Plan');
 
@@ -2029,6 +2184,211 @@ describe('project-service', () => {
     });
   });
 
+  it('submits first-class prop image jobs from the production plan and skips active duplicates', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const first = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'prop_image',
+      note: 'submit production prop references',
+    });
+
+    expect(first.ok).toBe(true);
+    expect(first.data?.submitted_count).toBeGreaterThan(0);
+    expect(first.data?.submitted_jobs.every(job => (
+      job.job_type === 'prop_image'
+      && job.source_unit_id.startsWith('prop:')
+      && !DELIVERY_PROMPT_INTERNAL_PATTERN.test(job.payload_summary ?? '')
+    ))).toBe(true);
+    expect(first.data?.gears_job_ledger?.items.filter(item => item.job_type === 'prop_image')).toHaveLength(
+      first.data?.submitted_count ?? 0,
+    );
+
+    const duplicate = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'prop_image',
+      note: 'duplicate prop references',
+    });
+    expect(duplicate.ok).toBe(true);
+    expect(duplicate.data?.submitted_count).toBe(0);
+    expect(duplicate.data?.skipped_count).toBe(first.data?.submitted_count);
+  });
+
+  it('archives a real GEARS image callback against its exact asset slot without granting production credit', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const beforeBoard = await getProjectProductionBoard(enriched.project_id!);
+    const requirement = beforeBoard.data?.image_asset_job_plan.requirements.find(item => (
+      item.job_type === 'character_image' && item.label === '周敦颐'
+    ));
+    expect(requirement).toBeTruthy();
+
+    const submit = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'character_image',
+      source_unit_ids: [requirement!.source_unit_id],
+      note: 'generate character reference',
+    });
+    const job = submit.data?.submitted_jobs[0];
+    expect(job).toBeTruthy();
+
+    const callback = await importProjectGearsCallback(enriched.project_id!, {
+      gears_job_id: job!.gears_job_id,
+      source_unit_id: requirement!.source_unit_id,
+      job_type: 'character_image',
+      status: 'ready',
+      event_id: 'character-image-ready-001',
+      artifacts: [{
+        artifact_id: 'vendor-character-zhou-v1',
+        kind: 'image',
+        role: 'character_reference',
+        mime_type: 'image/png',
+        source_unit_id: requirement!.source_unit_id,
+        url: 'https://media.vendor-cdn.net/characters/zhou-v1.png',
+        metadata: { model: 'vendor-image-v2' },
+      }],
+    });
+
+    expect(callback.ok).toBe(true);
+    const detail = await getProject(enriched.project_id!);
+    const archived = detail.data?.project.seedance_asset_library?.items.find(item => (
+      item.asset_id === requirement!.asset_id
+    ));
+    expect(archived).toMatchObject({
+      asset_id: requirement!.asset_id,
+      file_url: 'https://media.vendor-cdn.net/characters/zhou-v1.png',
+      provider: 'gears',
+      provider_asset_id: 'vendor-character-zhou-v1',
+      mime_type: 'image/png',
+      upload_status: 'external',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+      model: 'vendor-image-v2',
+    });
+    expect(archived?.content_sha256).toBeUndefined();
+    expect(archived?.history?.at(-1)?.event_type).toBe('provider_callback');
+
+    const afterBoard = await getProjectProductionBoard(enriched.project_id!);
+    expect(afterBoard.data?.media_asset_library.bindings.find(binding => (
+      binding.asset_id === requirement!.asset_id
+    ))).toMatchObject({
+      status: 'bound_unverified',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+      production_credit_granted: false,
+    });
+    expect(afterBoard.data?.media_asset_library.artifacts.find(artifact => (
+      artifact.provenance.source_asset_id === requirement!.asset_id
+    ))).toMatchObject({
+      integrity_status: 'unverified',
+      production_credit_granted: false,
+      provenance: { source_kind: 'provider_callback' },
+    });
+    expect(afterBoard.data?.image_asset_job_plan.requirements.find(item => (
+      item.asset_id === requirement!.asset_id
+    ))?.production_credit_granted).toBe(false);
+  });
+
+  it('grants production credit only when a verified reviewer signs the exact immutable image bytes', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const board = await getProjectProductionBoard(enriched.project_id!);
+    const target = board.data?.seedance_asset_report.assets.find(asset => asset.modality === 'image');
+    expect(target).toBeTruthy();
+    const upload = await uploadProjectSeedanceAssetFile(enriched.project_id!, {
+      asset_id: target!.asset_id,
+      label: target!.label,
+      kind: target!.kind,
+      modality: target!.modality,
+      role: target!.role,
+      reference_slot: target!.reference_slot,
+      file: {
+        original_filename: 'review-target.png',
+        mime_type: 'image/png',
+        buffer: ONE_PIXEL_PNG,
+      },
+    });
+    expect(upload.ok).toBe(true);
+
+    const staleReview = await updateProjectMediaAssetReview(enriched.project_id!, {
+      asset_id: target!.asset_id,
+      expected_content_sha256: '0'.repeat(64),
+      human_review_status: 'approved',
+      review_note: '画面、人物和时代细节均通过。',
+    }, {
+      actor_id: 'director-reviewer-001',
+      authentication_method: 'signed_session',
+    });
+    expect(staleReview.ok).toBe(false);
+    expect(staleReview.error?.message).toContain('content changed');
+
+    const review = await updateProjectMediaAssetReview(enriched.project_id!, {
+      asset_id: target!.asset_id,
+      expected_content_sha256: upload.data!.content_sha256,
+      rights_status: 'authorized',
+      authorization_reference: 'license-contract-2026-001',
+      human_review_status: 'approved',
+      review_note: '画面、人物和时代细节均通过，可进入镜头制作。',
+    }, {
+      actor_id: 'director-reviewer-001',
+      authentication_method: 'signed_session',
+    });
+    expect(review.ok).toBe(true);
+    expect(review.data).toMatchObject({
+      reviewer_id: 'director-reviewer-001',
+      production_credit_granted: true,
+      binding: {
+        status: 'ready',
+        rights_status: 'authorized',
+        human_review_status: 'approved',
+        production_credit_granted: true,
+      },
+      artifact: {
+        integrity_status: 'verified',
+        production_credit_granted: true,
+      },
+    });
+    expect(review.data?.asset.history?.slice(-2).map(event => event.event_type)).toEqual([
+      'rights_review',
+      'human_visual_review',
+    ]);
+
+    const replacementBytes = Buffer.concat([ONE_PIXEL_PNG, Buffer.from([0])]);
+    const replacement = await uploadProjectSeedanceAssetFile(enriched.project_id!, {
+      asset_id: target!.asset_id,
+      label: target!.label,
+      kind: target!.kind,
+      modality: target!.modality,
+      role: target!.role,
+      reference_slot: target!.reference_slot,
+      file: {
+        original_filename: 'review-target-v2.png',
+        mime_type: 'image/png',
+        buffer: replacementBytes,
+      },
+    });
+    expect(replacement.ok).toBe(true);
+    expect(replacement.data?.content_sha256).not.toBe(upload.data?.content_sha256);
+    const replacedBoard = await getProjectProductionBoard(enriched.project_id!);
+    expect(replacedBoard.data?.media_asset_library.bindings.find(binding => (
+      binding.asset_id === target!.asset_id
+    ))).toMatchObject({
+      status: 'rights_pending',
+      rights_status: 'pending',
+      human_review_status: 'pending',
+      production_credit_granted: false,
+    });
+  });
+
   it('imports batched project GEARS callbacks into the project ledgers', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -2246,6 +2606,63 @@ describe('project-service', () => {
     )).toHaveLength(1);
   });
 
+  it('rejects GEARS HTTP submission before network access without explicit cost-bounded authorization', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      use_gears_api: true,
+      note: 'must fail before provider capability probe',
+    });
+
+    expect(submitRes.ok).toBe(false);
+    expect(submitRes.error?.code).toBe('VALIDATION_ERROR');
+    expect(submitRes.error?.message).toContain('external_call_authorization');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects GEARS HTTP submission before network access when required visual assets are not externally reachable', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const submitRes = await submitProjectGearsJobs(enriched.project_id!, {
+      job_type: 'seedance_video',
+      source_unit_ids: ['shot-1'],
+      use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'test-approval://missing-provider-assets-001',
+        max_cost_amount: 12.5,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
+      note: 'must fail before provider capability probe',
+    });
+
+    expect(submitRes.ok).toBe(false);
+    expect(submitRes.error?.code).toBe('VALIDATION_ERROR');
+    expect(submitRes.error?.message).toContain('provider asset handoff');
+    expect(submitRes.error?.details).toMatchObject({
+      source_unit_id: 'shot-1',
+      missing_asset_ids: expect.any(Array),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('submits project GEARS jobs through the HTTP execution contract', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);
@@ -2256,6 +2673,52 @@ describe('project-service', () => {
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const boardRes = await getProjectProductionBoard(enriched.project_id!);
+    const shot = boardRes.data?.shot_units.find(item => item.shot_id === 'shot-1');
+    const requiredSlots = shot?.seedance_asset_slots.filter(slot => slot.required) ?? [];
+    expect(requiredSlots.length).toBeGreaterThan(0);
+    for (const [index, slot] of requiredSlots.entries()) {
+      const target = boardRes.data?.seedance_asset_report.assets.find(asset => asset.asset_id === slot.asset_id);
+      expect(target).toBeTruthy();
+      const upload = await uploadProjectSeedanceAssetFile(enriched.project_id!, {
+        asset_id: target!.asset_id,
+        label: target!.label,
+        kind: target!.kind,
+        modality: target!.modality,
+        role: target!.role,
+        reference_slot: target!.reference_slot,
+        file: {
+          original_filename: `gears-provider-input-${index + 1}.png`,
+          mime_type: 'image/png',
+          buffer: ONE_PIXEL_PNG,
+        },
+      });
+      expect(upload.ok).toBe(true);
+      const review = await updateProjectMediaAssetReview(enriched.project_id!, {
+        asset_id: target!.asset_id,
+        expected_content_sha256: upload.data!.content_sha256,
+        rights_status: 'authorized',
+        authorization_reference: `contract://gears-provider-assets/${index + 1}`,
+        human_review_status: 'approved',
+        review_note: '已核对不可变原图，可交付外部视频生成服务。',
+      }, {
+        actor_id: 'gears-provider-reviewer-001',
+        authentication_method: 'signed_session',
+      });
+      expect(review.ok).toBe(true);
+      const bindPublicUrl = await updateProjectSeedanceAssetLibrary(enriched.project_id!, {
+        items: [{
+          asset_id: target!.asset_id,
+          label: target!.label,
+          kind: target!.kind,
+          modality: target!.modality,
+          role: target!.role,
+          reference_slot: target!.reference_slot,
+          file_url: `https://assets.culture-production.cn/story/${index + 1}.png?signature=test-only`,
+        }],
+      });
+      expect(bindPublicUrl.ok).toBe(true);
+    }
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       if (String(_url).endsWith('/gears/capabilities')) {
         expect(init?.method).toBe('GET');
@@ -2283,6 +2746,11 @@ describe('project-service', () => {
             idempotency_key?: string;
             callback_url?: string;
             seedance_prompt?: string;
+            provider_asset_inputs?: Array<{
+              asset_id?: string;
+              content_sha256?: string;
+              transport?: { kind?: string; url?: string };
+            }>;
             metadata?: Record<string, unknown>;
           }>;
         };
@@ -2297,6 +2765,15 @@ describe('project-service', () => {
         callback_secret_hint: 'GEARS_CALLBACK_SECRET',
       });
       expect(body.payload?.units).toHaveLength(1);
+      expect(body.payload?.units?.[0]?.provider_asset_inputs).toHaveLength(requiredSlots.length);
+      expect(body.payload?.units?.[0]?.provider_asset_inputs?.[0]).toMatchObject({
+        asset_id: requiredSlots[0]!.asset_id,
+        content_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        transport: {
+          kind: 'https_url',
+          url: expect.stringContaining('signature=test-only'),
+        },
+      });
       expect(body.payload?.units?.[0]).toMatchObject({
         source_unit_id: 'shot-1',
         external_id: 'shot-1',
@@ -2327,6 +2804,13 @@ describe('project-service', () => {
       job_type: 'seedance_video',
       source_unit_ids: ['shot-1'],
       use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'test-approval://gears-http-submit-001',
+        max_cost_amount: 12.5,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
       note: 'GEARS HTTP submit smoke',
     });
 
@@ -2340,17 +2824,78 @@ describe('project-service', () => {
         status: 'submitted',
         requested_count: 1,
         accepted_count: 1,
+        provider_asset_input_count: requiredSlots.length,
       },
       submitted_jobs: [{
         source_unit_id: 'shot-1',
         gears_job_id: 'gears-real-job-001',
         status: 'submitted',
+        external_call_authorization: {
+          authorization_reference: 'test-approval://gears-http-submit-001',
+          max_cost_amount: 12.5,
+          cost_currency: 'CNY',
+          data_transfer_acknowledged: true,
+          confirmed_at: expect.any(String),
+        },
+        provider_asset_handoffs: expect.arrayContaining([
+          expect.objectContaining({
+            asset_id: requiredSlots[0]!.asset_id,
+            transport_kind: 'https_url',
+            url_origin: 'https://assets.culture-production.cn',
+          }),
+        ]),
       }],
     });
+    expect(JSON.stringify(submitRes.data?.submitted_jobs)).not.toContain('signature=test-only');
     expect(submitRes.data?.seedance_shot_ledger?.items.find(item => item.shot_id === 'shot-1')).toMatchObject({
       provider: 'gears',
       provider_job_id: 'gears-real-job-001',
       status: 'submitted',
+    });
+
+    const callbackRes = await importProjectGearsCallback(enriched.project_id!, {
+      jobId: 'gears-real-job-001',
+      sourceUnitId: 'shot-1',
+      jobType: 'seedance_video',
+      taskStatus: 'COMPLETED',
+      outputUrl: 'https://gears.example.test/output/shot-1.mp4',
+      actualCostAmount: 13,
+      currency: 'cny',
+      eventId: 'gears-real-cost-event-001',
+      completedAt: '2026-07-19T10:01:00.000Z',
+    });
+    expect(callbackRes.ok).toBe(true);
+    expect(callbackRes.data?.gears_job_ledger?.items.find(item => item.source_unit_id === 'shot-1')).toMatchObject({
+      execution_cost: {
+        actual_cost_amount: 13,
+        cost_currency: 'CNY',
+        authorization_reference: 'test-approval://gears-http-submit-001',
+        authorized_max_cost_amount: 12.5,
+        authorization_total_actual_cost_amount: 13,
+        boundary_status: 'exceeded_authorization',
+      },
+      callback_events: [expect.objectContaining({
+        event_id: 'gears-real-cost-event-001',
+        actual_cost_amount: 13,
+        cost_currency: 'CNY',
+      })],
+    });
+
+    const readinessRes = await getProjectProductionReadiness(enriched.project_id!);
+    expect(readinessRes.ok).toBe(true);
+    expect(readinessRes.data?.issues).toContainEqual(expect.objectContaining({
+      issue_id: 'gears-execution-cost-boundary-violated',
+      severity: 'blocking',
+    }));
+    expect(readinessRes.data?.gears_operational_metrics).toMatchObject({
+      scope: 'authorized_external_jobs_only',
+      authorized_external_job_count: 1,
+      terminal_job_count: 1,
+      ready_external_output_count: 1,
+      actual_output_rate_percent: 100,
+      actual_cost_by_currency: { CNY: 13 },
+      cost_boundary_violation_count: 1,
+      local_acceptance_excluded: true,
     });
   });
 
@@ -2363,6 +2908,7 @@ describe('project-service', () => {
 
     const story = makeStory();
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    await prepareProjectGearsProviderAssets(enriched.project_id!, ['shot-1', 'shot-2']);
     vi.stubGlobal('fetch', vi.fn(async (_url: string | URL | Request) => {
       if (String(_url).endsWith('/gears/capabilities')) {
         return gearsExecutionWorkerCapabilityResponse();
@@ -2391,6 +2937,13 @@ describe('project-service', () => {
       job_type: 'seedance_video',
       source_unit_ids: ['shot-1', 'shot-2'],
       use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'test-approval://gears-rejected-submit-001',
+        max_cost_amount: 20,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
       note: 'GEARS rejected submit smoke',
     });
 
@@ -3783,6 +4336,8 @@ describe('project-service', () => {
       'production-board/seedance-prompts.json',
       'production-board/seedance-prompts.md',
       'production-board/seedance-asset-report.json',
+      'production-board/media-asset-library.json',
+      'production-board/image-asset-job-plan.json',
       'production-board/seedance-asset-report.md',
       'production-board/seedance-shot-ledger.json',
       'production-board/seedance-shot-ledger.md',
@@ -3836,7 +4391,7 @@ describe('project-service', () => {
     const detail = await getProject(enriched.project_id!);
     expect(detail.data?.project.status).toBe('exported');
     expect(detail.data?.versions[0].production_board_export).toMatchObject({
-      file_count: 11,
+      file_count: 13,
       delivery_stage: exportRes.data?.board.delivery_manifest.stage,
     });
   });
@@ -5530,6 +6085,9 @@ describe('project-service', () => {
     expect(updated.data?.current_story.material_sufficiency?.schema_version).toBe('material-sufficiency/v1');
     expect(updated.data?.current_story.creation_contract?.material_sufficiency.score).toBe(updated.data?.current_story.material_sufficiency?.score);
     expect(updated.data?.project.material_sufficiency?.score).toBe(updated.data?.current_story.material_sufficiency?.score);
+    expect(updated.data?.project.quality_passed).toBe(updated.data?.current_story.quality_report?.passed);
+    expect(updated.data?.project.story_publishable).toBe(updated.data?.current_story.quality_report?.quality_gates?.story_publishable);
+    expect(updated.data?.project.production_ready).toBe(updated.data?.current_story.quality_report?.quality_gates?.production_ready);
 
     const snapshotPath = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'versions', `${enriched.current_version_id}.json`);
     const snapshot = JSON.parse(await readFile(snapshotPath, 'utf-8')) as StoryProjectVersionSnapshot;
@@ -5755,6 +6313,59 @@ describe('project-service', () => {
     expect(result.data?.versions[0].change_type).toBe('scene_regeneration');
     expect(result.data?.project.model_profile_id).toBe('claude_sonnet');
     expect(result.data?.current_story.model_profile_id).toBe('claude_sonnet');
+
+    const persistedVersionPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      projectId,
+      'versions',
+      `${result.data?.project.current_version_id}.json`,
+    );
+    const persisted = JSON.parse(await readFile(persistedVersionPath, 'utf-8')) as StoryProjectVersionSnapshot;
+    expect(persisted.story.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
+    expect(persisted.story.quality_report?.audience_text_report?.schema_version).toBe('audience-text/v1');
+    expect(persisted.quality_report).toEqual(persisted.story.quality_report);
+    expect(persisted.story.gears_delivery?.units.every(unit => Boolean(unit.shot_id))).toBe(true);
+    expect(persisted.story.gears_delivery?.units.filter(unit => unit.source_scene_id === 1).map(unit => unit.script_text).join('\n'))
+      .toContain('突出他拒签后可能丢官的代价');
+  });
+
+  it('fails closed without creating a version when derived-state domain revalidation fails', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260719-story-derived-domain-block',
+      source_entry: '临时素材条目，不存在于持久 Domain Pack',
+      gears_segments_url: '/api/stories/20260719-story-derived-domain-block/gears-segments',
+      domain_safety: {
+        schema_version: 'story-domain-safety/v1',
+        domain: 'china_culture',
+        passed: true,
+        evaluated_rule_ids: ['initial-request-material'],
+        blockers: [],
+        warnings: [],
+        machine_validation_only: true,
+        human_review_complete: false,
+        real_credit_granted: false,
+      },
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-07-19T10:30:00.000Z');
+
+    const result = await regenerateProjectScene(enriched.project_id!, {
+      scene_id: 1,
+      intent: 'tighten_conflict',
+    });
+    const detail = await getProject(enriched.project_id!);
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('DOMAIN_SAFETY_VALIDATION_FAILED');
+    expect(detail.data?.project.version_count).toBe(1);
+    expect(detail.data?.project.current_version_id).toBe(enriched.current_version_id);
   });
 
   // ---------------------------------------------------------------------------

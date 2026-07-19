@@ -74,9 +74,21 @@ function actionPayloadHint(
   if (actionKey === 'draft_seedance_asset_placeholders') return { source: 'seedance_asset_report', output: 'local_svg_reference_cards' };
   if (actionKey === 'repair_production_board') return { apply_all: true };
   if (actionKey === 'submit_gears_jobs') {
+    const externalCallAuthorization = {
+      authorized: '<operator_confirmation_required>',
+      authorization_reference: '<approval_or_ticket_reference>',
+      max_cost_amount: '<non_negative_cost_limit>',
+      cost_currency: '<ISO_4217_currency>',
+      data_transfer_acknowledged: '<operator_confirmation_required>',
+    };
     return scope === 'story_project'
-      ? { job_type: 'seedance_video', use_gears_api: true }
-      : { job_type: 'seedance_video', use_gears_api: true, submit_intent: 'retry_or_review_repair' };
+      ? { job_type: 'seedance_video', use_gears_api: true, external_call_authorization: externalCallAuthorization }
+      : {
+          job_type: 'seedance_video',
+          use_gears_api: true,
+          submit_intent: 'retry_or_review_repair',
+          external_call_authorization: externalCallAuthorization,
+        };
   }
   if (actionKey === 'sync_gears_jobs') return { use_gears_api: true };
   if (actionKey === 'accept_local_gears_artifacts') return { job_type: 'seedance_video', output: 'local_acceptance_artifacts' };
@@ -89,7 +101,14 @@ function actionPayloadHint(
 
 function actionPrerequisites(actionKey: string): string[] {
   if (actionKey === 'submit_gears_jobs') {
-    return ['GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy GEARS_API_BASE_URL accepted)', 'GEARS_CALLBACK_BASE_URL configured', 'GEARS_CALLBACK_SECRET configured'];
+    return [
+      'GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy GEARS_API_BASE_URL accepted)',
+      'GEARS_CALLBACK_BASE_URL configured',
+      'GEARS_CALLBACK_SECRET configured',
+      'operator explicitly confirms external data transfer and a maximum cost boundary',
+      'authorization/ticket reference recorded in external_call_authorization',
+      'every required visual asset has verified immutable bytes, rights approval, human review, and a public HTTPS URL or provider asset ID',
+    ];
   }
   if (actionKey === 'sync_gears_jobs') return ['existing GEARS Job Ledger', 'GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy accepted)'];
   if (actionKey === 'accept_local_gears_artifacts') return ['existing local GEARS Job Ledger', 'operator confirms mocked acceptance boundary'];

@@ -15,6 +15,7 @@ import {
   ProductionReadinessPortfolioRunRequestSchema,
   ProductResourceOwnershipMigrationRequestSchema,
   StoryDomainSafetyMigrationRequestSchema,
+  StoryAgentFinalDeliveryManifestPreflightRequestSchema,
   StoryProjectFileToSqliteMigrationRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
 } from '@shared/schemas.js';
@@ -33,6 +34,7 @@ import type {
 } from '@shared/types.js';
 import type { ProductResourceOwnershipMigrationRequest } from '@shared/product-access.js';
 import { listModelProfiles } from '../services/model-catalog.js';
+import { getStoryGenerationCapabilities } from '../services/story-generation-capability-service.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 import {
   getGearsExecutionAcceptanceReport,
@@ -75,6 +77,7 @@ import {
   getStoryAgentBacklogHandoffPackage,
   getStoryAgentGeneratedHealth,
 } from '../services/generated-health-service.js';
+import { preflightStoryAgentFinalDeliveryManifest } from '../services/final-delivery-manifest-preflight-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from '../services/knowledge-writeback-queue-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 import {
@@ -381,6 +384,10 @@ systemRouter.get('/models', (_req, res) => {
   res.json(success(models));
 });
 
+systemRouter.get('/story-generation-capabilities', (_req, res) => {
+  res.json(success(getStoryGenerationCapabilities()));
+});
+
 // ---------------------------------------------------------------------------
 // GET /api/system/narrative-patterns — reusable narrative pattern catalog
 // ---------------------------------------------------------------------------
@@ -639,6 +646,22 @@ systemRouter.post(
   async (req, res, next) => {
     try {
       res.json(success(await runStoryAgentGeneratedGovernance(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/system/story-agent-final-delivery-manifest-preflight — read-only operator preflight
+// ---------------------------------------------------------------------------
+
+systemRouter.post(
+  '/story-agent-final-delivery-manifest-preflight',
+  validateBody(StoryAgentFinalDeliveryManifestPreflightRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await preflightStoryAgentFinalDeliveryManifest(req.body)));
     } catch (err) {
       next(err);
     }

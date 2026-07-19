@@ -402,6 +402,182 @@
           导出清单 JSON
         </button>
       </div>
+      <section
+        v-if="manifestGapQueueItems.length"
+        class="projects-page__manifest-preflight"
+        data-testid="final-delivery-manifest-preflight"
+      >
+        <div class="projects-page__manifest-preflight-head">
+          <div>
+            <h3>最终交付 manifest 人工预检</h3>
+            <p>只读检查 operator disposition；ready 只表示可进入下一次人工授权，并未获得发布资格。</p>
+          </div>
+          <span class="projects-page__readiness-badge projects-page__readiness-badge--needs_action">
+            {{ manifestGapQueueItems.length }} 个待决定
+          </span>
+        </div>
+        <div class="projects-page__manifest-preflight-controls">
+          <label>
+            <span>系列项目</span>
+            <select
+              v-model="manifestPreflightTargetId"
+              class="projects-page__select"
+              data-testid="manifest-preflight-target"
+              @change="resetManifestPreflightResult"
+            >
+              <option
+                v-for="item in manifestGapQueueItems"
+                :key="item.project_id"
+                :value="item.project_id"
+              >
+                {{ item.title || item.project_id }} · {{ item.project_id }}
+              </option>
+            </select>
+          </label>
+          <label>
+            <span>处置方式</span>
+            <select
+              v-model="manifestPreflightDisposition"
+              class="projects-page__select"
+              data-testid="manifest-preflight-disposition"
+              @change="handleManifestPreflightDispositionChange"
+            >
+              <option value="preserve_fixture_exclude_from_publishable_delivery">保留夹具并排除发布签收</option>
+              <option value="reexport_after_authorized_dependencies">依赖授权齐备后申请重导出</option>
+            </select>
+          </label>
+          <label class="projects-page__manifest-preflight-attestation">
+            <input
+              v-model="manifestPreflightAuthorizedInputs"
+              type="checkbox"
+              data-testid="manifest-preflight-attestation"
+              :disabled="manifestPreflightDisposition !== 'reexport_after_authorized_dependencies'"
+              @change="resetManifestPreflightResult"
+            />
+            <span>我已明确核验媒体输入授权；placeholder、example.com 或 dry-run 不能视为授权。</span>
+          </label>
+          <button
+            class="projects-page__muted-btn"
+            data-testid="manifest-preflight-run"
+            :disabled="runningManifestPreflight || !manifestPreflightTargetId"
+            @click="runManifestPreflight"
+          >
+            {{ runningManifestPreflight ? '检查中…' : '运行只读预检' }}
+          </button>
+        </div>
+        <p
+          v-if="manifestPreflightError"
+          class="projects-page__manifest-preflight-error"
+          data-testid="manifest-preflight-error"
+        >
+          预检失败，未授予任何处置资格：{{ manifestPreflightError }}
+        </p>
+        <div
+          v-if="manifestPreflightResult"
+          class="projects-page__manifest-preflight-result"
+          data-testid="manifest-preflight-result"
+        >
+          <div class="projects-page__manifest-preflight-result-head">
+            <span :class="['projects-page__readiness-badge', `projects-page__readiness-badge--${manifestPreflightResult.status}`]">
+              {{ manifestPreflightResult.status }}
+            </span>
+            <strong>{{ manifestPreflightResultTitle(manifestPreflightResult) }}</strong>
+          </div>
+          <p>{{ manifestPreflightRecommendedAction(manifestPreflightResult) }}</p>
+          <div class="projects-page__manifest-preflight-safety">
+            <span>发布信用 {{ manifestPreflightResult.publishable_delivery_credit_granted }}</span>
+            <span>generated 写入 {{ manifestPreflightResult.generated_files_modified }}</span>
+            <span>final assemble {{ manifestPreflightResult.final_assemble_invoked }}</span>
+            <span>manifest 写入 {{ manifestPreflightResult.manifest_written }}</span>
+            <span>project.json 写入 {{ manifestPreflightResult.project_json_written }}</span>
+          </div>
+          <div class="projects-page__manifest-preflight-checks">
+            <article
+              v-for="check in manifestPreflightResult.checks"
+              :key="check.key"
+              :class="['projects-page__manifest-preflight-check', `projects-page__manifest-preflight-check--${check.status}`]"
+            >
+              <div>
+                <strong>{{ manifestPreflightCheckLabel(check.key) }}</strong>
+                <span>{{ check.status }}</span>
+              </div>
+              <p>{{ check.evidence.join('；') }}</p>
+              <ul v-if="check.missing_paths?.length">
+                <li v-for="missingPath in check.missing_paths" :key="`missing:${missingPath}`">缺失：{{ missingPath }}</li>
+              </ul>
+              <ul v-if="check.unsafe_paths?.length">
+                <li v-for="unsafePath in check.unsafe_paths" :key="`unsafe:${unsafePath}`">不安全：{{ unsafePath }}</li>
+              </ul>
+            </article>
+          </div>
+          <p class="projects-page__manifest-preflight-boundary">
+            本结果不保存 operator disposition，不执行 GEARS 合成，也不授予成片发布资格。
+          </p>
+          <div class="projects-page__manifest-preflight-result-actions">
+            <button
+              class="projects-page__muted-btn"
+              data-testid="manifest-preflight-review-add"
+              @click="addManifestPreflightResultToReview"
+            >
+              加入当前会话审阅包
+            </button>
+            <span v-if="manifestPreflightReviewMessage">{{ manifestPreflightReviewMessage }}</span>
+          </div>
+        </div>
+        <section
+          v-if="manifestPreflightReviewItems.length"
+          class="projects-page__manifest-review-package"
+          data-testid="manifest-preflight-review-package"
+        >
+          <div class="projects-page__manifest-review-package-head">
+            <div>
+              <h4>当前会话人工处置审阅包</h4>
+              <p>
+                共 {{ manifestPreflightReviewSummary.item_count }} 项
+                · preserve {{ manifestPreflightReviewSummary.preserve_count }}
+                · reexport {{ manifestPreflightReviewSummary.reexport_count }}
+                · ready {{ manifestPreflightReviewSummary.ready_count }}
+                · blocked {{ manifestPreflightReviewSummary.blocked_count }}
+              </p>
+            </div>
+            <div class="projects-page__manifest-review-package-actions">
+              <button
+                class="projects-page__muted-btn"
+                data-testid="manifest-preflight-review-export-markdown"
+                @click="exportManifestPreflightReviewMarkdown"
+              >
+                导出草案 MD
+              </button>
+              <button
+                class="projects-page__muted-btn"
+                data-testid="manifest-preflight-review-export-json"
+                @click="exportManifestPreflightReviewJson"
+              >
+                导出草案 JSON
+              </button>
+              <button
+                class="projects-page__muted-btn"
+                data-testid="manifest-preflight-review-clear"
+                @click="clearManifestPreflightReview"
+              >
+                清空会话草案
+              </button>
+            </div>
+          </div>
+          <div class="projects-page__manifest-preflight-safety">
+            <span>draft_only true</span>
+            <span>operator signature false</span>
+            <span>发布信用 false</span>
+            <span>generated 写入 false</span>
+            <span>final assemble false</span>
+            <span>manifest 写入 false</span>
+            <span>project.json 写入 false</span>
+          </div>
+          <p class="projects-page__manifest-preflight-boundary">
+            仅供操作员离线审阅；刷新页面即丢失。签署与执行必须在本系统之外单独完成。
+          </p>
+        </section>
+      </section>
       <div class="projects-page__portfolio-grid">
         <article
           v-for="action in generatedGovernancePlan.actions.slice(0, 6)"
@@ -455,6 +631,102 @@
         <span>系列缺后期指令 {{ generatedHealth.summary.series_missing_postproduction_count }}</span>
         <span>缺最终 manifest {{ generatedHealth.summary.series_missing_final_delivery_manifest_count ?? 0 }}</span>
       </div>
+      <section
+        v-if="generatedHealth.generation_activity"
+        class="projects-page__generation-activity"
+        data-testid="generation-activity-diagnostic"
+      >
+        <div class="projects-page__generation-activity-head">
+          <strong>最近生成活动</strong>
+          <span>{{ generatedHealth.generation_activity.diagnosis }}</span>
+        </div>
+        <p>
+          最新故事 {{ formatDate(generatedHealth.generation_activity.latest_story?.created_at ?? '') }}
+          · 后续项目修订 {{ generatedHealth.generation_activity.summary.project_revision_after_latest_story_count }}
+          · 后续报告 {{ generatedHealth.generation_activity.summary.report_after_latest_story_count }}
+          · pending transaction {{ generatedHealth.generation_activity.summary.pending_transaction_count }}
+        </p>
+        <p v-if="generatedHealth.generation_activity.latest_generation_attempt">
+          最近请求 {{ generatedHealth.generation_activity.latest_generation_attempt.status }}
+          · {{ generatedHealth.generation_activity.latest_generation_attempt.source_domain }}
+          · {{ generatedHealth.generation_activity.latest_generation_attempt.video_type }}
+          · {{ formatDate(generatedHealth.generation_activity.latest_generation_attempt.started_at) }}
+        </p>
+        <p>
+          尝试账本 {{ generatedHealth.generation_activity.attempt_audit_readiness.status }}
+          · 历史完整性 {{ generatedHealth.generation_activity.attempt_audit_readiness.history_integrity }}
+          · lock {{ generatedHealth.generation_activity.attempt_audit_readiness.lock_status }}
+          · 当前 {{ generatedHealth.generation_activity.attempt_audit_readiness.current_file_bytes }} bytes
+          · 归档 {{ generatedHealth.generation_activity.attempt_audit_readiness.archive_count }}
+        </p>
+        <p>
+          lock 策略：等待 {{ generatedHealth.generation_activity.attempt_audit_readiness.configured_lock_timeout_ms }}ms
+          · 重试 {{ generatedHealth.generation_activity.attempt_audit_readiness.configured_lock_retry_ms }}ms
+          · 陈旧 {{ generatedHealth.generation_activity.attempt_audit_readiness.configured_lock_stale_ms }}ms
+          · 配置 {{ generatedHealth.generation_activity.attempt_audit_readiness.configuration_valid }}
+          · 权限 {{ generatedHealth.generation_activity.attempt_audit_readiness.permission_policy }}
+          {{ generatedHealth.generation_activity.attempt_audit_readiness.permission_policy_satisfied }}
+        </p>
+        <p>
+          durability：file sync {{ generatedHealth.generation_activity.attempt_audit_readiness.event_file_sync_required }}
+          · no-follow {{ generatedHealth.generation_activity.attempt_audit_readiness.no_follow_open_required }}
+          · directory sync {{ generatedHealth.generation_activity.attempt_audit_readiness.directory_entry_sync_guaranteed }}
+        </p>
+        <p v-if="generatedHealth.generation_activity.attempt_audit_readiness.configuration_warnings.length">
+          配置警告：{{ generatedHealth.generation_activity.attempt_audit_readiness.configuration_warnings.join(' / ') }}
+        </p>
+        <p v-if="generatedHealth.generation_activity.attempt_audit_readiness.blockers.length">
+          尝试账本阻断：{{ generatedHealth.generation_activity.attempt_audit_readiness.blockers.join(' / ') }}
+        </p>
+        <p>
+          operator 建议 {{ generatedHealth.generation_activity.attempt_audit_readiness.operator_actions.join(' / ') }}
+          · 自动修复 {{ generatedHealth.generation_activity.attempt_audit_readiness.automatic_repair_allowed }}
+          · 破坏操作 {{ generatedHealth.generation_activity.attempt_audit_readiness.destructive_action_performed }}
+        </p>
+        <p v-if="generatedHealth.generation_activity.diagnosis === 'attempt_history_unavailable'">
+          生成尝试历史不可观测；不能确认未发起，也不能确认链路故障。
+        </p>
+        <p v-else-if="generatedHealth.generation_activity.diagnosis === 'storage_root_mismatch_detected'">
+          已发现旧错误存储根中有更新故事；本检查不会合并、复制或切换写入根。
+        </p>
+        <p v-else-if="generatedHealth.generation_activity.diagnosis === 'pending_transaction_detected'">
+          已发现 pending transaction；本检查只阻断和报告，不自动恢复。
+        </p>
+        <p v-else-if="generatedHealth.generation_activity.diagnosis === 'generation_pipeline_failure_detected'">
+          最近一次正式 Web 生成请求已失败，失败发生在成功终态审计之前。
+        </p>
+        <p v-else-if="generatedHealth.generation_activity.diagnosis === 'generation_attempt_incomplete'">
+          最近一次正式 Web 生成请求只有 started 记录，可能仍在运行或曾被进程中断。
+        </p>
+        <p v-else>
+          最近一次正式 Web 生成已成功持久化，账本中没有更新的生成请求。
+        </p>
+        <div class="projects-page__manifest-preflight-safety">
+          <span>尝试账本 {{ generatedHealth.generation_activity.signals.durable_generation_attempt_history_available }}</span>
+          <span>下次请求就绪 {{ generatedHealth.generation_activity.signals.generation_attempt_audit_ready_for_next_request }}</span>
+          <span>写入 {{ generatedHealth.generation_activity.safety.generated_files_modified }}</span>
+          <span>模型调用 {{ generatedHealth.generation_activity.safety.model_invoked }}</span>
+          <span>未发起确认 {{ generatedHealth.generation_activity.signals.no_generation_request_confirmed }}</span>
+          <span>链路故障确认 {{ generatedHealth.generation_activity.signals.generation_pipeline_failure_confirmed }}</span>
+          <span>未完成尝试 {{ generatedHealth.generation_activity.signals.generation_attempt_incomplete_detected }}</span>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <button
+            class="projects-page__muted-btn"
+            data-testid="generation-attempt-audit-export-json"
+            @click="exportGenerationAttemptAuditDiagnosticJson"
+          >
+            导出账本诊断 JSON
+          </button>
+          <button
+            class="projects-page__muted-btn"
+            data-testid="generation-attempt-audit-export-markdown"
+            @click="exportGenerationAttemptAuditDiagnosticMarkdown"
+          >
+            导出账本诊断 MD
+          </button>
+        </div>
+      </section>
       <div class="projects-page__portfolio-grid">
         <article
           v-for="item in generatedHealth.items.slice(0, 6)"
@@ -752,12 +1024,14 @@
                       {{ materialGateLabel(materialGateStatus(project), project.material_sufficiency?.score) }}
                     </span>
                     <span
-                      v-if="typeof project.genre_score === 'number'"
-                      :class="['projects-page__meta-quality', project.quality_passed ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
+                      :class="['projects-page__meta-quality', projectStoryPublishable(project) ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']"
                     >
-                      类型分 {{ project.genre_score }}
+                      故事{{ projectStoryPublishable(project) === undefined ? '未评估' : projectStoryPublishable(project) ? '可发布' : '需修订' }}
                     </span>
-                    <span v-else>未评分</span>
+                    <span :class="['projects-page__meta-quality', project.production_ready ? 'projects-page__meta-quality--pass' : 'projects-page__meta-quality--warn']">
+                      生产{{ project.production_ready === undefined ? '未评估' : project.production_ready ? '可交付' : '未就绪' }}
+                    </span>
+                    <span>{{ typeof project.genre_score === 'number' ? `类型分 ${project.genre_score}` : '未评分' }}</span>
                     <span v-if="qualityFollowupLabel(project)" class="projects-page__meta-warning">
                       {{ qualityFollowupLabel(project) }}
                     </span>
@@ -765,7 +1039,7 @@
                       {{ supplementFollowupLabel(project) }}
                     </span>
                     <span v-if="qualityPassedWithFollowups(project)" class="projects-page__meta-note">
-                      主质量门已过，剩余为跟进项
+                      故事发布门已过，剩余为跟进项
                     </span>
                     <span v-if="project.gears_video_status" :class="['projects-page__meta-video', `projects-page__meta-video--${project.gears_video_status}`]">
                       {{ gearsVideoStatusLabel(project.gears_video_status) }}
@@ -807,6 +1081,7 @@ import {
   getStoryAgentGeneratedGovernancePlan,
   getStoryAgentGeneratedHealth,
   getStoryAgentMvpStatus,
+  preflightStoryAgentFinalDeliveryManifest,
   runProductionReadinessPortfolioAutomation,
   runStoryAgentGeneratedGovernance,
 } from '@/api/system'
@@ -836,6 +1111,9 @@ import type {
   StoryAgentGeneratedGovernanceActionKey,
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedGovernanceRunResult,
+  StoryAgentFinalDeliveryManifestDisposition,
+  StoryAgentFinalDeliveryManifestPreflightCheckKey,
+  StoryAgentFinalDeliveryManifestPreflightResult,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthStatus,
@@ -852,6 +1130,33 @@ const RETAIN_RECENT_COUNT = 10
 
 type MaterialGateStatus = 'ready' | 'risk' | 'blocked' | 'unknown'
 
+interface StoryAgentFinalDeliveryManifestReviewSummary {
+  item_count: number
+  preserve_count: number
+  reexport_count: number
+  ready_count: number
+  blocked_count: number
+}
+
+interface StoryAgentFinalDeliveryManifestReviewDraft {
+  schema_version: 'story-agent-final-delivery-manifest-review-draft/v1'
+  generated_at: string
+  draft_only: true
+  operator_signature_present: false
+  operator_disposition_persisted: false
+  server_state_modified: false
+  publishable_delivery_credit_granted: false
+  generated_files_modified: false
+  final_assemble_invoked: false
+  manifest_written: false
+  project_json_written: false
+  real_gears_seedance_credit_granted: false
+  summary: StoryAgentFinalDeliveryManifestReviewSummary
+  items: StoryAgentFinalDeliveryManifestPreflightResult[]
+  notes: string[]
+  markdown: string
+}
+
 const projects = ref<StoryProjectListItem[]>([])
 const seriesProjects = ref<AiComicSeriesProjectMeta[]>([])
 const storyAgentMvpStatus = ref<StoryAgentMvpStatusReport | null>(null)
@@ -859,6 +1164,14 @@ const storyAgentBacklogHandoff = ref<StoryAgentBacklogHandoffPackage | null>(nul
 const productionPortfolio = ref<ProductionReadinessPortfolioReport | null>(null)
 const generatedGovernancePlan = ref<StoryAgentGeneratedGovernancePlan | null>(null)
 const generatedGovernanceRun = ref<StoryAgentGeneratedGovernanceRunResult | null>(null)
+const manifestPreflightTargetId = ref('')
+const manifestPreflightDisposition = ref<StoryAgentFinalDeliveryManifestDisposition>('preserve_fixture_exclude_from_publishable_delivery')
+const manifestPreflightAuthorizedInputs = ref(false)
+const manifestPreflightResult = ref<StoryAgentFinalDeliveryManifestPreflightResult | null>(null)
+const manifestPreflightError = ref('')
+const manifestPreflightReviewItems = ref<StoryAgentFinalDeliveryManifestPreflightResult[]>([])
+const manifestPreflightReviewMessage = ref('')
+const runningManifestPreflight = ref(false)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
@@ -898,6 +1211,12 @@ const retainingRecent = ref(false)
 
 const showStoryProjects = computed(() => projectKindFilter.value !== 'series')
 const showSeriesProjects = computed(() => projectKindFilter.value !== 'story')
+const manifestGapQueueItems = computed(() => generatedGovernanceRun.value?.manifest.items.filter(
+  item => item.action_key === 'review_final_delivery_manifest_gaps',
+) ?? [])
+const manifestPreflightReviewSummary = computed(() => summarizeManifestPreflightReview(
+  manifestPreflightReviewItems.value,
+))
 
 const filteredProjects = computed(() => {
   if (!showStoryProjects.value) return []
@@ -913,7 +1232,8 @@ const filteredProjects = computed(() => {
       || materialGateStatus(project) === materialGateFilter.value
     const matchesSupplement = !supplementFilter.value || (project.open_supplement_task_count ?? 0) > 0
     const matchesQuality = !qualityFilter.value
-      || project.quality_passed === false
+      || projectStoryPublishable(project) === false
+      || project.production_ready === false
       || (project.quality_issue_count ?? 0) > 0
       || qualityPassedWithFollowups(project)
     const matchesQuery = !query
@@ -1063,20 +1383,24 @@ function materialGateLabel(status: MaterialGateStatus, score?: number): string {
 }
 
 function qualityPassedWithFollowups(project: StoryProjectListItem): boolean {
-  return project.quality_passed === true
+  return projectStoryPublishable(project) === true
     && ((project.quality_issue_count ?? 0) > 0 || (project.open_supplement_task_count ?? 0) > 0)
+}
+
+function projectStoryPublishable(project: StoryProjectListItem): boolean | undefined {
+  return project.story_publishable ?? project.quality_passed
 }
 
 function qualityFollowupLabel(project: StoryProjectListItem): string {
   const count = project.quality_issue_count ?? 0
   if (count <= 0) return ''
-  return project.quality_passed ? `质量建议 ${count}` : `质量问题 ${count}`
+  return projectStoryPublishable(project) ? `故事建议 ${count}` : `故事问题 ${count}`
 }
 
 function supplementFollowupLabel(project: StoryProjectListItem): string {
   const count = project.open_supplement_task_count ?? 0
   if (count <= 0) return ''
-  return project.quality_passed ? `通过后待补素材 ${count}` : `待补素材 ${count}`
+  return projectStoryPublishable(project) ? `发布后待补素材 ${count}` : `待补素材 ${count}`
 }
 
 function gearsVideoStatusLabel(status: GearsVideoStatus): string {
@@ -1126,6 +1450,7 @@ function backlogSourceLabel(source: StoryAgentBacklogHandoffItem['source_kind'])
 
 function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceActionKey): string {
   const map: Record<StoryAgentGeneratedGovernanceActionKey, string> = {
+    review_final_delivery_manifest_gaps: '复核最终 manifest 缺口',
     restore_or_relink_series_story_refs: '恢复/重连分集故事',
     archive_or_rebuild_series_fixtures: '归档或重建历史样本',
     generate_first_series_episode: '生成首集',
@@ -1134,6 +1459,204 @@ function generatedGovernanceActionLabel(key: StoryAgentGeneratedGovernanceAction
     promote_ready_targets_for_gears_signoff: '进入 GEARS 签收候选',
   }
   return map[key]
+}
+
+function manifestPreflightCheckLabel(key: StoryAgentFinalDeliveryManifestPreflightCheckKey): string {
+  const map: Record<StoryAgentFinalDeliveryManifestPreflightCheckKey, string> = {
+    target_exists: '目标项目存在',
+    manifest_gap_confirmed: 'manifest 缺口确认',
+    authorized_media_inputs: '媒体输入授权',
+    cut_output: '剪辑成片依赖',
+    subtitle_output: '字幕成片依赖',
+    audio_mix_output: '音频混合依赖',
+    title_card_outputs: '片头片尾卡依赖',
+    project_scoped_paths: '项目作用域路径',
+  }
+  return map[key]
+}
+
+function manifestPreflightResultTitle(result: StoryAgentFinalDeliveryManifestPreflightResult): string {
+  if (result.status === 'blocked') return '预检阻断'
+  return result.disposition === 'preserve_fixture_exclude_from_publishable_delivery'
+    ? '保留排除建议可复核'
+    : '重导出前置条件齐备（仍需另行授权）'
+}
+
+function manifestPreflightRecommendedAction(result: StoryAgentFinalDeliveryManifestPreflightResult): string {
+  if (result.status === 'blocked') {
+    return '保持重导出阻断；补齐或授权所有失败依赖后，再重新运行只读预检。'
+  }
+  return result.disposition === 'preserve_fixture_exclude_from_publishable_delivery'
+    ? '等待操作员记录签收排除；保留历史夹具，但不授予发布信用。'
+    : '前置条件仅在结构上齐备；如需重导出，仍须另行获得 GEARS 执行授权。'
+}
+
+function cloneManifestPreflightResult(
+  result: StoryAgentFinalDeliveryManifestPreflightResult,
+): StoryAgentFinalDeliveryManifestPreflightResult {
+  return JSON.parse(JSON.stringify(result)) as StoryAgentFinalDeliveryManifestPreflightResult
+}
+
+function summarizeManifestPreflightReview(
+  items: StoryAgentFinalDeliveryManifestPreflightResult[],
+): StoryAgentFinalDeliveryManifestReviewSummary {
+  return {
+    item_count: items.length,
+    preserve_count: items.filter(item => item.disposition === 'preserve_fixture_exclude_from_publishable_delivery').length,
+    reexport_count: items.filter(item => item.disposition === 'reexport_after_authorized_dependencies').length,
+    ready_count: items.filter(item => item.status === 'ready').length,
+    blocked_count: items.filter(item => item.status === 'blocked').length,
+  }
+}
+
+function addManifestPreflightResultToReview() {
+  const result = manifestPreflightResult.value
+  if (!result) return
+  const nextItem = cloneManifestPreflightResult(result)
+  const existingIndex = manifestPreflightReviewItems.value.findIndex(item =>
+    item.series_project_id === nextItem.series_project_id
+      && item.disposition === nextItem.disposition,
+  )
+  if (existingIndex >= 0) {
+    manifestPreflightReviewItems.value = manifestPreflightReviewItems.value.map((item, index) =>
+      index === existingIndex ? nextItem : item,
+    )
+    manifestPreflightReviewMessage.value = '已更新当前会话审阅包中的同项记录'
+    return
+  }
+  manifestPreflightReviewItems.value = [...manifestPreflightReviewItems.value, nextItem]
+  manifestPreflightReviewMessage.value = '已加入当前会话审阅包'
+}
+
+function clearManifestPreflightReview() {
+  manifestPreflightReviewItems.value = []
+  manifestPreflightReviewMessage.value = ''
+}
+
+function manifestReviewMarkdownValue(value: string): string {
+  return value.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|')
+}
+
+function renderManifestPreflightReviewMarkdown(
+  draft: Omit<StoryAgentFinalDeliveryManifestReviewDraft, 'markdown'>,
+): string {
+  const lines = [
+    '# Story Agent 最终交付 manifest 人工处置审阅草案',
+    '',
+    `- schema_version: ${draft.schema_version}`,
+    `- generated_at: ${draft.generated_at}`,
+    '- draft_only: true',
+    '- operator_signature_present: false',
+    '- operator_disposition_persisted: false',
+    '- server_state_modified: false',
+    '- publishable_delivery_credit_granted: false',
+    '- generated_files_modified: false',
+    '- final_assemble_invoked: false',
+    '- manifest_written: false',
+    '- project_json_written: false',
+    '- real_gears_seedance_credit_granted: false',
+    '',
+    '## 汇总',
+    '',
+    `- item_count: ${draft.summary.item_count}`,
+    `- preserve_count: ${draft.summary.preserve_count}`,
+    `- reexport_count: ${draft.summary.reexport_count}`,
+    `- ready_count: ${draft.summary.ready_count}`,
+    `- blocked_count: ${draft.summary.blocked_count}`,
+    '',
+    '## 预检项',
+  ]
+  draft.items.forEach((item, index) => {
+    lines.push(
+      '',
+      `### ${index + 1}. ${manifestReviewMarkdownValue(item.series_project_id)}`,
+      '',
+      `- disposition: ${item.disposition}`,
+      `- status: ${item.status}`,
+      `- eligible_for_selected_disposition: ${item.eligible_for_selected_disposition}`,
+      `- operator_review_required: ${item.operator_review_required}`,
+      `- missing_dependencies: ${item.missing_dependencies.map(manifestReviewMarkdownValue).join(', ') || '(none)'}`,
+      `- unsafe_paths: ${item.unsafe_paths.map(manifestReviewMarkdownValue).join(', ') || '(none)'}`,
+      `- recommended_action: ${manifestReviewMarkdownValue(item.recommended_action)}`,
+      '',
+      '| check | status | required | evidence |',
+      '| --- | --- | --- | --- |',
+    )
+    item.checks.forEach(check => {
+      const evidence = [
+        ...check.evidence,
+        ...(check.missing_paths ?? []).map(path => `missing:${path}`),
+        ...(check.unsafe_paths ?? []).map(path => `unsafe:${path}`),
+      ].map(manifestReviewMarkdownValue).join('; ')
+      lines.push(`| ${check.key} | ${check.status} | ${check.required} | ${evidence || '(none)'} |`)
+    })
+  })
+  lines.push('', '## 安全边界', '')
+  draft.notes.forEach(note => lines.push(`- ${manifestReviewMarkdownValue(note)}`))
+  return `${lines.join('\n')}\n`
+}
+
+function buildManifestPreflightReviewDraft(): StoryAgentFinalDeliveryManifestReviewDraft {
+  const items = manifestPreflightReviewItems.value.map(cloneManifestPreflightResult)
+  const draft: Omit<StoryAgentFinalDeliveryManifestReviewDraft, 'markdown'> = {
+    schema_version: 'story-agent-final-delivery-manifest-review-draft/v1',
+    generated_at: new Date().toISOString(),
+    draft_only: true,
+    operator_signature_present: false,
+    operator_disposition_persisted: false,
+    server_state_modified: false,
+    publishable_delivery_credit_granted: false,
+    generated_files_modified: false,
+    final_assemble_invoked: false,
+    manifest_written: false,
+    project_json_written: false,
+    real_gears_seedance_credit_granted: false,
+    summary: summarizeManifestPreflightReview(items),
+    items,
+    notes: [
+      '本文件是浏览器当前会话草案，不是 operator 签署或处置决定。',
+      'ready 仅表示所选处置可进入下一次人工授权，不表示已可发布。',
+      '本次导出未写入 generated，未调用 final assemble，未授予 GEARS/Seedance 成片信用。',
+      '如需签署、持久化或执行，必须由操作员在本系统之外单独完成。',
+    ],
+  }
+  return {
+    ...draft,
+    markdown: renderManifestPreflightReviewMarkdown(draft),
+  }
+}
+
+function exportManifestPreflightReviewMarkdown() {
+  if (!manifestPreflightReviewItems.value.length) return
+  const draft = buildManifestPreflightReviewDraft()
+  downloadText(
+    'story-agent-final-delivery-manifest-review-draft.md',
+    draft.markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
+function exportManifestPreflightReviewJson() {
+  if (!manifestPreflightReviewItems.value.length) return
+  const draft = buildManifestPreflightReviewDraft()
+  downloadText(
+    'story-agent-final-delivery-manifest-review-draft.json',
+    JSON.stringify(draft, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
+function resetManifestPreflightResult() {
+  manifestPreflightResult.value = null
+  manifestPreflightError.value = ''
+  manifestPreflightReviewMessage.value = ''
+}
+
+function handleManifestPreflightDispositionChange() {
+  if (manifestPreflightDisposition.value !== 'reexport_after_authorized_dependencies') {
+    manifestPreflightAuthorizedInputs.value = false
+  }
+  resetManifestPreflightResult()
 }
 
 function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number]['key']): string {
@@ -1508,6 +2031,81 @@ function downloadText(filename: string, text: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
+function generationAttemptAuditDiagnostic() {
+  const activity = generatedHealth.value?.generation_activity
+  if (!activity) return null
+  return {
+    schema_version: 'story-generation-attempt-audit-diagnostic/v1' as const,
+    generated_at: activity.generated_at,
+    diagnosis: activity.diagnosis,
+    readiness: activity.attempt_audit_readiness,
+    signals: {
+      durable_generation_attempt_history_available: activity.signals.durable_generation_attempt_history_available,
+      generation_attempt_audit_ready_for_next_request: activity.signals.generation_attempt_audit_ready_for_next_request,
+      no_generation_request_confirmed: activity.signals.no_generation_request_confirmed,
+      generation_pipeline_failure_confirmed: activity.signals.generation_pipeline_failure_confirmed,
+      generation_attempt_incomplete_detected: activity.signals.generation_attempt_incomplete_detected,
+    },
+    browser_memory_only: true as const,
+    server_state_modified: false as const,
+    automatic_repair_invoked: false as const,
+    destructive_action_invoked: false as const,
+  }
+}
+
+function exportGenerationAttemptAuditDiagnosticJson() {
+  const diagnostic = generationAttemptAuditDiagnostic()
+  if (!diagnostic) return
+  downloadText(
+    'story-generation-attempt-audit-diagnostic.json',
+    JSON.stringify(diagnostic, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
+function exportGenerationAttemptAuditDiagnosticMarkdown() {
+  const diagnostic = generationAttemptAuditDiagnostic()
+  if (!diagnostic) return
+  const readiness = diagnostic.readiness
+  const markdown = [
+    '# Story Generation Attempt Audit Diagnostic',
+    '',
+    `- schema_version: ${diagnostic.schema_version}`,
+    `- generated_at: ${diagnostic.generated_at}`,
+    `- diagnosis: ${diagnostic.diagnosis}`,
+    `- readiness: ${readiness.status}`,
+    `- history_integrity: ${readiness.history_integrity}`,
+    `- lock_status: ${readiness.lock_status}`,
+    `- current_file_bytes: ${readiness.current_file_bytes}`,
+    `- archive_count: ${readiness.archive_count}`,
+    `- configured_lock_timeout_ms: ${readiness.configured_lock_timeout_ms}`,
+    `- configured_lock_retry_ms: ${readiness.configured_lock_retry_ms}`,
+    `- configured_lock_stale_ms: ${readiness.configured_lock_stale_ms}`,
+    `- configuration_valid: ${readiness.configuration_valid}`,
+    `- configuration_warnings: ${readiness.configuration_warnings.join(', ') || 'none'}`,
+    `- permission_policy: ${readiness.permission_policy}`,
+    `- permission_policy_satisfied: ${readiness.permission_policy_satisfied}`,
+    `- event_file_sync_required: ${readiness.event_file_sync_required}`,
+    `- no_follow_open_required: ${readiness.no_follow_open_required}`,
+    `- directory_entry_sync_guaranteed: ${readiness.directory_entry_sync_guaranteed}`,
+    `- blockers: ${readiness.blockers.join(', ') || 'none'}`,
+    `- operator_actions: ${readiness.operator_actions.join(', ') || 'none'}`,
+    `- ready_for_next_attempt: ${readiness.ready_for_next_attempt}`,
+    `- browser_memory_only: ${diagnostic.browser_memory_only}`,
+    `- server_state_modified: ${diagnostic.server_state_modified}`,
+    `- automatic_repair_invoked: ${diagnostic.automatic_repair_invoked}`,
+    `- destructive_action_invoked: ${diagnostic.destructive_action_invoked}`,
+    '',
+    '> This export is a read-only browser snapshot. It does not repair, unlock, truncate, rotate, chmod, or invoke generation.',
+    '',
+  ].join('\n')
+  downloadText(
+    'story-generation-attempt-audit-diagnostic.md',
+    markdown,
+    'text/markdown;charset=utf-8',
+  )
+}
+
 function exportStoryAgentMvpStatusMarkdown() {
   if (!storyAgentMvpStatus.value?.markdown) return
   downloadText(
@@ -1806,6 +2404,7 @@ async function runGeneratedGovernanceDryRun() {
     dry_run: true,
     max_targets: 20,
     action_keys: [
+      'review_final_delivery_manifest_gaps',
       'restore_or_relink_series_story_refs',
       'archive_or_rebuild_series_fixtures',
       'repair_story_project_refs',
@@ -1813,11 +2412,63 @@ async function runGeneratedGovernanceDryRun() {
   })
   if (res.ok && res.data) {
     generatedGovernanceRun.value = res.data
+    const manifestGapItems = res.data.manifest.items.filter(
+      item => item.action_key === 'review_final_delivery_manifest_gaps',
+    )
+    if (!manifestGapItems.some(item => item.project_id === manifestPreflightTargetId.value)) {
+      manifestPreflightTargetId.value = manifestGapItems[0]?.project_id ?? ''
+    }
+    manifestPreflightDisposition.value = 'preserve_fixture_exclude_from_publishable_delivery'
+    manifestPreflightAuthorizedInputs.value = false
+    resetManifestPreflightResult()
     projectMessage.value = `Generated dry-run 清单已生成：planned ${res.data.planned_target_count}，blocked ${res.data.blocked_target_count}`
   } else {
     error.value = res.error?.message ?? '生成 generated dry-run 清单失败'
   }
   runningGeneratedGovernance.value = false
+}
+
+async function runManifestPreflight() {
+  if (!manifestPreflightTargetId.value) {
+    manifestPreflightResult.value = null
+    manifestPreflightError.value = '未选择 manifest 缺口项目'
+    return
+  }
+  runningManifestPreflight.value = true
+  manifestPreflightResult.value = null
+  manifestPreflightError.value = ''
+  const requestedTargetId = manifestPreflightTargetId.value
+  const requestedDisposition = manifestPreflightDisposition.value
+  const requestedAttestation = requestedDisposition === 'reexport_after_authorized_dependencies'
+    ? manifestPreflightAuthorizedInputs.value
+    : false
+  try {
+    const res = await preflightStoryAgentFinalDeliveryManifest({
+      series_project_id: requestedTargetId,
+      disposition: requestedDisposition,
+      authorized_media_inputs_attested: requestedAttestation,
+    })
+    const selectionUnchanged = manifestPreflightTargetId.value === requestedTargetId
+      && manifestPreflightDisposition.value === requestedDisposition
+      && (requestedDisposition !== 'reexport_after_authorized_dependencies'
+        || manifestPreflightAuthorizedInputs.value === requestedAttestation)
+    if (!selectionUnchanged) return
+    if (res.ok && res.data) {
+      if (res.data.series_project_id !== requestedTargetId || res.data.disposition !== requestedDisposition) {
+        manifestPreflightError.value = '预检响应与当前项目或处置方式不匹配'
+        return
+      }
+      manifestPreflightResult.value = res.data
+    } else {
+      manifestPreflightError.value = res.error?.message ?? '只读预检不可用'
+    }
+  } catch (preflightError) {
+    manifestPreflightError.value = preflightError instanceof Error
+      ? preflightError.message
+      : '只读预检不可用'
+  } finally {
+    runningManifestPreflight.value = false
+  }
 }
 
 async function loadGeneratedHealth() {
@@ -2187,6 +2838,244 @@ onMounted(async () => {
   margin-top: 7px;
   color: #66727f;
   font-size: 11px;
+}
+
+.projects-page__manifest-preflight {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 16px;
+  padding: 14px;
+  border: 1px solid #e1c46a;
+  border-radius: 8px;
+  background: #fffbef;
+}
+
+.projects-page__manifest-preflight-head,
+.projects-page__manifest-preflight-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.projects-page__manifest-preflight-head h3,
+.projects-page__manifest-preflight-result-head strong {
+  margin: 0;
+  color: #283747;
+}
+
+.projects-page__manifest-preflight-head p,
+.projects-page__manifest-preflight-result > p {
+  margin: 5px 0 0;
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.projects-page__manifest-preflight-controls {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.projects-page__manifest-preflight-controls > label:not(.projects-page__manifest-preflight-attestation) {
+  display: grid;
+  gap: 5px;
+  color: #33475b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.projects-page__manifest-preflight-attestation {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  align-items: flex-start;
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.projects-page__manifest-preflight-attestation input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+}
+
+.projects-page__manifest-preflight-controls > button {
+  justify-self: start;
+}
+
+.projects-page__manifest-preflight-error {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #efb8b2;
+  border-radius: 6px;
+  background: #fdecec;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__manifest-preflight-result {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #e8d79c;
+}
+
+.projects-page__manifest-preflight-safety {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.projects-page__manifest-preflight-safety span {
+  padding: 5px 7px;
+  border-radius: 4px;
+  background: #eef2f6;
+  color: #425466;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.projects-page__manifest-preflight-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.projects-page__manifest-preflight-check {
+  padding: 9px;
+  border: 1px solid #d7dee5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.projects-page__manifest-preflight-check--failed {
+  border-color: #efb8b2;
+  background: #fff7f6;
+}
+
+.projects-page__manifest-preflight-check--passed {
+  border-color: #a9d7bb;
+  background: #f6fcf8;
+}
+
+.projects-page__manifest-preflight-check > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #33475b;
+  font-size: 12px;
+}
+
+.projects-page__manifest-preflight-check > div span {
+  font-weight: 800;
+}
+
+.projects-page__manifest-preflight-check p,
+.projects-page__manifest-preflight-check ul {
+  margin: 6px 0 0;
+  color: #66727f;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.projects-page__manifest-preflight-check ul {
+  padding-left: 17px;
+}
+
+.projects-page__manifest-preflight-boundary {
+  padding: 8px 10px;
+  border-left: 3px solid #9a6700;
+  background: #fff7e6;
+  color: #7a5200 !important;
+  font-weight: 800;
+}
+
+.projects-page__manifest-preflight-result-actions,
+.projects-page__manifest-review-package-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.projects-page__manifest-preflight-result-actions span {
+  color: #52616f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__manifest-review-package {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #c7d2df;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.projects-page__manifest-review-package-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.projects-page__manifest-review-package-head h4,
+.projects-page__manifest-review-package-head p {
+  margin: 0;
+}
+
+.projects-page__manifest-review-package-head h4 {
+  color: #283747;
+}
+
+.projects-page__manifest-review-package-head p {
+  margin-top: 5px;
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.projects-page__generation-activity {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 16px;
+  padding: 11px 12px;
+  border: 1px solid #e1c46a;
+  border-radius: 7px;
+  background: #fffbef;
+}
+
+.projects-page__generation-activity-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #33475b;
+  font-size: 12px;
+}
+
+.projects-page__generation-activity-head span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #7a5200;
+}
+
+.projects-page__generation-activity p {
+  margin: 0;
+  color: #52616f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .projects-page__manifest-review-package-head {
+    display: grid;
+  }
 }
 
 .projects-page__readiness-badge {

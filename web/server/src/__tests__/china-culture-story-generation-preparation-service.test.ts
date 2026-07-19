@@ -54,6 +54,21 @@ describe('china_culture story generation preparation service', () => {
     expect(result.entry.verificationMethod).toContain('用户素材主导');
   });
 
+  it('keeps the person and event scoped when an original theme opens with time and place context', async () => {
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'ai_comic_drama',
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      original_user_query: '北宋南安，一名年轻书吏被迫在冤案文书上落笔；周敦颐拒绝签押，以“杀人以媚人，吾不为也”守住底线。',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.primaryEntryName).toBe('周敦颐拒绝签押——用户原创故事种子');
+    expect(result.centralEvent).toBe('周敦颐拒绝签押');
+    expect(result.preliminaryStoryBlueprint.protagonist).toBe('周敦颐');
+  });
+
   it('preserves source-resolution failure and keeps the legacy orchestrator free of preparation rules', async () => {
     const missing = await prepareChinaCultureStoryGeneration({
       video_type: 'ai_comic_drama',

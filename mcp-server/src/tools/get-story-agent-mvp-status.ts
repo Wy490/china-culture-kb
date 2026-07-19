@@ -249,8 +249,7 @@ function clampScore(score: number): number {
 const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_get_entry_detail',
   'kb_generate_story_blueprint',
-  'kb_generate_script',
-  'kb_generate_story',
+  'kb_story_agent_generate',
   'kb_get_project_context',
   'kb_validate_genre_story',
   'kb_generate_story_repair_prompt',

@@ -127,6 +127,28 @@
             {{ lane.label }} · {{ productionReadinessStatusLabel(lane.status) }} · {{ lane.score }}
           </span>
         </div>
+        <div v-if="productionReadiness.gears_operational_metrics.authorized_external_job_count" class="project-detail-page__readiness-lanes">
+          <span class="project-detail-page__readiness-chip">
+            外部产出率 {{ productionReadiness.gears_operational_metrics.actual_output_rate_percent }}%
+          </span>
+          <span class="project-detail-page__readiness-chip">
+            失败率 {{ productionReadiness.gears_operational_metrics.failure_rate_percent }}%
+          </span>
+          <span class="project-detail-page__readiness-chip">
+            执行 P95 {{ productionReadiness.gears_operational_metrics.execution_duration_ms.p95 }}ms
+          </span>
+          <span class="project-detail-page__readiness-chip">
+            Callback P95 {{ productionReadiness.gears_operational_metrics.callback_delivery_latency_ms.p95 }}ms
+          </span>
+        </div>
+        <div v-if="productionReadiness.gears_recovery_plan.item_count" class="project-detail-page__readiness-list">
+          <strong>GEARS 恢复计划</strong>
+          <p>
+            {{ productionReadiness.gears_recovery_plan.item_count }} 项 · 可重试 {{ productionReadiness.gears_recovery_plan.retry_eligible_count }}
+            · 可自动状态同步 {{ productionReadiness.gears_recovery_plan.auto_executable_count }}
+            · 需人工 {{ productionReadiness.gears_recovery_plan.operator_intervention_count }}
+          </p>
+        </div>
         <div v-if="productionReadiness.issues.length" class="project-detail-page__readiness-list">
           <strong>阻断与提醒</strong>
           <p v-for="issue in productionReadiness.issues.slice(0, 3)" :key="issue.issue_id">
@@ -550,6 +572,25 @@
             <span v-if="latestGearsJob?.last_poll_error">
               最近轮询失败 {{ gearsJobPollFailureLabel(latestGearsJob) }}
             </span>
+            <span v-if="gearsJobStats.cost_reported">
+              已结算 {{ gearsJobStats.cost_reported }}/{{ gearsJobStats.authorized }} · {{ gearsCostTotalsLabel }}
+            </span>
+            <span v-if="gearsJobStats.cost_pending">
+              费用待结算 {{ gearsJobStats.cost_pending }}
+            </span>
+            <span v-if="gearsJobStats.cost_violation">
+              费用越界 {{ gearsJobStats.cost_violation }}
+            </span>
+          </div>
+          <div v-if="productionBoard?.image_asset_job_plan" class="project-detail-page__seedance-provider-config">
+            <span>图片需求 {{ productionBoard.image_asset_job_plan.summary.requirement_count }}</span>
+            <span>人物 {{ productionBoard.image_asset_job_plan.summary.character_requirement_count }}</span>
+            <span>场景 {{ productionBoard.image_asset_job_plan.summary.location_requirement_count }}</span>
+            <span>道具 {{ productionBoard.image_asset_job_plan.summary.prop_requirement_count }}</span>
+            <span>待提交 {{ productionBoard.image_asset_job_plan.summary.ready_to_submit_count }}</span>
+            <span :class="{ 'project-detail-page__seedance-provider-chip--ready': productionBoard.image_asset_job_plan.summary.production_ready_count > 0 }">
+              生产资格 {{ productionBoard.image_asset_job_plan.summary.production_ready_count }}
+            </span>
           </div>
           <div class="project-detail-page__seedance-provider-config">
             <span v-if="loadingSeedanceProviderAdapterConfig">adapter 配置读取中</span>
@@ -699,6 +740,15 @@
               placeholder="GEARS callback JSON"
             />
             <div class="project-detail-page__seedance-ledger-action-row">
+              <select
+                v-model="selectedGearsJobType"
+                class="project-detail-page__select project-detail-page__gears-job-type-select"
+                aria-label="GEARS 任务类型"
+              >
+                <option v-for="option in PROJECT_GEARS_JOB_TYPE_OPTIONS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
               <button
                 v-if="gearsJobStats.total"
                 class="project-detail-page__repair-task-btn"
@@ -744,6 +794,20 @@
               >
                 {{ submittingGearsJobs ? '提交中…' : '提交 GEARS' }}
               </button>
+              <label class="project-detail-page__gears-cost-limit">
+                <span>外呼最高成本</span>
+                <input
+                  v-model.number="gearsExternalMaxCostAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  aria-label="GEARS 外呼最高成本"
+                >
+                <select v-model="gearsExternalCostCurrency" aria-label="GEARS 外呼成本币种">
+                  <option value="CNY">CNY</option>
+                  <option value="USD">USD</option>
+                </select>
+              </label>
               <button
                 class="project-detail-page__repair-task-btn"
                 :disabled="submittingGearsJobs || submittingGearsApiJobs || !gearsExecutionConfig?.ready_for_submit"
@@ -865,7 +929,8 @@
               {{ productionBoard.seedance_asset_report.total_asset_count }} 个素材
               · 待上传 {{ productionBoard.seedance_asset_report.upload_required_count }}
               · 占位 {{ productionBoard.seedance_asset_report.placeholder_asset_count }}
-              · 正式 ready {{ productionBoard.seedance_asset_report.production_asset_ready_count }}
+              · 结构 bound {{ productionBoard.seedance_asset_report.production_asset_ready_count }}
+              · 生产信用 {{ productionBoard.media_asset_library.summary.production_credit_binding_count }}/{{ productionBoard.media_asset_library.summary.binding_count }}
               · 缺槽位 {{ productionBoard.seedance_asset_report.missing_reference_slot_count }}
               · 受影响镜头 {{ productionBoard.seedance_asset_report.unbound_shot_count }}/{{ productionBoard.seedance_asset_report.shot_binding_count }}
             </p>
@@ -972,6 +1037,85 @@
               :class="`project-detail-page__seedance-asset-item--${asset.status}`"
             >
               <span>{{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }} · {{ seedanceAssetStatusLabel(asset.status) }}</span>
+              <figure
+                v-if="seedanceMediaArtifact(asset)?.modality === 'image' && seedanceMediaArtifact(asset)?.storage.preview_url"
+                class="project-detail-page__seedance-asset-preview"
+              >
+                <img
+                  :src="seedanceMediaArtifact(asset)?.storage.preview_url"
+                  :alt="`${asset.label} 安全预览`"
+                  loading="lazy"
+                >
+                <figcaption>认证预览 · {{ seedanceMediaArtifact(asset)?.content_sha256?.slice(0, 12) }}</figcaption>
+              </figure>
+              <small v-if="seedanceMediaBinding(asset)">
+                媒体合同：{{ mediaAssetBindingStatusLabel(seedanceMediaBinding(asset)?.status) }}
+                · 授权 {{ mediaRightsStatusLabel(seedanceMediaBinding(asset)?.rights_status) }}
+                · 真人视觉审核 {{ mediaHumanReviewStatusLabel(seedanceMediaBinding(asset)?.human_review_status) }}
+                · production credit {{ seedanceMediaBinding(asset)?.production_credit_granted ? '1' : '0' }}
+              </small>
+              <details
+                v-if="seedanceMediaArtifact(asset)?.modality === 'image' && seedanceMediaArtifact(asset)?.content_sha256 && mediaReviewForms[asset.asset_id]"
+                class="project-detail-page__media-review"
+              >
+                <summary>版权与真人视觉审核</summary>
+                <small>{{ mediaAssetReviewPermissionHint }}</small>
+                <fieldset :disabled="!canReviewMediaAssets || reviewingMediaAssetId === asset.asset_id">
+                  <label>
+                    <span>授权/受限依据</span>
+                    <input
+                      v-model="mediaReviewForms[asset.asset_id].authorization_reference"
+                      class="project-detail-page__seedance-asset-input"
+                      placeholder="合同、授权单或受限原因编号"
+                    >
+                  </label>
+                  <label>
+                    <span>人物同意依据（如适用）</span>
+                    <input
+                      v-model="mediaReviewForms[asset.asset_id].person_consent_reference"
+                      class="project-detail-page__seedance-asset-input"
+                      placeholder="肖像/人物同意记录"
+                    >
+                  </label>
+                  <label>
+                    <span>视觉审核意见</span>
+                    <textarea
+                      v-model="mediaReviewForms[asset.asset_id].review_note"
+                      rows="3"
+                      placeholder="画面质量、人物一致性、时代细节与风险判断"
+                    />
+                  </label>
+                  <div class="project-detail-page__media-review-actions">
+                    <button type="button" @click="submitMediaAssetReview(asset, 'authorize')">仅确认授权</button>
+                    <button type="button" @click="submitMediaAssetReview(asset, 'approve')">授权并通过</button>
+                    <button type="button" @click="submitMediaAssetReview(asset, 'reject')">视觉拒绝</button>
+                    <button type="button" @click="submitMediaAssetReview(asset, 'restrict')">版权受限</button>
+                  </div>
+                </fieldset>
+              </details>
+              <small v-else-if="seedanceMediaArtifact(asset)?.modality === 'image' && seedanceMediaArtifact(asset) && !seedanceMediaArtifact(asset)?.content_sha256">
+                外部回传尚未完成本地字节校验，不能进行真人视觉签署。
+              </small>
+              <div
+                v-if="asset.is_bound && seedanceMediaBinding(asset)?.production_credit_granted"
+                class="project-detail-page__provider-asset-handoff"
+              >
+                <small>
+                  Provider 交付地址：{{ seedanceAssetLibraryItem(asset)?.file_url ?? '尚未设置公网 HTTPS / 签名 URL' }}
+                </small>
+                <input
+                  v-model="seedanceAssetFileInputs[asset.asset_id]"
+                  class="project-detail-page__seedance-asset-input"
+                  placeholder="https://公网素材地址（可含签名参数）"
+                >
+                <button
+                  class="project-detail-page__repair-task-btn"
+                  :disabled="bindingSeedanceAssetId === asset.asset_id"
+                  @click="bindSeedanceAsset(asset)"
+                >
+                  {{ bindingSeedanceAssetId === asset.asset_id ? '保存中…' : '设置 Provider 交付 URL' }}
+                </button>
+              </div>
               <small v-if="asset.is_bound">{{ seedanceAssetBindingValue(asset) }}</small>
               <template v-else>
                 <input
@@ -1503,21 +1647,31 @@
       <section v-if="currentQuality" id="story-quality" class="project-detail-page__quality-tools">
         <div class="project-detail-page__quality-main">
           <div>
-            <h2 class="project-detail-page__section-title">当前版本质量</h2>
-            <p>
-              {{ currentQuality.passed ? '通过' : '需调整' }}
+            <h2 class="project-detail-page__section-title">当前版本发布与生产状态</h2>
+            <p class="project-detail-page__quality-status-line">
+              <strong :class="currentStoryPublishable ? 'is-pass' : 'is-warn'">
+                故事{{ currentStoryPublishable ? '可发布' : '需修订' }}
+              </strong>
+              · 生产{{ currentProductionReadinessLabel }}
               <template v-if="typeof currentQuality.genre_score === 'number'"> · 类型分 {{ currentQuality.genre_score }}/100</template>
-              · 问题 {{ currentQuality.issues.length }}
             </p>
           </div>
           <div class="project-detail-page__quality-mini">
+            <span>故事阻断 {{ currentStoryGateIssues.length }}</span>
+            <span>生产缺口 {{ currentProductionGateIssues.length }}</span>
             <span>缺少要素 {{ currentQuality.missing_required_elements?.length ?? 0 }}</span>
             <span>节拍问题 {{ currentQuality.weak_beats?.length ?? 0 }}</span>
             <span>关联场景 {{ qualitySceneIds.length }}</span>
           </div>
-          <ul v-if="currentQuality.issues.length > 0" class="project-detail-page__quality-list">
-            <li v-for="issue in currentQuality.issues.slice(0, 4)" :key="issue">{{ issue }}</li>
+          <ul v-if="currentStoryGateIssues.length > 0" class="project-detail-page__quality-list">
+            <li v-for="issue in currentStoryGateIssues.slice(0, 4)" :key="issue">故事发布：{{ issue }}</li>
           </ul>
+          <div v-if="currentProductionGateIssues.length > 0" class="project-detail-page__quality-production">
+            <strong>生产就绪缺口（不影响故事本身判定）</strong>
+            <ul>
+              <li v-for="item in currentProductionGateIssues.slice(0, 6)" :key="item">{{ item }}</li>
+            </ul>
+          </div>
           <div
             v-if="qualityFeedbackGroups.length > 0 || qualityActionSceneSummaries.length > 0"
             class="project-detail-page__quality-feedback"
@@ -1846,12 +2000,18 @@
           </div>
           <div class="project-detail-page__editor-row">
             <select v-model="selectedModelProfileId" class="project-detail-page__select">
-              <option v-for="profile in modelProfiles" :key="profile.id" :value="profile.id">
-                {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}
+              <option
+                v-for="profile in modelProfiles"
+                :key="profile.id"
+                :value="profile.id"
+                :disabled="!modelSceneProfileAvailable(profile.id)"
+              >
+                {{ profile.label }}{{ profile.recommended ? '（推荐）' : '' }}{{ modelSceneProfileAvailable(profile.id) ? '' : '（场景重写不可用）' }}
               </option>
             </select>
           </div>
           <p v-if="selectedModelProfile" class="project-detail-page__model-hint">{{ selectedModelProfile.description }}</p>
+          <p class="project-detail-page__model-hint">{{ selectedSceneModelExecutionBoundary }}</p>
           <textarea
             v-model="userNote"
             class="project-detail-page__textarea"
@@ -2098,6 +2258,7 @@ import {
   repairProjectProductionBoard,
   regenerateProjectScene,
   reuseProjectSeedanceAsset,
+  reviewProjectMediaAsset,
   runProjectProductionReadinessAutomation,
   selectProjectSeedanceShotVersion,
   submitProjectGearsJobs,
@@ -2121,6 +2282,7 @@ import {
   getGearsExecutionWorkerEvidenceBundle,
   getGearsExecutionWorkerEvidenceSignoff,
   getModelProfiles,
+  getStoryGenerationCapabilities,
   getSeedanceProviderAdapterConfig,
   runGearsExecutionLiveSmoke,
 } from '@/api/system'
@@ -2128,8 +2290,10 @@ import StoryResult from '@/components/StoryResult.vue'
 import GearsWebhookStatus from '@/components/GearsWebhookStatus.vue'
 import GearsVideoStatus from '@/components/GearsVideoStatus.vue'
 import GearsWorkbenchPanel from '@/components/GearsWorkbenchPanel.vue'
+import { serverProductAccessContext } from '@/product-access'
 import type {
   AIModelProfile,
+  StoryGenerationCapabilities,
   GearsJobCallbackRequest,
   GearsExecutionAcceptanceReport,
   GearsExecutionConfigInfo,
@@ -2142,6 +2306,7 @@ import type {
   GearsExecutionWorkerEvidenceBundle,
   GearsExecutionWorkerEvidenceSignoffReport,
   GearsJobLedgerItem,
+  GearsExecutionJobType,
   GearsJobSubmitFailure,
   CreationUseCase,
   KnowledgeCandidateReviewStatus,
@@ -2155,6 +2320,9 @@ import type {
   ProjectMaterialPackTarget,
   SeedanceProviderAdapterConfigInfo,
   SeedanceAssetBatchImportRequest,
+  AssetBinding,
+  MediaArtifact,
+  MediaAssetReviewUpdateRequest,
   SeedanceAssetBindingItem,
   SeedanceAssetHistoryEvent,
   SeedanceAssetLibraryItem,
@@ -2188,6 +2356,13 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
+const PROJECT_GEARS_JOB_TYPE_OPTIONS: Array<{ value: GearsExecutionJobType; label: string }> = [
+  { value: 'seedance_video', label: '视频镜头' },
+  { value: 'character_image', label: '人物参考图' },
+  { value: 'scene_image', label: '场景参考图' },
+  { value: 'prop_image', label: '道具参考图' },
+  { value: 'storyboard_image', label: '故事板图' },
+]
 
 type ProductionRepairHistoryItem = StoryProjectVersionSummary & {
   production_board_repair_trace: StoryProductionBoardRepairTrace
@@ -2301,6 +2476,7 @@ const detail = ref<StoryProjectDetail | null>(null)
 const loading = ref(false)
 const error = ref('')
 const modelProfiles = ref<AIModelProfile[]>([])
+const storyGenerationCapabilities = ref<StoryGenerationCapabilities | null>(null)
 const selectedModelProfileId = ref('')
 const selectedSceneId = ref<number | null>(null)
 const selectedIntent = ref<'tighten_conflict' | 'rewrite_narration' | 'shift_emotion' | 'clarify_visuals' | 'custom'>('tighten_conflict')
@@ -2482,6 +2658,14 @@ const repairingAndExportingProductionBoard = ref(false)
 const repairingProductionBoardTaskId = ref('')
 const repairingProductionBoardScope = ref('')
 const seedanceAssetFileInputs = ref<Record<string, string>>({})
+type MediaReviewForm = {
+  authorization_reference: string
+  person_consent_reference: string
+  review_note: string
+}
+type MediaReviewAction = 'authorize' | 'approve' | 'reject' | 'restrict'
+const mediaReviewForms = ref<Record<string, MediaReviewForm>>({})
+const reviewingMediaAssetId = ref('')
 const bindingSeedanceAssetId = ref('')
 const seedanceAssetBatchImportText = ref('')
 const draftingSeedanceAssetPlaceholders = ref(false)
@@ -2506,6 +2690,9 @@ const submittingSeedanceProvider = ref(false)
 const submittingSeedanceProviderAdapter = ref(false)
 const submittingGearsJobs = ref(false)
 const submittingGearsApiJobs = ref(false)
+const selectedGearsJobType = ref<GearsExecutionJobType>('seedance_video')
+const gearsExternalMaxCostAmount = ref(0)
+const gearsExternalCostCurrency = ref('CNY')
 const syncingGearsJobs = ref(false)
 const acceptingLocalGearsArtifacts = ref(false)
 const loadingGearsExecutionConfig = ref(false)
@@ -2540,7 +2727,62 @@ const selectedModelProfile = computed(() => {
   return modelProfiles.value.find(profile => profile.id === selectedModelProfileId.value) ?? null
 })
 
+function modelSceneProfileAvailable(profileId: string) {
+  const capability = storyGenerationCapabilities.value?.model_profiles.find(item => item.id === profileId)
+  if (capability) return capability.scene_regeneration_available
+  return profileId === 'local_story_engine'
+}
+
+const selectedSceneModelExecutionBoundary = computed(() => {
+  const capability = storyGenerationCapabilities.value
+  const selected = capability?.model_profiles.find(item => item.id === selectedModelProfileId.value)
+  if (!capability) return '场景重写引擎能力状态不可用；仅建议使用本地故事引擎。'
+  if (!selected) return '请选择已由 capability 端点确认的场景重写引擎。'
+  if (!selected.scene_regeneration_available) {
+    return `场景重写当前不可用：${selected.scene_regeneration_unavailable_reason ?? '外部 adapter 未就绪'}。`
+  }
+  if (!selected.scene_regeneration_external_call_possible) {
+    return '实际引擎：本地场景重写。故事上下文不外发，不产生外部模型费用。'
+  }
+  return `实际引擎：配置的 ${capability.scene_regeneration_adapter.provider} scene adapter。${capability.scene_regeneration_adapter.authorization_boundary}`
+})
+
 const currentQuality = computed(() => detail.value?.current_story.quality_report ?? null)
+
+const currentQualityGates = computed(() => currentQuality.value?.quality_gates ?? null)
+
+const currentStoryPublishable = computed(() => (
+  currentQualityGates.value?.story_publishable
+    ?? currentQuality.value?.passed
+    ?? false
+))
+
+const currentProductionReadinessLabel = computed(() => {
+  if (!currentQualityGates.value) return '未评估'
+  return currentQualityGates.value.production_ready ? '可交付' : '未就绪'
+})
+
+const currentStoryGateIssues = computed(() => {
+  const gates = currentQualityGates.value
+  if (!gates) return currentQuality.value?.issues ?? []
+  return uniqueStrings([
+    gates.narrative_gate,
+    gates.factual_cultural_gate,
+    gates.outline_gate,
+    gates.audience_text_gate,
+  ].flatMap(gate => gate.passed ? [] : gate.issues.length > 0 ? gate.issues : [gate.summary]))
+})
+
+const currentProductionGateIssues = computed(() => {
+  const gates = currentQualityGates.value
+  if (!gates || gates.production_ready) return []
+  return uniqueStrings([
+    gates.production_material_gate,
+    gates.gears_contract_gate,
+    gates.asset_gate,
+    gates.external_provider_gate,
+  ].flatMap(gate => gate.passed ? [] : gate.issues.length > 0 ? gate.issues : [gate.summary]))
+})
 
 const productionMaterialPanel = computed(() => {
   const story = detail.value?.current_story
@@ -2862,6 +3104,11 @@ const gearsJobStats = computed(() => {
     ready: 0,
     failed: 0,
     seedance_video: 0,
+    authorized: 0,
+    cost_reported: 0,
+    cost_pending: 0,
+    cost_violation: 0,
+    actual_cost_by_currency: {} as Record<string, number>,
   }
   for (const item of gearsJobItems.value) {
     stats.total += 1
@@ -2873,18 +3120,66 @@ const gearsJobStats = computed(() => {
     } else {
       stats.active += 1
     }
+    if (item.external_call_authorization) stats.authorized += 1
+    if (item.execution_cost) {
+      stats.cost_reported += 1
+      const currency = item.execution_cost.cost_currency
+      stats.actual_cost_by_currency[currency] = (stats.actual_cost_by_currency[currency] ?? 0)
+        + item.execution_cost.actual_cost_amount
+      if (item.execution_cost.boundary_status !== 'within_authorization') stats.cost_violation += 1
+    } else if (item.external_call_authorization && ['ready', 'failed', 'rejected', 'canceled'].includes(item.status)) {
+      stats.cost_pending += 1
+    }
   }
   return stats
+})
+
+const gearsCostTotalsLabel = computed(() => {
+  const entries = Object.entries(gearsJobStats.value.actual_cost_by_currency)
+  return entries.length
+    ? entries.map(([currency, amount]) => `${amount.toFixed(2)} ${currency}`).join(' + ')
+    : '0.00'
 })
 
 const localGearsActiveJobCount = computed(() => {
   return gearsJobItems.value.filter(item =>
     item.gears_job_id.startsWith('local-gears-')
+    && item.job_type === selectedGearsJobType.value
     && !['ready', 'failed', 'rejected', 'canceled'].includes(item.status)
   ).length
 })
 
 const latestGearsJob = computed(() => gearsJobItems.value[0] ?? null)
+
+const canReviewMediaAssets = computed(() => {
+  const access = serverProductAccessContext.value
+  return Boolean(
+    access?.mode === 'required'
+    && access.authenticated
+    && access.authentication_method !== 'local_bypass'
+    && access.permissions.includes('review:operate'),
+  )
+})
+
+const mediaAssetReviewPermissionHint = computed(() => {
+  const access = serverProductAccessContext.value
+  if (canReviewMediaAssets.value) return `审核员：${access?.actor?.display_name ?? access?.actor?.actor_id}`
+  if (access?.authentication_method === 'local_bypass') return '当前为本地绕过身份：可查看，但不能授予真人审核信用。'
+  return '需要已登录且具有 review:operate 权限的审核员。'
+})
+
+watch(productionBoard, board => {
+  if (!board) return
+  const next = { ...mediaReviewForms.value }
+  for (const asset of board.seedance_asset_report.assets) {
+    next[asset.asset_id] ??= {
+      authorization_reference: '',
+      person_consent_reference: '',
+      review_note: '',
+    }
+  }
+  mediaReviewForms.value = next
+}, { immediate: true })
 
 const latestSeedanceProviderQueueBatch = computed(() => {
   const queue = detail.value?.project.seedance_provider_queue
@@ -3176,12 +3471,48 @@ function seedanceAssetKindLabel(kind: string): string {
 }
 
 function seedanceAssetBindingValue(asset: SeedanceAssetBindingItem): string {
+  const libraryItem = seedanceAssetLibraryItem(asset)
+  if (libraryItem?.content_sha256) return `已安全入库 · sha256 ${libraryItem.content_sha256.slice(0, 12)}…`
   return asset.file_url
     ?? asset.file_id
     ?? asset.provider_asset_id
-    ?? asset.local_path
     ?? asset.upload_status
     ?? '已绑定'
+}
+
+function seedanceMediaBinding(asset: SeedanceAssetBindingItem): AssetBinding | null {
+  return productionBoard.value?.media_asset_library.bindings.find(item => item.asset_id === asset.asset_id) ?? null
+}
+
+function seedanceMediaArtifact(asset: SeedanceAssetBindingItem): MediaArtifact | null {
+  const binding = seedanceMediaBinding(asset)
+  if (!binding?.artifact_id) return null
+  return productionBoard.value?.media_asset_library.artifacts.find(item => item.artifact_id === binding.artifact_id) ?? null
+}
+
+function mediaAssetBindingStatusLabel(status?: AssetBinding['status']): string {
+  const labels: Record<AssetBinding['status'], string> = {
+    missing_artifact: '缺原件',
+    placeholder_only: '仅占位',
+    bound_unverified: '完整性未验证',
+    rights_pending: '待授权',
+    review_pending: '待真人审核',
+    ready: '可投产',
+    rejected: '已拒绝',
+  }
+  return status ? labels[status] : '未建立'
+}
+
+function mediaRightsStatusLabel(status?: AssetBinding['rights_status']): string {
+  if (status === 'authorized') return '已确认'
+  if (status === 'restricted') return '受限'
+  return '待确认'
+}
+
+function mediaHumanReviewStatusLabel(status?: AssetBinding['human_review_status']): string {
+  if (status === 'approved') return '已通过'
+  if (status === 'rejected') return '已拒绝'
+  return '待审核'
 }
 
 function seedanceAssetFileAccept(asset: SeedanceAssetBindingItem): string {
@@ -3218,6 +3549,9 @@ function seedanceAssetHistoryTypeLabel(type: SeedanceAssetHistoryEvent['event_ty
     manual_bind: '手动绑定',
     batch_import: '批量导入',
     file_upload: '文件上传',
+    provider_callback: '供应商回传',
+    rights_review: '版权审核',
+    human_visual_review: '真人视觉审核',
     placeholder_draft: '占位草拟',
     cross_project_reuse: '跨项目复用',
   }
@@ -3299,6 +3633,7 @@ function gearsJobTypeLabel(type: GearsJobLedgerItem['job_type']): string {
     storyboard_image: '故事板图',
     character_image: '人物图',
     scene_image: '场景图',
+    prop_image: '道具图',
     seedance_video: '视频镜头',
     subtitle_render: '字幕渲染',
     audio_mix: '混音',
@@ -3659,6 +3994,10 @@ async function bindSeedanceAsset(asset: SeedanceAssetBindingItem) {
     error.value = '请填写素材 URL 或 file ID'
     return
   }
+  if (seedanceMediaBinding(asset)?.production_credit_granted && !/^https:\/\//i.test(rawValue)) {
+    error.value = '已审核素材的 Provider 交付地址必须是公网 HTTPS URL'
+    return
+  }
   bindingSeedanceAssetId.value = asset.asset_id
   error.value = ''
   successMessage.value = ''
@@ -3717,6 +4056,64 @@ async function uploadSeedanceAssetFile(asset: SeedanceAssetBindingItem, event: E
   }
   input.value = ''
   uploadingSeedanceAssetId.value = ''
+}
+
+async function submitMediaAssetReview(asset: SeedanceAssetBindingItem, action: MediaReviewAction) {
+  if (!detail.value || reviewingMediaAssetId.value) return
+  if (!canReviewMediaAssets.value) {
+    error.value = mediaAssetReviewPermissionHint.value
+    return
+  }
+  const artifact = seedanceMediaArtifact(asset)
+  const form = mediaReviewForms.value[asset.asset_id]
+  if (!artifact?.content_sha256 || !form) {
+    error.value = '当前素材没有可绑定审核结论的本地验证 SHA-256'
+    return
+  }
+  if ((action === 'authorize' || action === 'approve') && !form.authorization_reference.trim()) {
+    error.value = '确认授权前必须填写合同、授权单或其他授权依据'
+    return
+  }
+  if ((action === 'approve' || action === 'reject') && !form.review_note.trim()) {
+    error.value = '真人视觉审核必须填写审核意见'
+    return
+  }
+
+  const body: MediaAssetReviewUpdateRequest = {
+    asset_id: asset.asset_id,
+    expected_content_sha256: artifact.content_sha256,
+  }
+  if (action === 'authorize' || action === 'approve') {
+    body.rights_status = 'authorized'
+    body.authorization_reference = form.authorization_reference.trim()
+    body.person_consent_reference = form.person_consent_reference.trim() || undefined
+  } else if (action === 'restrict') {
+    body.rights_status = 'restricted'
+    body.authorization_reference = form.authorization_reference.trim() || undefined
+  }
+  if (action === 'approve' || action === 'reject') {
+    body.human_review_status = action === 'approve' ? 'approved' : 'rejected'
+    body.review_note = form.review_note.trim()
+  }
+
+  reviewingMediaAssetId.value = asset.asset_id
+  error.value = ''
+  successMessage.value = ''
+  const res = await reviewProjectMediaAsset(
+    detail.value.project.project_id,
+    asset.asset_id,
+    body,
+  )
+  if (res.ok && res.data) {
+    detail.value = res.data.detail
+    await loadProductionBoard()
+    successMessage.value = res.data.production_credit_granted
+      ? `${asset.label} 已完成授权与真人视觉审核，获得生产资格`
+      : `${asset.label} 审核状态已更新，当前尚未获得生产资格`
+  } else {
+    error.value = res.error?.message ?? '更新媒体审核状态失败'
+  }
+  reviewingMediaAssetId.value = ''
 }
 
 async function reuseGlobalSeedanceAsset(asset: SeedanceAssetBindingItem, source: SeedanceGlobalAssetLibraryItem) {
@@ -4068,6 +4465,24 @@ async function submitSeedanceProviderJobs(useProviderAdapter = false) {
 
 async function submitGearsJobs(useGearsApi = false) {
   if (!detail.value || submittingGearsJobs.value || submittingGearsApiJobs.value) return
+  const maxCostAmount = Number(gearsExternalMaxCostAmount.value)
+  if (useGearsApi && (!Number.isFinite(maxCostAmount) || maxCostAmount < 0)) {
+    error.value = 'GEARS 外呼最高成本必须是大于或等于 0 的数字'
+    return
+  }
+  if (useGearsApi && !window.confirm(
+    `确认向外部 GEARS 发送当前${gearsJobTypeLabel(selectedGearsJobType.value)}生产数据，并授权本次最高成本 ${maxCostAmount} ${gearsExternalCostCurrency.value}？`,
+  )) return
+  const actorId = serverProductAccessContext.value?.actor?.actor_id ?? 'interactive-user'
+  const authorization = useGearsApi
+    ? {
+        authorized: true as const,
+        authorization_reference: `ui-confirmation:${actorId}:${new Date().toISOString()}`,
+        max_cost_amount: maxCostAmount,
+        cost_currency: gearsExternalCostCurrency.value,
+        data_transfer_acknowledged: true as const,
+      }
+    : undefined
   if (useGearsApi) {
     submittingGearsApiJobs.value = true
   } else {
@@ -4076,11 +4491,12 @@ async function submitGearsJobs(useGearsApi = false) {
   error.value = ''
   successMessage.value = ''
   const res = await submitProjectGearsJobs(detail.value.project.project_id, {
-    job_type: 'seedance_video',
+    job_type: selectedGearsJobType.value,
     use_gears_api: useGearsApi,
+    external_call_authorization: authorization,
     note: useGearsApi
-      ? '前端提交 GEARS v2 执行任务'
-      : '前端记录 GEARS v2 本地执行账本',
+      ? `前端提交 GEARS v2 ${gearsJobTypeLabel(selectedGearsJobType.value)}执行任务`
+      : `前端记录 GEARS v2 ${gearsJobTypeLabel(selectedGearsJobType.value)}本地执行账本`,
   })
   if (res.ok && res.data) {
     detail.value = {
@@ -4111,8 +4527,8 @@ async function syncGearsJobs() {
   error.value = ''
   successMessage.value = ''
   const res = await syncProjectGearsJobs(detail.value.project.project_id, {
-    job_type: 'seedance_video',
-    note: '前端同步 GEARS v2 任务状态',
+    job_type: selectedGearsJobType.value,
+    note: `前端同步 GEARS v2 ${gearsJobTypeLabel(selectedGearsJobType.value)}任务状态`,
   })
   if (res.ok && res.data) {
     detail.value = {
@@ -4143,8 +4559,8 @@ async function acceptLocalGearsArtifacts() {
   error.value = ''
   successMessage.value = ''
   const res = await acceptProjectLocalGearsArtifacts(detail.value.project.project_id, {
-    job_type: 'seedance_video',
-    note: '前端本地验收 GEARS 占位产物；非外部真实回片',
+    job_type: selectedGearsJobType.value,
+    note: `前端本地验收 GEARS ${gearsJobTypeLabel(selectedGearsJobType.value)}占位产物；非外部真实回片`,
   })
   if (res.ok && res.data) {
     detail.value = {
@@ -4554,16 +4970,33 @@ function exportGearsWorkerEvidenceSignoffJson() {
 
 async function runGearsLiveSmoke(execute: boolean) {
   if (!detail.value || runningGearsLiveSmoke.value) return
+  const maxCostAmount = Number(gearsExternalMaxCostAmount.value)
+  if (execute && (!Number.isFinite(maxCostAmount) || maxCostAmount < 0)) {
+    error.value = 'GEARS live smoke 最高成本必须是大于或等于 0 的数字'
+    return
+  }
   if (execute) {
-    const confirmed = window.confirm('确定向 GEARS v2 提交 live smoke 任务吗？')
+    const confirmed = window.confirm(
+      `确定向 GEARS v2 提交 live smoke 数据，并授权本次最高成本 ${maxCostAmount} ${gearsExternalCostCurrency.value} 吗？`,
+    )
     if (!confirmed) return
   }
+  const actorId = serverProductAccessContext.value?.actor?.actor_id ?? 'interactive-user'
   runningGearsLiveSmoke.value = true
   error.value = ''
   successMessage.value = ''
   const res = await runGearsExecutionLiveSmoke({
     execute,
     poll_after_submit: execute,
+    external_call_authorization: execute
+      ? {
+          authorized: true,
+          authorization_reference: `ui-confirmation:${actorId}:${new Date().toISOString()}`,
+          max_cost_amount: maxCostAmount,
+          cost_currency: gearsExternalCostCurrency.value,
+          data_transfer_acknowledged: true,
+        }
+      : undefined,
     note: `项目页 GEARS live smoke：${detail.value.project.project_id}`,
   })
   if (res.ok && res.data) {
@@ -4656,7 +5089,7 @@ async function submitSceneRewrite() {
     qualityRepairPromptResult.value = null
     const quality = res.data.current_story.quality_report
     const qualityTail = quality
-      ? `，已重新复核：${quality.passed ? '通过' : '需调整'}${typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''}`
+      ? `，已重新复核：故事${(quality.quality_gates?.story_publishable ?? quality.passed) ? '可发布' : '需修订'}${typeof quality.genre_score === 'number' ? `，类型分 ${quality.genre_score}` : ''}`
       : ''
     successMessage.value = `场景 ${selectedSceneId.value} 已生成新版本${qualityTail}`
     clearEditor()
@@ -5241,16 +5674,19 @@ onMounted(() => {
   loadGearsExecutionConfig()
   loadSeedanceProviderAdapterConfig()
 
-  getModelProfiles().then((res) => {
+  Promise.all([getModelProfiles(), getStoryGenerationCapabilities()]).then(([res, capabilityRes]) => {
+    if (capabilityRes.ok && capabilityRes.data) {
+      storyGenerationCapabilities.value = capabilityRes.data
+    }
     if (res.ok && res.data && res.data.length > 0) {
       modelProfiles.value = res.data
       const storedModelId = localStorage.getItem(MODEL_PROFILE_STORAGE_KEY)
-      const initialModel = res.data.find(profile => profile.id === storedModelId)
-        ?? res.data.find(profile => profile.recommended)
+      const initialModel = res.data.find(profile => profile.id === selectedModelProfileId.value && modelSceneProfileAvailable(profile.id))
+        ?? res.data.find(profile => profile.id === storedModelId && modelSceneProfileAvailable(profile.id))
+        ?? res.data.find(profile => profile.id === 'local_story_engine')
+        ?? res.data.find(profile => profile.recommended && modelSceneProfileAvailable(profile.id))
         ?? res.data[0]
-      if (!selectedModelProfileId.value) {
-        selectedModelProfileId.value = initialModel.id
-      }
+      selectedModelProfileId.value = initialModel.id
     }
   })
 
@@ -6160,6 +6596,97 @@ watch(selectedModelProfileId, (value) => {
   color: #455866;
 }
 
+.project-detail-page__seedance-asset-preview {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  margin: 2px 0;
+}
+
+.project-detail-page__seedance-asset-preview img {
+  width: 100%;
+  max-width: 240px;
+  max-height: 150px;
+  border: 1px solid #d7dee5;
+  border-radius: 4px;
+  object-fit: contain;
+  background: #eef2f4;
+}
+
+.project-detail-page__seedance-asset-preview figcaption {
+  color: #647380;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.project-detail-page__media-review {
+  width: 100%;
+  border-top: 1px solid #d7dee5;
+  padding-top: 5px;
+}
+
+.project-detail-page__media-review summary {
+  cursor: pointer;
+  color: #2f4358;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-detail-page__media-review fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  border: 0;
+  padding: 0;
+}
+
+.project-detail-page__media-review label {
+  display: grid;
+  gap: 3px;
+}
+
+.project-detail-page__media-review input,
+.project-detail-page__media-review textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd6dd;
+  border-radius: 4px;
+  padding: 5px 6px;
+  background: #fff;
+  color: #22313f;
+  font-size: 11px;
+}
+
+.project-detail-page__media-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.project-detail-page__media-review-actions button {
+  cursor: pointer;
+  border: 1px solid #cbd7e1;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  color: #2f5f7f;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.project-detail-page__provider-asset-handoff {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(45, 116, 94, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(45, 116, 94, 0.06);
+}
+
+.project-detail-page__media-review fieldset:disabled {
+  opacity: 0.55;
+}
+
 .project-detail-page__seedance-asset-items span,
 .project-detail-page__seedance-asset-items small {
   font-size: 11px;
@@ -6420,6 +6947,28 @@ watch(selectedModelProfileId, (value) => {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+
+.project-detail-page__gears-cost-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #455866;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-detail-page__gears-cost-limit input {
+  width: 88px;
+}
+
+.project-detail-page__gears-cost-limit input,
+.project-detail-page__gears-cost-limit select {
+  min-height: 30px;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  background: #fff;
+  padding: 3px 6px;
 }
 
 .project-detail-page__seedance-shot-ledger-stats span,
@@ -6961,6 +7510,9 @@ watch(selectedModelProfileId, (value) => {
   color: #5c6a76;
   font-size: 14px;
 }
+
+.project-detail-page__quality-status-line strong.is-pass { color: #1b7f4a; }
+.project-detail-page__quality-status-line strong.is-warn { color: #b13b2e; }
 
 .project-detail-page__quality-mini {
   display: flex;

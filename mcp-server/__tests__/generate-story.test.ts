@@ -80,6 +80,11 @@ describe('kb_generate_story', () => {
       'script_ready',
       'production_ready',
     ]);
+    expect(result).toMatchObject({
+      legacy_writer: true,
+      canonical_tool: 'kb_story_agent_generate',
+      counts_as_canonical_generation: false,
+    });
 
     // Verify file was written
     const fileContent = fs.readFileSync(result.filePath, 'utf-8');

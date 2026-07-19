@@ -547,6 +547,7 @@ export const ErrorCodes = {
   INVALID_STORY_STRUCTURE: 'INVALID_STORY_STRUCTURE',
   INVALID_DURATION: 'INVALID_DURATION',
   STORY_GENERATION_FAILED: 'STORY_GENERATION_FAILED',
+  STORY_GENERATION_AUDIT_UNAVAILABLE: 'STORY_GENERATION_AUDIT_UNAVAILABLE',
   STORY_NOT_FOUND: 'STORY_NOT_FOUND',
   GEARS_SEGMENTS_NOT_FOUND: 'GEARS_SEGMENTS_NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -829,6 +830,10 @@ export interface StoryProjectListItem {
   generation_source?: string;
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
+  /** Whether the narrative/factual/outline/audience gates allow story publication. */
+  story_publishable?: boolean;
+  /** Whether the production-material/GEARS/assets/provider gates are all ready. */
+  production_ready?: boolean;
   quality_passed?: boolean;
   genre_score?: number;
   quality_issue_count?: number;
@@ -852,6 +857,8 @@ export interface StoryProjectVersionSummary {
   change_type: StoryProjectVersionChangeType;
   scene_ids_changed: number[];
   note?: string;
+  story_publishable?: boolean;
+  production_ready?: boolean;
   quality_passed?: boolean;
   genre_score?: number;
   quality_issue_count?: number;
@@ -1171,6 +1178,8 @@ export interface StoryProjectExportSummary {
   story_structure?: StoryStructureType;
   story_structure_label?: string;
   logline: string;
+  story_publishable?: boolean;
+  production_ready?: boolean;
   quality_passed?: boolean;
   genre_score?: number;
   outline_coverage_score?: number;
@@ -1499,6 +1508,8 @@ export interface GearsSceneAsset {
 
 export interface GearsDeliveryUnit {
   unit_id: string;
+  /** Canonical production identity derived once from unit_id and reused downstream. */
+  shot_id: string;
   source_scene_id: number;
   scene_name: string;
   character_names: string[];
@@ -1528,6 +1539,18 @@ export interface GearsDeliveryPackage {
   units: GearsDeliveryUnit[];
   markdown: string;
   validation_notes: string[];
+}
+
+export interface ProductionShot {
+  shot_id: string;
+  source_scene_id: number;
+  source_unit_id: string;
+}
+
+export interface ProductionShotPlan {
+  schema_version: 'production-shot-plan/v2';
+  storyId: string;
+  shots: ProductionShot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1707,6 +1730,7 @@ export type GearsExecutionJobType =
   | 'storyboard_image'
   | 'character_image'
   | 'scene_image'
+  | 'prop_image'
   | 'seedance_video'
   | 'subtitle_render'
   | 'audio_mix'
@@ -1764,7 +1788,26 @@ export interface GearsJobLedgerEvent {
   status_regression_ignored?: boolean;
   terminal_status_changed?: boolean;
   progress_percent?: number;
+  actual_cost_amount?: number;
+  cost_currency?: string;
   message?: string;
+}
+
+export type GearsExecutionCostBoundaryStatus =
+  | 'within_authorization'
+  | 'exceeded_authorization'
+  | 'currency_mismatch'
+  | 'authorization_missing';
+
+export interface GearsExecutionCostRecord {
+  actual_cost_amount: number;
+  cost_currency: string;
+  provider_reported_at: string;
+  reporting_channel: 'callback_or_poll';
+  boundary_status: GearsExecutionCostBoundaryStatus;
+  authorization_reference?: string;
+  authorized_max_cost_amount?: number;
+  authorization_total_actual_cost_amount?: number;
 }
 
 export interface GearsJobLedgerItem {
@@ -1778,6 +1821,9 @@ export interface GearsJobLedgerItem {
   source_story_id?: string;
   series_project_id?: string;
   idempotency_key?: string;
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
+  execution_cost?: GearsExecutionCostRecord;
+  provider_asset_handoffs?: GearsProviderAssetHandoffAuditRecord[];
   status: GearsExecutionJobStatus;
   progress_percent?: number;
   artifact_urls: string[];
@@ -1800,6 +1846,72 @@ export interface GearsJobLedger {
   schema_version: 'gears-job-ledger/v1';
   updated_at?: string;
   items: GearsJobLedgerItem[];
+}
+
+export interface GearsExecutionMetricDistribution {
+  sample_count: number;
+  average: number;
+  p50: number;
+  p95: number;
+  max: number;
+}
+
+export interface GearsExecutionOperationalMetrics {
+  schema_version: 'gears-execution-operational-metrics/v1';
+  measured_at?: string;
+  scope: 'authorized_external_jobs_only';
+  all_job_count: number;
+  authorized_external_job_count: number;
+  active_job_count: number;
+  terminal_job_count: number;
+  ready_external_output_count: number;
+  actual_output_rate_percent: number;
+  terminal_failure_count: number;
+  failure_rate_percent: number;
+  failure_category_counts: Partial<Record<GearsExecutionFailureCategory, number>>;
+  poll_failure_count: number;
+  execution_duration_ms: GearsExecutionMetricDistribution;
+  callback_delivery_latency_ms: GearsExecutionMetricDistribution;
+  actual_cost_by_currency: Record<string, number>;
+  cost_boundary_violation_count: number;
+  pending_terminal_cost_report_count: number;
+  local_acceptance_excluded: true;
+}
+
+export type GearsExecutionRecoveryStrategy =
+  | 'status_resync'
+  | 'retry_transient_failure'
+  | 'repair_input_then_retry'
+  | 'refresh_provider_credentials'
+  | 'increase_provider_quota_or_budget'
+  | 'manual_content_policy_review'
+  | 'manual_failure_investigation';
+
+export interface GearsExecutionRecoveryPlanItem {
+  ledger_id: string;
+  gears_job_id: string;
+  source_unit_id: string;
+  job_type: GearsExecutionJobType;
+  status: GearsExecutionJobStatus;
+  failure_category: GearsExecutionFailureCategory;
+  strategy: GearsExecutionRecoveryStrategy;
+  retry_eligible: boolean;
+  can_auto_execute: boolean;
+  requires_operator_review: boolean;
+  requires_new_external_call_authorization: boolean;
+  reason: string;
+}
+
+export interface GearsExecutionRecoveryPlan {
+  schema_version: 'gears-execution-recovery-plan/v1';
+  generated_at?: string;
+  item_count: number;
+  retry_eligible_count: number;
+  status_resync_count: number;
+  operator_intervention_count: number;
+  auto_executable_count: number;
+  items: GearsExecutionRecoveryPlanItem[];
+  notes: string[];
 }
 
 export type ProductionReadinessStatus = 'ready' | 'needs_action' | 'blocked';
@@ -2058,6 +2170,8 @@ export interface StoryProjectProductionReadinessReport {
   title: string;
   generated_at: string;
   summary: ProductionReadinessSummary;
+  gears_operational_metrics: GearsExecutionOperationalMetrics;
+  gears_recovery_plan: GearsExecutionRecoveryPlan;
   lanes: ProductionReadinessLane[];
   issues: ProductionReadinessIssue[];
   next_actions: ProductionReadinessNextAction[];
@@ -2075,6 +2189,8 @@ export interface AiComicSeriesProductionReadinessReport {
   series_title: string;
   generated_at: string;
   summary: ProductionReadinessSummary;
+  gears_operational_metrics: GearsExecutionOperationalMetrics;
+  gears_recovery_plan: GearsExecutionRecoveryPlan;
   lanes: ProductionReadinessLane[];
   issues: ProductionReadinessIssue[];
   next_actions: ProductionReadinessNextAction[];
@@ -2245,6 +2361,171 @@ export interface ProductionReadinessPortfolioRunResult {
 export type StoryAgentGeneratedHealthStatus = 'ready' | 'planned' | 'production_gap' | 'interrupted';
 export type StoryAgentGeneratedHealthScope = 'story_project' | 'ai_comic_series_project';
 
+export type StoryAgentGenerationActivityDiagnosis =
+  | 'attempt_history_unavailable'
+  | 'no_generation_request_since_latest_success'
+  | 'generation_pipeline_failure_detected'
+  | 'generation_attempt_incomplete'
+  | 'storage_root_mismatch_detected'
+  | 'pending_transaction_detected';
+
+export type StoryAgentLatestPersistedActivityKind =
+  | 'story_generation'
+  | 'project_revision'
+  | 'report_only'
+  | 'none';
+
+export interface StoryAgentGenerationActivityStoryEvidence {
+  story_id: string;
+  created_at: string;
+}
+
+export interface StoryAgentGenerationActivityVersionEvidence {
+  project_id: string;
+  version_id: string;
+  created_at: string;
+  change_type?: string;
+}
+
+export interface StoryAgentGenerationActivityReportEvidence {
+  report_file: string;
+  generated_at: string;
+}
+
+export interface StoryAgentGenerationActivityAttemptEvidence {
+  attempt_id: string;
+  entrypoint: 'web_api_stories_generate';
+  source_domain: string;
+  video_type: VideoType;
+  status: 'started' | 'succeeded' | 'failed';
+  started_at: string;
+  terminal_at?: string;
+  error_code?: ErrorCode | 'UNHANDLED_GENERATION_ERROR';
+}
+
+export type StoryGenerationAttemptAuditReadinessBlocker =
+  | 'audit_parent_not_writable'
+  | 'audit_directory_unsafe'
+  | 'audit_directory_not_writable'
+  | 'audit_directory_permissions_unsafe'
+  | 'ledger_target_unsafe'
+  | 'ledger_permissions_unsafe'
+  | 'archive_target_unsafe'
+  | 'archive_permissions_unsafe'
+  | 'archive_retention_exceeded'
+  | 'ledger_history_invalid'
+  | 'ledger_lock_active'
+  | 'ledger_lock_permissions_unsafe'
+  | 'ledger_lock_invalid';
+
+export type StoryGenerationAttemptAuditOperatorAction =
+  | 'no_action_required'
+  | 'review_audit_parent_permissions_after_backup'
+  | 'review_audit_directory_safety_after_backup'
+  | 'review_audit_directory_permissions_after_backup'
+  | 'review_ledger_target_safety_after_backup'
+  | 'review_ledger_permissions_after_backup'
+  | 'review_archive_target_safety_after_backup'
+  | 'review_archive_permissions_after_backup'
+  | 'review_archive_retention_after_backup'
+  | 'review_invalid_history_after_backup'
+  | 'wait_for_active_writer_and_reinspect'
+  | 'reinspect_expired_lock_on_next_canonical_request'
+  | 'review_lock_permissions_after_backup'
+  | 'review_invalid_lock_after_backup';
+
+export type StoryGenerationAttemptAuditConfigurationWarning =
+  | 'invalid_max_bytes_configuration_fell_back_to_default'
+  | 'invalid_max_archives_configuration_fell_back_to_default'
+  | 'invalid_lock_timeout_configuration_fell_back_to_default'
+  | 'invalid_lock_retry_configuration_fell_back_to_default'
+  | 'invalid_lock_stale_configuration_fell_back_to_default';
+
+export interface StoryGenerationAttemptAuditReadiness {
+  schema_version: 'story-generation-attempt-audit-readiness/v1';
+  status: 'uninitialized' | 'ready' | 'blocked';
+  storage_initialized: boolean;
+  ledger_present: boolean;
+  archive_count: number;
+  current_file_bytes: number;
+  configured_max_bytes: number;
+  configured_max_archives: number;
+  configured_lock_timeout_ms: number;
+  configured_lock_retry_ms: number;
+  configured_lock_stale_ms: number;
+  configuration_valid: boolean;
+  configuration_warnings: StoryGenerationAttemptAuditConfigurationWarning[];
+  permission_policy: 'owner_only';
+  permission_policy_satisfied: boolean;
+  event_file_sync_required: true;
+  no_follow_open_required: true;
+  directory_entry_sync_guaranteed: true;
+  lock_status: 'absent' | 'active' | 'expired_recoverable' | 'invalid';
+  history_integrity: 'unavailable' | 'valid' | 'invalid';
+  valid_event_count: number;
+  invalid_event_count: number;
+  ready_for_next_attempt: boolean;
+  blockers: StoryGenerationAttemptAuditReadinessBlocker[];
+  warnings: string[];
+  operator_actions: StoryGenerationAttemptAuditOperatorAction[];
+  automatic_repair_allowed: false;
+  destructive_action_performed: false;
+  request_content_recorded: false;
+  model_output_recorded: false;
+  raw_exception_recorded: false;
+  absolute_path_exposed: false;
+}
+
+export interface StoryAgentGenerationActivityEvidence {
+  schema_version: 'story-agent-generation-activity/v1';
+  generated_at: string;
+  diagnosis: StoryAgentGenerationActivityDiagnosis;
+  latest_persisted_activity_kind: StoryAgentLatestPersistedActivityKind;
+  latest_story?: StoryAgentGenerationActivityStoryEvidence;
+  latest_project_version?: StoryAgentGenerationActivityVersionEvidence;
+  latest_report?: StoryAgentGenerationActivityReportEvidence;
+  legacy_latest_story?: StoryAgentGenerationActivityStoryEvidence;
+  latest_generation_attempt?: StoryAgentGenerationActivityAttemptEvidence;
+  attempt_audit_readiness: StoryGenerationAttemptAuditReadiness;
+  summary: {
+    story_count: number;
+    project_count: number;
+    version_count: number;
+    report_count: number;
+    project_revision_after_latest_story_count: number;
+    report_after_latest_story_count: number;
+    pending_transaction_count: number;
+    legacy_story_count: number;
+    legacy_project_count: number;
+    generation_attempt_count: number;
+    generation_attempt_succeeded_count: number;
+    generation_attempt_failed_count: number;
+    generation_attempt_incomplete_count: number;
+    generation_attempt_invalid_event_count: number;
+  };
+  signals: {
+    durable_generation_attempt_history_available: boolean;
+    generation_attempt_audit_ready_for_next_request: boolean;
+    no_generation_request_confirmed: boolean;
+    generation_pipeline_failure_confirmed: boolean;
+    generation_attempt_incomplete_detected: boolean;
+    storage_root_switch_detected: boolean;
+    report_only_activity_detected: boolean;
+    project_revision_only_activity_detected: boolean;
+  };
+  unresolved_possibilities: Array<
+    | 'no_generation_request_submitted'
+    | 'generation_request_failed_before_persistence'
+    | 'generation_request_in_progress_or_interrupted'
+  >;
+  safety: {
+    read_only: true;
+    generated_files_modified: false;
+    model_invoked: false;
+  };
+  notes: string[];
+}
+
 export interface StoryAgentGeneratedHealthItem {
   scope: StoryAgentGeneratedHealthScope;
   project_id: string;
@@ -2291,6 +2572,7 @@ export interface StoryAgentGeneratedHealthItem {
 export interface StoryAgentGeneratedHealthReport {
   schema_version: 'story-agent-generated-health/v1';
   generated_at: string;
+  generation_activity?: StoryAgentGenerationActivityEvidence;
   summary: {
     scanned_story_project_count: number;
     scanned_series_project_count: number;
@@ -2397,6 +2679,7 @@ export interface StoryAgentBacklogHandoffPackage {
 }
 
 export type StoryAgentGeneratedGovernanceActionKey =
+  | 'review_final_delivery_manifest_gaps'
   | 'restore_or_relink_series_story_refs'
   | 'archive_or_rebuild_series_fixtures'
   | 'generate_first_series_episode'
@@ -2414,6 +2697,8 @@ export interface StoryAgentGeneratedGovernanceTarget {
   missing_episode_story_id_count?: number;
   contract_evidence_count?: number;
   relink_candidate?: boolean;
+  final_delivery_manifest_missing?: boolean;
+  final_delivery_dry_run?: boolean;
   evidence: string[];
 }
 
@@ -2442,6 +2727,7 @@ export interface StoryAgentGeneratedGovernancePlan {
     series_archive_or_rebuild_candidate_count: number;
     series_planned_only_count: number;
     series_contract_repair_candidate_count: number;
+    series_final_delivery_manifest_review_candidate_count: number;
     story_ref_repair_candidate_count: number;
     ready_gears_signoff_candidate_count: number;
   };
@@ -2460,6 +2746,56 @@ export interface StoryAgentGeneratedGovernanceRunRequest {
 
 export type StoryAgentGeneratedGovernanceRunTargetStatus = 'planned' | 'blocked' | 'skipped';
 
+export type StoryAgentFinalDeliveryManifestDisposition =
+  | 'preserve_fixture_exclude_from_publishable_delivery'
+  | 'reexport_after_authorized_dependencies';
+
+export interface StoryAgentFinalDeliveryManifestPreflightRequest {
+  series_project_id: string;
+  disposition: StoryAgentFinalDeliveryManifestDisposition;
+  authorized_media_inputs_attested?: boolean;
+}
+
+export type StoryAgentFinalDeliveryManifestPreflightCheckKey =
+  | 'target_exists'
+  | 'manifest_gap_confirmed'
+  | 'authorized_media_inputs'
+  | 'cut_output'
+  | 'subtitle_output'
+  | 'audio_mix_output'
+  | 'title_card_outputs'
+  | 'project_scoped_paths';
+
+export interface StoryAgentFinalDeliveryManifestPreflightCheck {
+  key: StoryAgentFinalDeliveryManifestPreflightCheckKey;
+  status: 'passed' | 'failed' | 'not_applicable';
+  required: boolean;
+  evidence: string[];
+  missing_paths?: string[];
+  unsafe_paths?: string[];
+}
+
+export interface StoryAgentFinalDeliveryManifestPreflightResult {
+  schema_version: 'story-agent-final-delivery-manifest-preflight/v1';
+  generated_at: string;
+  series_project_id: string;
+  disposition: StoryAgentFinalDeliveryManifestDisposition;
+  status: 'ready' | 'blocked';
+  eligible_for_selected_disposition: boolean;
+  operator_review_required: true;
+  publishable_delivery_credit_granted: false;
+  generated_files_modified: false;
+  final_assemble_invoked: false;
+  manifest_written: false;
+  project_json_written: false;
+  checks: StoryAgentFinalDeliveryManifestPreflightCheck[];
+  missing_dependencies: string[];
+  unsafe_paths: string[];
+  recommended_action: string;
+  notes: string[];
+  markdown: string;
+}
+
 export interface StoryAgentGeneratedGovernanceRunTarget {
   action_key: StoryAgentGeneratedGovernanceActionKey;
   scope: StoryAgentGeneratedHealthScope;
@@ -2469,6 +2805,15 @@ export interface StoryAgentGeneratedGovernanceRunTarget {
   planned_operation: string;
   expected_file_changes: string[];
   requires_operator_review: boolean;
+  operator_disposition_status?: 'awaiting_operator_decision';
+  allowed_operator_dispositions?: StoryAgentFinalDeliveryManifestDisposition[];
+  preflight_checks?: string[];
+  preflight_api?: {
+    method: 'POST';
+    path: '/api/system/story-agent-final-delivery-manifest-preflight';
+    request_template: StoryAgentFinalDeliveryManifestPreflightRequest;
+  };
+  publishable_delivery_credit_granted?: false;
   evidence: string[];
   reason?: string;
 }
@@ -2760,10 +3105,55 @@ export interface GearsJobSubmitRequest {
   source_unit_ids?: string[];
   source_unit_id?: string;
   use_gears_api?: boolean;
+  external_call_authorization?: ExternalProviderCallAuthorizationRequest;
   overwrite_existing?: boolean;
   payload?: Record<string, unknown>;
   callback_url?: string;
   note?: string;
+}
+
+export interface ExternalProviderCallAuthorizationRequest {
+  authorized: boolean;
+  authorization_reference: string;
+  max_cost_amount: number;
+  cost_currency: string;
+  data_transfer_acknowledged: boolean;
+}
+
+export interface ExternalProviderCallAuthorizationRecord {
+  authorized: true;
+  authorization_reference: string;
+  max_cost_amount: number;
+  cost_currency: string;
+  data_transfer_acknowledged: true;
+  confirmed_at: string;
+}
+
+export interface GearsProviderAssetInput {
+  schema_version: 'gears-provider-asset-input/v1';
+  asset_id: string;
+  label: string;
+  modality: SeedanceAssetModality;
+  reference_slot: string;
+  content_sha256: string;
+  rights_authorization_reference: string;
+  human_reviewer_id: string;
+  human_reviewed_at: string;
+  transport:
+    | { kind: 'https_url'; url: string }
+    | { kind: 'provider_asset'; provider: string; provider_asset_id: string };
+}
+
+export interface GearsProviderAssetHandoffAuditRecord {
+  schema_version: 'gears-provider-asset-handoff-audit/v1';
+  asset_id: string;
+  content_sha256: string;
+  reference_slot: string;
+  transport_kind: 'https_url' | 'provider_asset';
+  url_origin?: string;
+  provider?: string;
+  provider_asset_id?: string;
+  verified_at: string;
 }
 
 export interface GearsJobSubmitFailure {
@@ -2783,6 +3173,8 @@ export interface GearsJobSubmitAdapterSummary {
   accepted_count: number;
   rejected_count: number;
   status: 'mocked' | 'submitted';
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
+  provider_asset_input_count?: number;
 }
 
 export interface GearsJobStatusSyncRequest {
@@ -3073,6 +3465,13 @@ export interface GearsJobCallbackRequest {
   percentage?: number | string;
   progress_ratio?: number | string;
   progressRatio?: number | string;
+  actual_cost_amount?: number | string;
+  actualCostAmount?: number | string;
+  cost_amount?: number | string;
+  costAmount?: number | string;
+  cost_currency?: string;
+  costCurrency?: string;
+  currency?: string;
   provider_event_at?: string | number;
   providerEventAt?: string | number;
   event_time?: string | number;
@@ -3225,6 +3624,8 @@ export interface GearsExecutionWorkerCapabilities {
   idempotent_submit: true;
   status_poll_supported: true;
   callback_delivery_supported: true;
+  /** Optional v1 extension; required as true before submitting provider_asset_inputs. */
+  provider_asset_handoff_supported?: boolean;
   supported_job_types: GearsExecutionJobType[];
   endpoints: {
     capabilities: {
@@ -3295,6 +3696,15 @@ export interface GearsExecutionContractInfo {
     response_fields: string[];
     request_examples: Record<string, unknown>[];
   };
+  portability: {
+    backward_compatible_capability_schema: 'gears-execution-worker-capabilities/v1';
+    provider_asset_input_schema: 'gears-provider-asset-input/v1';
+    provider_asset_handoff_attestation_field: 'provider_asset_handoff_supported';
+    provider_asset_handoff_required_when_inputs_present: true;
+    missing_handoff_attestation_behavior: 'fail_closed_before_submit';
+    persisted_handoff_audit_schema: 'gears-provider-asset-handoff-audit/v1';
+    signed_url_query_persisted: false;
+  };
   notes: string[];
 }
 
@@ -3364,6 +3774,7 @@ export interface GearsExecutionSmokePackage {
 export interface GearsExecutionLiveSmokeRunRequest {
   execute?: boolean;
   poll_after_submit?: boolean;
+  external_call_authorization?: ExternalProviderCallAuthorizationRequest;
   note?: string;
 }
 
@@ -3403,6 +3814,7 @@ export interface GearsExecutionLiveSmokeRunReport {
   accepted_count: number;
   rejected_count: number;
   failed_count: number;
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
   steps: GearsExecutionLiveSmokeRunStepResult[];
   markdown: string;
   generated_at: string;
@@ -3864,6 +4276,131 @@ export type SeedanceAssetReferenceKind = 'character' | 'location' | 'prop' | 'ca
 
 export type SeedanceAssetUploadStatus = 'pending_upload' | 'uploaded' | 'failed' | 'external';
 
+export type MediaArtifactIntegrityStatus = 'verified' | 'unverified' | 'rejected';
+export type MediaArtifactRightsStatus = 'pending' | 'authorized' | 'restricted';
+export type MediaArtifactHumanReviewStatus = 'pending' | 'approved' | 'rejected';
+export type MediaArtifactSourceKind =
+  | 'manual_upload'
+  | 'provider_callback'
+  | 'external_reference'
+  | 'cross_project_reuse'
+  | 'placeholder'
+  | 'legacy_migration';
+
+export interface AssetIngestReport {
+  schema_version: 'asset-ingest/v1';
+  modality: SeedanceAssetModality;
+  detected_mime_type: string;
+  canonical_extension: string;
+  byte_size: number;
+  content_sha256: string;
+  integrity_status: 'verified';
+  quarantined: false;
+  technical_metadata: {
+    width?: number;
+    height?: number;
+    duration_sec?: number;
+  };
+  warnings: string[];
+}
+
+export interface MediaArtifact {
+  schema_version: 'media-artifact/v1';
+  artifact_id: string;
+  version_id: string;
+  modality: SeedanceAssetModality;
+  mime_type?: string;
+  size_bytes?: number;
+  content_sha256: string | null;
+  integrity_status: MediaArtifactIntegrityStatus;
+  storage: {
+    kind: 'local_immutable' | 'external_url' | 'provider_asset' | 'legacy_reference';
+    file_id?: string;
+    local_path?: string;
+    external_url?: string;
+    provider_asset_id?: string;
+    preview_url?: string;
+  };
+  provenance: {
+    source_kind: MediaArtifactSourceKind;
+    provider?: string;
+    model?: string;
+    prompt_sha256?: string;
+    source_project_id: string;
+    source_story_id: string;
+    source_version_id?: string;
+    source_asset_id: string;
+    created_at: string;
+  };
+  rights: {
+    status: MediaArtifactRightsStatus;
+    authorization_reference?: string;
+    person_consent_reference?: string;
+  };
+  human_review: {
+    status: MediaArtifactHumanReviewStatus;
+    reviewer_id?: string;
+    reviewed_at?: string;
+    note?: string;
+  };
+  placeholder: boolean;
+  production_credit_granted: boolean;
+}
+
+export type AssetBindingStatus =
+  | 'missing_artifact'
+  | 'placeholder_only'
+  | 'bound_unverified'
+  | 'rights_pending'
+  | 'review_pending'
+  | 'ready'
+  | 'rejected';
+
+export interface AssetBinding {
+  schema_version: 'asset-binding/v1';
+  binding_id: string;
+  source_project_id: string;
+  source_story_id: string;
+  source_version_id?: string;
+  asset_id: string;
+  artifact_id: string | null;
+  kind: SeedanceAssetReferenceKind;
+  modality: SeedanceAssetModality;
+  role: SeedanceAssetSlotRole;
+  reference_slot?: string;
+  source_scene_ids: number[];
+  source_shot_ids: string[];
+  status: AssetBindingStatus;
+  rights_status: MediaArtifactRightsStatus;
+  human_review_status: MediaArtifactHumanReviewStatus;
+  placeholder: boolean;
+  production_credit_granted: boolean;
+}
+
+export interface MediaAssetLibrary {
+  schema_version: 'media-asset-library/v1';
+  project_id: string;
+  story_id: string;
+  source_version_id?: string;
+  generated_at: string;
+  artifacts: MediaArtifact[];
+  bindings: AssetBinding[];
+  summary: {
+    artifact_count: number;
+    binding_count: number;
+    verified_artifact_count: number;
+    placeholder_artifact_count: number;
+    production_credit_binding_count: number;
+    legacy_unverified_artifact_count: number;
+    missing_artifact_binding_count: number;
+  };
+  migration: {
+    source_schema_version: 'seedance-asset-library/v1';
+    legacy_item_count: number;
+    migrated_without_credit_count: number;
+  };
+}
+
 export type SeedanceAssetSlotRole =
   | 'character_reference'
   | 'location_reference'
@@ -3902,6 +4439,9 @@ export type SeedanceAssetHistoryEventType =
   | 'manual_bind'
   | 'batch_import'
   | 'file_upload'
+  | 'provider_callback'
+  | 'rights_review'
+  | 'human_visual_review'
   | 'placeholder_draft'
   | 'cross_project_reuse';
 
@@ -3918,6 +4458,13 @@ export interface SeedanceAssetHistoryEvent {
   original_filename?: string;
   mime_type?: string;
   size_bytes?: number;
+  content_sha256?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  authorization_reference?: string;
+  person_consent_reference?: string;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
   source_project_id?: string;
   source_project_title?: string;
   source_asset_id?: string;
@@ -3969,6 +4516,17 @@ export interface SeedanceAssetLibraryItem {
   provider_asset_id?: string;
   upload_status?: SeedanceAssetUploadStatus;
   upload_error?: string;
+  /** Stage C compatibility fields; old v1 items omit them and migrate fail-closed. */
+  content_sha256?: string;
+  prompt_sha256?: string;
+  model?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  authorization_reference?: string;
+  person_consent_reference?: string;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_note?: string;
   history?: SeedanceAssetHistoryEvent[];
   description?: string;
   updated_at: string;
@@ -4050,6 +4608,29 @@ export interface SeedanceAssetFileUploadResult {
   original_filename: string;
   mime_type: string;
   size_bytes: number;
+  content_sha256: string;
+  preview_url: string;
+  ingest: AssetIngestReport;
+}
+
+export interface MediaAssetReviewUpdateRequest {
+  asset_id: string;
+  expected_content_sha256?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  authorization_reference?: string;
+  person_consent_reference?: string;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+  review_note?: string;
+}
+
+export interface MediaAssetReviewUpdateResult {
+  detail: StoryProjectDetail;
+  asset: SeedanceAssetLibraryItem;
+  artifact: MediaArtifact;
+  binding: AssetBinding;
+  reviewer_id: string;
+  reviewed_at: string;
+  production_credit_granted: boolean;
 }
 
 export interface ProjectSeedanceAssetPlaceholderItem {
@@ -4109,6 +4690,9 @@ export interface SeedanceGlobalAssetLibraryItem {
   provider_asset_id?: string;
   upload_status?: SeedanceAssetUploadStatus;
   upload_error?: string;
+  content_sha256?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  human_review_status?: MediaArtifactHumanReviewStatus;
   description?: string;
   updated_at: string;
 }
@@ -5500,6 +6084,54 @@ export interface AiComicSeedanceFinalDeliveryLedger {
   dry_run?: boolean;
   output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
   dependency_status: AiComicSeedanceFinalDependencyStatus;
+  current_release?: AiComicSeedanceFinalDeliveryReleaseRecord;
+  release_history?: AiComicSeedanceFinalDeliveryReleaseRecord[];
+  rollback_events?: AiComicSeedanceFinalDeliveryRollbackEvent[];
+}
+
+export interface AiComicSeedanceFinalDeliveryReleaseRecord {
+  schema_version: 'ai-comic-seedance-final-delivery-release/v1';
+  release_id: string;
+  created_at: string;
+  source: 'local_assembly';
+  immutable: true;
+  canonical_output_path: string;
+  canonical_manifest_path: string;
+  archived_output_path: string;
+  archived_manifest_path: string;
+  output_sha256: string;
+  manifest_sha256: string;
+  output_byte_size: number;
+  manifest_byte_size: number;
+  output_profile: AiComicSeedanceFinalDeliveryOutputProfile;
+}
+
+export interface AiComicSeedanceFinalDeliveryRollbackEvent {
+  event_id: string;
+  rolled_back_at: string;
+  target_release_id: string;
+  previous_release_id?: string;
+  actor_id: string;
+  authentication_method: string;
+  reason: string;
+  output_sha256_verified: true;
+  manifest_sha256_verified: true;
+}
+
+export interface AiComicSeedanceFinalDeliveryRollbackRequest {
+  release_id: string;
+  confirmed: boolean;
+  reason: string;
+}
+
+export interface AiComicSeedanceFinalDeliveryRollbackResult {
+  schema_version: 'ai-comic-series-seedance-final-delivery-rollback-result/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  rolled_back_at: string;
+  previous_release_id?: string;
+  target_release: AiComicSeedanceFinalDeliveryReleaseRecord;
+  seedance_final_delivery: AiComicSeedanceFinalDeliveryLedger;
 }
 
 export interface AiComicSeriesSeedanceFinalDeliveryResult {
@@ -6138,6 +6770,23 @@ export interface AiComicSeedanceAssetLibraryItem {
   reference_slot?: string;
   file_url?: string;
   file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  provider?: string;
+  provider_asset_id?: string;
+  content_sha256?: string;
+  prompt_sha256?: string;
+  model?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  authorization_reference?: string;
+  person_consent_reference?: string;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_note?: string;
+  history?: SeedanceAssetHistoryEvent[];
   description?: string;
   updated_at: string;
 }
@@ -6158,6 +6807,27 @@ export interface AiComicSeedanceAssetLibraryUpdateRequest {
     file_id?: string;
     description?: string;
   }>;
+}
+
+export interface AiComicSeedanceAssetFileUploadResult {
+  detail: AiComicSeriesProjectDetail;
+  asset: AiComicSeedanceAssetLibraryItem;
+  file_id: string;
+  local_path: string;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  content_sha256: string;
+  preview_url: string;
+  ingest: AssetIngestReport;
+}
+
+export interface AiComicSeriesMediaAssetReviewUpdateResult {
+  detail: AiComicSeriesProjectDetail;
+  asset: AiComicSeedanceAssetLibraryItem;
+  reviewer_id: string;
+  reviewed_at: string;
+  production_credit_granted: boolean;
 }
 
 export interface AiComicSeedanceShotAssetBinding {
@@ -6402,9 +7072,49 @@ export interface StoryProductionBoardPropAsset {
   usage_note: string;
 }
 
+export type StoryImageAssetRequirementKind = 'character' | 'location' | 'prop';
+
+export interface StoryImageAssetRequirement {
+  schema_version: 'story-image-asset-requirement/v1';
+  requirement_id: string;
+  asset_id: string;
+  asset_kind: StoryImageAssetRequirementKind;
+  label: string;
+  job_type: Extract<GearsExecutionJobType, 'character_image' | 'scene_image' | 'prop_image'>;
+  source_unit_id: string;
+  reference_slot?: string;
+  source_scene_ids: number[];
+  source_shot_ids: string[];
+  prompt: string;
+  negative_constraints: string[];
+  binding_status: AssetBindingStatus;
+  provider_invoked: false;
+  production_credit_granted: boolean;
+}
+
+export interface StoryImageAssetJobPlan {
+  schema_version: 'story-image-asset-job-plan/v1';
+  project_id: string;
+  story_id: string;
+  source_version_id?: string;
+  generated_at: string;
+  provider_invoked: false;
+  production_credit_count: number;
+  summary: {
+    requirement_count: number;
+    character_requirement_count: number;
+    location_requirement_count: number;
+    prop_requirement_count: number;
+    ready_to_submit_count: number;
+    production_ready_count: number;
+  };
+  requirements: StoryImageAssetRequirement[];
+}
+
 export interface StoryProductionBoardShotUnit {
   shot_id: string;
   source_scene_id: number;
+  source_unit_id: string;
   source_segment_id?: number;
   duration_sec: number;
   panel_count: number;
@@ -6505,6 +7215,8 @@ export type StoryProductionBoardDeliveryArtifactKind =
   | 'repair_plan'
   | 'seedance_prompts'
   | 'seedance_asset_report'
+  | 'media_asset_library'
+  | 'image_asset_job_plan'
   | 'seedance_shot_ledger';
 
 export interface StoryProductionBoardDeliveryArtifact {
@@ -6546,6 +7258,8 @@ export interface StoryProductionBoard {
   director_plan: StoryProductionBoardDirectorPlan[];
   shot_units: StoryProductionBoardShotUnit[];
   seedance_asset_report: SeedanceAssetReportPackage;
+  media_asset_library: MediaAssetLibrary;
+  image_asset_job_plan: StoryImageAssetJobPlan;
   seedance_shot_ledger: SeedanceShotLedger;
   continuity_constraints: string[];
   negative_constraints: string[];
@@ -8627,6 +9341,124 @@ export interface AiComicEpisodeGenerateRequest {
   auto_repair_episode?: boolean;
 }
 
+export type StoryQualityGateId =
+  | 'narrative_gate'
+  | 'factual_cultural_gate'
+  | 'outline_gate'
+  | 'audience_text_gate'
+  | 'production_material_gate'
+  | 'gears_contract_gate'
+  | 'asset_gate'
+  | 'external_provider_gate';
+
+export type StoryQualityGateScope = 'story' | 'production';
+export type StoryQualityGateStatus = 'passed' | 'failed' | 'not_evaluated';
+
+export interface StoryQualityGateResult {
+  gate_id: StoryQualityGateId;
+  scope: StoryQualityGateScope;
+  status: StoryQualityGateStatus;
+  /** `not_evaluated` gates may be non-blocking for legacy story publication. */
+  passed: boolean;
+  score?: number;
+  summary: string;
+  issues: string[];
+}
+
+export interface StoryQualityGatesV2 {
+  schema_version: 'quality-gates/v2';
+  narrative_gate: StoryQualityGateResult;
+  factual_cultural_gate: StoryQualityGateResult;
+  outline_gate: StoryQualityGateResult;
+  audience_text_gate: StoryQualityGateResult;
+  production_material_gate: StoryQualityGateResult;
+  gears_contract_gate: StoryQualityGateResult;
+  asset_gate: StoryQualityGateResult;
+  external_provider_gate: StoryQualityGateResult;
+  story_publishable: boolean;
+  production_ready: boolean;
+  story_blocking_gate_ids: StoryQualityGateId[];
+  production_blocking_gate_ids: StoryQualityGateId[];
+  /** Snapshot of the backward-compatible aggregate `quality_report.passed`. */
+  legacy_passed: boolean;
+}
+
+export type StoryQualityFamily =
+  | 'dramatic_narrative'
+  | 'documentary_evidence'
+  | 'promotional_communication'
+  | 'instructional_learning'
+  | 'spatial_landscape'
+  | 'social_short_form';
+
+export interface StoryFamilyQualityCheck {
+  check_id: string;
+  label: string;
+  status: 'passed' | 'failed';
+  evidence_scene_ids: number[];
+  summary: string;
+}
+
+export interface StoryFamilyQualityReport {
+  schema_version: 'story-family-quality/v1';
+  family: StoryQualityFamily;
+  family_label: string;
+  passed: boolean;
+  checks: StoryFamilyQualityCheck[];
+  blocking_check_ids: string[];
+}
+
+export type StoryHumanReviewerRole =
+  | 'screenwriter_or_script_editor'
+  | 'genre_or_director_reviewer'
+  | 'fact_or_culture_reviewer';
+
+export type StoryMachineReviewStatus = 'supporting_evidence' | 'attention_required' | 'not_evaluated';
+
+export interface StoryHumanReviewCriterion {
+  criterion_id: string;
+  dimension_id: ProfessionalQualityDimensionId;
+  dimension_label: string;
+  weight: number;
+  machine_status: StoryMachineReviewStatus;
+  machine_evidence: string[];
+  machine_counter_evidence: string[];
+  evidence_scene_ids: number[];
+  source_refs: string[];
+  /** Machine output must never populate or infer these human-owned fields. */
+  human_verdict: 'not_reviewed';
+  human_score: null;
+  human_notes: '';
+  counts_as_human_review_credit: false;
+}
+
+export interface StoryHumanReviewSection {
+  role: StoryHumanReviewerRole;
+  role_label: string;
+  criteria: StoryHumanReviewCriterion[];
+}
+
+export interface StoryHumanReviewAlignment {
+  schema_version: 'story-human-review-alignment/v1';
+  video_type: VideoType;
+  family: StoryQualityFamily;
+  family_label: string;
+  source_contracts: Array<
+    | 'story-family-quality/v1'
+    | 'pattern-quality/v2'
+    | 'quality-gates/v2'
+    | 'professional-blind-review-weight-contract/v1'
+  >;
+  weight_contract_sha256: string;
+  machine_prefill_only: true;
+  review_status: 'awaiting_human_review';
+  human_review_complete: false;
+  human_blind_review_passed: false;
+  professional_passed: false;
+  credit_boundary: string;
+  sections: StoryHumanReviewSection[];
+}
+
 export interface StoryQualityReport {
   hasCentralEvent: boolean;
   hasConflict: boolean;
@@ -8653,6 +9485,9 @@ export interface StoryQualityReport {
   audience_text_report?: AudienceTextReport;
   repair_action_items?: QualityRepairAction[];
   repair_preview?: string;
+  quality_gates?: StoryQualityGatesV2;
+  family_quality_report?: StoryFamilyQualityReport;
+  human_review_alignment?: StoryHumanReviewAlignment;
 }
 
 export type QualitySignalStatus = 'satisfied' | 'weak' | 'missing';
@@ -8690,10 +9525,19 @@ export interface PatternQualitySignal {
   gap: string;
   suggested_scene_ids: number[];
   repair_hint: string;
+  evidence_scene_ids: number[];
+  observable_evidence: string[];
+  counter_evidence: string[];
+  confidence: number;
+  repair_target: {
+    scope: 'scene' | 'story_field';
+    scene_ids: number[];
+    fields: string[];
+  };
 }
 
 export interface PatternQualityReport {
-  schema_version: 'pattern-quality/v1';
+  schema_version: 'pattern-quality/v2';
   pattern_score: number;
   satisfied_signals: PatternQualitySignal[];
   weak_signals: PatternQualitySignal[];
@@ -8768,7 +9612,7 @@ export interface AudienceTextReport {
 export interface QualityRepairAction {
   action_id: string;
   label: string;
-  target_report: 'outline' | 'pattern' | 'gears' | 'production_material' | 'audience' | 'combined';
+  target_report: 'family' | 'outline' | 'pattern' | 'gears' | 'production_material' | 'audience' | 'combined';
   severity: 'low' | 'medium' | 'high';
   scene_ids: number[];
   prompt: string;
@@ -11102,6 +11946,10 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   project_id?: string;
   current_version_id?: string;
   model_profile_id?: string;
+  requested_model_profile_id?: string;
+  effective_engine?: 'local_story_engine' | 'external_model' | 'local_fallback';
+  external_model_call_performed?: boolean;
+  generation_reason?: string;
   generation_source?: string;
   generation_mode?: GenerationMode;
   generation_used_fallback?: boolean;
@@ -11317,10 +12165,54 @@ export interface AIModelProfile {
   id: string;
   label: string;
   description: string;
-  runtime: 'claude' | 'codex';
+  runtime: 'local' | 'claude' | 'codex';
   model: string;
   recommended?: boolean;
   capabilities: AIModelCapability[];
+}
+
+export interface StoryGenerationCapabilityModelProfile extends AIModelProfile {
+  available: boolean;
+  effective_engine: 'local_only' | 'external_model' | 'unavailable';
+  external_call_possible: boolean;
+  unavailable_reason?: string;
+  scene_regeneration_available: boolean;
+  scene_regeneration_external_call_possible: boolean;
+  scene_regeneration_unavailable_reason?: string;
+}
+
+export interface StoryGenerationCapabilities {
+  schema_version: 'story-generation-capabilities/v1';
+  default_model_profile_id: string;
+  effective_default_engine: 'local_only' | 'external_model';
+  model_profiles: StoryGenerationCapabilityModelProfile[];
+  external_adapter: {
+    provider: string;
+    provider_supported: boolean;
+    command_configured: boolean;
+    ready: boolean;
+    external_data_transfer_possible: boolean;
+    actual_cost_known_before_execution: false;
+    cost_boundary: 'not_reported_by_story_generation_adapter';
+    authorization_boundary: string;
+  };
+  scene_regeneration_adapter: {
+    provider: string;
+    provider_supported: boolean;
+    command_configured: boolean;
+    ready: boolean;
+    external_data_transfer_possible: boolean;
+    actual_cost_known_before_execution: false;
+    cost_boundary: 'not_reported_by_scene_regeneration_adapter';
+    authorization_boundary: string;
+  };
+  request_contract: {
+    schema: 'StoryGenerateRequestSchema';
+    unknown_model_profile_rejected: true;
+    omitted_model_profile_uses_local_engine: true;
+  };
+  real_external_generation_performed: false;
+  notes: string[];
 }
 
 export interface SeedanceProviderAdapterConfigInfo {

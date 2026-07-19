@@ -15,10 +15,11 @@ import type { StoryGenerationModelOutput, StoryGenerationPromptPackage } from '.
 import { generateStoryWithAdapter } from './story-generation-model.js';
 import { getGenreReturnJsonFields } from './genre-story-profiles.js';
 import { resolveModelProfile } from './model-catalog.js';
-import { validateDramaticStory } from './dramatic-story.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
+import { getStoryFamilyRepairGuidance, validateStoryFamilyBaseQuality } from './story-family-quality-service.js';
 import { buildGearsDeliveryPackage } from './gears-delivery-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
+import { compareStoryRevision } from './story-revision-comparator.js';
 
 const PANEL_COUNT_BY_DURATION: Record<number, PanelCount> = {
   12: 6,
@@ -89,12 +90,28 @@ export async function repairStoryWithQualityWorkflow(
     const localCandidate = applyLocalAiComicQualityRepair(story, traceActions);
     const repairedStory = refreshRepairedStoryQuality(localCandidate.applied ? localCandidate.story : story);
     trace.after_genre_score = repairedStory.quality_report?.genre_score;
-    if (qualityImproved(story.quality_report, repairedStory.quality_report)) {
+    const comparison = repairedStory.quality_report
+      ? compareStoryRevision({
+          before: story,
+          after: repairedStory,
+          beforeQuality: story.quality_report,
+          afterQuality: repairedStory.quality_report,
+        })
+      : undefined;
+    if (comparison?.content_changed
+      && !comparison.protected_quality_regressed
+      && (comparison.genre_score_improved || comparison.target_issue_count_reduced)) {
       trace.applied = true;
-      trace.reason = localCandidate.applied
-        ? 'local_ai_comic_quality_repair_applied'
-        : 'quality_report_refreshed';
+      trace.reason = 'local_ai_comic_quality_repair_applied';
       return { story: withRepairTrace(repairedStory, trace), trace };
+    }
+    if (!comparison?.content_changed) {
+      trace.reason = 'quality_recomputed_not_repaired';
+      return { story: withRepairTrace(story, trace), trace };
+    }
+    if (comparison.protected_quality_regressed) {
+      trace.reason = 'quality_repair_protected_quality_regressed';
+      return { story: withRepairTrace(story, trace), trace };
     }
     trace.reason = repairAdapterResult.reason ?? 'repair_model_returned_no_output';
     return { story: withRepairTrace(story, trace), trace };
@@ -110,15 +127,27 @@ export async function repairStoryWithQualityWorkflow(
   const repairedStory = refreshRepairedStoryQuality(localCandidate.story);
   trace.after_genre_score = repairedStory.quality_report?.genre_score;
 
-  const beforeIssueCount = story.quality_report.issues.length;
-  const afterIssueCount = repairedStory.quality_report?.issues.length ?? beforeIssueCount;
-  if ((trace.after_genre_score ?? 0) >= (beforeScore ?? 0) || afterIssueCount < beforeIssueCount) {
+  const comparison = repairedStory.quality_report
+    ? compareStoryRevision({
+        before: story,
+        after: repairedStory,
+        beforeQuality: story.quality_report,
+        afterQuality: repairedStory.quality_report,
+      })
+    : undefined;
+  if (comparison?.content_changed
+    && !comparison.protected_quality_regressed
+    && (comparison.genre_score_improved || comparison.target_issue_count_reduced)) {
     trace.applied = true;
     trace.reason = localCandidate.applied ? 'quality_repair_applied_with_local_ai_comic_signals' : 'quality_repair_applied';
     return { story: withRepairTrace(repairedStory, trace), trace };
   }
 
-  trace.reason = 'quality_repair_not_improved';
+  trace.reason = !comparison?.content_changed
+    ? 'quality_repair_no_content_change'
+    : comparison.protected_quality_regressed
+      ? 'quality_repair_protected_quality_regressed'
+      : 'quality_repair_not_improved';
   return { story: withRepairTrace(story, trace), trace };
 }
 
@@ -128,6 +157,7 @@ function buildQualityRepairPromptPackage(
   actions: QualityRepairAction[],
 ): StoryGenerationPromptPackage {
   const quality = story.quality_report;
+  const familyGuidance = getStoryFamilyRepairGuidance(story.video_type);
   const strictnessLine = strictness === 'strict'
     ? '严格模式：优先满足用户大纲、流派机制、场景行动和 GEARS 交付。'
     : strictness === 'loose'
@@ -184,14 +214,15 @@ function buildQualityRepairPromptPackage(
       should_respect: [
         strictnessLine,
         '保持 scene_id 数量和编号不变。',
-        '每场必须有地点、动作、冲突或发现、情绪变化和可生成画面。',
+        ...familyGuidance.instructions,
+        `优先修改字段：${familyGuidance.focus_fields.join('、')}。`,
         '画面提示只写空间、人物、道具、光线、构图和时代服饰约束。',
         ...actions.map(action => action.prompt),
       ],
       return_json_fields: returnJsonFields,
     },
     system_prompt: [
-      '你是中文故事与 AI 漫剧生产编剧。',
+      `你是${familyGuidance.writer_role}。`,
       '现在执行一次质量修复，不重新规划项目，不改变场景数量。',
       strictnessLine,
       '只返回 JSON 对象，并且只能包含指定字段。',
@@ -226,6 +257,13 @@ function buildQualityRepairPromptPackage(
         `  修复要求：${action.prompt}`,
         `  预期效果：${action.expected_effect}`,
       ].join('\n')),
+      '',
+      `=== ${familyGuidance.family_label}家族门禁 ===`,
+      ...(quality?.family_quality_report?.checks
+        .filter(check => check.status === 'failed')
+        .map(check => `- [${check.check_id}] ${check.label}：${check.summary}`) ?? []),
+      ...familyGuidance.instructions.map(instruction => `- ${instruction}`),
+      `优先字段：${familyGuidance.focus_fields.join('、')}`,
       '',
       '=== 三份报告摘要 ===',
       `Outline Coverage：${quality?.outline_coverage_report?.coverage_score ?? '未记录'}；${quality?.outline_coverage_report?.preview ?? ''}`,
@@ -315,12 +353,8 @@ function rebuildStoryFromModelOutput(
 }
 
 function refreshRepairedStoryQuality(story: StoryGenerateResult): StoryGenerateResult {
-  const baseQualityReport = validateDramaticStory({
-    full_text: story.full_text,
-    scene_breakdown: story.scene_breakdown,
-    title: story.title,
+  const baseQualityReport = validateStoryFamilyBaseQuality(story, {
     selectedEvent: story.story_blueprint?.central_event,
-    videoType: story.video_type,
   });
   const narrativePatternIds = extractNarrativePatternIds(story);
   let qualityReport: StoryQualityReport = validateGenreStoryQuality({
@@ -341,18 +375,6 @@ function refreshRepairedStoryQuality(story: StoryGenerateResult): StoryGenerateR
     gears_delivery: gearsDelivery,
     quality_report: qualityReport,
   };
-}
-
-function qualityImproved(
-  before: StoryQualityReport | undefined,
-  after: StoryQualityReport | undefined,
-): boolean {
-  if (!after) return false;
-  const beforeScore = before?.genre_score ?? 0;
-  const beforeIssueCount = before?.issues.length ?? Number.POSITIVE_INFINITY;
-  return after.passed
-    || (after.genre_score ?? 0) >= beforeScore
-    || after.issues.length < beforeIssueCount;
 }
 
 function applyLocalAiComicQualityRepair(

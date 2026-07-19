@@ -18,12 +18,17 @@ export interface RunStoryAgentGeneratedGovernanceInput {
 }
 
 type GovernanceActionKey =
+  | 'review_final_delivery_manifest_gaps'
   | 'restore_or_relink_series_story_refs'
   | 'archive_or_rebuild_series_fixtures'
   | 'generate_first_series_episode'
   | 'repair_series_command_contracts'
   | 'repair_story_project_refs'
   | 'promote_ready_targets_for_gears_signoff';
+
+type FinalDeliveryManifestDisposition =
+  | 'preserve_fixture_exclude_from_publishable_delivery'
+  | 'reexport_after_authorized_dependencies';
 
 interface GovernanceTarget {
   scope: StoryAgentGeneratedHealthItem['scope'];
@@ -35,6 +40,8 @@ interface GovernanceTarget {
   missing_episode_story_id_count?: number;
   contract_evidence_count?: number;
   relink_candidate?: boolean;
+  final_delivery_manifest_missing?: boolean;
+  final_delivery_dry_run?: boolean;
   evidence: string[];
 }
 
@@ -63,6 +70,7 @@ export interface StoryAgentGeneratedGovernancePlan {
     series_archive_or_rebuild_candidate_count: number;
     series_planned_only_count: number;
     series_contract_repair_candidate_count: number;
+    series_final_delivery_manifest_review_candidate_count: number;
     story_ref_repair_candidate_count: number;
     ready_gears_signoff_candidate_count: number;
   };
@@ -81,6 +89,22 @@ interface GovernanceRunTarget {
   planned_operation: string;
   expected_file_changes: string[];
   requires_operator_review: boolean;
+  operator_disposition_status?: 'awaiting_operator_decision';
+  allowed_operator_dispositions?: Array<
+    | 'preserve_fixture_exclude_from_publishable_delivery'
+    | 'reexport_after_authorized_dependencies'
+  >;
+  preflight_checks?: string[];
+  preflight_api?: {
+    method: 'POST';
+    path: '/api/system/story-agent-final-delivery-manifest-preflight';
+    request_template: {
+      series_project_id: string;
+      disposition: FinalDeliveryManifestDisposition;
+      authorized_media_inputs_attested: boolean;
+    };
+  };
+  publishable_delivery_credit_granted?: false;
   evidence: string[];
   reason?: string;
 }
@@ -109,6 +133,7 @@ export interface StoryAgentGeneratedGovernanceRunResult {
 }
 
 const DEFAULT_RUN_ACTIONS: GovernanceActionKey[] = [
+  'review_final_delivery_manifest_gaps',
   'restore_or_relink_series_story_refs',
   'archive_or_rebuild_series_fixtures',
   'repair_story_project_refs',
@@ -125,6 +150,8 @@ function toTarget(item: StoryAgentGeneratedHealthItem): GovernanceTarget {
     missing_episode_story_id_count: item.missing_episode_story_id_count,
     contract_evidence_count: item.contract_evidence_count,
     relink_candidate: item.relink_candidate,
+    final_delivery_manifest_missing: item.final_delivery_manifest_missing,
+    final_delivery_dry_run: item.final_delivery_dry_run,
     evidence: item.evidence,
   };
 }
@@ -154,6 +181,7 @@ function buildMarkdown(plan: Omit<StoryAgentGeneratedGovernancePlan, 'markdown'>
     `- series_governance_attention: ${plan.summary.series_governance_attention_count}`,
     `- series_relink_candidates: ${plan.summary.series_relink_candidate_count}`,
     `- series_archive_or_rebuild_candidates: ${plan.summary.series_archive_or_rebuild_candidate_count}`,
+    `- series_final_delivery_manifest_review_candidates: ${plan.summary.series_final_delivery_manifest_review_candidate_count}`,
     `- story_ref_repair_candidates: ${plan.summary.story_ref_repair_candidate_count}`,
     `- ready_gears_signoff_candidates: ${plan.summary.ready_gears_signoff_candidate_count}`,
     '',
@@ -170,6 +198,9 @@ function buildMarkdown(plan: Omit<StoryAgentGeneratedGovernancePlan, 'markdown'>
 }
 
 function operationForAction(actionKey: GovernanceActionKey, target: GovernanceTarget): string {
+  if (actionKey === 'review_final_delivery_manifest_gaps') {
+    return `Require an operator disposition for ${target.project_id}: preserve the fixture outside publishable delivery, or re-export only after authorized dependencies pass preflight.`;
+  }
   if (actionKey === 'restore_or_relink_series_story_refs') {
     return `Restore missing generated story JSON for ${target.project_id}, or update generated_episode_story_ids to existing story IDs.`;
   }
@@ -183,6 +214,7 @@ function operationForAction(actionKey: GovernanceActionKey, target: GovernanceTa
 }
 
 function expectedFileChanges(actionKey: GovernanceActionKey, target: GovernanceTarget): string[] {
+  if (actionKey === 'review_final_delivery_manifest_gaps') return [];
   if (actionKey === 'restore_or_relink_series_story_refs') {
     return [
       `web/generated/ai-comic-series-projects/${target.project_id}/project.json`,
@@ -211,7 +243,8 @@ function expectedFileChanges(actionKey: GovernanceActionKey, target: GovernanceT
 }
 
 function requiresOperatorReview(actionKey: GovernanceActionKey): boolean {
-  return actionKey === 'restore_or_relink_series_story_refs'
+  return actionKey === 'review_final_delivery_manifest_gaps'
+    || actionKey === 'restore_or_relink_series_story_refs'
     || actionKey === 'archive_or_rebuild_series_fixtures'
     || actionKey === 'promote_ready_targets_for_gears_signoff';
 }
@@ -236,7 +269,15 @@ function buildRunMarkdown(result: Omit<StoryAgentGeneratedGovernanceRunResult, '
     '## Manifest',
     '',
     ...(result.manifest.items.length
-      ? result.manifest.items.map(item => `- ${item.status} · ${item.action_key} · ${item.project_id}`)
+      ? result.manifest.items.map(item => [
+          `- ${item.status} · ${item.action_key} · ${item.project_id}`,
+          item.operator_disposition_status ? `  - operator_disposition: ${item.operator_disposition_status}` : '',
+          item.allowed_operator_dispositions?.length
+            ? `  - allowed_dispositions: ${item.allowed_operator_dispositions.join(', ')}`
+            : '',
+          item.preflight_checks?.length ? `  - preflight: ${item.preflight_checks.join(', ')}` : '',
+          item.publishable_delivery_credit_granted === false ? '  - publishable_delivery_credit_granted: false' : '',
+        ].filter(Boolean).join('\n'))
       : ['- none']),
     '',
     '## Notes',
@@ -255,13 +296,20 @@ export async function getStoryAgentGeneratedGovernancePlan(
   );
   const storyItems = health.items.filter(item => item.scope === 'story_project');
   const relinkSamples = seriesItems.filter(item => item.relink_candidate).slice(0, sampleLimit);
+  const finalDeliveryManifestGapSamples = seriesItems
+    .filter(item => item.final_delivery_manifest_missing === true)
+    .slice(0, sampleLimit);
   const archiveSamples = seriesItems.filter(item => item.status === 'interrupted' && !item.relink_candidate).slice(0, sampleLimit);
   const plannedSamples = seriesItems.filter(item => item.status === 'planned').slice(0, sampleLimit);
-  const contractRepairSamples = seriesItems.filter(item => item.status === 'production_gap').slice(0, sampleLimit);
+  const contractRepairSamples = seriesItems
+    .filter(item => item.status === 'production_gap' && item.final_delivery_manifest_missing !== true)
+    .slice(0, sampleLimit);
   const storyRefRepairSamples = storyItems.filter(item => item.status === 'interrupted').slice(0, sampleLimit);
   const readySamples = health.items.filter(item => item.status === 'ready').slice(0, sampleLimit);
 
   const seriesRelinkCandidateCount = health.summary.series_relink_candidate_count ?? relinkSamples.length;
+  const finalDeliveryManifestGapCount = health.summary.series_missing_final_delivery_manifest_count
+    ?? finalDeliveryManifestGapSamples.length;
   const seriesPlannedOnlyCount = health.summary.series_planned_only_count ?? plannedSamples.length;
   const seriesContractRepairCandidateCount = health.summary.series_production_gap_count ?? contractRepairSamples.length;
   const storyRefRepairCandidateCount = storyItems.filter(item => item.status === 'interrupted').length;
@@ -274,6 +322,15 @@ export async function getStoryAgentGeneratedGovernancePlan(
   );
 
   const actions = [
+    buildAction({
+      action_key: 'review_final_delivery_manifest_gaps',
+      priority: 'P1',
+      label: 'Review final-delivery manifest gaps before any publishable-delivery claim',
+      can_auto_apply: false,
+      runner: 'operator',
+      detail: 'A concat/output plan without manifest is not publishable delivery evidence, including historical dry-run fixtures.',
+      next_step: 'Choose preserve_fixture_exclude_from_publishable_delivery, or provide authorized media dependencies before a controlled final-delivery re-export.',
+    }, finalDeliveryManifestGapCount, finalDeliveryManifestGapSamples),
     buildAction({
       action_key: 'restore_or_relink_series_story_refs',
       priority: 'P0',
@@ -347,6 +404,7 @@ export async function getStoryAgentGeneratedGovernancePlan(
       series_archive_or_rebuild_candidate_count: seriesArchiveOrRebuildCandidateCount,
       series_planned_only_count: seriesPlannedOnlyCount,
       series_contract_repair_candidate_count: seriesContractRepairCandidateCount,
+      series_final_delivery_manifest_review_candidate_count: finalDeliveryManifestGapCount,
       story_ref_repair_candidate_count: storyRefRepairCandidateCount,
       ready_gears_signoff_candidate_count: readySignoffCandidateCount,
     },
@@ -354,6 +412,7 @@ export async function getStoryAgentGeneratedGovernancePlan(
     notes: [
       'MCP generated governance plan is read-only and does not modify generated files.',
       'Use relink candidates before judging GEARS v2 worker readiness.',
+      'Final-delivery manifest gaps require an explicit operator disposition; this plan never fabricates manifests or grants publishable-delivery credit.',
       `${health.summary.series_soft_archive_excluded_count ?? 0} archive/rebuild candidates are currently excluded from GEARS signoff by reversible manifest.`,
       'china-culture-kb remains the content and production command layer; media execution stays in GEARS v2.',
     ],
@@ -379,12 +438,17 @@ export async function runStoryAgentGeneratedGovernance(
   );
   const storyItems = health.items.filter(item => item.scope === 'story_project');
   const targetGroups: Record<GovernanceActionKey, GovernanceTarget[]> = {
+    review_final_delivery_manifest_gaps: seriesItems
+      .filter(item => item.final_delivery_manifest_missing === true)
+      .map(toTarget),
     restore_or_relink_series_story_refs: seriesItems.filter(item => item.relink_candidate).map(toTarget),
     archive_or_rebuild_series_fixtures: seriesItems
       .filter(item => item.status === 'interrupted' && !item.relink_candidate)
       .map(toTarget),
     generate_first_series_episode: seriesItems.filter(item => item.status === 'planned').map(toTarget),
-    repair_series_command_contracts: seriesItems.filter(item => item.status === 'production_gap').map(toTarget),
+    repair_series_command_contracts: seriesItems
+      .filter(item => item.status === 'production_gap' && item.final_delivery_manifest_missing !== true)
+      .map(toTarget),
     repair_story_project_refs: storyItems.filter(item => item.status === 'interrupted').map(toTarget),
     promote_ready_targets_for_gears_signoff: health.items.filter(item => item.status === 'ready').map(toTarget),
   };
@@ -410,6 +474,28 @@ export async function runStoryAgentGeneratedGovernance(
         planned_operation: operationForAction(action.action_key, target),
         expected_file_changes: expectedFileChanges(action.action_key, target),
         requires_operator_review: requiresOperatorReview(action.action_key),
+        ...(action.action_key === 'review_final_delivery_manifest_gaps' ? {
+          operator_disposition_status: 'awaiting_operator_decision' as const,
+          allowed_operator_dispositions: [
+            'preserve_fixture_exclude_from_publishable_delivery' as const,
+            'reexport_after_authorized_dependencies' as const,
+          ],
+          preflight_checks: [
+            'verify_authorized_media_inputs',
+            'verify_cut_subtitle_audio_title_card_dependencies',
+            'verify_output_and_manifest_paths_are_project_scoped',
+          ],
+          preflight_api: {
+            method: 'POST' as const,
+            path: '/api/system/story-agent-final-delivery-manifest-preflight' as const,
+            request_template: {
+              series_project_id: target.project_id,
+              disposition: 'preserve_fixture_exclude_from_publishable_delivery' as const,
+              authorized_media_inputs_attested: false,
+            },
+          },
+          publishable_delivery_credit_granted: false as const,
+        } : {}),
         evidence: target.evidence,
         reason: dryRun
           ? 'dry_run=true: manifest only, no generated files are changed.'
@@ -445,6 +531,7 @@ export async function runStoryAgentGeneratedGovernance(
     before_plan_summary: plan.summary,
     notes: [
       'MCP generated governance run is a manifest surface and does not modify generated files.',
+      'Manifest-gap targets remain non-publishable until an operator chooses a disposition; this run does not write generated files.',
       dryRun
         ? 'dry_run=true: review expected file changes before any controlled write workflow.'
         : 'dry_run=false was requested but is intentionally blocked.',

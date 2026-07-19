@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryBlueprint, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
 import { buildStoryRepairPromptPackage, shouldAttemptStoryRepair } from '../services/story-repair-service.js';
+import { validateStoryFamilyBaseQuality } from '../services/story-family-quality-service.js';
 import type { StoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 
 function makeQualityReport(score: number, passed = false): StoryQualityReport {
@@ -171,10 +172,15 @@ describe('story-repair-service', () => {
   });
 
   it('builds a focused repair package with quality issues and blueprint beats', () => {
+    const story = makeStory();
+    const familyQuality = validateStoryFamilyBaseQuality(story);
     const pkg = buildStoryRepairPromptPackage({
       basePackage: makeBasePackage(),
-      story: makeStory(),
-      qualityReport: makeQualityReport(48),
+      story,
+      qualityReport: {
+        ...makeQualityReport(48),
+        family_quality_report: familyQuality.family_quality_report,
+      },
       blueprint: makeBlueprint(),
       strictness: 'balanced',
     });
@@ -191,5 +197,9 @@ describe('story-repair-service', () => {
     expect(pkg.output_contract.return_json_fields).toContain('craft_or_ritual_process');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('institutional_verified');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('素材 Gate');
+    expect(pkg.system_prompt).toContain('宣传传播修订编剧');
+    expect(pkg.system_prompt).not.toContain('AI 漫剧生产编剧');
+    expect(pkg.user_prompt).toContain('宣传传播家族门禁');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('价值主张');
   });
 });

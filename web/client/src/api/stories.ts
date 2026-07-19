@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm } from './client'
 import type {
   StoryPlanResult,
   StoryGenerateRequest,
@@ -31,6 +31,7 @@ import type {
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
   AiComicSeedanceAssetLibraryUpdateRequest,
+  AiComicSeedanceAssetFileUploadResult,
   AiComicSeedanceCutAssemblyRequest,
   AiComicSeriesSeedanceAssetReportPackage,
   AiComicSeriesSeedanceAudioMixResult,
@@ -41,6 +42,8 @@ import type {
   AiComicSeriesSeedanceEditAssetPackage,
   AiComicSeriesSeedanceEditingPlatformPackage,
   AiComicSeriesSeedanceFinalDeliveryResult,
+  AiComicSeedanceFinalDeliveryRollbackRequest,
+  AiComicSeedanceFinalDeliveryRollbackResult,
   AiComicSeriesSeedanceExportPackage,
   AiComicSeriesSeedanceFinishingPlanPackage,
   AiComicSeriesSeedanceRetryExecutionPlan,
@@ -56,6 +59,7 @@ import type {
   AiComicSeriesSeedanceTitleCardPlanPackage,
   AiComicSeriesSeedanceTitleCardRenderResult,
   AiComicSeriesSeedanceVersionComparisonPackage,
+  AiComicSeriesMediaAssetReviewUpdateResult,
   AiComicSeedanceProductionAutoSelectRequest,
   AiComicSeedanceAudioLibraryUpdateRequest,
   AiComicSeedanceAudioMixRequest,
@@ -74,6 +78,7 @@ import type {
   AiComicSeedanceTitleCardRenderRequest,
   AiComicSeriesPlanRequest,
   AiComicSeriesPlan,
+  MediaAssetReviewUpdateRequest,
 } from '@shared/types'
 
 export function storyPlan(entryName: string, originalUserQuery?: string) {
@@ -396,6 +401,16 @@ export function assembleAiComicSeriesSeedanceFinalDelivery(
   )
 }
 
+export function rollbackAiComicSeriesSeedanceFinalDelivery(
+  seriesProjectId: string,
+  req: AiComicSeedanceFinalDeliveryRollbackRequest,
+) {
+  return apiPost<AiComicSeedanceFinalDeliveryRollbackResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-final/rollback`,
+    req,
+  )
+}
+
 export function addAiComicSeriesSeedanceReview(
   seriesProjectId: string,
   req: AiComicSeedanceReviewAddRequest,
@@ -440,6 +455,27 @@ export function updateAiComicSeriesSeedanceAssetLibrary(
   return apiPost<AiComicSeriesProjectDetail>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-asset-library`,
     req,
+  )
+}
+
+export function uploadAiComicSeriesSeedanceAssetFile(
+  seriesProjectId: string,
+  body: FormData,
+) {
+  return apiPostForm<AiComicSeedanceAssetFileUploadResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/seedance-assets/upload`,
+    body,
+  )
+}
+
+export function reviewAiComicSeriesMediaAsset(
+  seriesProjectId: string,
+  assetId: string,
+  body: MediaAssetReviewUpdateRequest,
+) {
+  return apiPost<AiComicSeriesMediaAssetReviewUpdateResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/media-assets/${encodeURIComponent(assetId)}/review`,
+    body,
   )
 }
 

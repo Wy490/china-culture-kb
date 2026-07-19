@@ -35,6 +35,8 @@ import type {
   SeedanceAssetBatchImportRequest,
   SeedanceAssetBatchImportResult,
   SeedanceAssetFileUploadResult,
+  MediaAssetReviewUpdateRequest,
+  MediaAssetReviewUpdateResult,
   SeedanceAssetReuseRequest,
   SeedanceAssetReuseResult,
   SeedanceGlobalAssetLibrary,
@@ -205,6 +207,17 @@ export function draftProjectSeedanceAssetPlaceholders(projectId: string) {
 
 export function uploadProjectSeedanceAssetFile(projectId: string, body: FormData) {
   return apiPostForm<SeedanceAssetFileUploadResult>(`/projects/${projectId}/production-board/seedance-assets/upload`, body)
+}
+
+export function reviewProjectMediaAsset(
+  projectId: string,
+  assetId: string,
+  body: MediaAssetReviewUpdateRequest,
+) {
+  return apiPost<MediaAssetReviewUpdateResult>(
+    `/projects/${projectId}/production-board/media-assets/${encodeURIComponent(assetId)}/review`,
+    body,
+  )
 }
 
 export function getProjectSeedanceGlobalAssetLibrary(projectId: string) {

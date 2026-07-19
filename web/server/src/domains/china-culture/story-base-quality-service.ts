@@ -8,8 +8,7 @@ import type {
 } from '@shared/types.js';
 import { attachCreationQualityContext } from '../../platform/story-quality-evaluation.js';
 import type { StoryAssembly } from '../../platform/story-model-output-merge.js';
-import { validateDramaticStory } from '../../services/dramatic-story.js';
-import { validateMemoryMosaicStory } from '../../services/memory-mosaic-service.js';
+import { validateStoryFamilyBaseQuality } from '../../services/story-family-quality-service.js';
 
 export function validateChinaCultureStoryAssemblyBaseQuality(input: {
   storyResult: StoryAssembly;
@@ -20,19 +19,14 @@ export function validateChinaCultureStoryAssemblyBaseQuality(input: {
   truthMode: StoryGenerateResult['truth_mode'];
   materialSufficiency: MaterialSufficiencyReport;
 }): StoryQualityReport {
-  const baseReport = input.storyStructure === 'memory_mosaic_biography' && input.memoryMosaicSeed
-    ? validateMemoryMosaicStory({
-        full_text: input.storyResult.full_text,
-        scene_breakdown: input.storyResult.scene_breakdown,
-        memory_seed: input.memoryMosaicSeed,
-      })
-    : validateDramaticStory({
-        full_text: input.storyResult.full_text,
-        scene_breakdown: input.storyResult.scene_breakdown,
-        title: input.storyResult.title,
-        selectedEvent: input.selectedEvent,
-        videoType: input.videoType,
-      });
+  const baseReport = validateStoryFamilyBaseQuality({
+    ...input.storyResult,
+    video_type: input.videoType,
+    story_structure: input.storyStructure,
+    memory_mosaic_seed: input.memoryMosaicSeed,
+  }, {
+    selectedEvent: input.selectedEvent,
+  });
 
   return attachCreationQualityContext(
     baseReport,

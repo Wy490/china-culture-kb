@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -200,8 +200,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   fs.rmSync(tmpDir, { recursive: true, force: true });
   delete process.env.KB_ROOT;
+  delete process.env.STORY_AGENT_BASE_URL;
 });
 
 describe('kb_repair_story', () => {
@@ -328,7 +330,7 @@ describe('kb_repair_story', () => {
     expect(fs.readdirSync(versionsDir())).toEqual(versionsBefore);
   });
 
-  it('applies a caller-provided repaired story as a new project version', async () => {
+  it('applies a caller-provided repaired story through the canonical application service', async () => {
     const repairedStory = baseStory({
       full_text: '雨夜里，主角被逼着改口。他把文书举起说：“我不能签。”天亮前，真正的疑点还会浮出水面吗？',
       scene_breakdown: baseScenes().map(scene => scene.scene_id === 5
@@ -349,6 +351,32 @@ describe('kb_repair_story', () => {
       },
     });
 
+    process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      data: {
+        project_id: projectId,
+        applied: true,
+        changed_scene_ids: [5],
+        after_quality: { passed: true, genre_score: 88, issue_count: 0 },
+        change_summary: { protected_fields_preserved: ['storyId', 'source_entry'] },
+        operator_hints: [],
+        detail: {
+          project: {
+            current_version_id: `${projectId}-v2`,
+            version_count: 2,
+            updated_at: '2026-07-19T12:00:00.000Z',
+          },
+          versions: [
+            { version_id: `${projectId}-v2` },
+            { version_id: `${projectId}-v1` },
+          ],
+        },
+      },
+      error: null,
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
     const result = await repairStory({
       project_id: projectId,
       auto_apply: true,
@@ -360,13 +388,20 @@ describe('kb_repair_story', () => {
     expect(result!.auto_apply).toBe(true);
     expect(result!.applied).toBe(true);
     expect(result!.update_result!.version_id).toBe(`${projectId}-v2`);
+    expect(result!.update_result!.canonical_service).toBe(true);
     expect(result!.after_quality_snapshot).toBeDefined();
-    expect(result!.risk_notes[0]).toContain('写入新项目版本');
+    expect(result!.risk_notes[0]).toContain('canonical application service');
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `http://127.0.0.1:3999/api/projects/${projectId}/repair-quality/apply`,
+    );
 
+    // The MCP process is only a client. Its local fixture remains untouched;
+    // the application service owns the atomic project/version write.
     const context = await getProjectContext({ project_id: projectId, include_versions: true });
-    expect(context!.project.current_version_id).toBe(`${projectId}-v2`);
-    expect(context!.versions).toHaveLength(2);
-    expect(context!.current_story.full_text).toContain('真正的疑点');
+    expect(context!.project.current_version_id).toBe(`${projectId}-v1`);
+    expect(context!.versions).toHaveLength(1);
+    expect(context!.current_story.full_text).not.toContain('真正的疑点');
 
     const previous = JSON.parse(fs.readFileSync(path.join(versionsDir(), `${projectId}-v1.json`), 'utf-8'));
     expect(previous.story.full_text).not.toContain('真正的疑点');

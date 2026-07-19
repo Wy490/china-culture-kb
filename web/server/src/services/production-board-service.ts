@@ -25,9 +25,14 @@ import type {
   StoryProductionBoardShotUnit,
   StoryProductionBoardSupervisionIssue,
   StoryProductionBoardSupervisionReport,
+  ProductionShot,
+  MediaAssetLibrary,
 } from '@shared/types.js';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
+import { buildProductionShotPlan } from './production-shot-plan-service.js';
 import { buildSeedancePromptPackage } from './seedance-prompt-service.js';
+import { buildMediaAssetLibrary } from './media-asset-contract-service.js';
+import { buildStoryImageAssetJobPlan } from './story-image-asset-job-service.js';
 
 const DEFAULT_NEGATIVE_CONSTRAINTS = [
   '只呈现可见的人物、空间、道具、光线、动作和情绪',
@@ -40,12 +45,17 @@ const DELIVERY_PROMPT_INTERNAL_PATTERN =
 
 export function buildStoryProductionBoard(
   story: StoryGenerateResult,
-  options: { seedanceAssetLibrary?: SeedanceAssetLibrary; seedanceShotLedger?: SeedanceShotLedger } = {},
+  options: {
+    seedanceAssetLibrary?: SeedanceAssetLibrary;
+    seedanceShotLedger?: SeedanceShotLedger;
+    sourceVersionId?: string;
+  } = {},
 ): StoryProductionBoard {
   const delivery = sanitizeDeliveryForProductionBoard(ensureGearsDeliveryPackage(story));
+  const shotPlan = buildProductionShotPlan(story, delivery);
   const seedancePackage = buildSeedancePromptPackage(story);
-  const seedanceBySceneId = new Map(seedancePackage.shot_units.map(unit => [unit.source_scene_id, unit]));
-  const shotUnits = buildShotUnits(story, delivery, seedanceBySceneId);
+  const seedanceByShotId = new Map(seedancePackage.shot_units.map(unit => [unit.shot_id, unit]));
+  const shotUnits = buildShotUnits(story, delivery, shotPlan.shots, seedanceByShotId);
   const directorPlan = buildDirectorPlan(story);
   const propAssets = buildPropAssets(story);
   const costumeAssets = delivery.character_assets.map((asset, index) => ({
@@ -70,7 +80,35 @@ export function buildStoryProductionBoard(
     shotUnits,
     generatedAt,
   });
-  const deliveryManifest = buildDeliveryManifest(shotUnits, supervisionReport, repairPlan, qaReport, seedanceAssetReport);
+  const mediaAssetLibrary = buildMediaAssetLibrary({
+    project_id: story.project_id ?? `${story.storyId}--${story.video_type}`,
+    story_id: story.storyId,
+    source_version_id: options.sourceVersionId,
+    generated_at: generatedAt,
+    seedance_asset_library: options.seedanceAssetLibrary,
+    seedance_bindings: seedanceAssetReport.assets,
+  });
+  const imageAssetJobPlan = buildStoryImageAssetJobPlan({
+    project_id: story.project_id ?? `${story.storyId}--${story.video_type}`,
+    story_id: story.storyId,
+    source_version_id: options.sourceVersionId,
+    generated_at: generatedAt,
+    character_assets: delivery.character_assets,
+    location_assets: delivery.scene_assets,
+    prop_assets: propAssets,
+    shot_units: shotUnits,
+    seedance_assets: seedanceAssetReport.assets,
+    media_asset_library: mediaAssetLibrary,
+    negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
+  });
+  const deliveryManifest = buildDeliveryManifest(
+    shotUnits,
+    supervisionReport,
+    repairPlan,
+    qaReport,
+    seedanceAssetReport,
+    mediaAssetLibrary,
+  );
   const pkgWithoutMarkdown: Omit<StoryProductionBoard, 'markdown'> = {
     schema_version: 'story-production-board/v1',
     project_id: story.project_id,
@@ -84,6 +122,8 @@ export function buildStoryProductionBoard(
     director_plan: directorPlan,
     shot_units: shotUnits,
     seedance_asset_report: seedanceAssetReport,
+    media_asset_library: mediaAssetLibrary,
+    image_asset_job_plan: imageAssetJobPlan,
     seedance_shot_ledger: seedanceShotLedger,
     continuity_constraints: continuityConstraints,
     negative_constraints: DEFAULT_NEGATIVE_CONSTRAINTS,
@@ -101,14 +141,22 @@ export function buildStoryProductionBoard(
 function buildShotUnits(
   story: StoryGenerateResult,
   delivery: GearsDeliveryPackage,
-  seedanceBySceneId: Map<number, ReturnType<typeof buildSeedancePromptPackage>['shot_units'][number]>,
+  shots: ProductionShot[],
+  seedanceByShotId: Map<string, ReturnType<typeof buildSeedancePromptPackage>['shot_units'][number]>,
 ): StoryProductionBoardShotUnit[] {
-  return story.scene_breakdown.map(scene => {
-    const segment = story.gears_segments.find(item => item.source_scene_id === scene.scene_id);
-    const unit = delivery.units.find(item => item.source_scene_id === scene.scene_id);
-    const seedanceUnit = seedanceBySceneId.get(scene.scene_id);
-    const scriptText = cleanDeliveryScriptText(segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot);
-    const originalVisualPrompt = scene.visual_prompt;
+  const sceneById = new Map(story.scene_breakdown.map(scene => [scene.scene_id, scene]));
+  const deliveryUnitById = new Map(delivery.units.map(unit => [unit.unit_id, unit]));
+  return shots.map(shot => {
+    const scene = sceneById.get(shot.source_scene_id)!;
+    const deliveryUnit = deliveryUnitById.get(shot.source_unit_id);
+    const sceneDeliveryUnits = delivery.units.filter(item => item.source_scene_id === scene.scene_id);
+    const sceneUnitIndex = sceneDeliveryUnits.findIndex(item => item.unit_id === shot.source_unit_id);
+    const sceneSegments = story.gears_segments.filter(item => item.source_scene_id === scene.scene_id);
+    const segment = sceneSegments[sceneUnitIndex]
+      ?? (sceneDeliveryUnits.length === 1 ? sceneSegments[0] : undefined);
+    const seedanceUnit = seedanceByShotId.get(shot.shot_id);
+    const scriptText = cleanDeliveryScriptText(segment?.script_text || deliveryUnit?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot);
+    const originalVisualPrompt = deliveryUnit?.visual_prompt || scene.visual_prompt;
     const visualPrompt = cleanPrompt(originalVisualPrompt);
     const cameraSuggestion = cleanPrompt(scene.camera_suggestion);
     const continuityNotes = [
@@ -120,7 +168,7 @@ function buildShotUnits(
       .map(note => cleanProductionBoundaryNote(note ?? ''))
       .filter((note): note is string => Boolean(note));
     const seedancePrompt = cleanSeedancePrompt(seedanceUnit?.seedance_prompt ?? buildFallbackSeedancePrompt({
-      durationSec: Math.max(4, Math.min(15, Math.round(scene.duration_sec || 8))),
+      durationSec: Math.max(4, Math.min(15, Math.round(deliveryUnit?.suggested_duration_sec ?? scene.duration_sec ?? 8))),
       location: scene.location,
       characters: scene.characters ?? [],
       scriptText,
@@ -138,7 +186,7 @@ function buildShotUnits(
       characters: scene.characters ?? [],
       visualPrompt,
       cameraSuggestion,
-      segmentPromptHint: segment?.segment_prompt_hint ? cleanPrompt(segment.segment_prompt_hint) : undefined,
+      segmentPromptHint: deliveryUnit?.segment_prompt_hint ? cleanPrompt(deliveryUnit.segment_prompt_hint) : segment?.segment_prompt_hint ? cleanPrompt(segment.segment_prompt_hint) : undefined,
     });
     const qaFlags = [
       ...shotQaFlags({
@@ -155,11 +203,12 @@ function buildShotUnits(
       ...seedanceMaterialValidation.warnings.map(warning => `Seedance 素材校验：${warning}`),
     ];
     return {
-      shot_id: `shot-${scene.scene_id}`,
+      shot_id: shot.shot_id,
       source_scene_id: scene.scene_id,
+      source_unit_id: shot.source_unit_id,
       source_segment_id: segment?.segment_id,
-      duration_sec: segment?.duration_sec ?? scene.duration_sec,
-      panel_count: segment?.panel_count ?? unit?.suggested_panel_count ?? 6,
+      duration_sec: deliveryUnit?.suggested_duration_sec ?? segment?.duration_sec ?? scene.duration_sec,
+      panel_count: deliveryUnit?.suggested_panel_count ?? segment?.panel_count ?? 6,
       characters: scene.characters ?? [],
       location: scene.location,
       script_text: scriptText,
@@ -490,12 +539,29 @@ export function syncSeedanceShotLedgerWithShots(input: {
   shotUnits: StoryProductionBoardShotUnit[];
   generatedAt: string;
 }): SeedanceShotLedger {
-  const map = new Map(normalizeSeedanceShotLedger(input.ledger).items.map(item => [item.production_id, item]));
+  const normalizedItems = normalizeSeedanceShotLedger(input.ledger).items;
+  const map = new Map(normalizedItems.map(item => [item.production_id, item]));
+  const firstCanonicalShotByScene = new Map<number, string>();
+  for (const unit of input.shotUnits) {
+    if (!firstCanonicalShotByScene.has(unit.source_scene_id)) {
+      firstCanonicalShotByScene.set(unit.source_scene_id, unit.shot_id);
+    }
+  }
+  const legacyItemByCanonicalShotId = new Map<string, SeedanceShotLedgerItem>();
+  for (const item of normalizedItems) {
+    const sceneMatch = /^shot-(\d+)$/.exec(item.shot_id);
+    if (!sceneMatch) continue;
+    const sceneId = Number(sceneMatch[1]);
+    const canonicalShotId = firstCanonicalShotByScene.get(sceneId);
+    if (!canonicalShotId || canonicalShotId === item.shot_id) continue;
+    legacyItemByCanonicalShotId.set(canonicalShotId, item);
+  }
   const currentProductionIds = new Set<string>();
   for (const unit of input.shotUnits) {
     const productionId = seedanceShotProductionId(unit.shot_id);
     currentProductionIds.add(productionId);
-    const existing = map.get(productionId);
+    const legacy = legacyItemByCanonicalShotId.get(unit.shot_id);
+    const existing = map.get(productionId) ?? legacy;
     map.set(productionId, {
       production_id: productionId,
       shot_id: unit.shot_id,
@@ -515,7 +581,10 @@ export function syncSeedanceShotLedgerWithShots(input: {
       provider_error_code: existing?.provider_error_code,
       retry_count: existing?.retry_count ?? 0,
       notes: existing?.notes?.length
-        ? uniqueStrings(existing.notes).slice(-12)
+        ? uniqueStrings([
+            ...existing.notes,
+            ...(legacy ? [`从 v1 场景镜头 ${legacy.shot_id} 确定性迁移到 ${unit.shot_id}`] : []),
+          ]).slice(-12)
         : [`提示词已生成：${input.generatedAt}`],
       versions: normalizeSeedanceShotVideoVersions(existing),
       selected_version_id: existing?.selected_version_id,
@@ -960,12 +1029,15 @@ function buildDeliveryManifest(
   repairPlan: StoryProductionBoardRepairPlan,
   qaReport: StoryProductionBoardQaReport,
   seedanceAssetReport: SeedanceAssetReportPackage,
+  mediaAssetLibrary: MediaAssetLibrary,
 ): StoryProductionBoardDeliveryManifest {
   const hasSeedancePrompts = shotUnits.length > 0
     && shotUnits.every(unit => unit.seedance_prompt.includes('0-3秒') && unit.seedance_duration_sec >= 4 && unit.seedance_duration_sec <= 15);
+  const mediaProductionReady = mediaAssetLibrary.summary.binding_count > 0
+    && mediaAssetLibrary.summary.production_credit_binding_count === mediaAssetLibrary.summary.binding_count;
   const stage: StoryProductionBoardDeliveryStage = supervisionReport.blockers > 0
     ? 'blocked'
-    : qaReport.passed && repairPlan.task_count === 0 ? 'ready' : 'needs_repair';
+    : qaReport.passed && repairPlan.task_count === 0 && mediaProductionReady ? 'ready' : 'needs_repair';
   const blockers = [
     ...supervisionReport.issues
       .filter(issue => issue.severity === 'blocker')
@@ -1018,6 +1090,22 @@ function buildDeliveryManifest(
         : '按素材 slot 聚合人物、场景和道具引用，标记缺槽位、缺文件和待上传镜头。',
     },
     {
+      artifact_id: 'media-asset-library',
+      kind: 'media_asset_library',
+      label: 'Media Asset Library',
+      status: mediaProductionReady ? 'ready' : 'needs_repair',
+      description: mediaProductionReady
+        ? `全部 ${mediaAssetLibrary.summary.binding_count} 个媒体绑定已通过完整性、版权和真人视觉审核。`
+        : `${mediaAssetLibrary.summary.production_credit_binding_count}/${mediaAssetLibrary.summary.binding_count} 个媒体绑定具备正式生产资格；结构绑定不等于可投产。`,
+    },
+    {
+      artifact_id: 'image-asset-job-plan',
+      kind: 'image_asset_job_plan',
+      label: 'Image Asset Job Plan',
+      status: 'ready',
+      description: '人物、场景和道具参考图片的可审计 GEARS 任务计划；计划本身不代表供应商已调用。',
+    },
+    {
       artifact_id: 'seedance-shot-ledger',
       kind: 'seedance_shot_ledger',
       label: 'Seedance Shot Ledger',
@@ -1028,7 +1116,7 @@ function buildDeliveryManifest(
   return {
     stage,
     stage_label: deliveryStageLabel(stage),
-    next_action: deliveryNextAction(stage, repairPlan, supervisionReport, seedanceAssetReport),
+    next_action: deliveryNextAction(stage, repairPlan, supervisionReport, seedanceAssetReport, mediaAssetLibrary),
     blockers: uniqueStrings(blockers),
     ready_artifact_count: artifacts.filter(artifact => artifact.status === 'ready').length,
     artifacts,
@@ -1046,6 +1134,7 @@ function deliveryNextAction(
   repairPlan: StoryProductionBoardRepairPlan,
   supervisionReport: StoryProductionBoardSupervisionReport,
   seedanceAssetReport: SeedanceAssetReportPackage,
+  mediaAssetLibrary: MediaAssetLibrary,
 ): string {
   if (stage === 'ready') {
     if (seedanceAssetReport.upload_required_count > 0 || seedanceAssetReport.missing_reference_slot_count > 0) {
@@ -1055,6 +1144,9 @@ function deliveryNextAction(
       return `Story Agent 结构化交付包可用；正式投产前请把 ${seedanceAssetReport.placeholder_asset_count} 个占位参考图替换为真实视觉素材。`;
     }
     return '可以导出 Board Markdown/JSON，并按镜头提交 Seedance 提示词。';
+  }
+  if (mediaAssetLibrary.summary.production_credit_binding_count < mediaAssetLibrary.summary.binding_count) {
+    return `先完成媒体资产完整性、版权授权和真人视觉审核：当前 ${mediaAssetLibrary.summary.production_credit_binding_count}/${mediaAssetLibrary.summary.binding_count} 个绑定具备生产资格。`;
   }
   const firstP0 = repairPlan.tasks.find(task => task.priority === 'P0');
   if (firstP0) return `先处理 P0：${firstP0.title}。`;
@@ -1431,11 +1523,31 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
     `- 素材总数: ${pkg.seedance_asset_report.total_asset_count}`,
     `- 待上传文件: ${pkg.seedance_asset_report.upload_required_count}`,
     `- 占位参考图: ${pkg.seedance_asset_report.placeholder_asset_count}`,
-    `- 正式素材 ready: ${pkg.seedance_asset_report.production_asset_ready_count}`,
+    `- 结构已绑定（不等于可投产）: ${pkg.seedance_asset_report.production_asset_ready_count}`,
     `- 缺引用槽位: ${pkg.seedance_asset_report.missing_reference_slot_count}`,
     `- 受影响镜头: ${pkg.seedance_asset_report.unbound_shot_count}/${pkg.seedance_asset_report.shot_binding_count}`,
     ...(pkg.seedance_asset_report.assets.slice(0, 12).map(asset =>
       `- [${seedanceAssetBindingStatusLabel(asset.status)}] ${asset.reference_slot ?? '未分配槽位'} · ${seedanceAssetKindLabel(asset.kind)}「${asset.label}」 · 镜头 ${asset.source_shot_ids.join('、') || '无'}`
+    )),
+    '',
+    '## MediaArtifact / AssetBinding',
+    `- 不可变媒体 artifact: ${pkg.media_asset_library.summary.artifact_count}`,
+    `- 完整性已验证: ${pkg.media_asset_library.summary.verified_artifact_count}`,
+    `- 占位 artifact: ${pkg.media_asset_library.summary.placeholder_artifact_count}`,
+    `- 可计生产信用的绑定: ${pkg.media_asset_library.summary.production_credit_binding_count}/${pkg.media_asset_library.summary.binding_count}`,
+    `- 旧库未验证 artifact: ${pkg.media_asset_library.summary.legacy_unverified_artifact_count}`,
+    ...(pkg.media_asset_library.bindings.slice(0, 12).map(binding =>
+      `- [${binding.status}] ${binding.asset_id} · artifact ${binding.artifact_id ?? '缺失'} · 镜头 ${binding.source_shot_ids.join('、') || '无'} · production_credit=${binding.production_credit_granted}`
+    )),
+    '',
+    '## 图片任务计划',
+    `- 需求总数: ${pkg.image_asset_job_plan.summary.requirement_count}`,
+    `- 人物/场景/道具: ${pkg.image_asset_job_plan.summary.character_requirement_count}/${pkg.image_asset_job_plan.summary.location_requirement_count}/${pkg.image_asset_job_plan.summary.prop_requirement_count}`,
+    `- 待提交: ${pkg.image_asset_job_plan.summary.ready_to_submit_count}`,
+    `- 已获生产资格: ${pkg.image_asset_job_plan.summary.production_ready_count}`,
+    `- 计划是否调用供应商: ${pkg.image_asset_job_plan.provider_invoked}`,
+    ...(pkg.image_asset_job_plan.requirements.slice(0, 20).map(requirement =>
+      `- [${requirement.job_type}] ${requirement.label} · ${requirement.source_unit_id} · 镜头 ${requirement.source_shot_ids.join('、') || '无'} · production_credit=${requirement.production_credit_granted}`
     )),
     '',
     '## Seedance Shot Ledger',
