@@ -29,7 +29,6 @@ import type {
   StoryProjectRetainRecentResult,
   GearsExecutionJobType,
   GearsExternalCallbackHandoffPackage,
-  GearsExternalCallbackHandoffItem,
   GearsExternalCallbackImportResult,
   GearsExternalCallbackPreflightIssue,
   GearsExternalCallbackPreflightItem,
@@ -84,15 +83,11 @@ import type {
   SeedanceShotProviderQueueBatchOverview,
   SeedanceShotProviderQueueOverviewRequest,
   SeedanceShotProviderQueueOverviewResult,
-  SeedanceShotProviderRetryPlanCandidate,
-  SeedanceShotProviderRetryPlanPriority,
-  SeedanceShotProviderRetryPlanReason,
   SeedanceShotProviderRetryPlanRequest,
   SeedanceShotProviderRetryPlanResult,
   SeedanceShotProviderRetrySubmitRequest,
   SeedanceShotProviderRetrySubmitResult,
   SeedanceShotRetryPackage,
-  SeedanceShotRetryPackageShot,
   SeedanceShotAutoSelectRequest,
   SeedanceShotProviderQueue,
   SeedanceShotProviderQueueBatch,
@@ -135,10 +130,8 @@ import type {
   StoryRepairTrace,
   VideoType,
   GearsDeliveryPackage,
-  GearsExecutionJobStatus,
   GearsWebhookStatus,
   GearsVideoResult,
-  ProductionReadinessGearsSummary,
   ProductionReadinessAutomationRunLedger,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
@@ -203,19 +196,15 @@ import {
   buildRejectedGearsLedgerItem,
   gearsProjectCallbackPath,
   gearsProjectCallbackUrl,
-  gearsJobStatusIsTerminal,
   gearsCallbackEventIsDuplicate,
   gearsCallbackBatchPath,
   extractGearsJobCallbackRequests,
   markGearsLedgerPollFailures,
-  mergeGearsCallbackEvents,
-  mergeGearsExecutionCostFromCallback,
   mergeGearsLedgerItems,
   normalizeGearsJobCallback,
   normalizeGearsJobLedger,
   pollGearsExecutionJobStatuses,
   reconcileGearsLedgerExecutionCosts,
-  resolveGearsLedgerStatusAfterCallback,
   submitGearsExecutionJobs,
   summarizeGearsExecutionCostGovernance,
   type GearsExecutionSubmitUnit,
@@ -234,30 +223,60 @@ import {
   projectMetaExpectation,
   projectRepository,
 } from './project-core-service.js';
+import {
+  appendSeedanceProviderQueueBatch,
+  seedanceProviderPollTargets,
+  seedanceShotWaitingMinutes,
+} from './seedance-provider-queue-service.js';
+import {
+  classifySeedanceProviderFailure,
+  normalizeProviderFailureCategory,
+  normalizeSeedanceShotCallbackStatus,
+  seedanceShotStatusText,
+} from './seedance-provider-callback-policy-service.js';
+import {
+  activeLocalGearsJobCount,
+  buildProductionReadinessSummary,
+  buildStoryProjectProductionReadinessMarkdown,
+  productionReadinessDeliveryScore,
+  productionReadinessGearsScore,
+  productionReadinessGearsStatus,
+  productionReadinessShotScore,
+  productionReadinessShotStatus,
+  seedanceShotProductionStatusCounts,
+  summarizeProductionReadinessGears,
+} from './project-production-readiness-policy-service.js';
+import {
+  LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL,
+  artifactMetadataString,
+  artifactUrlFilename,
+  isExternalProductionArtifactUrl,
+  isHttpArtifactUrl,
+  isLocalAcceptanceArtifactUrl,
+  isPlaceholderExternalArtifactUrl,
+  isPrivateOrLocalArtifactUrl,
+} from './gears-external-artifact-policy-service.js';
+import {
+  buildGearsExternalCallbackPreflightMarkdown,
+  findGearsLedgerMatch,
+  preflightIssue,
+} from './gears-external-callback-policy-service.js';
+import {
+  buildGearsExternalCallbackHandoffPackage,
+} from './gears-external-callback-handoff-service.js';
+import {
+  buildSeedanceRetryPackage,
+} from './seedance-retry-package-service.js';
+import { buildSeedanceProviderRetryPlan } from './seedance-provider-retry-plan-service.js';
+import { buildSeedanceProviderQueueOverview } from './seedance-provider-queue-overview-service.js';
+import {
+  localGearsAcceptanceArtifactUrl,
+  projectGearsLocalAcceptanceItems,
+  projectGearsSyncItems,
+  updateGearsLedgerItemFromCallback,
+} from './project-gears-ledger-application-service.js';
 
 export { buildProjectId };
-
-const SEEDANCE_SHOT_PRODUCTION_STATUSES: SeedanceShotProductionStatus[] = [
-  'not_started',
-  'prompt_exported',
-  'submitted',
-  'processing',
-  'ready',
-  'failed',
-  'skipped',
-];
-
-const GEARS_EXECUTION_JOB_STATUSES: GearsExecutionJobStatus[] = [
-  'submitted',
-  'queued',
-  'processing',
-  'ready',
-  'failed',
-  'canceled',
-  'rejected',
-];
-
-const LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL = 'https://local.story-agent.invalid/gears-acceptance';
 
 const DELIVERY_PAYLOAD_SUMMARY_INTERNAL_PATTERN =
   /(质量信号|主角目标|目标明确|行动具体|因果链|史实边界|质量报告|来源说明|内部字段名|来源条目|来源显示|史实依据|影视化创作|知识库|用户大纲|生成优先级|资料显示|摘要|核心画面是|为什么必须面对|具体细节请核实来源|不可写成|确证史实|确证史源|创作边界|治理痕迹|分析|应该|注意|TODO|待补)/;
@@ -659,158 +678,6 @@ function bestReadySeedanceShotVersion(
     })[0];
 }
 
-function normalizeSeedanceShotCallbackStatus(
-  status: string | undefined,
-  hasVideoUrl: boolean,
-  hasFailureReason: boolean,
-): SeedanceShotProductionStatus {
-  const normalized = (status ?? '').trim().toLowerCase();
-  if (['ready', 'completed', 'complete', 'succeeded', 'succeed', 'successed', 'success', 'done', 'finished'].includes(normalized)) {
-    return 'ready';
-  }
-  if (['failed', 'failure', 'error', 'errored', 'cancelled', 'canceled'].includes(normalized)) {
-    return 'failed';
-  }
-  if (['processing', 'running', 'generating', 'in_progress', 'in-progress'].includes(normalized)) {
-    return 'processing';
-  }
-  if (['submitted', 'queued', 'queueing', 'pending', 'waiting', 'accepted', 'created', 'started'].includes(normalized)) {
-    return 'submitted';
-  }
-  if (['skipped', 'skip'].includes(normalized)) {
-    return 'skipped';
-  }
-  if (hasFailureReason) return 'failed';
-  if (hasVideoUrl) return 'ready';
-  return 'processing';
-}
-
-function normalizeProviderFailureCategory(value: unknown): SeedanceProviderFailureCategory | undefined {
-  if (typeof value !== 'string') return undefined;
-  const normalized = value.trim();
-  const categories: SeedanceProviderFailureCategory[] = [
-    'asset_missing',
-    'prompt_invalid',
-    'content_policy',
-    'provider_timeout',
-    'provider_quota',
-    'provider_auth',
-    'provider_rate_limit',
-    'provider_server_error',
-    'network_error',
-    'unknown',
-  ];
-  return categories.includes(normalized as SeedanceProviderFailureCategory)
-    ? normalized as SeedanceProviderFailureCategory
-    : undefined;
-}
-
-const PROVIDER_ERROR_CODE_CATEGORY_PATTERNS: Array<{
-  pattern: RegExp;
-  category: SeedanceProviderFailureCategory;
-}> = [
-  {
-    pattern: /(?:ASSET|MATERIAL|REFERENCE|RESOURCE|FILE|UPLOAD).*(?:MISSING|NOT_FOUND|NOTFOUND|FAILED|EXPIRED|INVALID)/,
-    category: 'asset_missing',
-  },
-  {
-    pattern: /(?:PROMPT|PARAM|PARAMETER|ARGUMENT|REQUEST|INPUT).*(?:INVALID|TOO_LONG|TOOLONG|BAD|ERROR)|BAD_REQUEST|INVALID_ARGUMENT|PARAMS_ERROR|INVALID_REQUEST/,
-    category: 'prompt_invalid',
-  },
-  {
-    pattern: /(?:POLICY|SAFETY|MODERATION|CONTENT|COPYRIGHT|CENSOR|AUDIT|RISK|NSFW).*(?:BLOCKED|REJECTED|FAILED|VIOLATION|DENIED)|SENSITIVE_CONTENT|RISK_CONTROL/,
-    category: 'content_policy',
-  },
-  {
-    pattern: /(?:TASK|JOB|PROVIDER|GENERATION).*(?:TIMEOUT|TIMED_OUT)|DEADLINE_EXCEEDED/,
-    category: 'provider_timeout',
-  },
-  {
-    pattern: /(?:QUOTA|BALANCE|BILLING|PAYMENT|CREDIT).*(?:EXCEEDED|INSUFFICIENT|REQUIRED|LOW|EMPTY)|INSUFFICIENT_BALANCE|NO_CREDIT|ACCOUNT_ARREARS/,
-    category: 'provider_quota',
-  },
-  {
-    pattern: /(?:AUTH|TOKEN|SIGNATURE|PERMISSION|CREDENTIAL|ACCESS).*(?:FAILED|INVALID|EXPIRED|DENIED|MISSING)|UNAUTHORIZED|FORBIDDEN|ACCESS_DENIED|INVALID_SIGNATURE/,
-    category: 'provider_auth',
-  },
-  {
-    pattern: /(?:RATE_LIMIT|RATELIMIT|TOO_MANY_REQUESTS|THROTTLED|THROTTLE|QPS|TPS|CONCURRENCY|429)/,
-    category: 'provider_rate_limit',
-  },
-  {
-    pattern: /(?:INTERNAL|SERVER|SERVICE|GATEWAY|SYSTEM|MODEL).*(?:ERROR|UNAVAILABLE|TIMEOUT|FAILED|BUSY)|HTTP_5\d\d|(?:^|_)5\d\d(?:_|$)/,
-    category: 'provider_server_error',
-  },
-  {
-    pattern: /(?:NETWORK|SOCKET|DNS|CONNECTION|ECONN|ETIMEDOUT).*(?:ERROR|FAILED|RESET|REFUSED|TIMEOUT)?/,
-    category: 'network_error',
-  },
-];
-
-function classifySeedanceProviderErrorCode(value?: string): SeedanceProviderFailureCategory | undefined {
-  const normalized = value?.trim().toUpperCase().replace(/[\s.-]+/g, '_');
-  if (!normalized) return undefined;
-  return PROVIDER_ERROR_CODE_CATEGORY_PATTERNS.find(item => item.pattern.test(normalized))?.category;
-}
-
-function classifySeedanceProviderFailure(input: {
-  explicitCategory?: unknown;
-  providerErrorCode?: string;
-  failureReason?: string;
-  message?: string;
-}): SeedanceProviderFailureCategory | undefined {
-  const explicit = normalizeProviderFailureCategory(input.explicitCategory);
-  if (explicit) return explicit;
-  const codeCategory = classifySeedanceProviderErrorCode(input.providerErrorCode);
-  if (codeCategory) return codeCategory;
-  const text = [input.providerErrorCode, input.failureReason, input.message]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  if (!text.trim()) return undefined;
-  if (/(asset|material|file|upload|reference|missing|not_found|not found|素材|文件|上传|缺失|缺少)/.test(text)) {
-    return 'asset_missing';
-  }
-  if (/(prompt|parameter|invalid|bad_request|400|提示词|参数|格式|无效|过长|超长)/.test(text)) {
-    return 'prompt_invalid';
-  }
-  if (/(policy|safety|moderation|copyright|sensitive|violation|违规|审核|安全|敏感|版权)/.test(text)) {
-    return 'content_policy';
-  }
-  if (/(timeout|timed out|deadline|超时|等待过久)/.test(text)) {
-    return 'provider_timeout';
-  }
-  if (/(quota|insufficient|balance|billing|payment|余额|额度|配额|欠费)/.test(text)) {
-    return 'provider_quota';
-  }
-  if (/(auth|unauthorized|forbidden|401|403|token|permission|鉴权|认证|权限|令牌)/.test(text)) {
-    return 'provider_auth';
-  }
-  if (/(rate|too_many|429|throttle|限流|频率|过多请求)/.test(text)) {
-    return 'provider_rate_limit';
-  }
-  if (/(5\d\d|server|internal|unavailable|gateway|平台异常|服务异常|服务器|不可用)/.test(text)) {
-    return 'provider_server_error';
-  }
-  if (/(network|socket|dns|connection|econn|网络|连接)/.test(text)) {
-    return 'network_error';
-  }
-  return 'unknown';
-}
-
-function seedanceShotStatusText(status: SeedanceShotProductionStatus): string {
-  const map: Record<SeedanceShotProductionStatus, string> = {
-    not_started: '未开始',
-    prompt_exported: '待提交',
-    submitted: '已提交',
-    processing: '处理中',
-    ready: '已完成',
-    failed: '失败',
-    skipped: '跳过',
-  };
-  return map[status];
-}
-
 function seedanceProviderJobId(provider: string, shotId: string, index: number): string {
   const providerSlug = slugifySeedanceAssetLabel(provider).slice(0, 40) || 'provider';
   const shotSlug = slugifySeedanceAssetLabel(shotId).slice(0, 40) || `shot-${index + 1}`;
@@ -821,302 +688,6 @@ function seedanceProviderQueueId(provider: string, updatedAt: string): string {
   const providerSlug = slugifySeedanceAssetLabel(provider).slice(0, 40) || 'provider';
   const timestamp = updatedAt.replace(/[-:.TZ]/g, '').slice(0, 14);
   return `${providerSlug}-queue-${timestamp}-${randomUUID().slice(0, 6)}`;
-}
-
-function appendSeedanceProviderQueueBatch(
-  existing: SeedanceShotProviderQueue | undefined,
-  batch: SeedanceShotProviderQueueBatch,
-): SeedanceShotProviderQueue {
-  const batches = [
-    ...(existing?.batches ?? []).filter(item => item.queue_id !== batch.queue_id),
-    batch,
-  ].slice(-12);
-  return {
-    schema_version: 'seedance-provider-queue/v1',
-    updated_at: batch.updated_at,
-    latest_queue_id: batch.queue_id,
-    batches,
-  };
-}
-
-function seedanceShotWaitingMinutes(item: SeedanceShotLedgerItem, nowMs: number): number {
-  const timestamp = Date.parse(item.submitted_at ?? item.updated_at);
-  if (!Number.isFinite(timestamp)) return 0;
-  return Math.max(0, Math.floor((nowMs - timestamp) / 60000));
-}
-
-function seedanceProviderPollTargets(input: {
-  board: StoryProductionBoard;
-  statuses: Set<SeedanceShotProviderRecoverableStatus>;
-  provider?: string;
-  queueId?: string;
-  shotIds?: Set<string>;
-  limit: number;
-  includePrompt: boolean;
-  nowMs: number;
-}): { checkedCount: number; targets: SeedanceShotProviderPollTarget[] } {
-  const shotById = new Map(input.board.shot_units.map(shot => [shot.shot_id, shot]));
-  const checkedItems = input.board.seedance_shot_ledger.items.filter(item => {
-    if (!input.statuses.has(item.status as SeedanceShotProviderRecoverableStatus)) return false;
-    if (input.provider && item.provider !== input.provider) return false;
-    if (input.queueId && item.provider_queue_id !== input.queueId) return false;
-    if (input.shotIds && !input.shotIds.has(item.shot_id)) return false;
-    return true;
-  });
-  const targets = checkedItems
-    .filter(item => Boolean(item.provider_job_id))
-    .slice(0, input.limit)
-    .map(item => {
-      const shot = shotById.get(item.shot_id);
-      return {
-        shot_id: item.shot_id,
-        source_scene_id: item.source_scene_id,
-        status: item.status as SeedanceShotProviderRecoverableStatus,
-        provider: item.provider,
-        provider_job_id: item.provider_job_id,
-        provider_queue_id: item.provider_queue_id,
-        provider_queue_position: item.provider_queue_position,
-        submitted_at: item.submitted_at,
-        updated_at: item.updated_at,
-        minutes_waiting: seedanceShotWaitingMinutes(item, input.nowMs),
-        retry_count: item.retry_count,
-        seedance_prompt: input.includePrompt ? shot?.seedance_prompt : undefined,
-      };
-    });
-  return { checkedCount: checkedItems.length, targets };
-}
-
-function seedanceProviderEmptyStatusCounts(): Record<SeedanceShotProductionStatus, number> {
-  return Object.fromEntries(
-    SEEDANCE_SHOT_PRODUCTION_STATUSES.map(status => [status, 0]),
-  ) as Record<SeedanceShotProductionStatus, number>;
-}
-
-function seedanceProviderIsActiveStatus(status: SeedanceShotProductionStatus): boolean {
-  return status === 'submitted' || status === 'processing';
-}
-
-function seedanceProviderMatchesOverviewFilter(input: {
-  item: SeedanceShotLedgerItem;
-  provider?: string;
-  queueId?: string;
-}): boolean {
-  if (input.provider && input.item.provider !== input.provider) return false;
-  if (input.queueId && input.item.provider_queue_id !== input.queueId) return false;
-  return true;
-}
-
-function seedanceProviderBatchOverview(input: {
-  batch: SeedanceShotProviderQueueBatch;
-  ledgerByShotId: Map<string, SeedanceShotLedgerItem>;
-  timeoutMinutes: number;
-  nowMs: number;
-}): SeedanceShotProviderQueueBatchOverview {
-  let activeCount = 0;
-  let readyCount = 0;
-  let failedItemCount = 0;
-  let timedOutCount = 0;
-  for (const batchItem of input.batch.items) {
-    const ledgerItem = input.ledgerByShotId.get(batchItem.shot_id);
-    const status = ledgerItem?.status ?? batchItem.status;
-    if (seedanceProviderIsActiveStatus(status)) {
-      activeCount += 1;
-      const minutesWaiting = ledgerItem
-        ? seedanceShotWaitingMinutes(ledgerItem, input.nowMs)
-        : Math.max(0, Math.floor((input.nowMs - Date.parse(batchItem.queued_at)) / 60000));
-      if (minutesWaiting >= input.timeoutMinutes) {
-        timedOutCount += 1;
-      }
-    }
-    if (status === 'ready') readyCount += 1;
-    if (status === 'failed') failedItemCount += 1;
-  }
-  return {
-    queue_id: input.batch.queue_id,
-    provider: input.batch.provider,
-    priority: input.batch.priority,
-    created_at: input.batch.created_at,
-    updated_at: input.batch.updated_at,
-    note: input.batch.note,
-    item_count: input.batch.items.length,
-    submitted_count: input.batch.submitted_count,
-    skipped_count: input.batch.skipped_count,
-    failed_count: input.batch.failed_count,
-    active_count: activeCount,
-    ready_count: readyCount,
-    failed_item_count: failedItemCount,
-    timed_out_count: timedOutCount,
-  };
-}
-
-function seedanceProviderAttentionItem(input: {
-  item: SeedanceShotLedgerItem;
-  timeoutMinutes: number;
-  nowMs: number;
-}): SeedanceShotProviderQueueAttentionItem {
-  const minutesWaiting = seedanceShotWaitingMinutes(input.item, input.nowMs);
-  const timedOut = seedanceProviderIsActiveStatus(input.item.status)
-    && minutesWaiting >= input.timeoutMinutes;
-  return {
-    shot_id: input.item.shot_id,
-    source_scene_id: input.item.source_scene_id,
-    status: input.item.status,
-    provider: input.item.provider,
-    provider_job_id: input.item.provider_job_id,
-    provider_queue_id: input.item.provider_queue_id,
-    provider_queue_position: input.item.provider_queue_position,
-    submitted_at: input.item.submitted_at,
-    updated_at: input.item.updated_at,
-    minutes_waiting: minutesWaiting,
-    timed_out: timedOut,
-    retry_count: input.item.retry_count,
-    video_url: input.item.video_url,
-    failure_reason: input.item.failure_reason,
-    failure_category: input.item.failure_category,
-    provider_error_code: input.item.provider_error_code,
-    suggested_action: seedanceShotRetrySuggestedAction(input.item),
-  };
-}
-
-function seedanceProviderNeedsAttention(item: SeedanceShotProviderQueueAttentionItem): boolean {
-  if (item.timed_out) return true;
-  if (item.status === 'submitted' || item.status === 'processing' || item.status === 'failed') return true;
-  if (item.status === 'ready' && !item.video_url) return true;
-  return false;
-}
-
-function seedanceProviderAttentionSort(
-  a: SeedanceShotProviderQueueAttentionItem,
-  b: SeedanceShotProviderQueueAttentionItem,
-): number {
-  const rank = (item: SeedanceShotProviderQueueAttentionItem) => {
-    if (item.timed_out) return 0;
-    if (item.status === 'failed') return 1;
-    if (item.status === 'processing') return 2;
-    if (item.status === 'submitted') return 3;
-    if (item.status === 'ready') return 4;
-    return 5;
-  };
-  return rank(a) - rank(b)
-    || b.minutes_waiting - a.minutes_waiting
-    || (a.provider_queue_position ?? 0) - (b.provider_queue_position ?? 0)
-    || (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
-    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN');
-}
-
-function seedanceProviderEmptyRetryReasonCounts(): Record<SeedanceShotProviderRetryPlanReason, number> {
-  return {
-    failed: 0,
-    timed_out: 0,
-    ready_missing_video: 0,
-    unsubmitted: 0,
-  };
-}
-
-function seedanceProviderRetryBlockReason(item: SeedanceShotLedgerItem): string | undefined {
-  if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，建议先向平台补拉结果。';
-  if (item.failure_category === 'asset_missing') return '素材缺失，补齐或重新绑定素材后再提交。';
-  if (item.failure_category === 'prompt_invalid') return '提示词或参数非法，修正 Seedance 提示词后再提交。';
-  if (item.failure_category === 'content_policy') return '内容审核未通过，调整敏感或版权相关表达后再提交。';
-  if (item.failure_category === 'provider_quota') return 'provider 额度或余额不足，恢复额度后再提交。';
-  if (item.failure_category === 'provider_auth') return 'provider 鉴权或权限失败，修复凭证后再提交。';
-  return undefined;
-}
-
-function seedanceProviderRetryReason(input: {
-  item: SeedanceShotLedgerItem;
-  timeoutMinutes: number;
-  nowMs: number;
-  includeUnsubmitted: boolean;
-}): SeedanceShotProviderRetryPlanReason | undefined {
-  if (input.item.status === 'failed') return 'failed';
-  if (
-    seedanceProviderIsActiveStatus(input.item.status)
-    && seedanceShotWaitingMinutes(input.item, input.nowMs) >= input.timeoutMinutes
-  ) {
-    return 'timed_out';
-  }
-  if (input.item.status === 'ready' && !input.item.video_url) return 'ready_missing_video';
-  if (
-    input.includeUnsubmitted
-    && (input.item.status === 'not_started' || input.item.status === 'prompt_exported')
-  ) {
-    return 'unsubmitted';
-  }
-  return undefined;
-}
-
-function seedanceProviderRetryPriority(
-  reason: SeedanceShotProviderRetryPlanReason,
-  item: SeedanceShotLedgerItem,
-): SeedanceShotProviderRetryPlanPriority {
-  if (reason === 'timed_out') return 'high';
-  if (reason === 'failed') {
-    if (
-      item.failure_category === 'provider_timeout'
-      || item.failure_category === 'provider_rate_limit'
-      || item.failure_category === 'provider_server_error'
-      || item.failure_category === 'network_error'
-    ) {
-      return 'high';
-    }
-    return 'normal';
-  }
-  if (reason === 'ready_missing_video') return 'normal';
-  return 'low';
-}
-
-function seedanceProviderRetryCandidate(input: {
-  item: SeedanceShotLedgerItem;
-  reason: SeedanceShotProviderRetryPlanReason;
-  timeoutMinutes: number;
-  nowMs: number;
-  maxRetryCount?: number;
-}): SeedanceShotProviderRetryPlanCandidate {
-  const blockReason = seedanceProviderRetryBlockReason(input.item);
-  const maxRetryBlocked = typeof input.maxRetryCount === 'number'
-    && input.item.retry_count >= input.maxRetryCount;
-  const canResubmit = !blockReason && !maxRetryBlocked && input.reason !== 'ready_missing_video';
-  return {
-    shot_id: input.item.shot_id,
-    source_scene_id: input.item.source_scene_id,
-    status: input.item.status,
-    retry_reason: input.reason,
-    priority: seedanceProviderRetryPriority(input.reason, input.item),
-    provider: input.item.provider,
-    provider_job_id: input.item.provider_job_id,
-    provider_queue_id: input.item.provider_queue_id,
-    provider_queue_position: input.item.provider_queue_position,
-    submitted_at: input.item.submitted_at,
-    updated_at: input.item.updated_at,
-    minutes_waiting: seedanceShotWaitingMinutes(input.item, input.nowMs),
-    retry_count: input.item.retry_count,
-    failure_reason: input.item.failure_reason,
-    failure_category: input.item.failure_category,
-    provider_error_code: input.item.provider_error_code,
-    suggested_action: seedanceShotRetrySuggestedAction(input.item),
-    can_resubmit: canResubmit,
-    block_reason: maxRetryBlocked
-      ? `已达到最大重试次数 ${input.maxRetryCount}`
-      : blockReason,
-  };
-}
-
-function seedanceProviderRetryCandidateSort(
-  a: SeedanceShotProviderRetryPlanCandidate,
-  b: SeedanceShotProviderRetryPlanCandidate,
-): number {
-  const priorityRank: Record<SeedanceShotProviderRetryPlanPriority, number> = {
-    high: 0,
-    normal: 1,
-    low: 2,
-  };
-  return priorityRank[a.priority] - priorityRank[b.priority]
-    || Number(b.can_resubmit) - Number(a.can_resubmit)
-    || b.minutes_waiting - a.minutes_waiting
-    || (a.provider_queue_position ?? 0) - (b.provider_queue_position ?? 0)
-    || (a.source_scene_id ?? 0) - (b.source_scene_id ?? 0)
-    || a.shot_id.localeCompare(b.shot_id, 'zh-Hans-CN');
 }
 
 type SeedanceProviderSubmitCandidate = {
@@ -2421,34 +1992,6 @@ function resolveSeedanceShotCallbackUpdate(
     quality_score: callbackNumberField(callback.quality_score ?? callback.qualityScore ?? callback.score ?? callback.quality),
     review_note: callbackStringField(callback.review_note ?? callback.reviewNote),
   };
-}
-
-function shouldRetrySeedanceShot(item?: SeedanceShotLedgerItem): boolean {
-  if (!item) return true;
-  if (item.status === 'skipped') return false;
-  if (item.status === 'ready' && item.video_url) return false;
-  return true;
-}
-
-function seedanceShotRetrySuggestedAction(item?: SeedanceShotLedgerItem): string {
-  if (!item) return '尚未提交，按原提示词提交生成。';
-  if (item.status === 'failed') {
-    if (item.failure_category === 'asset_missing') return '先补齐或重新绑定缺失素材，再重新提交。';
-    if (item.failure_category === 'prompt_invalid') return '先精简或修正 Seedance 提示词，再重新提交。';
-    if (item.failure_category === 'content_policy') return '先调整敏感画面、人物或版权相关表达，再重新提交。';
-    if (item.failure_category === 'provider_timeout') return '先确认平台任务是否仍在处理；超时无结果时重新提交。';
-    if (item.failure_category === 'provider_quota') return '先确认 provider 额度或余额，再重新提交。';
-    if (item.failure_category === 'provider_auth') return '先检查 provider 凭证和权限配置，再重新提交。';
-    if (item.failure_category === 'provider_rate_limit') return '等待限流窗口恢复后再重新提交。';
-    if (item.failure_category === 'provider_server_error' || item.failure_category === 'network_error') {
-      return '稍后重试；若连续失败，保留错误码并切换 provider 或人工检查。';
-    }
-    return item.retry_count > 0 ? '检查失败原因后再次提交，必要时微调负向约束。' : '按原提示词重新提交一次。';
-  }
-  if (item.status === 'ready' && !item.video_url) return '状态已完成但缺少视频 URL，优先向平台补拉结果。';
-  if (item.status === 'processing' || item.status === 'submitted') return '确认平台任务是否超时；如无结果则重新提交。';
-  if (item.status === 'prompt_exported' || item.status === 'not_started') return '按提示词提交生成。';
-  return '人工复核后决定是否重试。';
 }
 
 function uniqueSeedanceNotes(values: string[]): string[] {
@@ -4523,11 +4066,7 @@ export async function getProjectSeedanceProviderQueueOverview(
   }
 
   const { project, current_story } = detail.data;
-  const provider = request.provider?.trim();
-  const queueId = request.queue_id?.trim();
-  const timeoutMinutes = request.timeout_minutes ?? 120;
   const generatedAt = new Date().toISOString();
-  const nowMs = Date.parse(generatedAt);
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
@@ -4537,64 +4076,12 @@ export async function getProjectSeedanceProviderQueueOverview(
     shotUnits: board.shot_units,
     generatedAt: board.generated_at,
   });
-  const ledgerItems = currentLedger.items.filter(item =>
-    seedanceProviderMatchesOverviewFilter({ item, provider, queueId })
-  );
-  const ledgerByShotId = new Map(currentLedger.items.map(item => [item.shot_id, item]));
-  const statusCounts = seedanceProviderEmptyStatusCounts();
-  ledgerItems.forEach(item => {
-    statusCounts[item.status] += 1;
-  });
-
-  const queueBatches = (project.seedance_provider_queue?.batches ?? [])
-    .filter(batch => (!provider || batch.provider === provider) && (!queueId || batch.queue_id === queueId))
-    .map(batch => seedanceProviderBatchOverview({
-      batch,
-      ledgerByShotId,
-      timeoutMinutes,
-      nowMs,
-    }))
-    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
-  const latestQueueId = project.seedance_provider_queue?.latest_queue_id;
-  const latestQueueBatch = queueBatches.find(batch => batch.queue_id === latestQueueId)
-    ?? [...queueBatches].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0];
-
-  const allAttentionItems = ledgerItems
-    .map(item => seedanceProviderAttentionItem({ item, timeoutMinutes, nowMs }))
-    .filter(item => (
-      request.include_completed
-        ? seedanceProviderNeedsAttention(item) || Boolean(item.provider_job_id || item.provider_queue_id)
-        : seedanceProviderNeedsAttention(item)
-    ))
-    .sort(seedanceProviderAttentionSort);
-  const timedOutCount = ledgerItems.filter(item =>
-    seedanceProviderIsActiveStatus(item.status)
-    && seedanceShotWaitingMinutes(item, nowMs) >= timeoutMinutes
-  ).length;
-  const missingVideoCount = ledgerItems.filter(item => item.status === 'ready' && !item.video_url).length;
-
-  return success({
+  return success(buildSeedanceProviderQueueOverview({
     project,
-    seedance_shot_ledger: currentLedger,
-    seedance_provider_queue: project.seedance_provider_queue,
-    provider,
-    queue_id: queueId,
-    generated_at: generatedAt,
-    timeout_minutes: timeoutMinutes,
-    total_shot_count: ledgerItems.length,
-    status_counts: statusCounts,
-    active_count: statusCounts.submitted + statusCounts.processing,
-    ready_count: statusCounts.ready,
-    failed_count: statusCounts.failed,
-    retryable_count: ledgerItems.filter(item => shouldRetrySeedanceShot(item)).length,
-    timed_out_count: timedOutCount,
-    missing_video_count: missingVideoCount,
-    attention_count: allAttentionItems.length,
-    batch_count: queueBatches.length,
-    latest_queue_batch: latestQueueBatch,
-    queue_batches: queueBatches,
-    attention_items: allAttentionItems,
-  });
+    ledger: currentLedger,
+    request,
+    generatedAt,
+  }));
 }
 
 export async function getProjectSeedanceProviderRetryPlan(
@@ -4610,14 +4097,7 @@ export async function getProjectSeedanceProviderRetryPlan(
   }
 
   const { project, current_story } = detail.data;
-  const provider = request.provider?.trim();
-  const queueId = request.queue_id?.trim();
-  const timeoutMinutes = request.timeout_minutes ?? 120;
   const generatedAt = new Date().toISOString();
-  const nowMs = Date.parse(generatedAt);
-  const failureCategories = request.failure_categories?.length
-    ? new Set(request.failure_categories)
-    : undefined;
   const board = buildStoryProductionBoard(current_story, {
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
@@ -4627,50 +4107,12 @@ export async function getProjectSeedanceProviderRetryPlan(
     shotUnits: board.shot_units,
     generatedAt: board.generated_at,
   });
-  const candidates = currentLedger.items
-    .filter(item => seedanceProviderMatchesOverviewFilter({ item, provider, queueId }))
-    .filter(item => !failureCategories || (item.failure_category && failureCategories.has(item.failure_category)))
-    .reduce<SeedanceShotProviderRetryPlanCandidate[]>((items, item) => {
-      const reason = seedanceProviderRetryReason({
-        item,
-        timeoutMinutes,
-        nowMs,
-        includeUnsubmitted: Boolean(request.include_unsubmitted),
-      });
-      if (!reason) return items;
-      items.push(seedanceProviderRetryCandidate({
-        item,
-        reason,
-        timeoutMinutes,
-        nowMs,
-        maxRetryCount: request.max_retry_count,
-      }));
-      return items;
-    }, [])
-    .sort(seedanceProviderRetryCandidateSort);
-  const reasonCounts = seedanceProviderEmptyRetryReasonCounts();
-  candidates.forEach(candidate => {
-    reasonCounts[candidate.retry_reason] += 1;
-  });
-  const basePlan: Omit<SeedanceShotProviderRetryPlanResult, 'markdown'> = {
+  return success(buildSeedanceProviderRetryPlan({
     project,
-    seedance_shot_ledger: currentLedger,
-    provider,
-    queue_id: queueId,
-    generated_at: generatedAt,
-    timeout_minutes: timeoutMinutes,
-    max_retry_count: request.max_retry_count,
-    candidate_count: candidates.length,
-    resubmittable_count: candidates.filter(candidate => candidate.can_resubmit).length,
-    blocked_count: candidates.filter(candidate => !candidate.can_resubmit).length,
-    high_priority_count: candidates.filter(candidate => candidate.priority === 'high').length,
-    reason_counts: reasonCounts,
-    candidates,
-  };
-  return success({
-    ...basePlan,
-    markdown: buildSeedanceProviderRetryPlanMarkdown(basePlan),
-  });
+    ledger: currentLedger,
+    request,
+    generatedAt,
+  }));
 }
 
 export async function submitProjectSeedanceProviderRetryPlan(
@@ -5224,160 +4666,6 @@ export async function submitProjectGearsJobs(
   });
 }
 
-function findGearsLedgerMatch(input: {
-  ledger: GearsJobLedger;
-  callback: ReturnType<typeof normalizeGearsJobCallback>;
-}): GearsJobLedgerItem | string {
-  const byJobId = input.callback.gears_job_id
-    ? input.ledger.items.find(item => item.gears_job_id === input.callback.gears_job_id)
-    : undefined;
-  if (byJobId) return byJobId;
-  const idempotencyKey = input.callback.idempotency_key;
-  if (idempotencyKey) {
-    const matches = input.ledger.items.filter(item =>
-      item.idempotency_key === idempotencyKey
-      && (!input.callback.job_type || item.job_type === input.callback.job_type)
-    );
-    if (matches.length === 1) return matches[0];
-    if (matches.length > 1) {
-      return `GEARS callback idempotency_key "${idempotencyKey}" matched multiple jobs; include job_type or gears_job_id`;
-    }
-  }
-  const sourceUnitId = input.callback.source_unit_id;
-  if (!sourceUnitId) {
-    return input.callback.gears_job_id
-      ? `GEARS job "${input.callback.gears_job_id}" was not found in project ledger`
-      : idempotencyKey
-        ? `GEARS idempotency_key "${idempotencyKey}" was not found in project ledger`
-        : 'GEARS callback requires a known gears_job_id, source_unit_id, or idempotency_key';
-  }
-  const matches = input.ledger.items.filter(item =>
-    item.source_unit_id === sourceUnitId
-    && (!input.callback.job_type || item.job_type === input.callback.job_type)
-  );
-  if (matches.length === 1) return matches[0];
-  if (matches.length > 1) {
-    return `GEARS callback source_unit_id "${sourceUnitId}" matched multiple jobs; include job_type or gears_job_id`;
-  }
-  return `GEARS source_unit_id "${sourceUnitId}" was not found in project ledger`;
-}
-
-function urlHostname(value: string): string | undefined {
-  try {
-    return new URL(value).hostname.toLowerCase();
-  } catch {
-    return undefined;
-  }
-}
-
-function isPlaceholderExternalArtifactUrl(value: string): boolean {
-  const host = urlHostname(value);
-  return Boolean(
-    host === 'example.com'
-    || host === 'example.test'
-    || host === 'gears.example'
-    || host?.endsWith('.example')
-    || host?.endsWith('.example.com')
-    || host?.endsWith('.example.test')
-    || /gears\.example/i.test(value),
-  );
-}
-
-function isLocalAcceptanceArtifactUrl(value: string): boolean {
-  return value.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL);
-}
-
-function isHttpArtifactUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function isPrivateOrLocalArtifactUrl(value: string): boolean {
-  const host = urlHostname(value)?.replace(/^\[|\]$/g, '');
-  if (!host) return false;
-  const lowerHost = host.toLowerCase();
-  const isIpv6Address = lowerHost.includes(':');
-  if (
-    host === 'localhost'
-    || host.endsWith('.localhost')
-    || host.endsWith('.local')
-    || host === 'host.docker.internal'
-    || host === '0.0.0.0'
-    || host === '::1'
-    || (isIpv6Address && (
-      lowerHost.startsWith('fe80:')
-      || lowerHost.startsWith('fc')
-      || lowerHost.startsWith('fd')
-    ))
-  ) {
-    return true;
-  }
-  const ipv4Parts = host.split('.').map(part => Number.parseInt(part, 10));
-  if (ipv4Parts.length !== 4 || ipv4Parts.some(part => Number.isNaN(part))) return false;
-  const [first, second] = ipv4Parts;
-  return first === 10
-    || first === 127
-    || (first === 169 && second === 254)
-    || (first === 172 && second >= 16 && second <= 31)
-    || (first === 192 && second === 168);
-}
-
-function preflightIssue(input: {
-  index: number;
-  severity: GearsExternalCallbackPreflightIssue['severity'];
-  code: string;
-  message: string;
-  path?: string;
-  sourceUnitId?: string;
-  gearsJobId?: string;
-}): GearsExternalCallbackPreflightIssue {
-  return {
-    index: input.index,
-    severity: input.severity,
-    code: input.code,
-    message: input.message,
-    path: input.path,
-    source_unit_id: input.sourceUnitId,
-    gears_job_id: input.gearsJobId,
-  };
-}
-
-function buildGearsExternalCallbackPreflightMarkdown(
-  report: Omit<GearsExternalCallbackPreflightResult, 'markdown'>,
-): string {
-  return [
-    `# ${report.project.title} — GEARS 外部回片 preflight`,
-    '',
-    `> schema: ${report.schema_version}`,
-    `> projectId: ${report.project.project_id}`,
-    `> received: ${report.received_count}`,
-    `> readyToImport: ${report.ready_to_import_count}`,
-    `> duplicateEvents: ${report.duplicate_event_count}`,
-    `> blocking: ${report.blocking_count}`,
-    `> warnings: ${report.warning_count}`,
-    '',
-    '## Issues',
-    '',
-    ...(report.issues.length
-      ? report.issues.map(issue =>
-        `- ${issue.severity} · #${issue.index + 1} · ${issue.code}: ${issue.message}`
-      )
-      : ['- 未发现阻断问题。']),
-    '',
-    '## Items',
-    '',
-    ...(report.items.length
-      ? report.items.map(item =>
-        `- #${item.index + 1} ${item.source_unit_id ?? item.gears_job_id ?? 'unknown'} · matched=${item.matched_ledger} · eventId=${item.has_event_id} · external=${item.has_external_artifact_url} · placeholder=${item.has_placeholder_artifact_url} · local=${item.has_local_acceptance_artifact_url} · private=${item.has_private_or_local_artifact_url} · invalid=${item.has_invalid_artifact_url} · duplicate=${item.is_duplicate_event} · wouldUpdate=${item.would_update}`
-      )
-      : ['- 没有可检查的 callback。']),
-  ].join('\n');
-}
-
 export async function preflightProjectGearsExternalCallbacks(
   projectId: string,
   request: GearsJobCallbackRequest,
@@ -5637,94 +4925,6 @@ export async function preflightProjectGearsExternalCallbacks(
   });
 }
 
-function projectGearsSyncItems(input: {
-  ledger: GearsJobLedger;
-  request: GearsJobStatusSyncRequest;
-}): {
-  items: GearsJobLedgerItem[];
-  skippedCount: number;
-} {
-  const requestedIds = new Set([
-    ...(input.request.source_unit_ids ?? []),
-    ...(input.request.source_unit_id ? [input.request.source_unit_id] : []),
-  ].filter(Boolean));
-  const limit = input.request.limit ?? 50;
-  const matched = input.ledger.items.filter(item => {
-    if (input.request.job_type && item.job_type !== input.request.job_type) return false;
-    if (requestedIds.size && !requestedIds.has(item.source_unit_id) && !requestedIds.has(item.gears_job_id)) {
-      return false;
-    }
-    if (!input.request.include_completed && gearsJobStatusIsTerminal(item.status)) return false;
-    return true;
-  });
-  return {
-    items: matched.slice(0, limit),
-    skippedCount: Math.max(0, matched.length - limit),
-  };
-}
-
-function updateGearsLedgerItemFromCallback(input: {
-  item: GearsJobLedgerItem;
-  callback: ReturnType<typeof normalizeGearsJobCallback>;
-  receivedAt: string;
-}): GearsJobLedgerItem {
-  const status = resolveGearsLedgerStatusAfterCallback({
-    currentStatus: input.item.status,
-    callbackStatus: input.callback.status,
-  });
-  const ignoredNonTerminalAfterTerminal = status !== input.callback.status;
-  const terminalStatusChanged = gearsJobStatusIsTerminal(input.item.status)
-    && gearsJobStatusIsTerminal(input.callback.status)
-    && input.item.status !== input.callback.status
-    && status === input.callback.status;
-  const artifacts = ignoredNonTerminalAfterTerminal
-    ? input.item.artifacts
-    : input.callback.artifacts ?? input.item.artifacts;
-  const artifactUrls = !ignoredNonTerminalAfterTerminal && input.callback.artifact_urls.length
-    ? input.callback.artifact_urls
-    : input.item.artifact_urls;
-  const completed = gearsJobStatusIsTerminal(status);
-  const progressPercent = ignoredNonTerminalAfterTerminal
-    ? input.item.progress_percent
-    : input.callback.progress_percent ?? (status === 'ready' ? 100 : input.item.progress_percent);
-  const completedAt = completed
-    ? (input.item.status === status && input.item.completed_at
-      ? input.item.completed_at
-      : input.callback.completed_at ?? input.callback.provider_event_at ?? input.receivedAt)
-    : input.item.completed_at;
-  return {
-    ...input.item,
-    gears_job_id: input.callback.gears_job_id ?? input.item.gears_job_id,
-    job_type: input.callback.job_type ?? input.item.job_type,
-    source_project_id: input.callback.source_project_id ?? input.item.source_project_id,
-    source_story_id: input.callback.source_story_id ?? input.item.source_story_id,
-    series_project_id: input.callback.series_project_id ?? input.item.series_project_id,
-    status,
-    progress_percent: progressPercent,
-    artifact_urls: artifactUrls,
-    artifacts,
-    failure_category: ignoredNonTerminalAfterTerminal ? input.item.failure_category : input.callback.failure_category,
-    error_code: ignoredNonTerminalAfterTerminal ? input.item.error_code : input.callback.error_code,
-    failure_reason: ignoredNonTerminalAfterTerminal ? input.item.failure_reason : input.callback.failure_reason,
-    last_poll_at: undefined,
-    last_poll_error: undefined,
-    last_poll_failure_category: undefined,
-    last_poll_error_code: undefined,
-    updated_at: input.receivedAt,
-    completed_at: completedAt,
-    execution_cost: mergeGearsExecutionCostFromCallback(input),
-    callback_events: mergeGearsCallbackEvents({
-      existing: input.item.callback_events,
-      callback: input.callback,
-      receivedAt: input.receivedAt,
-      previousStatus: input.item.status,
-      appliedStatus: status,
-      statusRegressionIgnored: ignoredNonTerminalAfterTerminal,
-      terminalStatusChanged,
-    }),
-  };
-}
-
 function archiveGearsImageArtifact(input: {
   project: StoryProjectMeta;
   board: StoryProductionBoard;
@@ -5797,30 +4997,6 @@ function archiveGearsImageArtifact(input: {
       a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label, 'zh-CN')
     )),
   };
-}
-
-function isExternalProductionArtifactUrl(value: string): boolean {
-  return isHttpArtifactUrl(value)
-    && !isPlaceholderExternalArtifactUrl(value)
-    && !isLocalAcceptanceArtifactUrl(value)
-    && !isPrivateOrLocalArtifactUrl(value);
-}
-
-function artifactMetadataString(
-  metadata: Record<string, unknown> | undefined,
-  key: string,
-): string | undefined {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 160) : undefined;
-}
-
-function artifactUrlFilename(value: string): string | undefined {
-  try {
-    const filename = new URL(value).pathname.split('/').filter(Boolean).at(-1);
-    return filename ? decodeURIComponent(filename).slice(0, 240) : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export async function importProjectGearsCallback(
@@ -6024,48 +5200,6 @@ export async function importProjectGearsExternalCallbacks(
     duplicate_count: importRes.data.duplicate_count,
     import_result: importRes.data,
   });
-}
-
-function localGearsAcceptanceArtifactUrl(input: {
-  projectId: string;
-  item: GearsJobLedgerItem;
-  request: GearsJobLocalAcceptanceRequest;
-}): string {
-  const mapped = input.request.artifact_url_map?.[input.item.source_unit_id]
-    ?? input.request.artifact_url_map?.[input.item.gears_job_id];
-  if (mapped) return mapped;
-  const base = (input.request.artifact_base_url ?? LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL).replace(/\/+$/, '');
-  return [
-    base,
-    encodeURIComponent(input.projectId),
-    `${encodeURIComponent(input.item.source_unit_id)}.mp4`,
-  ].join('/');
-}
-
-function projectGearsLocalAcceptanceItems(input: {
-  ledger: GearsJobLedger;
-  request: GearsJobLocalAcceptanceRequest;
-}): {
-  items: GearsJobLedgerItem[];
-  skippedCount: number;
-} {
-  const selection = projectGearsSyncItems({
-    ledger: input.ledger,
-    request: {
-      job_type: input.request.job_type,
-      source_unit_ids: input.request.source_unit_ids,
-      source_unit_id: input.request.source_unit_id,
-      include_completed: input.request.include_completed,
-      limit: input.request.limit,
-      note: input.request.note,
-    },
-  });
-  if (input.request.include_external_jobs) return selection;
-  const items = selection.items.filter(item => item.gears_job_id.startsWith('local-gears-'));
-  return {
-    items,
-    skippedCount: selection.skippedCount + selection.items.length - items.length,
-  };
 }
 
 export async function acceptProjectLocalGearsArtifacts(
@@ -6276,191 +5410,14 @@ export async function exportProjectSeedanceRetryPackage(
     seedanceAssetLibrary: project.seedance_asset_library,
     seedanceShotLedger: project.seedance_shot_ledger,
   });
-  const ledgerMap = new Map(board.seedance_shot_ledger.items.map(item => [item.production_id, item]));
-  const promptKeys = new Set<string>();
-  const shots = board.shot_units
-    .reduce<SeedanceShotRetryPackageShot[]>((items, unit) => {
-      const productionId = seedanceShotProductionId(unit.shot_id);
-      promptKeys.add(productionId);
-      const item = ledgerMap.get(productionId);
-      if (!shouldRetrySeedanceShot(item)) return items;
-      items.push({
-        production_id: productionId,
-        shot_id: unit.shot_id,
-        source_scene_id: unit.source_scene_id,
-        status: item?.status ?? 'prompt_exported',
-        retry_count: item?.retry_count ?? 0,
-        failure_reason: item?.failure_reason,
-        failure_category: item?.failure_category,
-        provider_error_code: item?.provider_error_code,
-        provider_job_id: item?.provider_job_id,
-        last_video_url: item?.video_url,
-        suggested_action: seedanceShotRetrySuggestedAction(item),
-        prompt: {
-          duration_sec: unit.seedance_duration_sec,
-          characters: unit.characters,
-          location: unit.location,
-          script_text: unit.script_text,
-          visual_prompt: unit.visual_prompt,
-          camera_suggestion: unit.camera_suggestion,
-          seedance_prompt: unit.seedance_prompt,
-          seedance_asset_slots: unit.seedance_asset_slots,
-          seedance_validation_notes: unit.seedance_validation_notes,
-          negative_constraints: unit.negative_constraints,
-        },
-      });
-      return items;
-    }, []);
-  const missingPromptShots = board.seedance_shot_ledger.items
-    .filter(item => shouldRetrySeedanceShot(item))
-    .filter(item => !promptKeys.has(item.production_id))
-    .map(item => ({
-      production_id: item.production_id,
-      shot_id: item.shot_id,
-      source_scene_id: item.source_scene_id,
-      reason: '账本中存在待处理镜头，但当前 Production Board 找不到对应镜头',
-    }));
-  const basePackage: Omit<SeedanceShotRetryPackage, 'markdown'> = {
-    schema_version: 'story-seedance-retry-package/v1',
+  return success(buildSeedanceRetryPackage({
     project,
     storyId: board.storyId,
     title: board.title,
-    exported_at: new Date().toISOString(),
-    total_retry_shot_count: shots.length,
-    skipped_ready_shot_count: board.seedance_shot_ledger.items.filter(item =>
-      item.status === 'ready' && Boolean(item.video_url)
-    ).length,
-    shots,
-    missing_prompt_shots: missingPromptShots,
-  };
-  return success({
-    ...basePackage,
-    markdown: buildSeedanceRetryPackageMarkdown(basePackage),
-  });
-}
-
-function gearsJobLocalAcceptanceArtifactUrls(item: GearsJobLedgerItem): string[] {
-  const structured = (item.artifacts ?? [])
-    .filter(artifact => artifactIsLocalAcceptance(artifact))
-    .map(artifact => artifact.url);
-  const urls = item.artifact_urls.filter(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
-  return [...new Set([...structured, ...urls])];
-}
-
-function gearsJobExternalArtifactUrls(item: GearsJobLedgerItem): string[] {
-  const structured = (item.artifacts ?? [])
-    .filter(artifact => !artifactIsLocalAcceptance(artifact))
-    .map(artifact => artifact.url);
-  const urls = item.artifact_urls.filter(url => !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
-  return [...new Set([...structured, ...urls])];
-}
-
-function gearsExternalCallbackSample(input: {
-  project: StoryProjectMeta;
-  storyId: string;
-  item: GearsJobLedgerItem;
-}): GearsJobCallbackRequest {
-  const placeholderUrl = `https://gears.example/videos/${encodeURIComponent(input.project.project_id)}-${encodeURIComponent(input.item.source_unit_id)}.mp4`;
-  return {
-    jobId: input.item.gears_job_id,
-    sourceUnitId: input.item.source_unit_id,
-    jobType: input.item.job_type,
-    sourceProjectId: input.project.project_id,
-    sourceStoryId: input.storyId,
-    taskStatus: 'COMPLETED',
-    progressPercent: 100,
-    outputUrl: placeholderUrl,
-    eventId: `external-ready-${input.item.source_unit_id}`,
-    note: 'Replace outputUrl with the real GEARS/Seedance artifact URL before callback import.',
-  };
-}
-
-function gearsExternalCallbackBatchSample(
-  items: GearsExternalCallbackHandoffItem[],
-): GearsExternalCallbackHandoffPackage['callback_batch_sample'] {
-  return {
-    callbacks: items.map(item => item.callback_sample),
-    replace_before_import: [
-      'callbacks[].outputUrl must be replaced with the real GEARS/Seedance artifact URL.',
-      'callbacks[].outputUrl must be an absolute public http(s) URL, not localhost, a private network URL, local_acceptance, or a local file path.',
-      'callbacks[].eventId should be unique for every external provider callback.',
-      'Do not submit local_acceptance artifact URLs as external outputUrl values.',
-    ],
-    import_note: 'This payload is a batch callback sample for the safe external callback import endpoint.',
-  };
-}
-
-function gearsExternalSafeImportPath(projectId: string): string {
-  return `/api/projects/${encodeURIComponent(projectId)}/production-board/gears-jobs/import-external-callbacks`;
-}
-
-function gearsExternalPreflightPath(projectId: string): string {
-  return `/api/projects/${encodeURIComponent(projectId)}/production-board/gears-jobs/preflight-external-callbacks`;
-}
-
-function gearsExternalOperationUrl(input: {
-  callbackPath: string;
-  callbackUrl: string;
-  operationPath: string;
-}): string {
-  if (!/^https?:\/\//.test(input.callbackUrl)) return input.operationPath;
-  try {
-    const url = new URL(input.callbackUrl);
-    const callbackPathname = new URL(input.callbackPath, url.origin).pathname;
-    const operationPathname = new URL(input.operationPath, url.origin).pathname;
-    if (url.pathname.endsWith(callbackPathname)) {
-      const publicPathPrefix = url.pathname
-        .slice(0, url.pathname.length - callbackPathname.length)
-        .replace(/\/+$/, '');
-      return `${url.origin}${publicPathPrefix}${operationPathname}`;
-    }
-    return `${url.origin}${operationPathname}`;
-  } catch {
-    return input.operationPath;
-  }
-}
-
-function gearsExternalCallbackCurlCommand(input: {
-  projectId: string;
-  targetPath: string;
-  targetUrl: string;
-}): string {
-  const target = /^https?:\/\//.test(input.targetUrl)
-    ? input.targetUrl
-    : `$STORY_AGENT_BASE_URL${input.targetPath}`;
-  const fileName = `${input.projectId}-gears-external-callbacks.json`;
-  return `curl -sS -X POST "${target}" -H "content-type: application/json" --data-binary @${fileName}`;
-}
-
-function gearsExternalOperatorChecklist(): string[] {
-  return [
-    'Render or collect the real external GEARS/Seedance artifact for each sourceUnitId.',
-    'Replace every sample outputUrl with the real artifact URL before importing callbacks.',
-    'Use absolute public http(s) outputUrl values; do not use localhost, private network, local_acceptance, file, or relative URLs.',
-    'Keep jobId, sourceUnitId, jobType, sourceProjectId and sourceStoryId unchanged unless the worker remaps ids intentionally.',
-    'Use a unique eventId per callback to preserve callback idempotency and lifecycle history.',
-    'POST the batch payload to the preflight endpoint first and continue only when blocking_count is 0.',
-    'POST the same batch payload to the safe import endpoint after preflight passes; it runs preflight again before writing ledgers.',
-    'After import, re-run project production readiness and confirm external_ready increases while ready_without_external decreases.',
-  ];
-}
-
-function gearsExternalHandoffPrompt(
-  shot: StoryProductionBoard['shot_units'][number] | undefined,
-): SeedanceShotRetryPackageShot['prompt'] | undefined {
-  if (!shot) return undefined;
-  return {
-    duration_sec: shot.seedance_duration_sec,
-    characters: shot.characters,
-    location: shot.location,
-    script_text: shot.script_text,
-    visual_prompt: shot.visual_prompt,
-    camera_suggestion: shot.camera_suggestion,
-    seedance_prompt: shot.seedance_prompt,
-    seedance_asset_slots: shot.seedance_asset_slots,
-    seedance_validation_notes: shot.seedance_validation_notes,
-    negative_constraints: shot.negative_constraints,
-  };
+    exportedAt: new Date().toISOString(),
+    shotUnits: board.shot_units,
+    ledger: board.seedance_shot_ledger,
+  }));
 }
 
 export async function exportProjectGearsExternalCallbackHandoff(
@@ -6480,75 +5437,18 @@ export async function exportProjectGearsExternalCallbackHandoff(
     seedanceShotLedger: project.seedance_shot_ledger,
   });
   const ledger = normalizeGearsJobLedger(project.gears_job_ledger);
-  const shotById = new Map(board.shot_units.map(shot => [shot.shot_id, shot]));
   const callbackPath = gearsProjectCallbackPath(project.project_id);
   const callbackUrl = gearsProjectCallbackUrl(project.project_id) ?? callbackPath;
-  const preflightPath = gearsExternalPreflightPath(project.project_id);
-  const preflightUrl = gearsExternalOperationUrl({ callbackPath, callbackUrl, operationPath: preflightPath });
-  const safeImportPath = gearsExternalSafeImportPath(project.project_id);
-  const safeImportUrl = gearsExternalOperationUrl({ callbackPath, callbackUrl, operationPath: safeImportPath });
-  const handoffJobs = ledger.items.filter(item =>
-    item.job_type === 'seedance_video'
-    && !['failed', 'rejected', 'canceled'].includes(item.status)
-    && !gearsJobHasExternalArtifact(item)
-  );
-  const items: GearsExternalCallbackHandoffItem[] = handoffJobs.map(item => {
-    const shot = shotById.get(item.source_unit_id);
-    return {
-      source_unit_id: item.source_unit_id,
-      gears_job_id: item.gears_job_id,
-      job_type: item.job_type,
-      status: item.status,
-      source_scene_id: item.source_scene_id ?? shot?.source_scene_id,
-      source_unit_label: item.source_unit_label,
-      local_acceptance_artifact_urls: gearsJobLocalAcceptanceArtifactUrls(item),
-      external_artifact_urls: gearsJobExternalArtifactUrls(item),
-      requires_external_artifact: true,
-      callback_path: callbackPath,
-      callback_url: callbackUrl,
-      callback_sample: gearsExternalCallbackSample({
-        project,
-        storyId: current_story.storyId,
-        item,
-      }),
-      prompt: gearsExternalHandoffPrompt(shot),
-    };
-  });
-  const callbackBatchSample = gearsExternalCallbackBatchSample(items);
-  const basePackage: Omit<GearsExternalCallbackHandoffPackage, 'markdown'> = {
-    schema_version: 'project-gears-external-callback-handoff/v1',
+  return success(buildGearsExternalCallbackHandoffPackage({
     project,
     storyId: current_story.storyId,
     title: current_story.title,
-    exported_at: new Date().toISOString(),
-    callback_path: callbackPath,
-    callback_url: callbackUrl,
-    preflight_path: preflightPath,
-    preflight_url: preflightUrl,
-    safe_import_path: safeImportPath,
-    safe_import_url: safeImportUrl,
-    total_job_count: ledger.items.length,
-    external_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasExternalArtifact(item)).length,
-    local_acceptance_ready_count: ledger.items.filter(item => item.status === 'ready' && gearsJobHasLocalAcceptanceArtifact(item)).length,
-    pending_external_artifact_count: items.length,
-    callback_batch_sample: callbackBatchSample,
-    callback_batch_preflight_curl: gearsExternalCallbackCurlCommand({
-      projectId: project.project_id,
-      targetPath: preflightPath,
-      targetUrl: preflightUrl,
-    }),
-    callback_batch_curl: gearsExternalCallbackCurlCommand({
-      projectId: project.project_id,
-      targetPath: safeImportPath,
-      targetUrl: safeImportUrl,
-    }),
-    operator_checklist: gearsExternalOperatorChecklist(),
-    items,
-  };
-  return success({
-    ...basePackage,
-    markdown: buildGearsExternalCallbackHandoffMarkdown(basePackage),
-  });
+    exportedAt: new Date().toISOString(),
+    ledger,
+    shotUnits: board.shot_units,
+    callbackPath,
+    callbackUrl,
+  }));
 }
 
 export async function getProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoard>> {
@@ -7342,314 +6242,6 @@ function productionAutomationSchemaVersion(data: unknown): string | undefined {
   return typeof data === 'object' && data !== null && 'schema_version' in data
     ? String((data as { schema_version?: unknown }).schema_version)
     : undefined;
-}
-
-function seedanceShotProductionStatusCounts(
-  items: SeedanceShotLedgerItem[],
-): Record<SeedanceShotProductionStatus, number> {
-  const counts = Object.fromEntries(
-    SEEDANCE_SHOT_PRODUCTION_STATUSES.map(status => [status, 0]),
-  ) as Record<SeedanceShotProductionStatus, number>;
-  for (const item of items) {
-    counts[item.status] += 1;
-  }
-  return counts;
-}
-
-function artifactIsLocalAcceptance(artifact: { role?: string; url?: string; metadata?: Record<string, unknown> }): boolean {
-  return artifact.role === 'local_acceptance'
-    || artifact.metadata?.not_external_provider_output === true
-    || artifact.url?.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL) === true;
-}
-
-function gearsJobHasLocalAcceptanceArtifact(item: GearsJobLedgerItem): boolean {
-  return (item.artifacts ?? []).some(artifact => artifactIsLocalAcceptance(artifact))
-    || item.artifact_urls.some(url => url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL));
-}
-
-function gearsJobHasExternalArtifact(item: GearsJobLedgerItem): boolean {
-  const hasExternalStructuredArtifact = (item.artifacts ?? []).some(artifact =>
-    !artifactIsLocalAcceptance(artifact)
-  );
-  const hasExternalUrl = item.artifact_urls.some(url =>
-    !url.startsWith(LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL)
-  );
-  return hasExternalStructuredArtifact || hasExternalUrl;
-}
-
-function summarizeProductionReadinessGears(ledger?: GearsJobLedger): ProductionReadinessGearsSummary {
-  const normalized = normalizeGearsJobLedger(ledger);
-  const statusCounts = Object.fromEntries(
-    GEARS_EXECUTION_JOB_STATUSES.map(status => [status, 0]),
-  ) as Record<GearsExecutionJobStatus, number>;
-  let missingArtifact = 0;
-  let pollFailure = 0;
-  let externalReady = 0;
-  let localAcceptanceReady = 0;
-  let localAcceptanceActive = 0;
-  for (const item of normalized.items) {
-    statusCounts[item.status] += 1;
-    const hasLocalAcceptance = gearsJobHasLocalAcceptanceArtifact(item);
-    const hasExternalArtifact = gearsJobHasExternalArtifact(item);
-    if (['submitted', 'queued', 'processing'].includes(item.status) && item.gears_job_id.startsWith('local-gears-')) {
-      localAcceptanceActive += 1;
-    }
-    if (item.status === 'ready' && hasLocalAcceptance) {
-      localAcceptanceReady += 1;
-    }
-    if (item.status === 'ready' && hasExternalArtifact) {
-      externalReady += 1;
-    }
-    if (item.status === 'ready' && item.artifact_urls.length === 0 && (item.artifacts?.length ?? 0) === 0) {
-      missingArtifact += 1;
-    }
-    if (item.last_poll_error) {
-      pollFailure += 1;
-    }
-  }
-  return {
-    total: normalized.items.length,
-    active: statusCounts.submitted + statusCounts.queued + statusCounts.processing,
-    ready: statusCounts.ready,
-    external_ready: externalReady,
-    local_acceptance_ready: localAcceptanceReady,
-    local_acceptance_active: localAcceptanceActive,
-    ready_without_external_artifact: Math.max(0, statusCounts.ready - externalReady),
-    failed: statusCounts.failed,
-    rejected: statusCounts.rejected,
-    canceled: statusCounts.canceled,
-    missing_artifact: missingArtifact,
-    poll_failure: pollFailure,
-    status_counts: statusCounts,
-  };
-}
-
-function activeLocalGearsJobCount(ledger?: GearsJobLedger): number {
-  return normalizeGearsJobLedger(ledger).items.filter(item =>
-    item.gears_job_id.startsWith('local-gears-')
-    && ['submitted', 'queued', 'processing'].includes(item.status)
-  ).length;
-}
-
-function productionReadinessDeliveryScore(
-  stage: StoryProductionBoard['delivery_manifest']['stage'],
-  exported: boolean,
-): number {
-  if (stage === 'ready') return exported ? 100 : 85;
-  if (stage === 'needs_repair') return 65;
-  return 30;
-}
-
-function productionReadinessShotStatus(
-  total: number,
-  failed: number,
-  active: number,
-  ready: number,
-): ProductionReadinessStatus {
-  if (total <= 0 || failed > 0) return 'blocked';
-  if (ready >= total) return 'ready';
-  if (active > 0 || ready > 0) return 'needs_action';
-  return 'needs_action';
-}
-
-function productionReadinessShotScore(
-  total: number,
-  ready: number,
-  active: number,
-  failed: number,
-): number {
-  if (total <= 0) return 20;
-  const readyScore = (ready / total) * 100;
-  const activeCredit = (active / total) * 45;
-  const failurePenalty = (failed / total) * 60;
-  return Math.max(0, Math.min(100, Math.round(readyScore + activeCredit - failurePenalty)));
-}
-
-function productionReadinessGearsStatus(summary: ProductionReadinessGearsSummary): ProductionReadinessStatus {
-  if (summary.total === 0) return 'needs_action';
-  if (summary.failed + summary.rejected + summary.canceled + summary.missing_artifact > 0) return 'blocked';
-  if (
-    summary.active > 0
-    || summary.poll_failure > 0
-    || summary.ready < summary.total
-    || summary.ready_without_external_artifact > 0
-  ) return 'needs_action';
-  return 'ready';
-}
-
-function productionReadinessGearsScore(summary: ProductionReadinessGearsSummary): number {
-  if (summary.total === 0) return 45;
-  const externalReadyScore = (summary.external_ready / summary.total) * 100;
-  const localAcceptanceCredit = (summary.local_acceptance_ready / summary.total) * 65;
-  const activeCredit = (summary.active / summary.total) * 50;
-  const failurePenalty = ((summary.failed + summary.rejected + summary.canceled) / summary.total) * 70;
-  const artifactPenalty = (summary.missing_artifact / summary.total) * 80;
-  const pollPenalty = (summary.poll_failure / summary.total) * 20;
-  return Math.max(0, Math.min(100, Math.round(
-    externalReadyScore + localAcceptanceCredit + activeCredit - failurePenalty - artifactPenalty - pollPenalty,
-  )));
-}
-
-function buildProductionReadinessSummary(
-  lanes: ProductionReadinessLane[],
-  issues: ProductionReadinessIssue[],
-  nextActions: ProductionReadinessNextAction[],
-  extras: {
-    qualityScore?: number;
-    deliveryStage?: StoryProductionBoard['delivery_manifest']['stage'];
-    generatedEpisodeCount?: number;
-    totalEpisodeCount?: number;
-    totalShotCount?: number;
-    readyShotCount?: number;
-    failedShotCount?: number;
-    openReviewCount?: number;
-    seedancePlaceholderAssetCount?: number;
-    seedanceProductionAssetReadyCount?: number;
-    gearsSummary: ProductionReadinessGearsSummary;
-  },
-): StoryProjectProductionReadinessReport['summary'] {
-  const blockerCount = issues.filter(issue => issue.severity === 'blocking').length;
-  const warningCount = issues.filter(issue => issue.severity === 'warning').length;
-  const averageLaneScore = lanes.length
-    ? lanes.reduce((sum, lane) => sum + lane.score, 0) / lanes.length
-    : 0;
-  return {
-    status: productionReadinessOverallStatus(lanes, blockerCount, warningCount),
-    score: Math.max(0, Math.min(100, Math.round(averageLaneScore - blockerCount * 6 - warningCount * 2))),
-    ready_lane_count: lanes.filter(lane => lane.status === 'ready').length,
-    total_lane_count: lanes.length,
-    blocker_count: blockerCount,
-    warning_count: warningCount,
-    next_action_count: nextActions.length,
-    quality_score: extras.qualityScore,
-    delivery_stage: extras.deliveryStage,
-    generated_episode_count: extras.generatedEpisodeCount,
-    total_episode_count: extras.totalEpisodeCount,
-    total_shot_count: extras.totalShotCount,
-    ready_shot_count: extras.readyShotCount,
-    failed_shot_count: extras.failedShotCount,
-    open_review_count: extras.openReviewCount,
-    gears_job_count: extras.gearsSummary.total,
-    active_gears_job_count: extras.gearsSummary.active,
-    external_ready_gears_job_count: extras.gearsSummary.external_ready,
-    local_acceptance_ready_gears_job_count: extras.gearsSummary.local_acceptance_ready,
-    ready_without_external_gears_artifact_count: extras.gearsSummary.ready_without_external_artifact,
-    seedance_placeholder_asset_count: extras.seedancePlaceholderAssetCount ?? 0,
-    seedance_production_asset_ready_count: extras.seedanceProductionAssetReadyCount ?? 0,
-  };
-}
-
-function productionReadinessOverallStatus(
-  lanes: ProductionReadinessLane[],
-  blockerCount: number,
-  warningCount: number,
-): ProductionReadinessStatus {
-  if (blockerCount > 0 || lanes.some(lane => lane.status === 'blocked')) return 'blocked';
-  if (warningCount > 0 || lanes.some(lane => lane.status === 'needs_action')) return 'needs_action';
-  return 'ready';
-}
-
-function buildStoryProjectProductionReadinessMarkdown(
-  report: Omit<StoryProjectProductionReadinessReport, 'markdown'>,
-): string {
-  return [
-    `# ${report.title} — 制作 readiness`,
-    '',
-    `> schema: ${report.schema_version}`,
-    `> projectId: ${report.project.project_id}`,
-    `> generatedAt: ${report.generated_at}`,
-    '',
-    '## Summary',
-    '',
-    `- 状态: ${productionReadinessStatusText(report.summary.status)}`,
-    `- 分数: ${report.summary.score}/100`,
-    `- lanes: ${report.summary.ready_lane_count}/${report.summary.total_lane_count}`,
-    `- blockers: ${report.summary.blocker_count}`,
-    `- warnings: ${report.summary.warning_count}`,
-    `- next actions: ${report.summary.next_action_count}`,
-    `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
-    `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
-    '',
-    '## GEARS Operational Metrics',
-    '',
-    `- scope: ${report.gears_operational_metrics.scope}`,
-    `- authorized external jobs: ${report.gears_operational_metrics.authorized_external_job_count}`,
-    `- actual output rate: ${report.gears_operational_metrics.actual_output_rate_percent}%`,
-    `- failure rate: ${report.gears_operational_metrics.failure_rate_percent}%`,
-    `- execution p50/p95: ${report.gears_operational_metrics.execution_duration_ms.p50}/${report.gears_operational_metrics.execution_duration_ms.p95} ms`,
-    `- callback latency p50/p95: ${report.gears_operational_metrics.callback_delivery_latency_ms.p50}/${report.gears_operational_metrics.callback_delivery_latency_ms.p95} ms`,
-    `- actual cost: ${Object.entries(report.gears_operational_metrics.actual_cost_by_currency).map(([currency, amount]) => `${amount} ${currency}`).join(' + ') || 'none'}`,
-    `- local acceptance excluded: ${report.gears_operational_metrics.local_acceptance_excluded}`,
-    '',
-    '## GEARS Recovery Plan',
-    '',
-    `- recovery items: ${report.gears_recovery_plan.item_count}`,
-    `- retry eligible: ${report.gears_recovery_plan.retry_eligible_count}`,
-    `- status resync: ${report.gears_recovery_plan.status_resync_count}`,
-    `- operator intervention: ${report.gears_recovery_plan.operator_intervention_count}`,
-    ...report.gears_recovery_plan.items.map(item => `- ${item.source_unit_id} · ${item.failure_category} · ${item.strategy} · auto=${item.can_auto_execute}: ${item.reason}`),
-    '',
-    '## Project Workflow',
-    '',
-    `- 状态: ${report.workflow.state_label}`,
-    `- 唯一 NEXT: ${report.workflow.primary_next_action.label}`,
-    `- 说明: ${report.workflow.primary_next_action.detail}`,
-    `- 外部输入: ${report.workflow.primary_next_action.external_input_required ? 'required' : 'not required'}`,
-    `- 真实完成信用: ${report.workflow.primary_next_action.counts_as_real_completion ? 'granted' : 'not granted'}`,
-    '',
-    '## Lanes',
-    '',
-    '| 模块 | 状态 | 分数 | 说明 |',
-    '|---|---:|---:|---|',
-    ...report.lanes.map(lane =>
-      `| ${lane.label} | ${productionReadinessStatusText(lane.status)} | ${lane.score}/100 | ${lane.detail} |`,
-    ),
-    '',
-    '## Issues',
-    '',
-    ...(report.issues.length
-      ? report.issues.map(issue =>
-        `- ${issueSeverityText(issue.severity)} · ${issue.label}: ${issue.detail}`,
-      )
-      : ['- 暂无阻断项。']),
-    '',
-    '## Next Actions',
-    '',
-    ...(report.next_actions.length
-      ? report.next_actions.map(action => `- P${action.priority} · ${action.label}: ${action.detail}`)
-      : ['- 暂无下一步动作。']),
-    '',
-    '## Automation Plan',
-    '',
-    ...(report.automation_plan.steps.length
-      ? report.automation_plan.steps.map(step =>
-        `- ${step.step_id} · ${step.status} · ${step.runner}: ${step.label} -> ${step.expected_result}`,
-      )
-      : ['- 暂无自动化步骤。']),
-    '',
-    '## Latest Automation Run',
-    '',
-    ...(report.latest_automation_run
-      ? [
-        `- ${report.latest_automation_run.completed_at} · ${report.latest_automation_run.executed_step_count} executed · ${report.latest_automation_run.failed_step_count} failed · ${report.latest_automation_run.before_score}->${report.latest_automation_run.after_score}`,
-        ...report.latest_automation_run.steps.map(step =>
-          `  - ${step.status} · ${step.action_key}: ${step.label}`,
-        ),
-      ]
-      : ['- 暂无已持久化的自动化运行记录。']),
-  ].join('\n');
-}
-
-function productionReadinessStatusText(status: ProductionReadinessStatus): string {
-  if (status === 'ready') return 'ready';
-  if (status === 'blocked') return 'blocked';
-  return 'needs_action';
-}
-
-function issueSeverityText(severity: ProductionReadinessIssue['severity']): string {
-  if (severity === 'blocking') return '阻断';
-  if (severity === 'warning') return '提醒';
-  return '信息';
 }
 
 export async function exportProjectProductionBoard(projectId: string): Promise<ApiResponse<StoryProductionBoardExportPackage>> {
@@ -8577,212 +7169,6 @@ function buildSeedanceShotLedgerMarkdown(board: StoryProductionBoard): string {
       '',
     ]),
   ];
-  return lines.join('\n');
-}
-
-function seedanceProviderRetryReasonText(reason: SeedanceShotProviderRetryPlanReason): string {
-  const map: Record<SeedanceShotProviderRetryPlanReason, string> = {
-    failed: '失败回片',
-    timed_out: '等待超时',
-    ready_missing_video: '完成但缺视频',
-    unsubmitted: '尚未提交',
-  };
-  return map[reason];
-}
-
-function buildSeedanceProviderRetryPlanMarkdown(
-  plan: Omit<SeedanceShotProviderRetryPlanResult, 'markdown'>,
-): string {
-  const lines = [
-    `# ${plan.project.title} — Seedance provider 人工重试策略`,
-    '',
-    `> projectId: ${plan.project.project_id}`,
-    `> generatedAt: ${plan.generated_at}`,
-    `> provider: ${plan.provider ?? '全部'}`,
-    `> queueId: ${plan.queue_id ?? '全部'}`,
-    `> timeoutMinutes: ${plan.timeout_minutes}`,
-    typeof plan.max_retry_count === 'number' ? `> maxRetryCount: ${plan.max_retry_count}` : '> maxRetryCount: 未限制',
-    '',
-    '## 摘要',
-    '',
-    `- 候选镜头: ${plan.candidate_count}`,
-    `- 可直接重提: ${plan.resubmittable_count}`,
-    `- 需先处理: ${plan.blocked_count}`,
-    `- 高优先级: ${plan.high_priority_count}`,
-    `- 原因分布: 失败 ${plan.reason_counts.failed}；超时 ${plan.reason_counts.timed_out}；缺视频 ${plan.reason_counts.ready_missing_video}；未提交 ${plan.reason_counts.unsubmitted}`,
-    '',
-    '## 候选镜头',
-  ];
-  if (!plan.candidates.length) {
-    lines.push('', '- 暂无需要人工重试的镜头。');
-    return lines.join('\n');
-  }
-  for (const item of plan.candidates) {
-    lines.push(
-      '',
-      `### ${item.shot_id} / 场景 ${item.source_scene_id ?? '未记录'}`,
-      '',
-      `- 优先级: ${item.priority}`,
-      `- 原因: ${seedanceProviderRetryReasonText(item.retry_reason)}`,
-      `- 状态: ${seedanceShotStatusText(item.status)}`,
-      `- 可直接重提: ${item.can_resubmit ? '是' : '否'}`,
-      item.block_reason ? `- 阻断原因: ${item.block_reason}` : '- 阻断原因: 无',
-      `- 等待时间: ${item.minutes_waiting} 分钟`,
-      `- 重试次数: ${item.retry_count}`,
-      `- provider job: ${item.provider_job_id ?? '未记录'}`,
-      `- queue: ${item.provider_queue_id ?? '未记录'}${item.provider_queue_position ? ` #${item.provider_queue_position}` : ''}`,
-      `- 失败分类: ${item.failure_category ?? '未分类'}`,
-      `- Provider 错误码: ${item.provider_error_code ?? '未记录'}`,
-      `- 失败原因: ${item.failure_reason ?? '未记录'}`,
-      `- 建议动作: ${item.suggested_action}`,
-    );
-  }
-  return lines.join('\n');
-}
-
-function buildSeedanceRetryPackageMarkdown(
-  pkg: Omit<SeedanceShotRetryPackage, 'markdown'>,
-): string {
-  const lines = [
-    `# ${pkg.title} — Seedance 重试提交包`,
-    '',
-    `> schema: ${pkg.schema_version}`,
-    `> projectId: ${pkg.project.project_id}`,
-    `> storyId: ${pkg.storyId}`,
-    `> exportedAt: ${pkg.exported_at}`,
-    `> 待重试镜头: ${pkg.total_retry_shot_count}`,
-    `> 已跳过可用镜头: ${pkg.skipped_ready_shot_count}`,
-    '',
-    '## 重试镜头',
-  ];
-  for (const shot of pkg.shots) {
-    lines.push(
-      '',
-      `### ${shot.shot_id} / 场景 ${shot.source_scene_id ?? '未记录'}`,
-      '',
-      `- 状态: ${seedanceShotStatusText(shot.status)}`,
-      `- 失败原因: ${shot.failure_reason ?? '未记录'}`,
-      `- 失败分类: ${shot.failure_category ?? '未分类'}`,
-      `- Provider 错误码: ${shot.provider_error_code ?? '未记录'}`,
-      `- 重试次数: ${shot.retry_count}`,
-      `- 上次 job: ${shot.provider_job_id ?? '未记录'}`,
-      `- 上次视频: ${shot.last_video_url ?? '未记录'}`,
-      `- 建议动作: ${shot.suggested_action}`,
-      `- 人物: ${shot.prompt.characters.join('、') || '未指定'}`,
-      `- 场景: ${shot.prompt.location}`,
-      `- 镜头: ${shot.prompt.camera_suggestion}`,
-      shot.prompt.seedance_asset_slots.length
-        ? `- 素材: ${shot.prompt.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
-        : '- 素材: 未记录',
-      shot.prompt.negative_constraints.length ? `- 禁止: ${shot.prompt.negative_constraints.join('；')}` : '- 禁止: 无',
-      '',
-      '```text',
-      shot.prompt.seedance_prompt,
-      '```',
-    );
-  }
-  if (pkg.missing_prompt_shots.length) {
-    lines.push(
-      '',
-      '## 缺少提示词的待处理镜头',
-      '',
-      ...pkg.missing_prompt_shots.map(item =>
-        `- ${item.shot_id} / 场景 ${item.source_scene_id ?? '未记录'}：${item.reason}`
-      ),
-    );
-  }
-  return lines.join('\n');
-}
-
-function buildGearsExternalCallbackHandoffMarkdown(
-  pkg: Omit<GearsExternalCallbackHandoffPackage, 'markdown'>,
-): string {
-  const lines = [
-    `# ${pkg.title} — GEARS 外部回片交接包`,
-    '',
-    `> schema: ${pkg.schema_version}`,
-    `> projectId: ${pkg.project.project_id}`,
-    `> storyId: ${pkg.storyId}`,
-    `> exportedAt: ${pkg.exported_at}`,
-    `> callbackPath: ${pkg.callback_path}`,
-    `> callbackUrl: ${pkg.callback_url}`,
-    `> preflightPath: ${pkg.preflight_path}`,
-    `> preflightUrl: ${pkg.preflight_url}`,
-    `> safeImportPath: ${pkg.safe_import_path}`,
-    `> safeImportUrl: ${pkg.safe_import_url}`,
-    `> 待外部 artifact: ${pkg.pending_external_artifact_count}`,
-    `> 本地验收 ready: ${pkg.local_acceptance_ready_count}`,
-    `> 外部 ready: ${pkg.external_ready_count}`,
-    '',
-    '## 使用边界',
-    '',
-    '- 本包用于把 local_acceptance 或尚未回片的 GEARS job 升级为真实外部 artifact。',
-    '- 回传前必须把 sample 中的 outputUrl 替换成真实 GEARS/Seedance 产物 URL。',
-    '- local_acceptance URL 只代表本地链路验收，不代表外部平台真实回片。',
-    '',
-    '## Operator Checklist',
-    '',
-    ...pkg.operator_checklist.map(item => `- ${item}`),
-    '',
-    '## 批量回传 payload',
-    '',
-    'Preflight curl:',
-    '',
-    '```bash',
-    pkg.callback_batch_preflight_curl,
-    '```',
-    '',
-    'Safe import curl:',
-    '',
-    '```bash',
-    pkg.callback_batch_curl,
-    '```',
-    '',
-    'Batch callback sample:',
-    '',
-    '```json',
-    JSON.stringify(pkg.callback_batch_sample, null, 2),
-    '```',
-    '',
-    '## 待回片镜头',
-  ];
-  for (const item of pkg.items) {
-    lines.push(
-      '',
-      `### ${item.source_unit_id} / ${item.gears_job_id}`,
-      '',
-      `- 状态: ${item.status}`,
-      `- 场景: ${item.source_scene_id ?? '未记录'}`,
-      `- callback: ${item.callback_path}`,
-      `- 本地验收 artifact: ${item.local_acceptance_artifact_urls.join('；') || '无'}`,
-      `- 外部 artifact: ${item.external_artifact_urls.join('；') || '待补'}`,
-      item.prompt ? `- 人物: ${item.prompt.characters.join('、') || '未指定'}` : '- 人物: 未记录',
-      item.prompt ? `- 场景: ${item.prompt.location}` : '- 场景: 未记录',
-      item.prompt ? `- 镜头: ${item.prompt.camera_suggestion}` : '- 镜头: 未记录',
-      item.prompt?.seedance_asset_slots.length
-        ? `- 素材: ${item.prompt.seedance_asset_slots.map(slot => `${slot.reference_slot}=${slot.label}`).join('；')}`
-        : '- 素材: 未记录',
-      '',
-      'Callback sample:',
-      '',
-      '```json',
-      JSON.stringify(item.callback_sample, null, 2),
-      '```',
-    );
-    if (item.prompt) {
-      lines.push(
-        '',
-        'Seedance prompt:',
-        '',
-        '```text',
-        item.prompt.seedance_prompt,
-        '```',
-      );
-    }
-  }
-  if (!pkg.items.length) {
-    lines.push('', '- 当前没有缺少外部 artifact 的 GEARS job。');
-  }
   return lines.join('\n');
 }
 

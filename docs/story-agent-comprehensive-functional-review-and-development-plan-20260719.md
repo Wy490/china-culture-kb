@@ -410,7 +410,7 @@ placeholder 继续保留，但字段和 UI 必须始终为 `placeholder=true`、
 
 ### P1-8：拆分超大服务
 
-> 实施状态：已于 2026-07-19 完成第一切片，将项目标识、版本标识、仓储路径和乐观并发元数据提取为独立 project core 边界；详见 10.14。其余 production board、资产、GEARS、Seedance、callback 与 final delivery 仍待按能力继续拆分。
+> 实施状态：已于 2026-07-19 完成第一切片，将项目标识、版本标识、仓储路径和乐观并发元数据提取为独立 project core 边界；2026-07-20 完成第二至第十切片，将 Seedance Provider 队列/callback/retry/overview policy、Production Readiness、GEARS external artifact/preflight、callback ledger application、external callback handoff 和 Seedance retry package 纯逻辑拆出；详见 10.14–10.23。其余 production board orchestration、图片归档、其他 handoff/export 与 final delivery 仍待按能力继续拆分。
 
 `project-service.ts` 已超过一万行，`ai-comic-series-service.ts` 也同时承担规划、资产、GEARS、Seedance、后期、审片和交付。
 
@@ -843,20 +843,214 @@ P1-8 已按“先刻画、再提取”的约束开始实施，本切片只移动
 
 阶段 E 当前完成度为 65%。按 A–E 五阶段等权口径，整改总计划完成度为 90.8%。新增 0.6 个百分点只代表 P1-8 首个可验证拆分边界完成；真实项目、真人多轮修订/盲评、真实 Provider 样本、成本凭证与生产恢复演练仍然不能由本地回归补足。
 
+### 10.15 阶段 E 第五切片：Seedance Provider 队列与 callback 策略拆分（2026-07-20）
+
+P1-8 第二切片完成了两个相邻的纯决策边界，真实 Provider I/O、项目版本提交和 callback 落库仍保留在原集成层：
+
+- 新增 `seedance-provider-queue-service.ts`，统一 Provider queue batch 滚动窗口、poll target 过滤、等待分钟数、状态计数、批次超时摘要、operator attention 排序，以及 retry reason/priority/candidate/can_resubmit 门禁。
+- 永久输入失败继续 fail closed：`asset_missing`、`prompt_invalid`、`content_policy`、额度与鉴权问题不会被自动标记为可重提；timeout、rate limit、server/network 类失败仍保留高优先级人工重试建议。
+- 新增 `seedance-provider-callback-policy-service.ts`，集中 Provider 状态别名归一化、显式 failure category、稳定错误码、英文/中文自由文本分类和操作员状态文案。显式稳定分类优先于 Provider 错误文本，未知但有失败信息的状态不会误记 ready。
+- 拆分过程中联合回归首次暴露轮询预归一化仍依赖未导出的 `normalizeProviderFailureCategory`。该运行期失败被定向复现并通过显式模块出口修复，没有用跳过、放宽断言或 fixture 规避。
+- `project-service.ts` 从 12,172 行降至 11,717 行，净移出 455 行；Provider submit/poll HTTP、鉴权/HMAC、callback 解析、项目仓储事务和版本写入未改变。
+
+验证证据：
+
+- 新增 9 项 characterization tests，覆盖 poll checked/pollable 区分、当前 ledger 覆盖 queue 快照、超时/注意项、永久失败重提阻断、完整零值计数、状态别名、分类优先级、稳定错误码和操作员文案。
+- queue/callback policy 与项目服务联合定向回归 77 项通过。
+- Web server 全量 Vitest：144 个测试文件执行，143 个通过、1 个条件跳过；1305 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线；未把旧结果误报为本轮重跑。
+- 本切片未调用外部文本/图片模型、GEARS、Seedance 或其他付费 Provider；本地 fetch fixture 仍不计真实回调、真实成本或真实媒体。
+
+阶段 E 当前完成度为 68%。按 A–E 五阶段等权口径，整改总计划完成度为 91.4%。新增 0.6 个百分点只表示 P1-8 第二个可验证拆分边界完成；阶段 C/D 的真实 Provider 闭环和阶段 E 的真人盲评、真实成本样本及生产恢复演练仍须外部证据，不能由重构测试补足。
+
+### 10.16 阶段 E 第六切片：Production Readiness 纯策略拆分（2026-07-20）
+
+P1-8 第三切片把 readiness 的确定性政策与项目 application orchestration 分开；项目读取、问题/动作组装、workflow、自动化执行和仓储写入均未迁移：
+
+- 新增 `project-production-readiness-policy-service.ts`，集中 Seedance shot 状态计数、GEARS ledger 汇总、local acceptance 与 external artifact 分账、lane 状态/分数、交付阶段分数、总体 blocker/warning 惩罚和 readiness Markdown 渲染。
+- `LOCAL_GEARS_ACCEPTANCE_ARTIFACT_BASE_URL` 成为跨 callback、验收与 readiness 共用的显式模块常量；role、metadata 标记或本地 acceptance URL 任一命中时仍只记本地验收信用。
+- local-only ready job 固定 `ready_without_external_artifact > 0`，GEARS lane 保持 `needs_action`，分数上限为当前本地验收信用；只有真实外部 artifact 才能使单 job 全量外部 ready。ready 但完全没有 artifact 继续直接阻断。
+- shot lane 继续保持“无镜头或任一失败即 blocked”；active 只获得部分分数。总体分数仍先平均 lanes，再按每个 blocker 扣 6 分、warning 扣 2 分，不能用高分 lane 掩盖阻断。
+- `project-service.ts` 从 11,717 行降至 11,410 行，本切片净移出 307 行；三轮 P1-8 已累计从 12,232 行降至 11,410 行，项目读取和真实执行边界不变。
+
+验证证据：
+
+- 新增 5 项 characterization tests，覆盖 local/external/missing artifact 三账分离、local-only 不得外部 ready、shot 状态/分数、总体阻断惩罚和 delivery stage/export 分账。
+- readiness policy 与项目服务联合定向回归 73 项通过。
+- Web server 全量 Vitest：145 个测试文件执行，144 个通过、1 个条件跳过；1310 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有把该基线写成本轮重跑。
+- 本切片未调用真实模型、GEARS、Seedance 或其他外部 Provider；readiness fixture 和 local acceptance 仍不计真实媒体、真实回调、真实成本或真人审片。
+
+阶段 E 当前完成度为 71%。按 A–E 五阶段等权口径，整改总计划完成度为 92.0%。新增 0.6 个百分点只表示 P1-8 第三个可验证拆分边界完成；阶段 C/D 的真实 Provider 闭环和阶段 E 的真人盲评、真实成本样本及生产恢复演练仍须外部证据。
+
+### 10.17 阶段 E 第七切片：GEARS external artifact 与 callback preflight 策略拆分（2026-07-20）
+
+P1-8 第四切片把 GEARS 外部回片的信任与匹配策略从项目 application service 中移出，callback 写账、图片 artifact 归档和仓储事务仍保留原位：
+
+- 新增 `gears-external-artifact-policy-service.ts`，统一 local acceptance 常量、结构化 artifact/URL 分账、public HTTP(S) 检查、placeholder 域名、localhost/私网 IPv4/IPv6、本地文件拒绝、生产 URL 判定，以及 artifact metadata/filename 安全提取。
+- Production Readiness 改为依赖 artifact policy，不再自行维护 local/external 判定；callback preflight、callback application、handoff 与 readiness 现在引用同一条 artifact 信任边界。
+- 新增 `gears-external-callback-policy-service.ts`，固定 ledger 匹配顺序：精确 `gears_job_id` 优先，其次 `idempotency_key + job_type`，最后 `source_unit_id + job_type`。多匹配继续返回明确歧义错误，不静默选择首项。
+- preflight issue 字段映射和 Markdown 审计报告也进入同一策略模块；阻断/提醒、callback 索引、source unit、job ID 与 would-update 状态保持原合同。
+- 联合回归曾因旧 readiness 测试仍从原模块读取已迁移常量而产生 `undefined/shot-1.mp4`。修复只更新常量来源，未放宽“local acceptance 不得计 external ready”的生产期望。
+- `project-service.ts` 从 11,410 行降至 11,246 行，本切片净移出 164 行；四轮 P1-8 已累计从 12,232 行降至 11,246 行。
+
+验证证据：
+
+- 新增 5 项 characterization tests，覆盖 job ID 优先匹配、job type 消歧、public/placeholder/local/private/file URL 矩阵、local/external 双账和 preflight/metadata 映射。
+- artifact/callback policy、readiness policy 与项目服务联合定向回归 78 项通过。
+- Web server 全量 Vitest：146 个测试文件执行，145 个通过、1 个条件跳过；1315 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片没有下载 artifact，也没有调用 GEARS、Seedance、外部模型或付费 Provider；public URL fixture 只验证分类合同，不计真实可达性、真实媒体或真实回片。
+
+阶段 E 当前完成度为 74%。按 A–E 五阶段等权口径，整改总计划完成度为 92.6%。新增 0.6 个百分点只表示 P1-8 第四个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.18 阶段 E 第八切片：GEARS callback ledger application 拆分（2026-07-20）
+
+P1-8 第五切片把 callback 到 ledger item 的确定性状态应用和本地验收候选选择移出 `project-service.ts`；项目读取、图片归档、成本批次重算和仓储写入仍保留原 application flow：
+
+- 新增 `project-gears-ledger-application-service.ts`，集中 sync candidate 的 `job_type`、source unit/job ID、terminal、limit/skipped 规则，以及 callback 对单条 ledger item 的字段合并。
+- terminal ledger 收到非 terminal callback 时继续拒绝状态回退，并保留已完成 artifact、进度、失败上下文和 `completed_at`；callback event 明确记录 `status_regression_ignored=true` 与实际 `applied_status`。
+- terminal→terminal 变更仍可应用并记录 `terminal_status_changed`；ready callback 缺进度时固定补 100%，重复相同 terminal 状态继续保留首次完成时间。
+- callback 正常应用继续清除旧 poll error，合并实际费用，追加有界 callback events；application service 仍在单项更新后执行授权批次成本重算，再写项目仓储。
+- local acceptance URL 保持 source unit 映射优先于 job ID 映射，fallback 对 project/source ID 编码；默认只选择 `local-gears-` job，只有显式 `include_external_jobs=true` 才纳入外部 job。
+- `project-service.ts` 从 11,246 行降至 11,118 行，本切片净移出 128 行；五轮 P1-8 已累计从 12,232 行降至 11,118 行。
+
+验证证据：
+
+- 新增 7 项 characterization tests，覆盖候选筛选/limit/skipped、显式包含终态、terminal 回退保护、terminal 状态变更、ready 进度/完成时间、本地 URL 构造和外部 job 排除。
+- ledger application 与项目服务联合定向回归 75 项通过。
+- Web server 全量 Vitest：147 个测试文件执行，146 个通过、1 个条件跳过；1322 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 GEARS/Seedance/模型 Provider；local acceptance URL 仍只用于本地链路验收，不计外部回片或生产完成。
+
+阶段 E 当前完成度为 77%。按 A–E 五阶段等权口径，整改总计划完成度为 93.2%。新增 0.6 个百分点只表示 P1-8 第五个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.19 阶段 E 第九切片：GEARS external callback handoff 纯构建拆分（2026-07-20）
+
+P1-8 第六切片把 GEARS 外部回片交接包的确定性构建逻辑移出 `project-service.ts`；项目读取、Production Board/ledger 归一化、候选任务筛选和仓储边界保持在原 application orchestration：
+
+- 新增 `gears-external-callback-handoff-service.ts`，集中 local acceptance/external artifact URL 去重分账、单项 callback placeholder sample、批量 sample 与替换约束、preflight/safe-import 路径、公开 URL 前缀推导、curl 命令、operator checklist 和 Markdown 渲染。
+- placeholder `https://gears.example/...` 继续显式标注为导入前必须替换的假地址；路径中的 project/source unit 标识继续编码，不把 sample、local acceptance 或 public URL fixture 计作真实回片。
+- 公开 callback URL 带反向代理路径前缀时，preflight 与 safe-import URL 继续继承该前缀；只有相对 callback 地址时，curl 保持 `$STORY_AGENT_BASE_URL` 运行期展开，不把 secret 写进项目级交接命令。
+- Markdown 保留 callback/preflight/safe-import 元数据、使用边界、两步命令、批量 payload、逐镜头 callback sample 和 Seedance prompt；没有待回片 job 时继续输出明确空状态。
+- `project-service.ts` 从 11,118 行降至 10,931 行，本切片净移出 187 行；六轮 P1-8 已累计从 12,232 行降至 10,931 行，共移出 1,301 行。
+
+验证证据：
+
+- 新增 8 项 characterization tests，覆盖单项/批量 sample、项目路径编码、代理前缀 URL、公开/相对 curl、local/external URL 分账、交接 Markdown 和 checklist 顺序。
+- handoff builder 与项目服务联合定向回归 76 项通过。
+- Web server 全量 Vitest：148 个测试文件执行，147 个通过、1 个条件跳过；1330 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 GEARS、Seedance、文本/图片模型或付费 Provider；placeholder sample、local acceptance、测试 URL 和 Markdown 都只计本地合同证据。
+
+阶段 E 当前完成度为 80%。按 A–E 五阶段等权口径，整改总计划完成度为 93.8%。新增 0.6 个百分点只表示 P1-8 第六个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.20 阶段 E 第十切片：GEARS external callback handoff 纯组装收口（2026-07-20）
+
+P1-8 第七切片继续把 handoff prompt、item 和 package 的确定性组装收进 `gears-external-callback-handoff-service.ts`；`project-service.ts` 现在只读取项目、构建 Production Board、归一化 ledger、解析环境 callback URL，再调用纯构建器：
+
+- 新增 `gearsExternalHandoffPrompt`，只从结构化 shot unit 映射 duration、characters、location、`script_text`、`visual_prompt`、camera、Seedance prompt、素材槽位、校验说明和负向约束，不混入 source summary、质量报告或内部分析字段。
+- 新增 `buildGearsExternalCallbackHandoffItems`，只选择 `seedance_video`、未 failed/rejected/canceled 且缺少真实 external artifact 的 job；已有外部回片、非视频任务和不可继续任务不会进入交接清单。
+- source scene 优先沿用 ledger 显式值，缺失时才回退到同 shot ID 的 Production Board；callback identity、local/external artifact 分账、prompt 与 callback URL 同时进入单项合同。
+- 新增 `buildGearsExternalCallbackHandoffPackage`，统一总 job、external ready、local acceptance ready、pending external artifact 计数，以及 preflight/safe-import 地址、两步 curl、批量 sample、checklist 和 Markdown；导出时间改为显式输入，纯测试不读取系统时间。
+- `project-service.ts` 从 10,931 行降至 10,844 行，本切片净移出 87 行；七轮 P1-8 已累计从 12,232 行降至 10,844 行，共移出 1,388 行。
+
+验证证据：
+
+- 在同一 handoff 测试文件新增 3 项 characterization tests，覆盖 prompt 字段隔离、job 过滤/shot join 和完整 package 的计数/公开端点/命令/Markdown；该模块现有 11 项直接测试。
+- handoff builder 与项目服务联合定向回归 79 项通过。
+- Web server 全量 Vitest：148 个测试文件执行，147 个通过、1 个条件跳过；1333 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 GEARS、Seedance、文本/图片模型或付费 Provider；本地 ledger、placeholder URL 和 prompt fixture 只验证合同，不计真实生产产出。
+
+阶段 E 当前完成度为 83%。按 A–E 五阶段等权口径，整改总计划完成度为 94.4%。新增 0.6 个百分点只表示 P1-8 第七个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.21 阶段 E 第十一切片：Seedance retry package 纯构建拆分（2026-07-20）
+
+P1-8 第八切片把 Seedance 重试提交包的重试门禁、shot/ledger 选择、缺提示词映射、package 和 Markdown 从 `project-service.ts` 移入独立纯模块；项目读取和 Production Board 构建仍留在 application orchestration：
+
+- 新增 `seedance-retry-package-service.ts`，并导出共享 `shouldRetrySeedanceShot`。不存在 ledger 的镜头、失败项和 ready 但缺视频项继续进入重试；`skipped` 与已经有视频的 `ready` 镜头继续排除。
+- `selectSeedanceRetryPackageShots` 用 canonical `seedanceShotProductionId` 关联 shot 与 ledger；Production Board 有镜头但无账本时继续生成 `prompt_exported`、retry 0 的提交项，账本仍需处理但找不到 Board 镜头时进入 `missing_prompt_shots`，不可静默丢失。
+- retry prompt 继续分字段保存 duration、characters、location、`script_text`、`visual_prompt`、camera、Seedance prompt、asset slots、validation notes 和 negative constraints，没有把内部分析混入可见提示词。
+- `buildSeedanceRetryPackage` 以显式 `exportedAt` 组装计数与 Markdown；已完成视频只计 `skipped_ready_shot_count`，不会进入重试 shot 列表。
+- Provider queue overview 也改为引用同一 `shouldRetrySeedanceShot`，消除队列统计与导出包之间的重试语义漂移。
+- `project-service.ts` 从 10,844 行降至 10,732 行，本切片净移出 112 行；八轮 P1-8 已累计从 12,232 行降至 10,732 行，共移出 1,500 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖缺失/失败/ready-without-video/skipped 门禁、无账本默认项、孤儿 ledger 显式报告、prompt 字段隔离，以及计数与 Markdown。
+- retry package 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：149 个测试文件执行，148 个通过、1 个条件跳过；1337 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；测试视频 URL、ledger 与 prompt fixture 只验证本地合同。
+
+阶段 E 当前完成度为 86%。按 A–E 五阶段等权口径，整改总计划完成度为 95.0%。新增 0.6 个百分点只表示 P1-8 第八个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.22 阶段 E 第十二切片：Seedance Provider retry plan 纯组装拆分（2026-07-20）
+
+P1-8 第九切片把 Seedance Provider 人工重试计划的候选过滤、原因计数、摘要和 Markdown 从 `project-service.ts` 移入独立模块；项目读取、Production Board 构建、ledger 同步和真实重提执行保持原边界：
+
+- 新增 `seedance-provider-retry-plan-service.ts`，集中 provider/queue 参数清洗、failure category 过滤、候选原因推导、排序、原因分布、可重提/阻断/高优先级计数和计划 Markdown。
+- `selectSeedanceProviderRetryPlanCandidates` 复用 `seedance-provider-queue-service.ts` 已有的 reason、candidate、priority、blocking 和 sort policy，没有复制永久输入错误或 Provider 临时错误的判断规则。
+- failure category 过滤继续在 retry reason 推导之前执行；指定类别后，没有匹配失败分类的 timeout、ready-without-video 和 unsubmitted 项不会旁路进入候选。
+- 达到 `max_retry_count`、素材缺失、提示词非法、内容策略、额度和鉴权问题继续 fail closed；可恢复 timeout/rate-limit/server/network 失败保留既有优先级和人工建议。
+- `buildSeedanceProviderRetryPlan` 以显式 `generatedAt` 生成稳定摘要，Markdown 保留本地化原因、状态、阻断原因、等待时间、queue/job、失败分类/错误码和建议动作；无候选时输出明确空状态。
+- `project-service.ts` 从 10,732 行降至 10,621 行，本切片净移出 111 行；九轮 P1-8 已累计从 12,232 行降至 10,621 行，共移出 1,611 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖代表性候选过滤/排序/计数、failure category 前置过滤、最大重试次数阻断，以及本地化 Markdown/空状态。
+- retry plan 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：150 个测试文件执行，149 个通过、1 个条件跳过；1341 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；固定时间、ledger 和 URL fixture 只验证本地策略合同。
+
+阶段 E 当前完成度为 89%。按 A–E 五阶段等权口径，整改总计划完成度为 95.6%。新增 0.6 个百分点只表示 P1-8 第九个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.23 阶段 E 第十三切片：Seedance Provider queue overview 纯汇总拆分（2026-07-20）
+
+P1-8 第十切片把 Seedance Provider queue overview 的状态、batch、timeout、缺视频和 attention 汇总从 `project-service.ts` 移入独立纯模块；项目读取、Production Board 构建和 ledger 同步继续留在 application orchestration：
+
+- 新增 `seedance-provider-queue-overview-service.ts`，集中 provider/queue 参数清洗、ledger 状态计数、active/ready/failed/retryable、timeout、missing video、attention 和 batch summary 组装。
+- overview 继续复用 `seedance-provider-queue-service.ts` 的 filter、batch current-state overlay、attention、sorting、active status 与 waiting-time policy，并引用 `seedance-retry-package-service.ts` 的统一重试门禁。
+- batch summary 以当前 ledger 状态覆盖提交快照；batch 列表按创建时间稳定排序。配置的 `latest_queue_id` 不存在于过滤结果时，继续回退到 `updated_at` 最新批次。
+- 默认 attention 只包含 submitted/processing/failed、超时及 ready-without-video；显式 `include_completed=true` 时，已有 provider job 或 queue identity 的完成/跳过项才进入运营清单。
+- timeout 只统计 active 状态，ready 但缺视频单独计数；local fixture 不会被解释为真实 Provider 运行证据。
+- `project-service.ts` 从 10,621 行降至 10,558 行，本切片净移出 63 行；十轮 P1-8 已累计从 12,232 行降至 10,558 行，共移出 1,674 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖状态/重试/超时/缺视频/attention 汇总、include-completed、batch 当前态与 latest fallback，以及 provider/queue 一致过滤。
+- queue overview 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：151 个测试文件执行，150 个通过、1 个条件跳过；1345 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；固定时间、queue、ledger 和 URL fixture 只验证本地策略合同。
+
+阶段 E 当前完成度为 92%。按 A–E 五阶段等权口径，整改总计划完成度为 96.2%。新增 0.6 个百分点只表示 P1-8 第十个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
 ## 11. 下一段对话可直接使用的提示词
 
 ```text
 请阅读：
 /Users/wuyu/Desktop/china-culture-kb/docs/story-agent-comprehensive-functional-review-and-development-plan-20260719.md
 
-然后继续推进“阶段 A：统一真相合同”的第一个实施切片。先检查当前分支、HEAD、dirty workspace 和已有用户改动，不要覆盖或清理无关改动。使用 china-culture-story-agent、gears-seedance-delivery、superpowers-lite 技能，先写失败回归测试，再实现 canonical shot-plan/v2：确保 GEARS delivery、Seedance prompts、Production Board、asset refs、shot ledger 和 callback 使用同一套 shot_id 与数量规则；同时修复 no-op quality repair 被标记 applied 的问题。不要调用任何外部付费模型或媒体 provider，不要把 placeholder、本地 acceptance、fixture 或 dry-run 计作真实产出。完成后运行相关测试、Web server 全测、npm run check、git diff --check，并更新交接文档中的实施证据。
+然后继续推进 P1-8 的第十一个安全拆分边界。先检查当前分支、HEAD、dirty workspace 和已有用户改动，不要覆盖或清理无关改动。使用 china-culture-story-agent、gears-seedance-delivery 与 superpowers-lite 技能，优先从 `project-service.ts` 拆出 Production Board export 的文件描述、交付 manifest、Seedance prompts/ledger Markdown 等纯构建逻辑；先补 characterization tests，不移动项目读取、仓储写入、文件落盘或真实 Provider 调用。继续保持脚本、视觉、镜头、Seedance prompt、validation notes 分字段交付，不把 fixture 或 dry-run 计作真实产出。完成后运行相关定向测试、Web server 全测、npm run check、受影响构建和 git diff --check，并更新本文档的实施证据与百分比。
 ```
 
 ## 12. 工作区与 Git 交接
 
 - 当前分支：`codex/story-agent-manifest-integrity-20260718`
-- 当前 HEAD：`2280c71c`
-- 工作区明显 dirty，包含已跟踪修改和未跟踪新增文件。
+- 当前 HEAD：`5ff20d87`
+- 工作区包含 2026-07-20 的 P1-8 第二至第十切片修改，等待本轮统一提交并推送。
 - 当前改动属于持续开发成果；下一对话不得 reset、checkout 或覆盖无关改动。
 - 本文档是审查与计划，不代表上述 P0 已实现。
 - 本轮没有因本审查调用外部文本模型、图片模型、GEARS 或 Seedance provider。
