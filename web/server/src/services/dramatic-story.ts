@@ -879,10 +879,18 @@ function generateSceneContent(
   const conflict = buildSceneConflict(template, centralEvent, protagonist, eventParagraphs);
 
   // Build dialogue/narration
-  const dialogueOrNarration = buildDialogueOrNarration(template, centralEvent, quotes, protagonist, eventParagraphs, videoType);
+  const dialogueOrNarration = buildDialogueOrNarration(
+    template,
+    centralEvent,
+    quotes,
+    protagonist,
+    eventParagraphs,
+    videoType,
+    entry,
+  );
 
   // Build key action
-  const keyAction = buildKeyAction(template, protagonist, centralEvent);
+  const keyAction = buildKeyAction(template, protagonist, centralEvent, entry);
 
   // Build visual prompt
   const visualPrompt = buildVisualPrompt(template, location, timeOfDay, centralEvent, protagonist, entry);
@@ -1629,33 +1637,174 @@ function buildSloganClose(entry: EntryDetail, protagonist: string, quote: string
 // Heritage promo builders
 // ---------------------------------------------------------------------------
 
+interface HeritageCraftProfile {
+  origin_objects: string;
+  artisan_entrance: string;
+  process_sequence: string;
+  process_basis: string;
+  process_visual: string;
+  spirit_action: string;
+  inheritance_action: string;
+  default_narration: string;
+  process_narration: string;
+  inheritance_narration: string;
+  key_actions: Record<string, string>;
+  visual_details: Record<string, string>;
+}
+
+function inferHeritageCraftProfile(entry: EntryDetail): HeritageCraftProfile {
+  const sourceText = [
+    entry.name,
+    entry.type,
+    entry.summary,
+    entry.story,
+    entry.keywords.join(' '),
+  ].join(' ');
+  if (/皮影|影子戏|影偶|灯幕/.test(sourceText)) {
+    return {
+      origin_objects: '影偶、灯幕、旧唱本和操纵杆',
+      artisan_entrance: '来到皮影工作台前，先检查牛皮影偶的关节，再摆齐雕刀、颜料和操纵杆。镜头拍雕刀转过皮面、关节活动和灯幕透光，人物情感从动作里出来。',
+      process_sequence: '先选皮、刮制和画稿，再雕镂、敷彩、装订关节与操纵杆，最后到灯幕后试演',
+      process_basis: '影偶需要经过皮料处理、画稿雕镂、敷彩装订和灯幕后场检验',
+      process_visual: '镜头连续拍到雕刀转折、色彩落在镂空纹样上、关节被操纵杆带动，再让影偶在灯幕上完成第一个动作',
+      spirit_action: '雕刀的转折、关节的装配和灯幕后每一次稳准操纵',
+      inheritance_action: '年轻学徒接过影偶操纵杆，老艺人在灯幕后逐帧纠正动作',
+      default_narration: '让影偶、雕刀、灯幕和唱腔自己说话。',
+      process_narration: '选皮、雕镂、敷彩、装杆、试演，每一步都要慢下来给观众看清。',
+      inheritance_narration: '真正的传承，不只在展柜里，也在年轻人接过影偶操纵杆、站到灯幕后的那一刻。',
+      key_actions: {
+        '技艺渊源': '展示影偶、旧唱本和灯幕，建立技艺来处',
+        '匠人登场': '传承人检查影偶关节，摆齐雕刀、颜料和操纵杆',
+        '工艺全程': '按顺序展示选皮、画稿、雕镂、敷彩、装杆和灯幕后试演',
+        '精神内核': '用雕刀转折、关节装配和操纵动作表现匠心',
+        '传承之路': '学徒接过影偶操纵杆，在灯幕后完成一次合演',
+      },
+      visual_details: {
+        '技艺渊源': '影偶、灯幕、旧唱本和操纵杆，柔和侧光，微距开场',
+        '匠人登场': '传承人在皮影工作台前检查牛皮影偶，雕刀、颜料和操纵杆同框，中近景',
+        '工艺全程': '选皮、画稿、雕镂、敷彩、装杆和灯幕后试演，连续微距过程镜头',
+        '精神内核': '雕刀沿镂空纹样转折，影偶关节活动与灯幕剪影交替特写',
+        '传承之路': '学徒接过影偶操纵杆，老手与年轻手在灯幕后同框，暖光收束',
+      },
+    };
+  }
+  if (/绣|刺绣|湘绣|苏绣|蜀绣|粤绣|针法/.test(sourceText)) {
+    return {
+      origin_objects: '针线、绸面和图样',
+      artisan_entrance: '坐到绣架前，先用指尖理顺丝线，再检查底稿。镜头拍手背的老茧、针尖的停顿和绸面的细光，人物情感从动作里出来。',
+      process_sequence: '先选图样和底布，再配色、劈丝、穿针、落针',
+      process_basis: '刺绣包含选稿、配线、劈丝、落针和收针等关键步骤',
+      process_visual: '镜头连续拍到线从指间分开、针脚压住绸面、色线逐层过渡，流程顺序必须看得清',
+      spirit_action: '一针一线、毛发光泽与层次在绸面上的准确落点',
+      inheritance_action: '年轻学徒接过针线，老艺人在同一片绣面上纠正针脚',
+      default_narration: '让手、线、工具和材料自己说话。',
+      process_narration: '劈丝、配线、落针，每一步都要慢下来给观众看清。',
+      inheritance_narration: '真正的传承，不只在展柜里，也在年轻人接过针线的那一刻。',
+      key_actions: {
+        '技艺渊源': '展示成品、旧照片和原料，建立技艺来处',
+        '匠人登场': '传承人整理工具、检查底稿和丝线',
+        '工艺全程': '按顺序展示配线、劈丝、穿针、落针和收针',
+        '精神内核': '用慢针脚和细节修正表现匠心',
+        '传承之路': '学徒接过针线，留下继续学习的动作',
+      },
+      visual_details: {
+        '技艺渊源': '成品、旧照片、丝线、绸面和图样，柔和侧光，微距开场',
+        '匠人登场': '传承人坐在绣架前，手背、针尖、线轴和底稿同框，中近景',
+        '工艺全程': '劈丝、穿针、落针、针脚和色线过渡，连续微距过程镜头',
+        '精神内核': '传承人低头修正针脚，绸面纹理和眼神特写',
+        '传承之路': '学徒接过针线，老手与年轻手同框，暖光收束',
+      },
+    };
+  }
+  if (/舞|戏曲|唱腔|表演|鼓|乐器|曲艺/.test(sourceText)) {
+    return {
+      origin_objects: '代表性器具、服饰、旧谱和排练照片',
+      artisan_entrance: '走进排练场，先检查器具、服饰和站位，再把一个基本动作拆开示范。镜头在手部、脚步和节奏提示之间切换，人物关系从纠正动作里出来。',
+      process_sequence: '先检查器具和服饰，再分解基本动作、对齐节奏、组合段落并完整走场',
+      process_basis: '表演类非遗需要把器具、基本动作、节奏配合和完整呈现逐项练清',
+      process_visual: '镜头连续拍到手、脚、器具与队形的配合，动作前后顺序和安全距离必须看得清',
+      spirit_action: '动作力度、节奏衔接和群体协作中的准确控制',
+      inheritance_action: '年轻学习者接过器具、站入队列，在实践者纠正下完成同一段动作',
+      default_narration: '让器具、脚步、节奏和人的配合自己说话。',
+      process_narration: '查器具、拆动作、对节奏、合段落，每一步都要让观众看清。',
+      inheritance_narration: '真正的传承，发生在年轻人站入队列、把同一段动作练准确的那一刻。',
+      key_actions: {
+        '技艺渊源': '展示代表性器具、旧谱和排练照片，建立项目来处',
+        '匠人登场': '实践者检查器具与站位，拆解一个基本动作',
+        '工艺全程': '按顺序展示器具检查、动作分解、节奏配合和完整走场',
+        '精神内核': '用力度、节奏和群体协作表现技艺要求',
+        '传承之路': '学习者站入队列，在纠正中完成同一段动作',
+      },
+      visual_details: {
+        '技艺渊源': '代表性器具、服饰、旧谱和排练照片，柔和侧光，实物开场',
+        '匠人登场': '实践者检查器具和服饰，手部、脚步与站位同框，中近景',
+        '工艺全程': '动作分解、节奏配合、队形变化和完整走场，连续过程镜头',
+        '精神内核': '器具、脚步、呼吸与群体协作交替特写',
+        '传承之路': '年轻学习者站入队列，实践者在侧面纠正动作，暖光收束',
+      },
+    };
+  }
+  return {
+    origin_objects: '代表性成品、原料、工具和工序记录',
+    artisan_entrance: '来到工作台前，先检查材料与工具，再对照工序记录确认顺序。镜头拍手部力度、材料变化和工具停顿，人物情感从动作里出来。',
+    process_sequence: '先备料和定形，再加工、装配、修整与检验',
+    process_basis: '完整技艺需要把材料、工具、关键步骤和成品检验逐项讲清',
+    process_visual: '镜头连续拍到材料在工具作用下发生变化，流程顺序和关键判断必须看得清',
+    spirit_action: '材料变化、工具控制和反复检验中的准确判断',
+    inheritance_action: '年轻学徒接过工具，在实践者纠正下完成同一道关键工序',
+    default_narration: '让手、材料、工具和工序自己说话。',
+    process_narration: '备料、加工、装配、检验，每一步都要慢下来给观众看清。',
+    inheritance_narration: '真正的传承，发生在年轻人接过工具、把关键工序做准确的那一刻。',
+    key_actions: {
+      '技艺渊源': '展示成品、原料、工具和工序记录，建立技艺来处',
+      '匠人登场': '实践者整理材料与工具，确认关键工序',
+      '工艺全程': '按顺序展示备料、定形、加工、装配、修整和检验',
+      '精神内核': '用材料变化、工具控制和反复检验表现匠心',
+      '传承之路': '学徒接过工具，在纠正中完成关键工序',
+    },
+    visual_details: {
+      '技艺渊源': '成品、原料、工具和工序记录，柔和侧光，实物开场',
+      '匠人登场': '实践者在工作台前检查材料和工具，手部动作与工序记录同框',
+      '工艺全程': '备料、定形、加工、装配、修整和检验，连续过程镜头',
+      '精神内核': '材料细节、工具控制和反复检验交替特写',
+      '传承之路': '学徒接过工具，实践者在旁纠正，暖光收束',
+    },
+  };
+}
+
 function buildHeritageOrigin(entry: EntryDetail, centralEvent: string, region: string): string {
   const subject = inferSubject(entry);
   const origin = firstCleanSentence(entry.story, entry.summary);
-  return `${region}，镜头先落在${subject}的成品与旧照片上。旁白交代技艺来处：${origin}。观众先看到针线、绸面和图样，再进入制作现场。`;
+  const profile = inferHeritageCraftProfile(entry);
+  return `${region}，镜头先落在${subject}的代表性实物与旧照片上。旁白交代技艺来处：${origin}。观众先看到${profile.origin_objects}，再进入实践现场。`;
 }
 
 function buildArtisanEntrance(protagonist: string, entry: EntryDetail, region: string): string {
   const subject = inferSubject(entry);
-  return `一位${subject}传承人坐到绣架前，先用指尖理顺丝线，再检查底稿。镜头拍手背的老茧、针尖的停顿和绸面的细光，人物情感从动作里出来。`;
+  const profile = inferHeritageCraftProfile(entry);
+  return `一位${subject}传承人${profile.artisan_entrance}`;
 }
 
 function buildCraftProcess(entry: EntryDetail, details: string): string {
   const subject = inferSubject(entry);
-  const keywords = entry.keywords.slice(0, 3).join('、');
-  const basis = details || firstCleanSentence(entry.story, `${subject}包含选稿、配线、劈丝、落针和收针等关键步骤`);
-  return `工艺流程展开：先选图样和底布，再配色、劈丝、穿针、落针。${basis}。镜头连续拍到线从指间分开、针脚压住绸面、色线逐层过渡，流程顺序必须看得清。`;
+  const profile = inferHeritageCraftProfile(entry);
+  const basis = /制作|工艺|工序|步骤|流程|选料|雕|刻|装配|排练|动作/.test(details)
+    ? details
+    : firstCleanSentence(entry.story, `${subject}${profile.process_basis}`);
+  return `工艺流程展开：${profile.process_sequence}。${basis}。${profile.process_visual}。`;
 }
 
 function buildCraftSpirit(protagonist: string, centralEvent: string, entry: EntryDetail): string {
   const subject = inferSubject(entry);
   const spirit = firstCleanSentence(entry.culturalSignificance ?? '', '精益求精、以手传心');
-  return `技艺不只是技术。${subject}的精神从一针一线里显出来：传承人宁愿放慢速度，也要让毛发、光泽和层次准确落在绸面上。${spirit}。`;
+  const profile = inferHeritageCraftProfile(entry);
+  return `技艺不只是技术。${subject}的精神从${profile.spirit_action}里显出来：传承人宁愿放慢速度，也要把关键细节做准确。${spirit}。`;
 }
 
 function buildInheritancePath(protagonist: string, centralEvent: string, entry: EntryDetail): string {
   const subject = inferSubject(entry);
-  return `传承的现实摆在镜头前：学习周期长、市场审美变化快，年轻学徒需要在速度和手工质量之间做选择。最后一针落下，${subject}不是陈列品，而是一条仍在继续的接力线。`;
+  const profile = inferHeritageCraftProfile(entry);
+  return `传承的现实摆在镜头前：学习周期长、市场审美变化快，年轻学习者需要在速度和技艺准确之间做选择。${profile.inheritance_action}。${subject}不是陈列品，而是一条仍在继续的接力线。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1806,7 +1955,15 @@ function buildSceneConflict(template: SceneTemplate, centralEvent: string, prota
   return conflictMap[template.function_label] ?? `${centralEvent}——${protagonist}的抉择`;
 }
 
-function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string, quotes: string[], protagonist: string, paragraphs: string[], videoType: VideoType): string {
+function buildDialogueOrNarration(
+  template: SceneTemplate,
+  centralEvent: string,
+  quotes: string[],
+  protagonist: string,
+  paragraphs: string[],
+  videoType: VideoType,
+  entry: EntryDetail,
+): string {
   // For dramatic video types, extract actual dialogue
   if (['character_story', 'historical_drama', 'ai_comic_drama'].includes(videoType)) {
     if (isRefusalEvent(centralEvent)) {
@@ -1889,9 +2046,10 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
   }
 
   if (videoType === 'heritage_promo') {
-    if (template.function_label === '工艺全程') return `旁白：劈丝、配线、落针，每一步都要慢下来给观众看清。`;
-    if (template.function_label === '传承之路') return `旁白：真正的传承，不只在展柜里，也在年轻人接过针线的那一刻。`;
-    return `旁白：让手、线、工具和材料自己说话。`;
+    const profile = inferHeritageCraftProfile(entry);
+    if (template.function_label === '工艺全程') return `旁白：${profile.process_narration}`;
+    if (template.function_label === '传承之路') return `旁白：${profile.inheritance_narration}`;
+    return `旁白：${profile.default_narration}`;
   }
 
   // Default: narration
@@ -1901,7 +2059,12 @@ function buildDialogueOrNarration(template: SceneTemplate, centralEvent: string,
     : `旁白：${protagonist}在${centralEvent}中不断观察、判断，并把认识变成行动。`;
 }
 
-function buildKeyAction(template: SceneTemplate, protagonist: string, centralEvent: string): string {
+function buildKeyAction(
+  template: SceneTemplate,
+  protagonist: string,
+  centralEvent: string,
+  entry: EntryDetail,
+): string {
   if (['小主人公', '遇到问题', '学习成长', '做出选择', '温暖结尾'].includes(template.function_label)) {
     const actionMap: Record<string, string> = {
       '小主人公': `${protagonist}带着日常工具进入故事现场`,
@@ -1913,14 +2076,7 @@ function buildKeyAction(template: SceneTemplate, protagonist: string, centralEve
     return actionMap[template.function_label] ?? `${protagonist}解决眼前问题`;
   }
   if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
-    const actionMap: Record<string, string> = {
-      '技艺渊源': '展示成品、旧照片和原料，建立技艺来处',
-      '匠人登场': '传承人整理工具、检查底稿和丝线',
-      '工艺全程': '按顺序展示配线、劈丝、穿针、落针和收针',
-      '精神内核': '用慢针脚和细节修正表现匠心',
-      '传承之路': '学徒接过工具，留下继续学习的动作',
-    };
-    return actionMap[template.function_label] ?? '展示手艺流程';
+    return inferHeritageCraftProfile(entry).key_actions[template.function_label] ?? '展示手艺流程';
   }
   if (['现实引入', '历史回望', '关键节点', '文化解释', '当代意义'].includes(template.function_label)) {
     const actionMap: Record<string, string> = {
@@ -1977,14 +2133,10 @@ function buildVisualPrompt(template: SceneTemplate, location: string, timeOfDay:
 
   if (['技艺渊源', '匠人登场', '工艺全程', '精神内核', '传承之路'].includes(template.function_label)) {
     const subject = inferSubject(entry);
-    const visualMap: Record<string, string> = {
-      '技艺渊源': `${location}，${timeOfDay}，${subject}成品、旧照片、丝线、绸面、图样，柔和侧光，微距开场`,
-      '匠人登场': `${location}，${timeOfDay}，传承人坐在绣架前，手背、针尖、线轴和底稿同框，中近景`,
-      '工艺全程': `${location}，${timeOfDay}，劈丝、穿针、落针、针脚和色线过渡，连续微距过程镜头`,
-      '精神内核': `${location}，${timeOfDay}，传承人低头修正针脚，绸面纹理和眼神特写`,
-      '传承之路': `${location}，${timeOfDay}，学徒接过针线，老手与年轻手同框，暖光收束`,
-    };
-    return visualMap[template.function_label] ?? `${location}，${timeOfDay}，${subject}材料、工具、手部动作，清晰过程构图`;
+    const detail = inferHeritageCraftProfile(entry).visual_details[template.function_label];
+    return detail
+      ? `${location}，${timeOfDay}，${detail}`
+      : `${location}，${timeOfDay}，${subject}材料、工具、手部动作，清晰过程构图`;
   }
 
   if (['现实引入', '历史回望', '关键节点', '文化解释', '当代意义'].includes(template.function_label)) {

@@ -289,7 +289,12 @@ function buildDirectorPlan(story: StoryGenerateResult): StoryProductionBoardDire
 
 function buildPropAssets(story: StoryGenerateResult): StoryProductionBoardPropAsset[] {
   const propMap = new Map<string, Set<number>>();
-  const candidates = ['案卷', '文书', '判词', '毛笔', '书信', '旧信', '印章', '石碑', '莲', '灯', '伞', '铜铃', '香炉'];
+  const candidates = [
+    '操纵杆', '影偶', '雕刀', '唱本', '灯幕', '牛皮', '颜料',
+    '鼓带', '鼓槌', '绣架', '丝线', '底稿',
+    '案卷', '文书', '判词', '毛笔', '书信', '旧信', '印章', '石碑', '铜铃', '香炉',
+    '莲', '灯', '伞', '鼓',
+  ];
   for (const scene of story.scene_breakdown) {
     const text = [
       scene.title,
@@ -300,6 +305,12 @@ function buildPropAssets(story: StoryGenerateResult): StoryProductionBoardPropAs
     ].join(' ');
     for (const prop of candidates) {
       if (!text.includes(prop)) continue;
+      const hasMoreSpecificMatch = candidates.some(candidate => (
+        candidate.length > prop.length
+        && candidate.includes(prop)
+        && text.includes(candidate)
+      ));
+      if (hasMoreSpecificMatch) continue;
       if (!propMap.has(prop)) propMap.set(prop, new Set());
       propMap.get(prop)?.add(scene.scene_id);
     }

@@ -1090,6 +1090,22 @@ export const AiComicSeriesProjectIdParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
 });
 
+export const AiComicSeriesVisualIdentityDefinitionParamSchema = z.object({
+  seriesProjectId: AiComicSeriesProjectIdValueSchema,
+  visualIdentityId: z.string().regex(
+    /^series-(character|costume|location|prop)-[a-f0-9]{12}$/,
+    'visualIdentityId must be a stable series visual identity id',
+  ),
+});
+
+export const AiComicSeriesVisualWorldRuleDefinitionParamSchema = z.object({
+  seriesProjectId: AiComicSeriesProjectIdValueSchema,
+  worldRuleId: z.string().regex(
+    /^[a-z][a-z0-9_-]{1,119}$/,
+    'worldRuleId must be a stable premise world rule id',
+  ),
+});
+
 export const AiComicSeriesMediaArtifactPreviewParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
   artifactId: z.string().regex(/^media-sha256-[a-f0-9]{64}$/, 'artifactId must be a verified SHA-256 media artifact'),
@@ -2098,6 +2114,35 @@ const AiComicKnowledgePackSchema = z.object({
   overall_confidence: z.number(),
 });
 
+const SeriesPremiseContractSchema = z.object({
+  schema_version: z.literal('series-premise-contract/v1'),
+  locked_characters: z.array(z.object({
+    name: z.string().trim().min(1).max(40),
+    role: z.string().trim().min(1).max(80).optional(),
+    required: z.boolean(),
+    evidence_span: z.string().trim().min(1).max(600),
+  })).max(30),
+  world_rules: z.array(z.object({
+    rule_id: z.string().trim().min(1).max(120),
+    statement: z.string().trim().min(1).max(600),
+    required: z.boolean(),
+    consequence: z.string().trim().min(1).max(600).optional(),
+    evidence_span: z.string().trim().min(1).max(600),
+  })).max(60),
+  antagonistic_forces: z.array(z.object({
+    label: z.string().trim().min(1).max(80),
+    function: z.string().trim().min(1).max(600),
+    required: z.boolean(),
+  })).max(30),
+  core_stakes: z.array(z.string().trim().min(1).max(600)).max(30),
+  must_cover_beats: z.array(z.string().trim().min(1).max(600)).max(60),
+  forbidden_substitutions: z.array(z.string().trim().min(1).max(120)).max(60),
+  cultural_boundaries: z.array(z.object({
+    statement: z.string().trim().min(1).max(600),
+    truth_mode: z.enum(['verified_fact', 'oral_tradition', 'legend', 'fictional_mechanism']),
+  })).max(60),
+});
+
 export const AiComicSeriesPlanRequestSchema = z.object({
   outline: z.string().trim().min(1, 'outline cannot be empty').max(12000, 'outline is too long'),
   series_title: z.string().trim().min(1).max(80).optional(),
@@ -2111,6 +2156,7 @@ export const AiComicSeriesPlanRequestSchema = z.object({
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   knowledge_pack: AiComicKnowledgePackSchema.optional(),
   character_hints: z.array(StoryDetectedCharacterSchema).optional(),
+  premise_contract: SeriesPremiseContractSchema.optional(),
 }).refine(
   data => data.episode_duration_range_sec.min <= data.episode_duration_range_sec.max,
   { message: 'episode_duration_range_sec.min cannot be greater than max', path: ['episode_duration_range_sec'] },
@@ -2163,6 +2209,29 @@ const AiComicEndingHookTypeSchema = z.enum([
   'final_echo',
 ]);
 
+const AiComicEpisodeCommercialBeatsSchema = z.object({
+  schema_version: z.literal('ai-comic-episode-commercial-beats/v1'),
+  hook_3s: z.string().trim().min(1).max(600),
+  opening_hook_type: z.enum([
+    'visual_anomaly',
+    'countdown',
+    'forbidden_action',
+    'identity_gap',
+    'evidence_reversal',
+    'relationship_rupture',
+  ]),
+  episode_goal: z.string().trim().min(1).max(600),
+  external_pressure: z.string().trim().min(1).max(600),
+  failure_cost: z.string().trim().min(1).max(600),
+  midpoint_turn: z.string().trim().min(1).max(600),
+  character_choice: z.string().trim().min(1).max(600),
+  state_change: z.string().trim().min(1).max(600),
+  cliffhanger_question: z.string().trim().min(1).max(600),
+  opening_dialogue: z.string().trim().min(1).max(600),
+  scene_function_sequence: z.array(z.string().trim().min(1).max(120)).min(3).max(12),
+  signature_combo: z.string().trim().min(1).max(600),
+});
+
 const AiComicEpisodePlanSchema = z.object({
   episode_no: z.number().int().min(1),
   title: z.string().min(1),
@@ -2183,6 +2252,8 @@ const AiComicEpisodePlanSchema = z.object({
   thread_action: z.string().min(1).optional(),
   knowledge_focus: z.array(z.string()),
   continuity_state_after: z.array(z.string()),
+  premise_anchor_ids: z.array(z.string().min(1)).optional(),
+  commercial_beats: AiComicEpisodeCommercialBeatsSchema.optional(),
 });
 
 const AiComicContinuityRuleSchema = z.object({
@@ -2302,6 +2373,7 @@ const AiComicSeriesPlanSchema = z.object({
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   recommended_narrative_patterns: z.array(RecommendedNarrativePatternSchema).optional(),
   premise: z.string().min(1).max(12000),
+  premise_contract: SeriesPremiseContractSchema.optional(),
   logline: z.string().min(1),
   core_theme: z.string().min(1),
   main_characters: z.array(AiComicSeriesCharacterArcSchema),
@@ -2361,6 +2433,134 @@ export const AiComicSeriesProjectSaveRequestSchema = z.object({
   memory_recall_preferences: AiComicSeriesMemoryRecallPreferencesSchema,
 });
 
+const AiComicHumanReviewDimensionSchema = z.enum([
+  'hook',
+  'character',
+  'dialogue',
+  'progression',
+  'turn',
+  'ending',
+  'cultural_credibility',
+]);
+
+export const AiComicSeriesHumanReviewSubmitRequestSchema = z.object({
+  reviewer_id: z.string().trim().min(1).max(120),
+  blind: z.literal(true),
+  candidate_label: z.string().regex(/^候选-[A-Z0-9]{8}$/),
+  reviewer_packet_sha256: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  scores: z.array(z.object({
+    dimension: AiComicHumanReviewDimensionSchema,
+    score: z.number().int().min(1).max(5),
+    note: z.string().trim().max(1000).optional(),
+  }).strict()).length(7),
+}).strict().superRefine((value, ctx) => {
+  const dimensions = new Set(value.scores.map(score => score.dimension));
+  if (dimensions.size !== AiComicHumanReviewDimensionSchema.options.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['scores'],
+      message: '真人盲评必须为七个维度各提交一次评分',
+    });
+  }
+  value.scores.forEach((score, index) => {
+    if (score.score < 4 && !score.note?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['scores', index, 'note'],
+        message: '低于 4 分的维度必须填写可定位的修改意见',
+      });
+    }
+  });
+});
+
+export const AiComicSeriesVisualIdentityDefinitionUpdateRequestSchema = z.object({
+  expected_source_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  fields: z.record(
+    z.string().regex(/^[a-z][a-z0-9_]{1,63}$/),
+    z.string().trim().max(500),
+  ),
+  definition_notes: z.string().trim().max(2000).optional(),
+  action: z.enum(['save_draft', 'approve', 'request_changes']),
+  reviewer_id: z.string().trim().min(1).max(120).optional(),
+  human_confirmed: z.literal(true).optional(),
+  review_note: z.string().trim().max(2000).optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.action === 'save_draft') return;
+  if (!value.reviewer_id) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['reviewer_id'],
+      message: '真人视觉审批必须填写 Reviewer ID',
+    });
+  }
+  if (value.human_confirmed !== true) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['human_confirmed'],
+      message: '真人视觉审批必须显式确认已逐项复核',
+    });
+  }
+  if (!value.review_note) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['review_note'],
+      message: '真人视觉审批必须填写复核说明',
+    });
+  }
+});
+
+export const AiComicSeriesVisualWorldRuleDefinitionUpdateRequestSchema = z.object({
+  expected_source_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  fields: z.record(
+    z.string().regex(/^[a-z][a-z0-9_]{1,63}$/),
+    z.string().trim().max(500),
+  ),
+  definition_notes: z.string().trim().max(2000).optional(),
+  pilot_bindings: z.array(z.object({
+    episode_no: z.number().int().min(1).max(999),
+    target_type: z.enum(['seedance_shot', 'gears_segment']),
+    target_id: z.string().trim().min(1).max(160),
+  }).strict()).max(30),
+  action: z.enum(['save_draft', 'approve', 'request_changes']),
+  reviewer_id: z.string().trim().min(1).max(120).optional(),
+  human_confirmed: z.literal(true).optional(),
+  review_note: z.string().trim().max(2000).optional(),
+}).strict().superRefine((value, ctx) => {
+  const seenEpisodeNos = new Set<number>();
+  value.pilot_bindings.forEach((binding, index) => {
+    if (seenEpisodeNos.has(binding.episode_no)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['pilot_bindings', index, 'episode_no'],
+        message: '同一世界规则每个代表集只能绑定一个目标',
+      });
+    }
+    seenEpisodeNos.add(binding.episode_no);
+  });
+  if (value.action === 'save_draft') return;
+  if (!value.reviewer_id) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['reviewer_id'],
+      message: '真人世界规则审批必须填写 Reviewer ID',
+    });
+  }
+  if (value.human_confirmed !== true) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['human_confirmed'],
+      message: '真人世界规则审批必须显式确认已逐项复核',
+    });
+  }
+  if (!value.review_note) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['review_note'],
+      message: '真人世界规则审批必须填写复核说明',
+    });
+  }
+});
+
 export const AiComicSeriesProjectCopyRequestSchema = z.object({
   title: z.string().trim().min(1).max(80).optional(),
 });
@@ -2381,7 +2581,7 @@ const AiComicSeedanceProductionStatusSchema = z.enum([
 
 const AiComicSeedanceRecoverableProductionStatusSchema = z.enum(['submitted', 'processing']);
 
-const AiComicSeedanceAssetReferenceKindSchema = z.enum(['character', 'location', 'unknown']);
+const AiComicSeedanceAssetReferenceKindSchema = z.enum(['character', 'costume', 'location', 'prop', 'unknown']);
 
 export const AiComicSeedanceAssetLibraryUpdateRequestSchema = z.object({
   items: z.array(z.object({
@@ -2392,6 +2592,7 @@ export const AiComicSeedanceAssetLibraryUpdateRequestSchema = z.object({
     file_url: z.string().trim().min(1).max(1000).optional(),
     file_id: z.string().trim().min(1).max(160).optional(),
     description: z.string().trim().max(500).optional(),
+    series_identity_id: z.string().trim().min(1).max(160).optional(),
   })).min(1).max(200),
 });
 
@@ -2416,7 +2617,16 @@ export const AiComicSeedanceRetrySubmitRequestSchema = z.object({
   limit: z.number().int().min(1).max(200).optional(),
   job_prefix: z.string().trim().min(1).max(80).optional(),
   use_provider_adapter: z.boolean().optional().default(false),
+  external_call_authorization: ExternalProviderCallAuthorizationRequestSchema.optional(),
   note: z.string().trim().min(1).max(500).optional(),
+}).superRefine((value, context) => {
+  if (value.use_provider_adapter && !value.external_call_authorization) {
+    context.addIssue({
+      code: 'custom',
+      path: ['external_call_authorization'],
+      message: 'external_call_authorization is required when use_provider_adapter=true',
+    });
+  }
 });
 
 export const AiComicSeedanceProviderRecoveryRequestSchema = z.object({
@@ -2448,16 +2658,33 @@ export const AiComicSeedanceProductionCallbackRequestSchema = z.object({
   qualityScore: z.number().min(0).max(100).optional(),
   review_note: z.string().trim().min(1).max(500).optional(),
   reviewNote: z.string().trim().min(1).max(500).optional(),
-}).refine(
-  data => Boolean(
+  actual_cost_amount: GearsExecutionCostValueSchema.optional(),
+  actualCostAmount: GearsExecutionCostValueSchema.optional(),
+  cost_currency: z.string().trim().regex(/^[A-Z]{3}$/, 'cost_currency must be a 3-letter uppercase currency code').optional(),
+  costCurrency: z.string().trim().regex(/^[A-Z]{3}$/, 'costCurrency must be a 3-letter uppercase currency code').optional(),
+}).superRefine((data, context) => {
+  if (!Boolean(
     (data.episode_no ?? data.episodeNo) && (data.shot_id ?? data.shotId)
     || data.provider_job_id
     || data.providerJobId
     || data.job_id
     || data.jobId
-  ),
-  { message: 'callback requires episode_no + shot_id or provider_job_id/job_id' },
-);
+  )) {
+    context.addIssue({
+      code: 'custom',
+      message: 'callback requires episode_no + shot_id or provider_job_id/job_id',
+    });
+  }
+  const hasCostAmount = (data.actual_cost_amount ?? data.actualCostAmount) !== undefined;
+  const hasCostCurrency = Boolean(data.cost_currency ?? data.costCurrency);
+  if (hasCostAmount !== hasCostCurrency) {
+    context.addIssue({
+      code: 'custom',
+      path: hasCostAmount ? ['cost_currency'] : ['actual_cost_amount'],
+      message: 'actual cost amount and cost currency must be provided together',
+    });
+  }
+});
 
 export const AiComicSeedanceProductionVersionSelectRequestSchema = z.object({
   episode_no: z.number().int().min(1).max(120),

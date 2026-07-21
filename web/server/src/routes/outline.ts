@@ -29,6 +29,7 @@ import {
   AiComicSeedanceThumbnailCaptureRequestSchema,
   AiComicSeedanceTitleCardRenderRequestSchema,
   AiComicSeriesLedgerRebuildRequestSchema,
+  AiComicSeriesHumanReviewSubmitRequestSchema,
   AiComicSeriesMediaArtifactPreviewParamSchema,
   AiComicSeriesMediaAssetReviewParamSchema,
   AiComicSeriesProjectArchiveRequestSchema,
@@ -36,6 +37,10 @@ import {
   AiComicSeriesProjectIdParamSchema,
   AiComicSeriesProjectSaveRequestSchema,
   AiComicSeriesPlanRequestSchema,
+  AiComicSeriesVisualIdentityDefinitionParamSchema,
+  AiComicSeriesVisualIdentityDefinitionUpdateRequestSchema,
+  AiComicSeriesVisualWorldRuleDefinitionParamSchema,
+  AiComicSeriesVisualWorldRuleDefinitionUpdateRequestSchema,
   GearsJobCallbackRequestSchema,
   GearsJobStatusSyncRequestSchema,
   GearsJobSubmitRequestSchema,
@@ -55,6 +60,7 @@ import {
   copyAiComicSeriesProject,
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
+  exportAiComicSeriesCommercialBlindReviewPackage,
   exportAiComicSeriesSeedanceAssetReportPackage,
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
@@ -73,6 +79,8 @@ import {
   readAiComicSeriesMediaAssetPreview,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
+  generateAiComicSeriesVisualIdentitySuggestionDraft,
+  generateAiComicSeriesVisualWorldRuleSuggestionDraft,
   getAiComicSeriesProductionReadiness,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
@@ -81,12 +89,15 @@ import {
   mixAiComicSeriesSeedanceAudio,
   recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
+  rebuildAiComicSeriesVisualBible,
+  repairAiComicSeriesCommercialQualityProject,
   rollbackAiComicSeriesSeedanceFinalDelivery,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   resolveAiComicSeriesSeedanceReview,
   runAiComicSeriesProductionReadinessAutomation,
   saveAiComicSeriesProject,
+  submitAiComicSeriesCommercialHumanReview,
   selectAiComicSeriesSeedanceProductionVersion,
   submitAiComicSeriesGearsJobs,
   submitAiComicSeriesSeedanceRetryExecutionPlan,
@@ -95,6 +106,8 @@ import {
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
   updateAiComicSeriesMediaAssetReview,
+  updateAiComicSeriesVisualIdentityDefinition,
+  updateAiComicSeriesVisualWorldRuleDefinition,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
@@ -153,7 +166,13 @@ outlineRouter.use((req, res, next) => {
     next();
     return;
   }
-  if (req.path.includes('/media-assets/') && req.path.endsWith('/review')) {
+  if (
+    (req.path.includes('/media-assets/') && req.path.endsWith('/review'))
+    || req.path.endsWith('/commercial-quality-human-review')
+    || req.path.endsWith('/export-commercial-blind-review-package')
+    || req.path.endsWith('/visual-identity-definition')
+    || req.path.endsWith('/visual-world-rule-definition')
+  ) {
     requireSeriesMediaReview(req, res, next);
     return;
   }
@@ -324,6 +343,109 @@ outlineRouter.post(
   },
 );
 
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/rebuild-visual-bible — persist stable series visual identities
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/rebuild-visual-bible',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await rebuildAiComicSeriesVisualBible(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/visual-identities/:visualIdentityId/visual-identity-definition — save or review one stable visual definition
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/visual-identities/:visualIdentityId/visual-identity-definition',
+  validateParams(AiComicSeriesVisualIdentityDefinitionParamSchema),
+  validateBody(AiComicSeriesVisualIdentityDefinitionUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, visualIdentityId } = req.params as {
+        seriesProjectId: string;
+        visualIdentityId: string;
+      };
+      const result = await updateAiComicSeriesVisualIdentityDefinition(
+        seriesProjectId,
+        visualIdentityId,
+        req.body,
+      );
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST .../visual-identity-suggestion-draft — generate a read-only, non-approving patch for blank fields
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/visual-identities/:visualIdentityId/visual-identity-suggestion-draft',
+  validateParams(AiComicSeriesVisualIdentityDefinitionParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, visualIdentityId } = req.params as {
+        seriesProjectId: string;
+        visualIdentityId: string;
+      };
+      const result = await generateAiComicSeriesVisualIdentitySuggestionDraft(
+        seriesProjectId,
+        visualIdentityId,
+      );
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/visual-world-rules/:worldRuleId/visual-world-rule-definition — save or review one world-rule visual mapping
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/visual-world-rules/:worldRuleId/visual-world-rule-definition',
+  validateParams(AiComicSeriesVisualWorldRuleDefinitionParamSchema),
+  validateBody(AiComicSeriesVisualWorldRuleDefinitionUpdateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, worldRuleId } = req.params as {
+        seriesProjectId: string;
+        worldRuleId: string;
+      };
+      const result = await updateAiComicSeriesVisualWorldRuleDefinition(
+        seriesProjectId,
+        worldRuleId,
+        req.body,
+      );
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST .../visual-world-rule-suggestion-draft — generate a read-only patch without creating pilot bindings
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/visual-world-rules/:worldRuleId/visual-world-rule-suggestion-draft',
+  validateParams(AiComicSeriesVisualWorldRuleDefinitionParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId, worldRuleId } = req.params as {
+        seriesProjectId: string;
+        worldRuleId: string;
+      };
+      const result = await generateAiComicSeriesVisualWorldRuleSuggestionDraft(
+        seriesProjectId,
+        worldRuleId,
+      );
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/rebuild-ledger — rebuild continuity ledger
 outlineRouter.post(
   '/ai-comic-series-projects/:seriesProjectId/rebuild-ledger',
@@ -333,6 +455,52 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await rebuildAiComicSeriesContinuityLedger(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/repair-commercial-quality — repair only failed commercial beat dimensions
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/repair-commercial-quality',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await repairAiComicSeriesCommercialQualityProject(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/commercial-quality-human-review — persist one complete blind reviewer scorecard
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/commercial-quality-human-review',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  validateBody(AiComicSeriesHumanReviewSubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await submitAiComicSeriesCommercialHumanReview(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-commercial-blind-review-package — export reviewer-safe and operator-only files
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-commercial-blind-review-package',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesCommercialBlindReviewPackage(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
@@ -843,9 +1011,10 @@ outlineRouter.post(
       const result = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId, {
         asset_id: parsed.fields.asset_id,
         label: parsed.fields.label,
-        kind: ['character', 'location', 'unknown'].includes(kind) ? kind as any : undefined,
+        kind: ['character', 'costume', 'location', 'prop', 'unknown'].includes(kind) ? kind as any : undefined,
         reference_slot: parsed.fields.reference_slot,
         description: parsed.fields.description,
+        series_identity_id: parsed.fields.series_identity_id,
         file: {
           original_filename: parsed.file.filename,
           mime_type: parsed.file.mime_type,

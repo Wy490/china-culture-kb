@@ -7,6 +7,7 @@ import supertest from 'supertest';
 import { createJsonBodyParser } from '../middleware/json-body.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { storiesRouter } from '../routes/stories.js';
+import { buildStoryProductionBoard } from '../services/production-board-service.js';
 import type { GenerationType, PresentationStyle, VideoType } from '@shared/types.js';
 
 let workspaceRoot = '';
@@ -194,5 +195,37 @@ describe('other video type API generation matrix', () => {
     const templateLeaks = diagnostics.filter(item => item.template_leak);
     expect(genreFailures, JSON.stringify(diagnostics, null, 2)).toEqual([]);
     expect(templateLeaks, JSON.stringify(diagnostics, null, 2)).toEqual([]);
+  });
+
+  it('uses shadow-puppetry craft actions and prop assets for a heritage promo', async () => {
+    const response = await request.post('/api/stories/generate').send({
+      entry_name: '衡山皮影戏——湘南光影的千年传奇',
+      generation_type: 'culture_promo',
+      video_type: 'heritage_promo',
+      selected_event: '衡山皮影戏的影偶制作与灯幕后场',
+      target_video_duration: '3分钟',
+      presentation_style: 'documentary',
+      output_gears_segments: true,
+      source_material_mode: 'generate_from_knowledge',
+    });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    const story = response.body.data;
+    const audienceText = JSON.stringify({
+      full_text: story.full_text,
+      scene_breakdown: story.scene_breakdown,
+      gears_segments: story.gears_segments,
+      gears_delivery: story.gears_delivery,
+    });
+    expect(audienceText).toMatch(/影偶|雕镂|灯幕|操纵杆/);
+    expect(audienceText).not.toMatch(/绣架|劈丝|穿针|落针|针脚|绸面/);
+
+    const board = buildStoryProductionBoard(story);
+    expect(board.prop_assets.map(asset => asset.label)).toEqual(expect.arrayContaining([
+      '影偶',
+      '雕刀',
+      '操纵杆',
+    ]));
+    expect(board.image_asset_job_plan.summary.prop_requirement_count).toBeGreaterThanOrEqual(3);
   });
 });

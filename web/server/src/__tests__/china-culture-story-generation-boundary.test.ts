@@ -7,6 +7,7 @@ import {
   applyProjectQualityRepairJson,
   generateProjectQualityRepairPrompt,
   getProject,
+  repairProjectProductionBoard,
 } from '../services/project-service.js';
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
 
@@ -167,6 +168,66 @@ describe('china_culture story generation boundary', () => {
         },
       });
       expect((await getProject(story.project_id!)).data?.project.version_count).toBe(1);
+    } finally {
+      if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
+      else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;
+      if (previousKbRoot === undefined) delete process.env.KB_ROOT;
+      else process.env.KB_ROOT = previousKbRoot;
+      if (previousProvider === undefined) delete process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
+      else process.env.STORY_PROJECT_REPOSITORY_PROVIDER = previousProvider;
+      await rm(generatedRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('revalidates persisted user-material sources without weakening missing-source protection', async () => {
+    const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
+    const previousKbRoot = process.env.KB_ROOT;
+    const previousProvider = process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
+    const generatedRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-user-material-revision-'));
+    process.env.WEB_GENERATED_ROOT = generatedRoot;
+    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+    process.env.STORY_PROJECT_REPOSITORY_PROVIDER = 'file';
+    try {
+      const generated = await chinaCultureDomainPack.generateStory({
+        video_type: 'ai_comic_drama',
+        presentation_style: 'ai_comic',
+        creation_use_case: 'original_ai_comic',
+        truth_mode: 'fictional_original',
+        outline: '一个少年在长沙老街修复废弃戏台，在拆迁期限前完成一次皮影公开演出。',
+        original_user_query: '生成一个用于完整前端流程验证的原创文化漫剧。',
+        output_gears_segments: true,
+      });
+
+      expect(generated.ok).toBe(true);
+      const story = generated.data!;
+      expect(story).toMatchObject({
+        sourceDomain: 'china_culture',
+        truth_mode: 'fictional_original',
+        domain_safety: { domain: 'china_culture', passed: true },
+      });
+      expect(story.source_entry).toContain('用户原创故事种子');
+
+      const revalidated = await revalidateStoryDomainRevision(story);
+      expect(revalidated).toMatchObject({
+        domain: 'china_culture',
+        passed: true,
+        blockers: [],
+        real_credit_granted: false,
+      });
+
+      const missingSource = await revalidateStoryDomainRevision({
+        ...story,
+        source_entry: '不存在的用户素材来源',
+      });
+      expect(missingSource).toMatchObject({
+        domain: 'china_culture',
+        passed: false,
+        blockers: [expect.objectContaining({ rule_id: 'DOMAIN-REVISION-SOURCE-ENTRY' })],
+      });
+
+      const repaired = await repairProjectProductionBoard(story.project_id!, { apply_all: true });
+      expect(repaired.ok).toBe(true);
+      expect(repaired.data?.project.version_count).toBe(2);
     } finally {
       if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
       else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;

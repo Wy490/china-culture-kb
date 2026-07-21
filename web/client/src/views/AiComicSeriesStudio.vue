@@ -483,9 +483,386 @@
           </div>
         </section>
 
+        <section v-if="premiseFidelityAudit" class="series-studio__section series-studio__quality">
+          <div class="series-studio__section-header">
+            <h2>设定忠实度硬门禁</h2>
+            <span>
+              {{ premiseFidelityAudit.hard_gate_passed ? '通过' : '不通过' }}
+              · {{ premiseFidelityAudit.premise_coverage_score }}/100
+            </span>
+          </div>
+          <p
+            v-if="!premiseFidelityAudit.hard_gate_passed && seriesQualityAudit?.passed"
+            class="series-studio__message series-studio__message--warning"
+          >
+            结构审计即使通过，也不能覆盖设定忠实度失败；当前系列总状态仍为不通过。
+          </p>
+          <div class="series-studio__quality-grid">
+            <article>
+              <strong>{{ premiseFidelityAudit.named_character_coverage }}%</strong>
+              <span>锁定人物</span>
+            </article>
+            <article>
+              <strong>{{ premiseFidelityAudit.world_rule_coverage }}%</strong>
+              <span>世界规则</span>
+            </article>
+            <article>
+              <strong>{{ premiseFidelityAudit.antagonistic_force_coverage }}%</strong>
+              <span>对抗力量</span>
+            </article>
+            <article>
+              <strong>{{ premiseFidelityAudit.core_stakes_coverage }}%</strong>
+              <span>核心代价</span>
+            </article>
+          </div>
+          <ul v-if="premiseFidelityAudit.issues.length > 0" class="series-studio__quality-issues">
+            <li v-for="issue in premiseFidelityAudit.issues.slice(0, 8)" :key="issue">{{ issue }}</li>
+          </ul>
+          <div v-if="premiseFidelityAttentionReports.length > 0" class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>缺失证据定位</strong>
+              <span>{{ premiseFidelityAttentionReports.length }} 集</span>
+            </div>
+            <div class="series-studio__episode-audit-list">
+              <button
+                v-for="report in premiseFidelityAttentionReports.slice(0, 20)"
+                :key="report.episode_no"
+                class="series-studio__episode-audit series-studio__episode-audit--needs_attention"
+                @click="focusSeriesEpisode(report.episode_no)"
+              >
+                第{{ report.episode_no }}集 · {{ report.premise_coverage_score }}
+                · 缺 {{ report.missing_required_anchor_ids.length }}
+              </button>
+            </div>
+          </div>
+          <div class="series-studio__thread-closure">
+            <div class="series-studio__thread-closure-head">
+              <strong>逐条证据</strong>
+              <span>{{ premiseFidelityAudit.evidence.length }} 项</span>
+            </div>
+            <div class="series-studio__thread-closure-list">
+              <article
+                v-for="item in premiseFidelityAudit.evidence.slice(0, 20)"
+                :key="item.anchor_id"
+                :class="['series-studio__thread-closure-item', item.matched ? 'series-studio__thread-closure-item--paid_off' : 'series-studio__thread-closure-item--overdue']"
+              >
+                <div>
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ item.matched ? '已定位' : '缺失' }} · {{ item.category }}</span>
+                </div>
+                <p>{{ item.evidence_spans[0] || `未找到 required 锚点 ${item.anchor_id}` }}</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="commercialQualityAudit" class="series-studio__section series-studio__quality">
+          <div class="series-studio__section-header">
+            <h2>商业文本机器门禁</h2>
+            <span>
+              {{ commercialQualityAudit.machine_gate_passed ? '机器门禁通过' : '机器门禁不通过' }}
+              · {{ commercialQualityAudit.machine_score }}/100
+            </span>
+            <button
+              v-if="!commercialQualityAudit.machine_gate_passed && seriesProjectId"
+              class="series-studio__ghost-button"
+              :disabled="repairingCommercialQuality"
+              @click="handleRepairCommercialQuality"
+            >
+              {{ repairingCommercialQuality ? '修复中...' : '只修复失败商业维度' }}
+            </button>
+          </div>
+          <p class="series-studio__message series-studio__message--warning">
+            真人盲评：{{ commercialHumanReviewStatusLabel }}。
+            机器分只用于筛查钩子、冲突、代价、反转、结尾与跨集重复，不能替代编剧、导演和文化评审。
+          </p>
+          <div class="series-studio__quality-grid">
+            <article>
+              <strong>{{ commercialQualityAudit.episode_reports.filter(report => report.machine_gate_passed).length }}/{{ commercialQualityAudit.episode_reports.length }}</strong>
+              <span>商业节拍完整</span>
+            </article>
+            <article>
+              <strong>{{ commercialQualityAudit.diversity_report.score }}</strong>
+              <span>跨集差异化</span>
+            </article>
+            <article>
+              <strong>{{ commercialQualityAudit.diversity_report.exact_opening_duplicate_groups.length }}</strong>
+              <span>首场 exact 重复</span>
+            </article>
+            <article>
+              <strong>{{ commercialQualityAudit.human_review.reviewer_count }}</strong>
+              <span>真人评审人</span>
+            </article>
+          </div>
+          <ul v-if="commercialQualityAudit.issues.length > 0" class="series-studio__quality-issues">
+            <li v-for="issue in commercialQualityAudit.issues.slice(0, 10)" :key="issue">{{ issue }}</li>
+          </ul>
+          <div
+            v-if="commercialQualityAttentionReports.length > 0 || commercialDiversityFailedPairs.length > 0"
+            class="series-studio__thread-closure"
+          >
+            <div class="series-studio__thread-closure-head">
+              <strong>商业问题定位</strong>
+              <span>{{ commercialQualityAttentionReports.length }} 集 · {{ commercialDiversityFailedPairs.length }} 组相邻重复</span>
+            </div>
+            <div class="series-studio__episode-audit-list">
+              <button
+                v-for="report in commercialQualityAttentionReports.slice(0, 20)"
+                :key="`commercial-${report.episode_no}`"
+                class="series-studio__episode-audit series-studio__episode-audit--needs_attention"
+                @click="focusSeriesEpisode(report.episode_no)"
+              >
+                第{{ report.episode_no }}集 · {{ report.score }} · 缺 {{ report.evidence.filter(item => !item.matched).length }} 项
+              </button>
+              <button
+                v-for="pair in commercialDiversityFailedPairs.slice(0, 20)"
+                :key="`diversity-${pair.left_episode_no}-${pair.right_episode_no}`"
+                class="series-studio__episode-audit series-studio__episode-audit--needs_attention"
+                @click="focusSeriesEpisode(pair.right_episode_no)"
+              >
+                第{{ pair.left_episode_no }}→{{ pair.right_episode_no }}集 · overlap {{ pair.token_overlap.toFixed(2) }}
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="commercialQualityAudit.human_review.reviewer_count > 0 || commercialQualityAudit.human_review.status === 'stale'"
+            class="series-studio__thread-closure"
+          >
+            <div class="series-studio__thread-closure-head">
+              <strong>真人盲评维度</strong>
+              <span>
+                {{ commercialQualityAudit.human_review.overall_average ?? '待评' }} / 5
+              </span>
+            </div>
+            <div class="series-studio__episode-audit-list">
+              <span
+                v-for="row in humanReviewDimensionRows"
+                :key="row.key"
+                class="series-studio__episode-audit series-studio__episode-audit--unknown"
+              >
+                {{ row.label }} · {{ row.score ?? '待评' }}
+              </span>
+            </div>
+            <ul
+              v-if="commercialQualityAudit.human_review.status === 'stale'"
+              class="series-studio__quality-issues"
+            >
+              <li v-for="issue in commercialQualityAudit.human_review.issues" :key="issue">{{ issue }}</li>
+            </ul>
+          </div>
+          <p
+            v-if="seriesProjectId && commercialQualityAudit.machine_gate_passed && !commercialQualityAudit.ready_for_human_review"
+            class="series-studio__message series-studio__message--warning"
+          >
+            盲评材料未就绪：请先生成第{{ commercialQualityAudit.missing_human_review_episode_nos.join('、') }}集完整分镜。
+            只有代表集故事文件可读取后，才会开放真人评分导入。
+          </p>
+          <p
+            v-else-if="seriesProjectId && commercialQualityAudit.ready_for_human_review && !premiseFidelityAudit?.hard_gate_passed"
+            class="series-studio__message series-studio__message--warning"
+          >
+            设定忠实度硬门禁尚未通过，匿名盲评包和真人评分导入保持关闭。
+          </p>
+          <form
+            v-if="seriesProjectId && commercialQualityAudit.ready_for_human_review && premiseFidelityAudit?.hard_gate_passed"
+            class="series-studio__human-review-form"
+            data-testid="commercial-human-review-workflow"
+            @submit.prevent="handleSubmitCommercialHumanReview"
+          >
+            <div class="series-studio__human-review-hero">
+              <div>
+                <span class="series-studio__human-review-eyebrow">当前任务</span>
+                <strong>真人盲评 · 3 步完成</strong>
+                <p>发送 2 个文件，收到评审后只导入 1 个 JSON。</p>
+              </div>
+              <span class="series-studio__human-review-status">{{ commercialHumanReviewStatusLabel }}</span>
+            </div>
+            <ol class="series-studio__human-review-steps" aria-label="真人盲评操作进度">
+              <li
+                :class="{
+                  'series-studio__human-review-step--active': commercialHumanReviewWorkflowStep === 1,
+                  'series-studio__human-review-step--done': commercialHumanReviewWorkflowStep > 1,
+                }"
+              >
+                <span>1</span>
+                <strong>1. 导出并发送</strong>
+              </li>
+              <li
+                :class="{
+                  'series-studio__human-review-step--active': commercialHumanReviewWorkflowStep === 2,
+                  'series-studio__human-review-step--done': commercialHumanReviewWorkflowStep > 2,
+                }"
+              >
+                <span>2</span>
+                <strong>2. 只导入回执 JSON</strong>
+              </li>
+              <li
+                :class="{
+                  'series-studio__human-review-step--active': commercialHumanReviewWorkflowStep === 3,
+                }"
+              >
+                <span>3</span>
+                <strong>3. 复核并保存</strong>
+              </li>
+            </ol>
+
+            <section
+              class="series-studio__human-review-card"
+              :class="{ 'series-studio__human-review-card--active': commercialHumanReviewWorkflowStep === 1 }"
+            >
+              <div class="series-studio__human-review-card-head">
+                <span>步骤 1</span>
+                <div>
+                  <strong>导出盲评文件</strong>
+                  <p>系统会下载 3 份文件，请按下面的标记分开发送和保管。</p>
+                </div>
+              </div>
+              <div class="series-studio__human-review-file-map">
+                <div>
+                  <span class="series-studio__human-review-file-badge series-studio__human-review-file-badge--send">发给评审人</span>
+                  <strong>匿名材料 Markdown ＋ 空白回执 JSON</strong>
+                  <small>两份都要发，评审人阅读 Markdown 后填写 JSON。</small>
+                </div>
+                <div>
+                  <span class="series-studio__human-review-file-badge series-studio__human-review-file-badge--private">仅自己保管</span>
+                  <strong>内部映射 JSON</strong>
+                  <small>包含项目对应关系，不能发给评审人。</small>
+                </div>
+              </div>
+              <button
+                class="series-studio__primary-button"
+                type="button"
+                :disabled="exportingCommercialBlindReview"
+                @click="handleExportCommercialBlindReviewPackage"
+              >
+                {{ exportingCommercialBlindReview ? '正在导出...' : '导出盲评文件' }}
+              </button>
+              <p v-if="commercialHumanReviewDraft.candidate_label" class="series-studio__human-review-inline-status">
+                当前匿名包：<strong>{{ commercialHumanReviewDraft.candidate_label }}</strong>
+              </p>
+            </section>
+
+            <section
+              class="series-studio__human-review-card"
+              :class="{ 'series-studio__human-review-card--active': commercialHumanReviewWorkflowStep === 2 }"
+            >
+              <div class="series-studio__human-review-card-head">
+                <span>步骤 2</span>
+                <div>
+                  <strong>选择评审人填写完成的回执</strong>
+                  <p>这里只导入一个 JSON。Markdown 不需要在这里选择，所以文件窗口中它会显示为灰色。</p>
+                </div>
+              </div>
+              <div class="series-studio__human-review-import">
+                <button
+                  class="series-studio__ghost-button"
+                  type="button"
+                  @click="commercialHumanReviewImportInput?.click()"
+                >
+                  选择回执 JSON（只选 1 个）
+                </button>
+                <input
+                  ref="commercialHumanReviewImportInput"
+                  class="series-studio__file-input"
+                  type="file"
+                  accept="application/json,.json"
+                  @change="handleImportCommercialHumanReviewResponse"
+                >
+                <span v-if="commercialHumanReviewImportedFilename" class="series-studio__human-review-import-success">
+                  已校验：{{ commercialHumanReviewImportedFilename }}
+                </span>
+                <span v-else>未收到评审人填好的 JSON 时，请停在这一步，不要导入空白模板。</span>
+              </div>
+              <div
+                v-if="commercialHumanReviewImportIssue === 'blank_template'"
+                class="series-studio__human-review-guidance"
+                data-testid="commercial-human-review-blank-guidance"
+              >
+                <strong>这是尚未填写的空白回执模板，不是已完成的评审结果。</strong>
+                <p>下一步：请真实评审人打开匿名填写页，在网页中填写 Reviewer ID、七维评分和声明，再下载完成版 JSON。</p>
+                <RouterLink class="series-studio__human-review-form-link" to="/ai-comic-series/blind-review-form">
+                  打开匿名评审填写页
+                </RouterLink>
+                <p>把匿名材料 Markdown 和这份 JSON 一起发给真实评审人；收到对方下载的完成版 JSON 后，再回到这里重新导入。</p>
+                <ol>
+                  <li>评审人填写 Reviewer ID 和七维 1–5 分。</li>
+                  <li>低于 4 分的维度填写具体修改意见。</li>
+                  <li>三项真人、独立、盲评声明必须由评审人如实确认。</li>
+                </ol>
+              </div>
+              <p v-else-if="commercialHumanReviewError" class="series-studio__message series-studio__message--error">
+                {{ commercialHumanReviewError }}
+              </p>
+            </section>
+
+            <section
+              class="series-studio__human-review-card"
+              :class="{ 'series-studio__human-review-card--active': commercialHumanReviewWorkflowStep === 3 }"
+            >
+              <div class="series-studio__human-review-card-head">
+                <span>步骤 3</span>
+                <div>
+                  <strong>复核并保存</strong>
+                  <p>导入不会自动计入真人评审；确认姓名、候选编号和七维分数后再保存。</p>
+                </div>
+              </div>
+              <div
+                v-if="commercialHumanReviewImportedFilename"
+                class="series-studio__human-review-review-panel"
+                data-testid="commercial-human-review-review-panel"
+              >
+                <div class="series-studio__human-review-review-meta">
+                  <div><span>Reviewer</span><strong>{{ commercialHumanReviewDraft.reviewer_id }}</strong></div>
+                  <div><span>候选编号</span><strong>{{ commercialHumanReviewDraft.candidate_label }}</strong></div>
+                  <div class="series-studio__human-review-review-hash">
+                    <span>评审包 SHA-256</span>
+                    <strong>{{ commercialHumanReviewDraft.reviewer_packet_sha256 }}</strong>
+                  </div>
+                </div>
+                <div class="series-studio__human-review-score-grid">
+                  <article
+                    v-for="row in humanReviewDimensionRows"
+                    :key="`review-summary-${row.key}`"
+                    class="series-studio__human-review-score-summary"
+                  >
+                    <div>
+                      <span>{{ row.label }}</span>
+                      <strong>{{ commercialHumanReviewDraft.scores[row.key] }} / 5</strong>
+                    </div>
+                    <p>{{ commercialHumanReviewDraft.notes[row.key] || '无补充意见' }}</p>
+                  </article>
+                </div>
+                <label class="series-studio__human-review-attestation">
+                  <input v-model="commercialHumanReviewDraft.blind_confirmed" type="checkbox" />
+                  <span>我已人工复核：这是独立真人返回的盲评结果，候选来源和机器分未向 reviewer 泄露。</span>
+                </label>
+                <button
+                  class="series-studio__primary-button"
+                  type="submit"
+                  :disabled="!canSubmitCommercialHumanReview || submittingCommercialHumanReview"
+                >
+                  {{ submittingCommercialHumanReview ? '正在保存...' : '确认并保存这份真人评审' }}
+                </button>
+              </div>
+              <div
+                v-else
+                class="series-studio__human-review-locked"
+                :class="{ 'series-studio__human-review-locked--blocked': commercialHumanReviewImportIssue === 'blank_template' }"
+              >
+                <span aria-hidden="true">3</span>
+                <div>
+                  <strong v-if="commercialHumanReviewImportIssue === 'blank_template'">当前还不能进入步骤 3</strong>
+                  <p v-if="commercialHumanReviewImportIssue === 'blank_template'">空白模板没有真人身份和评分。请先等待评审人返回填写完成的 JSON。</p>
+                  <p v-else>先在步骤 2 导入评审人填写完成的 JSON，这里才会显示待复核的七维评分。</p>
+                </div>
+              </div>
+            </section>
+          </form>
+        </section>
+
         <section v-if="seriesQualityAudit" class="series-studio__section series-studio__quality">
           <div class="series-studio__section-header">
-            <h2>系列质量审计</h2>
+            <h2>结构与连续性审计</h2>
             <span>{{ seriesQualityAudit.passed ? '通过' : '需处理' }} · {{ seriesQualityAudit.score }}/100</span>
           </div>
           <div v-if="earliestLedgerRebuildEpisode" class="series-studio__quality-actions">
@@ -1596,6 +1973,20 @@
                 <span>{{ seedanceProductionStatusLabel(item.status) }} · {{ formatDate(item.updated_at) }}</span>
               </div>
               <p>{{ item.episode_title }} · {{ item.provider_job_id || item.video_url || item.failure_reason || item.notes[item.notes.length - 1] || '等待生产状态更新' }}</p>
+              <p v-if="item.external_call_authorization">
+                外部授权：{{ item.external_call_authorization.authorization_reference }}
+                · 预算 {{ item.external_call_authorization.max_cost_amount }} {{ item.external_call_authorization.cost_currency }}
+                · 数据传输已确认
+                · {{ formatDate(item.external_call_authorization.confirmed_at) }}
+              </p>
+              <p v-if="item.execution_cost">
+                实际费用：{{ item.execution_cost.actual_cost_amount }} {{ item.execution_cost.cost_currency }}
+                · {{ seedanceCostBoundaryLabel(item.execution_cost.boundary_status) }}
+                <template v-if="typeof item.execution_cost.authorization_total_actual_cost_amount === 'number'">
+                  · 同授权累计 {{ item.execution_cost.authorization_total_actual_cost_amount }} {{ item.execution_cost.cost_currency }}
+                </template>
+                · 回执 {{ formatDate(item.execution_cost.provider_reported_at) }}
+              </p>
               <p v-if="item.thumbnail">
                 缩略图：{{ seedanceThumbnailStatusLabel(item.thumbnail.status) }}
                 <template v-if="item.thumbnail.output_path"> · {{ item.thumbnail.output_path }}</template>
@@ -1613,6 +2004,13 @@
                     · {{ formatDate(version.created_at) }}
                     <template v-if="typeof version.quality_score === 'number'"> · 质量 {{ version.quality_score }}</template>
                     <template v-if="version.review_note"> · {{ version.review_note }}</template>
+                    <template v-if="version.external_call_authorization">
+                      · 授权 {{ version.external_call_authorization.authorization_reference }}
+                    </template>
+                    <template v-if="version.execution_cost">
+                      · 实际费用 {{ version.execution_cost.actual_cost_amount }} {{ version.execution_cost.cost_currency }}
+                      · {{ seedanceCostBoundaryLabel(version.execution_cost.boundary_status) }}
+                    </template>
                     <b v-if="item.selected_version_id === version.version_id">剪辑版</b>
                   </span>
                   <button
@@ -1666,6 +2064,338 @@
           </div>
         </section>
 
+        <section
+          v-if="seedanceAssetReport?.visual_bible"
+          class="series-studio__section series-studio__quality"
+          data-testid="series-visual-bible"
+        >
+          <div class="series-studio__section-header">
+            <h2>系列视觉圣经</h2>
+            <span>
+              {{ seedanceAssetReport.visual_bible.identities.length }} 个稳定身份
+              · {{ seedanceAssetReport.visual_bible.world_rules.length }} 条世界规则
+            </span>
+            <button
+              class="series-studio__ghost-button"
+              :disabled="rebuildingVisualBible"
+              @click="handleRebuildVisualBible"
+            >
+              {{ rebuildingVisualBible ? '保存中...' : '重建并保存图谱' }}
+            </button>
+          </div>
+          <p class="series-studio__field-hint">
+            这里固定跨集人物、服装、地点、道具身份和世界规则。稳定 ID 或规则绑定只证明引用一致，不代表已经获得真实图片或 production credit。
+          </p>
+          <ol class="series-studio__visual-readiness-guide" data-testid="visual-production-readiness-guide">
+            <li
+              v-for="step in visualProductionReadinessSteps"
+              :key="step.id"
+              :class="`series-studio__visual-readiness-step--${step.status}`"
+            >
+              <strong>{{ step.title }}</strong>
+              <span>{{ step.detail }}</span>
+              <small>{{ step.status === 'complete' ? '已完成' : step.status === 'active' ? '当前阻塞点' : '需先完成前一步' }}</small>
+            </li>
+          </ol>
+          <div class="series-studio__visual-bible-summary">
+            <article>
+              <span>身份定义</span>
+              <strong>{{ seedanceAssetReport.visual_bible.ready_identity_count }} / {{ seedanceAssetReport.visual_bible.identities.length }}</strong>
+              <small>完整 / 总数</small>
+            </article>
+            <article>
+              <span>人工审批</span>
+              <strong>{{ seedanceAssetReport.visual_bible.approved_identity_count }} / {{ seedanceAssetReport.visual_bible.identities.length }}</strong>
+              <small>已批准 / 总数</small>
+            </article>
+            <article>
+              <span>Pilot 集</span>
+              <strong>{{ seedanceAssetReport.visual_bible.pilot_episode_nos.map(no => `E${no}`).join(' · ') }}</strong>
+              <small>首集 / 中段 / 终局</small>
+            </article>
+            <article>
+              <span>真实生产信用</span>
+              <strong>{{ seedanceAssetReport.visual_bible.production_credit_identity_count }}</strong>
+              <small>placeholder 永远不计入</small>
+            </article>
+            <article>
+              <span>世界时空</span>
+              <strong>{{ seedanceAssetReport.visual_bible.world.period }}</strong>
+              <small>地域：{{ seedanceAssetReport.visual_bible.world.region }}</small>
+            </article>
+            <article v-if="seedanceAssetReport.visual_bible.world_rules.length">
+              <span>世界规则</span>
+              <strong>{{ seedanceAssetReport.visual_bible.approved_world_rule_count }} / {{ seedanceAssetReport.visual_bible.world_rules.length }}</strong>
+              <small>已批准 / 总数</small>
+            </article>
+          </div>
+          <div class="series-studio__visual-pilot-grid">
+            <article
+              v-for="binding in seedanceAssetReport.visual_bible.pilot_episode_bindings"
+              :key="`visual-pilot-${binding.episode_no}`"
+            >
+              <div>
+                <strong>E{{ binding.episode_no }}</strong>
+                <span>{{ binding.generated_story_id ? '故事快照已绑定' : '缺故事快照' }}</span>
+              </div>
+              <p>稳定身份覆盖 {{ binding.identity_coverage_percent }}% · 世界规则覆盖 {{ binding.world_rule_coverage_percent }}% · 真实生产信用 {{ binding.production_credit_coverage_percent }}%</p>
+              <small v-if="binding.missing_identity_kinds.length">
+                缺少：{{ binding.missing_identity_kinds.map(visualIdentityKindLabel).join('、') }}
+              </small>
+              <small v-else>人物、服装、地点、道具身份已齐</small>
+              <small v-if="binding.missing_world_rule_ids.length">
+                未绑定世界规则：{{ binding.missing_world_rule_ids.join('、') }}
+              </small>
+            </article>
+          </div>
+          <details class="series-studio__visual-bible-details">
+            <summary>查看稳定身份与待补字段</summary>
+            <div class="series-studio__visual-bible-list">
+              <article
+                v-for="identity in seedanceAssetReport.visual_bible.identities"
+                :key="identity.identity_id"
+                :class="{ 'series-studio__visual-identity-card--editing': editingVisualIdentityId === identity.identity_id }"
+              >
+                <div class="series-studio__visual-identity-head">
+                  <div>
+                    <strong>{{ identity.label }}</strong>
+                    <span>
+                      {{ visualIdentityKindLabel(identity.kind) }}
+                      · {{ identity.definition_status === 'ready' ? '定义完整' : '待补定义' }}
+                      · {{ visualApprovalStatusLabel(identity.approval.status) }}
+                    </span>
+                  </div>
+                  <button
+                    class="series-studio__ghost-button series-studio__visual-edit-button"
+                    type="button"
+                    @click="startVisualIdentityDefinition(identity)"
+                  >
+                    {{ editingVisualIdentityId === identity.identity_id ? '重新载入' : '填写与审批' }}
+                  </button>
+                </div>
+                <code>{{ identity.identity_id }}</code>
+                <p>{{ identity.canonical_description }}</p>
+                <small v-if="identity.missing_definition_fields.length">
+                  待补：{{ identity.missing_definition_fields.join('、') }}
+                </small>
+                <small v-else>当前结构化定义完整</small>
+                <div
+                  v-if="editingVisualIdentityId === identity.identity_id"
+                  class="series-studio__visual-definition-editor"
+                  data-testid="visual-identity-definition-editor"
+                >
+                  <p class="series-studio__visual-definition-notice">
+                    工作流：系统建议草稿 → 人工复核 → 真人批准。系统建议只补空白，不会自动保存或批准，也不会授予真实媒体生产信用。
+                  </p>
+                  <div class="series-studio__visual-suggestion-actions">
+                    <button
+                      class="series-studio__ghost-button"
+                      type="button"
+                      :disabled="savingVisualIdentityDefinition"
+                      @click="fillVisualIdentitySuggestedDraft(identity)"
+                    >
+                      填入系统建议（不覆盖已填）
+                    </button>
+                    <small v-if="visualIdentitySuggestionNotice">{{ visualIdentitySuggestionNotice }}</small>
+                  </div>
+                  <div class="series-studio__visual-definition-fields series-studio__visual-definition-fields--longform">
+                    <label v-for="field in identity.definition_fields" :key="field.field_id">
+                      <span>{{ field.label }}{{ field.required ? ' *' : '' }}</span>
+                      <textarea
+                        v-model="visualIdentityDefinitionDraft.fields[field.field_id]"
+                        data-testid="visual-definition-field-textarea"
+                        rows="4"
+                        maxlength="500"
+                        placeholder="支持换行；可先填入系统建议，再由真人逐项修改和确认"
+                      ></textarea>
+                    </label>
+                  </div>
+                  <label>
+                    <span>定义备注（可选，跨集连续性）</span>
+                    <textarea
+                      v-model="visualIdentityDefinitionDraft.definition_notes"
+                      rows="5"
+                      maxlength="2000"
+                      placeholder="例如：哪些跨集特征必须锁定，哪些变化需要剧情依据"
+                    ></textarea>
+                  </label>
+                  <div class="series-studio__visual-definition-review">
+                    <label>
+                      <span>Reviewer ID（批准时必填）</span>
+                      <input
+                        v-model="visualIdentityDefinitionDraft.reviewer_id"
+                        type="text"
+                        maxlength="120"
+                        placeholder="填写真实复核人标识"
+                      />
+                    </label>
+                    <label>
+                      <span>复核说明（批准时必填）</span>
+                      <textarea
+                        v-model="visualIdentityDefinitionDraft.review_note"
+                        rows="3"
+                        maxlength="2000"
+                        placeholder="说明核对了哪些设定依据"
+                      ></textarea>
+                    </label>
+                  </div>
+                  <label class="series-studio__visual-definition-confirmation">
+                    <input v-model="visualIdentityDefinitionDraft.human_confirmed" type="checkbox" />
+                    <span>我确认已由真人逐项复核以上视觉定义，且没有把机器推断或 placeholder 当成已确认事实。</span>
+                  </label>
+                  <p v-if="visualIdentityDefinitionError" class="series-studio__inline-error">
+                    {{ visualIdentityDefinitionError }}
+                  </p>
+                  <div class="series-studio__visual-definition-actions">
+                    <button
+                      class="series-studio__ghost-button"
+                      type="button"
+                      :disabled="savingVisualIdentityDefinition"
+                      @click="saveVisualIdentityDefinition('save_draft')"
+                    >
+                      保存草稿
+                    </button>
+                    <button
+                      class="series-studio__primary-button"
+                      type="button"
+                      :disabled="!canApproveVisualIdentity(identity) || savingVisualIdentityDefinition"
+                      @click="saveVisualIdentityDefinition('approve')"
+                    >
+                      {{ savingVisualIdentityDefinition ? '保存中...' : '批准此定义' }}
+                    </button>
+                    <button
+                      class="series-studio__ghost-button"
+                      type="button"
+                      :disabled="savingVisualIdentityDefinition"
+                      @click="cancelVisualIdentityDefinition"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </details>
+          <details v-if="seedanceAssetReport.visual_bible.world_rules.length" class="series-studio__visual-bible-details">
+            <summary>填写世界规则视觉映射与审批</summary>
+            <div class="series-studio__visual-bible-list">
+              <article
+                v-for="rule in seedanceAssetReport.visual_bible.world_rules"
+                :key="rule.rule_id"
+                :class="{ 'series-studio__visual-identity-card--editing': editingVisualWorldRuleId === rule.rule_id }"
+              >
+                <div class="series-studio__visual-identity-head">
+                  <div>
+                    <strong>{{ rule.statement }}</strong>
+                    <span>
+                      {{ rule.definition_status === 'ready' ? '映射完整' : '待补映射' }}
+                      · {{ visualApprovalStatusLabel(rule.approval.status) }}
+                    </span>
+                  </div>
+                  <button
+                    class="series-studio__ghost-button series-studio__visual-edit-button"
+                    type="button"
+                    @click="startVisualWorldRuleDefinition(rule)"
+                  >
+                    {{ editingVisualWorldRuleId === rule.rule_id ? '重新载入' : '填写与审批' }}
+                  </button>
+                </div>
+                <code>{{ rule.rule_id }}</code>
+                <p v-if="rule.consequence">后果：{{ rule.consequence }}</p>
+                <small v-if="rule.missing_definition_fields.length">
+                  待补：{{ rule.missing_definition_fields.join('、') }}
+                </small>
+                <small v-if="rule.missing_pilot_episode_nos.length">
+                  待绑定：{{ rule.missing_pilot_episode_nos.map(no => `E${no}`).join('、') }} 的代表镜头或 GEARS 段
+                </small>
+                <div
+                  v-if="editingVisualWorldRuleId === rule.rule_id"
+                  class="series-studio__visual-definition-editor"
+                  data-testid="visual-world-rule-definition-editor"
+                >
+                  <p class="series-studio__visual-definition-notice">
+                    工作流：系统建议草稿 → 人工复核 → 真人批准。每个代表集仍须选择真实 Seedance 镜头或 GEARS 段；系统建议不会自动保存、批准或获得生产信用。
+                  </p>
+                  <div class="series-studio__visual-suggestion-actions">
+                    <button
+                      class="series-studio__ghost-button"
+                      type="button"
+                      :disabled="savingVisualWorldRuleDefinition"
+                      @click="fillVisualWorldRuleSuggestedDraft(rule)"
+                    >
+                      填入系统建议（不覆盖已填）
+                    </button>
+                    <small v-if="visualWorldRuleSuggestionNotice">{{ visualWorldRuleSuggestionNotice }}</small>
+                  </div>
+                  <div class="series-studio__visual-definition-fields series-studio__visual-definition-fields--longform">
+                    <label v-for="field in rule.definition_fields" :key="field.field_id">
+                      <span>{{ field.label }}{{ field.required ? ' *' : '' }}</span>
+                      <textarea
+                        v-model="visualWorldRuleDefinitionDraft.fields[field.field_id]"
+                        data-testid="visual-definition-field-textarea"
+                        rows="4"
+                        maxlength="500"
+                        placeholder="支持换行；可先填入系统建议，再由真人逐项修改和确认"
+                      ></textarea>
+                    </label>
+                  </div>
+                  <div class="series-studio__visual-definition-fields">
+                    <label v-for="binding in visualWorldRuleDefinitionDraft.pilot_bindings" :key="`world-rule-binding-${binding.episode_no}`">
+                      <span>E{{ binding.episode_no }} 代表目标 *</span>
+                      <select v-model="binding.target_type">
+                        <option value="seedance_shot">Seedance 镜头</option>
+                        <option value="gears_segment">GEARS 段</option>
+                      </select>
+                      <input
+                        v-model="binding.target_id"
+                        type="text"
+                        maxlength="160"
+                        :placeholder="binding.target_type === 'seedance_shot' ? '填写该集真实 shot_id，例如 shot-1' : '填写该集真实 GEARS segment_id，例如 1'"
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    <span>定义备注（可选，规则连续性）</span>
+                    <textarea
+                      v-model="visualWorldRuleDefinitionDraft.definition_notes"
+                      rows="5"
+                      maxlength="2000"
+                      placeholder="说明符号、触发和镜头绑定在跨集中的固定关系"
+                    ></textarea>
+                  </label>
+                  <div class="series-studio__visual-definition-review">
+                    <label>
+                      <span>Reviewer ID（批准时必填）</span>
+                      <input v-model="visualWorldRuleDefinitionDraft.reviewer_id" type="text" maxlength="120" placeholder="填写真实复核人标识" />
+                    </label>
+                    <label>
+                      <span>复核说明（批准时必填）</span>
+                      <textarea v-model="visualWorldRuleDefinitionDraft.review_note" rows="3" maxlength="2000" placeholder="说明核对了哪些规则与代表镜头依据"></textarea>
+                    </label>
+                  </div>
+                  <label class="series-studio__visual-definition-confirmation">
+                    <input v-model="visualWorldRuleDefinitionDraft.human_confirmed" type="checkbox" />
+                    <span>我确认已由真人逐项复核规则文本、视觉符号、触发条件及 E1/E10/E20 代表目标。</span>
+                  </label>
+                  <p v-if="visualWorldRuleDefinitionError" class="series-studio__inline-error">
+                    {{ visualWorldRuleDefinitionError }}
+                  </p>
+                  <div class="series-studio__visual-definition-actions">
+                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition" @click="saveVisualWorldRuleDefinition('save_draft')">保存草稿</button>
+                    <button class="series-studio__primary-button" type="button" :disabled="!canApproveVisualWorldRule(rule) || savingVisualWorldRuleDefinition" @click="saveVisualWorldRuleDefinition('approve')">
+                      {{ savingVisualWorldRuleDefinition ? '保存中...' : '批准此映射' }}
+                    </button>
+                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition" @click="cancelVisualWorldRuleDefinition">取消</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </details>
+          <ul v-if="seedanceAssetReport.visual_bible.issues.length" class="series-studio__visual-bible-issues">
+            <li v-for="issue in seedanceAssetReport.visual_bible.issues" :key="issue">{{ issue }}</li>
+          </ul>
+        </section>
+
         <section v-if="seedanceAssetReport?.assets.length" class="series-studio__section series-studio__quality">
           <div class="series-studio__section-header">
             <h2>系列图片资产与审核</h2>
@@ -1681,17 +2411,17 @@
             </button>
           </div>
           <p class="series-studio__field-hint">
-            外部回调只建立待验证绑定；上传真实文件并完成 SHA-256 校验后，才允许已登录审核员签署版权与真人视觉结论。
+            人物、服装、场景、道具必须分别绑定真实文件；上传 SHA-256 校验、授权依据、真人审核和当前稳定身份映射全部齐备后，才可能获得 production credit。
           </p>
           <div class="series-studio__series-assets">
             <article
-              v-for="asset in seedanceAssetReport.assets.slice(0, 20)"
+              v-for="asset in seedanceAssetReport.assets"
               :key="asset.asset_id"
               class="series-studio__series-asset"
             >
               <div class="series-studio__thread-closure-head">
                 <strong>{{ asset.reference_slot ?? '未分配槽位' }} · {{ asset.label }}</strong>
-                <span>{{ asset.kind }} · {{ asset.status }}</span>
+                <span>{{ seedanceAssetKindLabel(asset.kind) }} · {{ asset.status }}</span>
               </div>
               <figure v-if="seriesSeedanceAssetPreviewUrl(asset.asset_id)" class="series-studio__series-asset-preview">
                 <img
@@ -1704,9 +2434,12 @@
                 </figcaption>
               </figure>
               <small>
+                稳定身份 {{ asset.series_identity_id ?? '未映射' }}
+                ·
                 完整性 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.content_sha256 ? '已验证' : '未验证' }}
                 · 版权 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.rights_status ?? 'pending' }}
                 · 真人审核 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.human_review_status ?? 'pending' }}
+                · 身份映射 {{ seriesSeedanceAssetIdentityBindingStatus(asset.asset_id) }}
                 · production credit {{ seriesSeedanceAssetProductionCredit(asset.asset_id) ? '1' : '0' }}
               </small>
               <div
@@ -1935,7 +2668,12 @@
             </div>
           </div>
           <div class="series-studio__episode-list">
-            <article v-for="episode in plan.episodes" :key="episode.episode_no" class="series-studio__episode">
+            <article
+              v-for="episode in plan.episodes"
+              :id="`series-episode-${episode.episode_no}`"
+              :key="episode.episode_no"
+              class="series-studio__episode"
+            >
               <header class="series-studio__episode-head">
                 <div>
                   <span class="series-studio__episode-no">第 {{ episode.episode_no }} 集</span>
@@ -2107,6 +2845,15 @@
                 <div>
                   <strong>状态/线索</strong>
                   <p>{{ episode.character_state_change || episode.continuity_state_after[0] }}；{{ episode.thread_action || '按阶段目标推进线索' }}</p>
+                </div>
+                <div v-if="episode.commercial_beats">
+                  <strong>商业节拍</strong>
+                  <p>
+                    前三秒：{{ episode.commercial_beats.hook_3s }}；
+                    失败代价：{{ episode.commercial_beats.failure_cost }}；
+                    选择：{{ episode.commercial_beats.character_choice }}；
+                    追问：{{ episode.commercial_beats.cliffhanger_question }}
+                  </p>
                 </div>
               </div>
               <footer class="series-studio__episode-footer">
@@ -2410,6 +3157,7 @@ import {
   copyAiComicSeriesProject,
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
+  exportAiComicSeriesCommercialBlindReviewPackage,
   exportAiComicSeriesSeedanceAssetReportPackage,
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
@@ -2434,6 +3182,9 @@ import {
   recoverAiComicSeriesSeedanceProviderTimeouts,
   reviewAiComicSeriesMediaAsset,
   rebuildAiComicSeriesLedger,
+  repairAiComicSeriesCommercialQuality,
+  rebuildAiComicSeriesVisualBible,
+  submitAiComicSeriesCommercialHumanReview,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
   rollbackAiComicSeriesSeedanceFinalDelivery,
@@ -2447,6 +3198,8 @@ import {
   uploadAiComicSeriesSeedanceAssetFile,
   updateAiComicSeriesSeedanceAssetLibrary,
   updateAiComicSeriesSeedanceAudioLibrary,
+  updateAiComicSeriesVisualIdentityDefinition,
+  updateAiComicSeriesVisualWorldRuleDefinition,
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '@/api/stories'
@@ -2468,6 +3221,8 @@ import StoryResult from '@/components/StoryResult.vue'
 import type {
   AiComicContinuityLedger,
   AiComicEndingHookType,
+  AiComicHumanReviewDimension,
+  AiComicSeriesBlindReviewResponseFile,
   AiComicEpisodeContextPreview,
   AiComicEpisodePlan,
   AiComicMemoryConflictSeverity,
@@ -2476,6 +3231,9 @@ import type {
   AiComicSeriesMemoryRecallControls,
   AiComicSeriesMemoryRecallPreferences,
   AiComicSeriesProductionReadinessReport,
+  AiComicSeriesCommercialQualityAudit,
+  AiComicSeriesHumanReviewSubmitRequest,
+  AiComicSeriesPremiseFidelityAudit,
   AiComicSeriesQualityAudit,
   AiComicSeriesProjectMeta,
   AiComicSeriesPlan,
@@ -2566,6 +3324,8 @@ const affectedEpisodeNos = ref<number[]>([])
 const generatedEpisodeStoryIds = ref<Record<string, string>>({})
 const continuityLedger = ref<AiComicContinuityLedger | null>(null)
 const seriesQualityAudit = ref<AiComicSeriesQualityAudit | null>(null)
+const premiseFidelityAudit = ref<AiComicSeriesPremiseFidelityAudit | null>(null)
+const commercialQualityAudit = ref<AiComicSeriesCommercialQualityAudit | null>(null)
 const seedanceProduction = ref<AiComicSeedanceProductionLedger | null>(null)
 const seedanceCutAssembly = ref<AiComicSeedanceCutAssemblyLedger | null>(null)
 const seedanceSubtitleRender = ref<AiComicSeedanceSubtitleRenderLedger | null>(null)
@@ -2657,6 +3417,92 @@ const episodeEditDraft = ref<EpisodeEditDraft | null>(null)
 const episodeEditError = ref('')
 const savingEpisodeEdit = ref(false)
 const rebuildingLedger = ref(false)
+const rebuildingVisualBible = ref(false)
+type SeriesVisualIdentity = AiComicSeriesSeedanceAssetReportPackage['visual_bible']['identities'][number]
+type SeriesVisualWorldRule = AiComicSeriesSeedanceAssetReportPackage['visual_bible']['world_rules'][number]
+const editingVisualIdentityId = ref('')
+const savingVisualIdentityDefinition = ref(false)
+const visualIdentityDefinitionError = ref('')
+const visualIdentitySuggestionNotice = ref('')
+const visualIdentityDefinitionDraft = ref<{
+  source_fingerprint: string
+  fields: Record<string, string>
+  definition_notes: string
+  reviewer_id: string
+  human_confirmed: boolean
+  review_note: string
+}>({
+  source_fingerprint: '',
+  fields: {},
+  definition_notes: '',
+  reviewer_id: '',
+  human_confirmed: false,
+  review_note: '',
+})
+const editingVisualWorldRuleId = ref('')
+const savingVisualWorldRuleDefinition = ref(false)
+const visualWorldRuleDefinitionError = ref('')
+const visualWorldRuleSuggestionNotice = ref('')
+const visualWorldRuleDefinitionDraft = ref<{
+  source_fingerprint: string
+  fields: Record<string, string>
+  definition_notes: string
+  pilot_bindings: Array<{
+    episode_no: number
+    target_type: 'seedance_shot' | 'gears_segment'
+    target_id: string
+  }>
+  reviewer_id: string
+  human_confirmed: boolean
+  review_note: string
+}>({
+  source_fingerprint: '',
+  fields: {},
+  definition_notes: '',
+  pilot_bindings: [],
+  reviewer_id: '',
+  human_confirmed: false,
+  review_note: '',
+})
+const repairingCommercialQuality = ref(false)
+const exportingCommercialBlindReview = ref(false)
+const submittingCommercialHumanReview = ref(false)
+const commercialHumanReviewError = ref('')
+const commercialHumanReviewImportInput = ref<HTMLInputElement | null>(null)
+const commercialHumanReviewImportedFilename = ref('')
+const commercialHumanReviewImportIssue = ref<'blank_template' | 'invalid' | ''>('')
+const BLIND_REVIEW_TEMPLATE_STORAGE_KEY = 'story-agent-commercial-blind-review-template/v1'
+const commercialHumanReviewDraft = ref<{
+  reviewer_id: string
+  blind_confirmed: boolean
+  candidate_label: string
+  reviewer_packet_sha256: string
+  scores: Record<AiComicHumanReviewDimension, number>
+  notes: Record<AiComicHumanReviewDimension, string>
+}>({
+  reviewer_id: '',
+  blind_confirmed: false,
+  candidate_label: '',
+  reviewer_packet_sha256: '',
+  scores: {
+    hook: 0,
+    character: 0,
+    dialogue: 0,
+    progression: 0,
+    turn: 0,
+    ending: 0,
+    cultural_credibility: 0,
+  },
+  notes: {
+    hook: '',
+    character: '',
+    dialogue: '',
+    progression: '',
+    turn: '',
+    ending: '',
+    cultural_credibility: '',
+  },
+})
 const exportingBible = ref(false)
 const exportingSeedance = ref(false)
 const savedProjects = ref<AiComicSeriesProjectMeta[]>([])
@@ -2705,6 +3551,59 @@ const validationMessage = computed(() => {
 
 const canSubmit = computed(() => !validationMessage.value)
 const generatedEpisodeCount = computed(() => Object.keys(generatedEpisodeStoryIds.value).length)
+const premiseFidelityAttentionReports = computed(() => (
+  premiseFidelityAudit.value?.episode_reports.filter(report => !report.hard_gate_passed) ?? []
+))
+const commercialQualityAttentionReports = computed(() => (
+  commercialQualityAudit.value?.episode_reports.filter(report => !report.machine_gate_passed) ?? []
+))
+const commercialDiversityFailedPairs = computed(() => (
+  commercialQualityAudit.value?.diversity_report.adjacent_pair_reports.filter(report => !report.passed) ?? []
+))
+const HUMAN_REVIEW_DIMENSIONS: ReadonlyArray<{ key: AiComicHumanReviewDimension; label: string }> = [
+  { key: 'hook', label: '钩子' },
+  { key: 'character', label: '人物' },
+  { key: 'dialogue', label: '对白' },
+  { key: 'progression', label: '推进' },
+  { key: 'turn', label: '反转' },
+  { key: 'ending', label: '结尾' },
+  { key: 'cultural_credibility', label: '文化可信度' },
+]
+const humanReviewDimensionRows = computed(() => {
+  return HUMAN_REVIEW_DIMENSIONS.map(({ key, label }) => ({
+    key,
+    label,
+    score: commercialQualityAudit.value?.human_review.dimension_averages[key],
+  }))
+})
+const commercialHumanReviewStatusLabel = computed(() => {
+  const status = commercialQualityAudit.value?.human_review.status
+  if (status === 'completed') return '已完成'
+  if (status === 'stale') return '旧评分已失效，需重新盲评'
+  return '待评审'
+})
+const commercialHumanReviewWorkflowStep = computed<1 | 2 | 3>(() => {
+  if (commercialHumanReviewImportedFilename.value) return 3
+  if (
+    commercialHumanReviewDraft.value.candidate_label
+    && commercialHumanReviewDraft.value.reviewer_packet_sha256
+  ) return 2
+  return 1
+})
+const canSubmitCommercialHumanReview = computed(() => (
+  Boolean(seriesProjectId.value)
+  && Boolean(commercialQualityAudit.value?.ready_for_human_review)
+  && Boolean(premiseFidelityAudit.value?.hard_gate_passed)
+  && commercialHumanReviewDraft.value.reviewer_id.trim().length > 0
+  && commercialHumanReviewDraft.value.blind_confirmed
+  && /^候选-[A-Z0-9]{8}$/.test(commercialHumanReviewDraft.value.candidate_label)
+  && /^sha256:[a-f0-9]{64}$/.test(commercialHumanReviewDraft.value.reviewer_packet_sha256)
+  && HUMAN_REVIEW_DIMENSIONS.every(({ key }) => {
+    const score = commercialHumanReviewDraft.value.scores[key]
+    const note = commercialHumanReviewDraft.value.notes[key].trim()
+    return Number.isInteger(score) && score >= 1 && score <= 5 && (score >= 4 || note.length > 0)
+  })
+))
 const earliestLedgerRebuildEpisode = computed(() => {
   const reports = seriesQualityAudit.value?.episode_reports ?? []
   const episodes = reports
@@ -2853,6 +3752,101 @@ const seedanceVerifiedAssetCount = computed(() => (
 const seedanceProductionCreditAssetCount = computed(() => (
   seedanceAssetLibrary.value?.items.filter(item => seriesSeedanceAssetProductionCredit(item.asset_id)).length ?? 0
 ))
+const visualProductionReadinessSteps = computed(() => {
+  const completionPlan = seedanceAssetReport.value?.completion_plan
+  if (completionPlan) {
+    return completionPlan.stages.map(stage => ({
+      id: stage.key,
+      title: stage.label,
+      detail: `${stage.current_count}/${stage.required_count} · ${stage.next_action}`,
+      complete: stage.status === 'complete',
+      status: stage.status === 'current' ? 'active' : stage.status,
+    }))
+  }
+  const visualBible = seedanceAssetReport.value?.visual_bible
+  if (!visualBible) return []
+  const identityTotal = visualBible.identities.length
+  const worldRuleTotal = visualBible.world_rules.length
+  const definitionComplete = (
+    visualBible.ready_identity_count === identityTotal
+    && visualBible.ready_world_rule_count === worldRuleTotal
+  )
+  const approvalComplete = (
+    visualBible.approved_identity_count === identityTotal
+    && visualBible.approved_world_rule_count === worldRuleTotal
+  )
+  const identityAssetState = visualBible.identities.map(identity => {
+    const asset = seedanceAssetLibrary.value?.items.find(item => {
+      const binding = item.identity_binding
+      return Boolean(
+        binding
+        && binding.series_identity_id === identity.identity_id
+        && binding.source_fingerprint === identity.source_fingerprint
+        && binding.visual_definition_fingerprint === identity.definition_fingerprint,
+      )
+    })
+    const verified = Boolean(
+      asset?.provider === 'local_upload'
+      && asset.local_path
+      && asset.content_sha256,
+    )
+    const reviewed = Boolean(
+      verified
+      && asset?.rights_status === 'authorized'
+      && asset.human_review_status === 'approved'
+      && asset.identity_binding?.status === 'approved'
+      && asset.identity_binding.human_confirmed,
+    )
+    return { verified, reviewed }
+  })
+  const verifiedAssetCount = identityAssetState.filter(item => item.verified).length
+  const reviewedAssetCount = identityAssetState.filter(item => item.reviewed).length
+  const assetsVerified = identityTotal > 0 && verifiedAssetCount === identityTotal
+  const assetReviewComplete = identityTotal > 0 && reviewedAssetCount === identityTotal
+  const productionComplete = (
+    approvalComplete
+    && assetReviewComplete
+    && visualBible.production_credit_identity_count === identityTotal
+  )
+  const steps = [
+    {
+      id: 'definitions',
+      title: '1. 填写并校验定义',
+      detail: `身份 ${visualBible.ready_identity_count}/${identityTotal} · 规则 ${visualBible.ready_world_rule_count}/${worldRuleTotal}`,
+      complete: definitionComplete,
+    },
+    {
+      id: 'approval',
+      title: '2. 真人批准定义与规则',
+      detail: `身份 ${visualBible.approved_identity_count}/${identityTotal} · 规则 ${visualBible.approved_world_rule_count}/${worldRuleTotal}`,
+      complete: approvalComplete,
+    },
+    {
+      id: 'files',
+      title: '3. 绑定并校验真实文件',
+      detail: `${verifiedAssetCount}/${identityTotal} 个身份有本地 SHA-256 文件`,
+      complete: assetsVerified,
+    },
+    {
+      id: 'asset-review',
+      title: '4. 审核授权与身份映射',
+      detail: `${reviewedAssetCount}/${identityTotal} 个身份有授权、真人审核和当前映射`,
+      complete: assetReviewComplete,
+    },
+    {
+      id: 'production',
+      title: '5. 生产就绪',
+      detail: `production credit ${visualBible.production_credit_identity_count}/${identityTotal}`,
+      complete: productionComplete,
+    },
+  ]
+  let priorComplete = true
+  return steps.map(step => {
+    const status = step.complete ? 'complete' : priorComplete ? 'active' : 'blocked'
+    priorComplete = priorComplete && step.complete
+    return { ...step, status }
+  })
+})
 const selectedGearsJobTypeLabel = computed(() => gearsJobTypeLabel(selectedGearsJobType.value))
 const selectedGearsSubmitButtonLabel = computed(() =>
   selectedGearsJobType.value === 'seedance_video'
@@ -3041,19 +4035,23 @@ function timelineStatusLabel(
 }
 
 onMounted(async () => {
-  await loadGearsExecutionConfig()
-  const patternRes = await getNarrativePatternCatalog()
+  const gearsConfigPromise = loadGearsExecutionConfig()
+  const patternPromise = getNarrativePatternCatalog()
+  const savedProjectsPromise = loadSavedProjects()
+  const id = typeof route.query.seriesProjectId === 'string' ? route.query.seriesProjectId : ''
+  if (id) {
+    await loadSeriesProject(id)
+    const episodeNo = routeEpisodeNo()
+    if (episodeNo) {
+      await previewRequestedEpisode(episodeNo)
+    }
+  }
+  const patternRes = await patternPromise
   if (patternRes.ok && patternRes.data) {
     narrativePatternCatalog.value = patternRes.data
   }
-  await loadSavedProjects()
-  const id = typeof route.query.seriesProjectId === 'string' ? route.query.seriesProjectId : ''
-  if (!id) return
-  await loadSeriesProject(id)
-  const episodeNo = routeEpisodeNo()
-  if (episodeNo) {
-    await previewRequestedEpisode(episodeNo)
-  }
+  await savedProjectsPromise
+  await gearsConfigPromise
 })
 
 async function loadGearsExecutionConfig() {
@@ -3113,6 +4111,18 @@ async function loadGearsExecutionConfig() {
 async function loadSeriesProject(id: string) {
   planning.value = true
   errorMessage.value = ''
+  cancelVisualIdentityDefinition()
+  commercialHumanReviewError.value = ''
+  commercialHumanReviewImportedFilename.value = ''
+  commercialHumanReviewImportIssue.value = ''
+  commercialHumanReviewDraft.value.reviewer_id = ''
+  commercialHumanReviewDraft.value.blind_confirmed = false
+  commercialHumanReviewDraft.value.candidate_label = ''
+  commercialHumanReviewDraft.value.reviewer_packet_sha256 = ''
+  for (const { key } of HUMAN_REVIEW_DIMENSIONS) {
+    commercialHumanReviewDraft.value.scores[key] = 0
+    commercialHumanReviewDraft.value.notes[key] = ''
+  }
   episodeResult.value = null
   episodeErrorMessage.value = ''
   generatedEpisodeNo.value = null
@@ -3126,6 +4136,8 @@ async function loadSeriesProject(id: string) {
     memoryRecallPreferences.value = normalizeMemoryRecallPreferences(res.data.memory_recall_preferences)
     applyMemoryPreferenceForEpisode(activeMemoryPreferenceEpisodeNo.value)
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
+    premiseFidelityAudit.value = res.data.premise_fidelity_audit ?? null
+    commercialQualityAudit.value = res.data.commercial_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
@@ -3177,6 +4189,316 @@ async function loadSeedanceAssetReport() {
     seedanceAssetReport.value = null
   }
   loadingSeedanceAssetReport.value = false
+}
+
+async function handleRebuildVisualBible() {
+  if (!seriesProjectId.value || rebuildingVisualBible.value) return
+  rebuildingVisualBible.value = true
+  errorMessage.value = ''
+  const res = await rebuildAiComicSeriesVisualBible(seriesProjectId.value)
+  if (res.ok && res.data) {
+    await loadSeedanceAssetReport()
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    saveMessage.value = `视觉身份图谱已持久化：${res.data.visual_bible?.identities.length ?? 0} 个稳定身份`
+  } else {
+    errorMessage.value = res.error?.message ?? '视觉身份图谱保存失败'
+  }
+  rebuildingVisualBible.value = false
+}
+
+function startVisualIdentityDefinition(identity: SeriesVisualIdentity) {
+  editingVisualIdentityId.value = identity.identity_id
+  visualIdentityDefinitionError.value = ''
+  visualIdentitySuggestionNotice.value = ''
+  visualIdentityDefinitionDraft.value = {
+    source_fingerprint: identity.source_fingerprint,
+    fields: Object.fromEntries(identity.definition_fields.map(field => [field.field_id, field.value])),
+    definition_notes: identity.definition_notes,
+    reviewer_id: identity.approval.status === 'approved' ? identity.approval.reviewer_id ?? '' : '',
+    human_confirmed: false,
+    review_note: '',
+  }
+}
+
+function visualIdentityFieldSuggestion(
+  identity: SeriesVisualIdentity,
+  field: SeriesVisualIdentity['definition_fields'][number],
+): string {
+  const subject = `“${identity.label}”`
+  if (identity.kind === 'character') {
+    if (field.field_id === 'age_range' || field.field_id === 'gender_pronouns') return ''
+    if (field.field_id === 'body_type') {
+      return `围绕${subject}建立与其他角色可一眼区分的身高、胖瘦、肩背轮廓，以及一项固定站姿或动作习惯；具体数值与动作需由真人结合剧本确认。`
+    }
+    if (field.field_id === 'facial_features') {
+      return `为${subject}固定脸型、眉眼、鼻唇、肤色区间和一项近景识别特征；避免与同项目其他人物重复，最终细节由真人确认。`
+    }
+    if (field.field_id === 'hairstyle') {
+      return `为${subject}固定头发长度、颜色、分缝和造型轮廓；跨集不得无剧情依据改变，最终方案由真人确认。`
+    }
+  }
+  if (identity.kind === 'costume') {
+    if (field.field_id === 'garment_details') {
+      return `围绕${subject}明确外层、内搭、下装、鞋履、材质和至少一个跨镜头识别锚点；版型与锚点跨集保持稳定。`
+    }
+    if (field.field_id === 'color_palette') {
+      return `为${subject}指定主色、辅色、小面积点缀色及暗场明度关系；避免与其他主服装的主色和轮廓混淆。`
+    }
+    if (field.field_id === 'phase_changes') {
+      return `${subject}初期保持完整；中后期只允许增加有剧情依据的污损、修补或局部破损，基础版型与识别锚点不得改变。`
+    }
+  }
+  if (identity.kind === 'location') {
+    if (field.field_id === 'spatial_architecture') {
+      return `为${subject}固定入口、前后景、主要表演区、遮挡物和角色动线的相对位置；跨镜头保持空间方向与尺度一致。`
+    }
+    if (field.field_id === 'primary_lighting') {
+      return `为${subject}指定唯一主光源的方向、色温、硬软度与亮度层级，并明确熄灯或异常状态下可变化的范围。`
+    }
+    if (field.field_id === 'materials_palette') {
+      return `为${subject}固定三类主要材质、主辅色和老化程度；近景纹理与远景色块应能指向同一地点。`
+    }
+  }
+  if (identity.kind === 'prop') {
+    if (field.field_id === 'form_dimensions') {
+      return `为${subject}固定形制、比例、可动部件和与人物手部的尺寸参照；所有景别保持同一轮廓。`
+    }
+    if (field.field_id === 'materials_colors') {
+      return `为${subject}固定主体材质、表面工艺、主色、磨损位置和点亮前后的色彩差异。`
+    }
+    if (field.field_id === 'ownership_state_changes') {
+      return `明确${subject}的初始归属、交接节点和各剧情阶段的状态变化；每次变化必须能追溯到具体事件。`
+    }
+  }
+  return `围绕${subject}补充“${field.label}”的固定视觉锚点、允许变化范围和跨镜头一致性要求；最终方案由真人确认。`
+}
+
+function fillVisualIdentitySuggestedDraft(identity: SeriesVisualIdentity) {
+  let filledCount = 0
+  const unresolvedLabels: string[] = []
+  for (const field of identity.definition_fields) {
+    if (visualIdentityDefinitionDraft.value.fields[field.field_id]?.trim()) continue
+    const suggestion = visualIdentityFieldSuggestion(identity, field)
+    if (!suggestion) {
+      unresolvedLabels.push(field.label)
+      continue
+    }
+    visualIdentityDefinitionDraft.value.fields[field.field_id] = suggestion.slice(0, 500)
+    filledCount += 1
+  }
+  let noteFilled = false
+  if (!visualIdentityDefinitionDraft.value.definition_notes.trim()) {
+    visualIdentityDefinitionDraft.value.definition_notes = `【系统建议草稿，尚未人工批准】系统仅补全空白项，并依据“${identity.label}”及当前系列设定提供可编辑提案；请真人逐项核对来源、跨集不变量和允许变化后再批准。`
+    noteFilled = true
+  }
+  if (filledCount > 0 || noteFilled) {
+    visualIdentityDefinitionDraft.value.human_confirmed = false
+    visualIdentityDefinitionDraft.value.review_note = ''
+  }
+  const unresolvedMessage = unresolvedLabels.length > 0
+    ? `；${unresolvedLabels.join('、')}缺少可靠依据，已保留空白等待人工填写`
+    : ''
+  visualIdentitySuggestionNotice.value = filledCount > 0 || noteFilled
+    ? `已填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}${unresolvedMessage}；尚未保存。`
+    : '当前字段和定义备注已有内容，系统未覆盖任何信息。'
+}
+
+function cancelVisualIdentityDefinition() {
+  editingVisualIdentityId.value = ''
+  visualIdentityDefinitionError.value = ''
+  visualIdentitySuggestionNotice.value = ''
+  visualIdentityDefinitionDraft.value = {
+    source_fingerprint: '',
+    fields: {},
+    definition_notes: '',
+    reviewer_id: '',
+    human_confirmed: false,
+    review_note: '',
+  }
+}
+
+function canApproveVisualIdentity(identity: SeriesVisualIdentity): boolean {
+  if (editingVisualIdentityId.value !== identity.identity_id) return false
+  const fieldsComplete = identity.definition_fields.every(field => (
+    !field.required || Boolean(visualIdentityDefinitionDraft.value.fields[field.field_id]?.trim())
+  ))
+  return fieldsComplete
+    && Boolean(visualIdentityDefinitionDraft.value.reviewer_id.trim())
+    && Boolean(visualIdentityDefinitionDraft.value.review_note.trim())
+    && visualIdentityDefinitionDraft.value.human_confirmed
+}
+
+async function saveVisualIdentityDefinition(action: 'save_draft' | 'approve') {
+  if (!seriesProjectId.value || !editingVisualIdentityId.value || savingVisualIdentityDefinition.value) return
+  savingVisualIdentityDefinition.value = true
+  visualIdentityDefinitionError.value = ''
+  const res = await updateAiComicSeriesVisualIdentityDefinition(
+    seriesProjectId.value,
+    editingVisualIdentityId.value,
+    {
+      expected_source_fingerprint: visualIdentityDefinitionDraft.value.source_fingerprint,
+      fields: { ...visualIdentityDefinitionDraft.value.fields },
+      definition_notes: visualIdentityDefinitionDraft.value.definition_notes.trim(),
+      action,
+      reviewer_id: action === 'approve'
+        ? visualIdentityDefinitionDraft.value.reviewer_id.trim()
+        : undefined,
+      human_confirmed: action === 'approve' && visualIdentityDefinitionDraft.value.human_confirmed
+        ? true
+        : undefined,
+      review_note: action === 'approve'
+        ? visualIdentityDefinitionDraft.value.review_note.trim()
+        : undefined,
+    },
+  )
+  if (res.ok && res.data) {
+    const identityLabel = seedanceAssetReport.value?.visual_bible.identities
+      .find(identity => identity.identity_id === editingVisualIdentityId.value)?.label ?? '视觉身份'
+    lastSavedAt.value = res.data.project.updated_at
+    await loadSeedanceAssetReport()
+    cancelVisualIdentityDefinition()
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    saveMessage.value = action === 'approve'
+      ? `${identityLabel}的视觉定义已由真人批准`
+      : `${identityLabel}的视觉定义草稿已保存，尚未批准`
+  } else {
+    visualIdentityDefinitionError.value = res.error?.message ?? '视觉定义保存失败'
+  }
+  savingVisualIdentityDefinition.value = false
+}
+
+function startVisualWorldRuleDefinition(rule: SeriesVisualWorldRule) {
+  editingVisualWorldRuleId.value = rule.rule_id
+  visualWorldRuleDefinitionError.value = ''
+  visualWorldRuleSuggestionNotice.value = ''
+  visualWorldRuleDefinitionDraft.value = {
+    source_fingerprint: rule.source_fingerprint,
+    fields: Object.fromEntries(rule.definition_fields.map(field => [field.field_id, field.value])),
+    definition_notes: rule.definition_notes,
+    pilot_bindings: seedanceAssetReport.value?.visual_bible.pilot_episode_nos.map(episodeNo => {
+      const current = rule.pilot_bindings.find(binding => binding.episode_no === episodeNo)
+      return {
+        episode_no: episodeNo,
+        target_type: current?.target_type ?? 'seedance_shot',
+        target_id: current?.target_id ?? '',
+      }
+    }) ?? [],
+    reviewer_id: rule.approval.status === 'approved' ? rule.approval.reviewer_id ?? '' : '',
+    human_confirmed: false,
+    review_note: '',
+  }
+}
+
+function visualWorldRuleFieldSuggestion(
+  rule: SeriesVisualWorldRule,
+  field: SeriesVisualWorldRule['definition_fields'][number],
+): string {
+  const statement = `“${rule.statement}”`
+  if (field.field_id === 'visual_symbol') {
+    return `围绕${statement}固定一个可重复识别的主符号，明确其形状、颜色、出现位置、正常状态与异常状态；跨集保持同一视觉语法。`
+  }
+  if (field.field_id === 'trigger_condition') {
+    const consequence = rule.consequence?.trim() || '规则后果显现'
+    return `当角色明确触发${statement}时，在同一动作链内按“触发动作 → 主符号变化 → ${consequence}”呈现，跨集保持顺序不变。`
+  }
+  return `围绕${statement}补充“${field.label}”的固定视觉锚点、触发前后变化和跨集一致性要求；最终方案由真人确认。`
+}
+
+function fillVisualWorldRuleSuggestedDraft(rule: SeriesVisualWorldRule) {
+  let filledCount = 0
+  for (const field of rule.definition_fields) {
+    if (visualWorldRuleDefinitionDraft.value.fields[field.field_id]?.trim()) continue
+    visualWorldRuleDefinitionDraft.value.fields[field.field_id] = visualWorldRuleFieldSuggestion(rule, field).slice(0, 500)
+    filledCount += 1
+  }
+  let noteFilled = false
+  if (!visualWorldRuleDefinitionDraft.value.definition_notes.trim()) {
+    visualWorldRuleDefinitionDraft.value.definition_notes = `【系统建议草稿，尚未人工批准】请真人核对“${rule.statement}”的规则文本、视觉符号、触发条件及 E1/E10/E20 代表目标；系统不会创建或替换真实镜头绑定。`
+    noteFilled = true
+  }
+  if (filledCount > 0 || noteFilled) {
+    visualWorldRuleDefinitionDraft.value.human_confirmed = false
+    visualWorldRuleDefinitionDraft.value.review_note = ''
+  }
+  visualWorldRuleSuggestionNotice.value = filledCount > 0 || noteFilled
+    ? `已填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}；真实代表镜头绑定仍需人工确认，尚未保存。`
+    : '当前字段和定义备注已有内容，系统未覆盖任何信息。'
+}
+
+function cancelVisualWorldRuleDefinition() {
+  editingVisualWorldRuleId.value = ''
+  visualWorldRuleDefinitionError.value = ''
+  visualWorldRuleSuggestionNotice.value = ''
+  visualWorldRuleDefinitionDraft.value = {
+    source_fingerprint: '',
+    fields: {},
+    definition_notes: '',
+    pilot_bindings: [],
+    reviewer_id: '',
+    human_confirmed: false,
+    review_note: '',
+  }
+}
+
+function canApproveVisualWorldRule(rule: SeriesVisualWorldRule): boolean {
+  if (editingVisualWorldRuleId.value !== rule.rule_id) return false
+  const fieldsComplete = rule.definition_fields.every(field => (
+    !field.required || Boolean(visualWorldRuleDefinitionDraft.value.fields[field.field_id]?.trim())
+  ))
+  const bindingsComplete = visualWorldRuleDefinitionDraft.value.pilot_bindings.length === seedanceAssetReport.value?.visual_bible.pilot_episode_nos.length
+    && visualWorldRuleDefinitionDraft.value.pilot_bindings.every(binding => Boolean(binding.target_id.trim()))
+  return fieldsComplete
+    && bindingsComplete
+    && Boolean(visualWorldRuleDefinitionDraft.value.reviewer_id.trim())
+    && Boolean(visualWorldRuleDefinitionDraft.value.review_note.trim())
+    && visualWorldRuleDefinitionDraft.value.human_confirmed
+}
+
+async function saveVisualWorldRuleDefinition(action: 'save_draft' | 'approve') {
+  if (!seriesProjectId.value || !editingVisualWorldRuleId.value || savingVisualWorldRuleDefinition.value) return
+  savingVisualWorldRuleDefinition.value = true
+  visualWorldRuleDefinitionError.value = ''
+  const res = await updateAiComicSeriesVisualWorldRuleDefinition(
+    seriesProjectId.value,
+    editingVisualWorldRuleId.value,
+    {
+      expected_source_fingerprint: visualWorldRuleDefinitionDraft.value.source_fingerprint,
+      fields: { ...visualWorldRuleDefinitionDraft.value.fields },
+      definition_notes: visualWorldRuleDefinitionDraft.value.definition_notes.trim(),
+      pilot_bindings: visualWorldRuleDefinitionDraft.value.pilot_bindings.map(binding => ({
+        episode_no: binding.episode_no,
+        target_type: binding.target_type,
+        target_id: binding.target_id.trim(),
+      })),
+      action,
+      reviewer_id: action === 'approve'
+        ? visualWorldRuleDefinitionDraft.value.reviewer_id.trim()
+        : undefined,
+      human_confirmed: action === 'approve' && visualWorldRuleDefinitionDraft.value.human_confirmed
+        ? true
+        : undefined,
+      review_note: action === 'approve'
+        ? visualWorldRuleDefinitionDraft.value.review_note.trim()
+        : undefined,
+    },
+  )
+  if (res.ok && res.data) {
+    const ruleStatement = seedanceAssetReport.value?.visual_bible.world_rules
+      .find(rule => rule.rule_id === editingVisualWorldRuleId.value)?.statement ?? '世界规则'
+    lastSavedAt.value = res.data.project.updated_at
+    await loadSeedanceAssetReport()
+    cancelVisualWorldRuleDefinition()
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    saveMessage.value = action === 'approve'
+      ? `“${ruleStatement}”的世界规则视觉映射已由真人批准`
+      : `“${ruleStatement}”的世界规则视觉映射草稿已保存，尚未批准`
+  } else {
+    visualWorldRuleDefinitionError.value = res.error?.message ?? '世界规则视觉映射保存失败'
+  }
+  savingVisualWorldRuleDefinition.value = false
 }
 
 async function loadSeedanceDashboard() {
@@ -3240,6 +4562,7 @@ async function handlePlan() {
   if (!canSubmit.value) return
   planning.value = true
   errorMessage.value = ''
+  cancelVisualIdentityDefinition()
   plan.value = null
   episodeResult.value = null
   episodeErrorMessage.value = ''
@@ -3258,6 +4581,8 @@ async function handlePlan() {
   activeMemoryPreferenceEpisodeNo.value = null
   continuityLedger.value = null
   seriesQualityAudit.value = null
+  premiseFidelityAudit.value = null
+  commercialQualityAudit.value = null
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
@@ -3653,6 +4978,7 @@ async function saveEpisodeEdit() {
       key_characters: parseListText(draft.key_characters_text),
       knowledge_focus: parseListText(draft.knowledge_focus_text),
       continuity_state_after: parseListText(draft.continuity_state_after_text),
+      commercial_beats: undefined,
     }
   })
 
@@ -3728,6 +5054,8 @@ async function saveCurrentProject(options: {
     memoryRecallPreferences.value = normalizeMemoryRecallPreferences(res.data.memory_recall_preferences)
     applyMemoryPreferenceForEpisode(activeMemoryPreferenceEpisodeNo.value)
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
+    premiseFidelityAudit.value = res.data.premise_fidelity_audit ?? null
+    commercialQualityAudit.value = res.data.commercial_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
@@ -3776,6 +5104,8 @@ async function handleRebuildLedger() {
     generatedEpisodeStoryIds.value = res.data.generated_episode_story_ids
     continuityLedger.value = res.data.continuity_ledger
     seriesQualityAudit.value = res.data.series_quality_audit ?? null
+    premiseFidelityAudit.value = res.data.premise_fidelity_audit ?? null
+    commercialQualityAudit.value = res.data.commercial_quality_audit ?? null
     seedanceProduction.value = res.data.seedance_production ?? null
     seedanceCutAssembly.value = res.data.seedance_cut_assembly ?? null
     seedanceSubtitleRender.value = res.data.seedance_subtitle_render ?? null
@@ -3794,6 +5124,304 @@ async function handleRebuildLedger() {
     errorMessage.value = res.error?.message ?? '重建连续性账本失败'
   }
   rebuildingLedger.value = false
+}
+
+async function handleRepairCommercialQuality() {
+  if (!seriesProjectId.value) return
+  repairingCommercialQuality.value = true
+  errorMessage.value = ''
+  const res = await repairAiComicSeriesCommercialQuality(seriesProjectId.value)
+  if (res.ok && res.data) {
+    commercialQualityAudit.value = res.data.commercial_quality_audit
+    applyPlan(res.data.plan)
+    affectedEpisodeNos.value = res.data.generated_episodes_need_regeneration
+    lastSavedAt.value = res.data.project.updated_at
+    saveStatus.value = res.data.success ? 'saved' : 'failed'
+    saveMessage.value = res.data.success
+      ? `商业质量从 ${res.data.before_score} 提升到 ${res.data.after_score}；仅修改第${res.data.changed_episode_nos.join('、')}集商业节拍`
+      : ''
+    saveErrorMessage.value = res.data.success ? '' : res.data.issues.join('；')
+    if (res.data.generated_episodes_need_regeneration.length > 0) {
+      saveMessage.value += `；第${res.data.generated_episodes_need_regeneration.join('、')}集需要重新生成分镜`
+    }
+    await loadSavedProjects()
+  } else {
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = res.error?.message ?? '商业质量修复失败'
+    errorMessage.value = saveErrorMessage.value
+  }
+  repairingCommercialQuality.value = false
+}
+
+async function handleSubmitCommercialHumanReview() {
+  if (!seriesProjectId.value || !canSubmitCommercialHumanReview.value) return
+  submittingCommercialHumanReview.value = true
+  commercialHumanReviewError.value = ''
+  errorMessage.value = ''
+  const request: AiComicSeriesHumanReviewSubmitRequest = {
+    reviewer_id: commercialHumanReviewDraft.value.reviewer_id.trim(),
+    blind: true,
+    candidate_label: commercialHumanReviewDraft.value.candidate_label,
+    reviewer_packet_sha256: commercialHumanReviewDraft.value.reviewer_packet_sha256,
+    scores: HUMAN_REVIEW_DIMENSIONS.map(({ key }) => ({
+      dimension: key,
+      score: commercialHumanReviewDraft.value.scores[key] as 1 | 2 | 3 | 4 | 5,
+      ...(commercialHumanReviewDraft.value.notes[key]
+        ? { note: commercialHumanReviewDraft.value.notes[key] }
+        : {}),
+    })),
+  }
+  const res = await submitAiComicSeriesCommercialHumanReview(seriesProjectId.value, request)
+  if (res.ok && res.data) {
+    commercialQualityAudit.value = res.data.commercial_quality_audit ?? null
+    lastSavedAt.value = res.data.project.updated_at
+    saveStatus.value = 'saved'
+    saveMessage.value = `已保存 reviewer ${request.reviewer_id} 的完整七维盲评；当前共 ${res.data.commercial_quality_audit?.human_review.reviewer_count ?? 0} 位 reviewer`
+    saveErrorMessage.value = ''
+    commercialHumanReviewDraft.value = {
+      reviewer_id: '',
+      blind_confirmed: false,
+      candidate_label: request.candidate_label,
+      reviewer_packet_sha256: request.reviewer_packet_sha256,
+      scores: {
+        hook: 0,
+        character: 0,
+        dialogue: 0,
+        progression: 0,
+        turn: 0,
+        ending: 0,
+        cultural_credibility: 0,
+      },
+      notes: {
+        hook: '',
+        character: '',
+        dialogue: '',
+        progression: '',
+        turn: '',
+        ending: '',
+        cultural_credibility: '',
+      },
+    }
+    commercialHumanReviewImportedFilename.value = ''
+    commercialHumanReviewImportIssue.value = ''
+    await loadSavedProjects()
+  } else {
+    commercialHumanReviewError.value = res.error?.message ?? '真人盲评保存失败'
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = commercialHumanReviewError.value
+  }
+  submittingCommercialHumanReview.value = false
+}
+
+async function handleImportCommercialHumanReviewResponse(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  commercialHumanReviewError.value = ''
+  commercialHumanReviewImportedFilename.value = ''
+  commercialHumanReviewImportIssue.value = ''
+  commercialHumanReviewDraft.value.reviewer_id = ''
+  commercialHumanReviewDraft.value.blind_confirmed = false
+  for (const { key } of HUMAN_REVIEW_DIMENSIONS) {
+    commercialHumanReviewDraft.value.scores[key] = 0
+    commercialHumanReviewDraft.value.notes[key] = ''
+  }
+  try {
+    if (file.size > 128 * 1024) {
+      throw new Error('评审回执 JSON 不能超过 128 KB')
+    }
+    const rawResponse = JSON.parse(await file.text())
+    if (isBlankCommercialHumanReviewResponseTemplate(rawResponse)) {
+      sessionStorage.setItem(BLIND_REVIEW_TEMPLATE_STORAGE_KEY, JSON.stringify(rawResponse))
+      commercialHumanReviewImportIssue.value = 'blank_template'
+      throw new Error('这是尚未填写的空白回执模板，请先交给真实评审人完成评审')
+    }
+    const parsed = parseCommercialHumanReviewResponse(rawResponse)
+    const currentCandidate = commercialHumanReviewDraft.value.candidate_label
+    const currentPacketSha256 = commercialHumanReviewDraft.value.reviewer_packet_sha256
+    if (currentCandidate && currentCandidate !== parsed.candidate_label) {
+      throw new Error('回执候选编号与当前已导出的匿名包不一致')
+    }
+    if (currentPacketSha256 && currentPacketSha256 !== parsed.reviewer_packet_sha256) {
+      throw new Error('回执 SHA256 与当前已导出的匿名包不一致')
+    }
+    commercialHumanReviewDraft.value.reviewer_id = parsed.reviewer_id
+    commercialHumanReviewDraft.value.candidate_label = parsed.candidate_label
+    commercialHumanReviewDraft.value.reviewer_packet_sha256 = parsed.reviewer_packet_sha256
+    commercialHumanReviewDraft.value.blind_confirmed = false
+    for (const score of parsed.scores) {
+      commercialHumanReviewDraft.value.scores[score.dimension] = score.score as 1 | 2 | 3 | 4 | 5
+      commercialHumanReviewDraft.value.notes[score.dimension] = score.note
+    }
+    commercialHumanReviewImportedFilename.value = file.name
+    commercialHumanReviewImportIssue.value = ''
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    saveMessage.value = `已校验并载入 reviewer ${parsed.reviewer_id} 的七维回执；请勾选人工复核声明后手动保存`
+  } catch (error) {
+    if (commercialHumanReviewImportIssue.value !== 'blank_template') {
+      commercialHumanReviewImportIssue.value = 'invalid'
+    }
+    commercialHumanReviewError.value = error instanceof Error ? error.message : '评审回执 JSON 解析失败'
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = commercialHumanReviewError.value
+  } finally {
+    input.value = ''
+  }
+}
+
+function isBlankCommercialHumanReviewResponseTemplate(value: unknown): boolean {
+  if (!isRecord(value) || value.schema_version !== 'ai-comic-series-blind-review-response/v1') {
+    return false
+  }
+  const reviewerId = typeof value.reviewer_id === 'string' ? value.reviewer_id.trim() : ''
+  if (reviewerId || !Array.isArray(value.scores) || value.scores.length !== HUMAN_REVIEW_DIMENSIONS.length) {
+    return false
+  }
+  return value.scores.every(item => isRecord(item) && item.score == null)
+}
+
+function parseCommercialHumanReviewResponse(value: unknown): AiComicSeriesBlindReviewResponseFile {
+  if (!isRecord(value) || value.schema_version !== 'ai-comic-series-blind-review-response/v1') {
+    throw new Error('评审回执 schema_version 不匹配')
+  }
+  const candidateLabel = typeof value.candidate_label === 'string' ? value.candidate_label.trim() : ''
+  const reviewerPacketSha256 = typeof value.reviewer_packet_sha256 === 'string'
+    ? value.reviewer_packet_sha256.trim()
+    : ''
+  const reviewerId = typeof value.reviewer_id === 'string' ? value.reviewer_id.trim() : ''
+  if (!/^候选-[A-Z0-9]{8}$/.test(candidateLabel)) {
+    throw new Error('评审回执候选编号格式无效')
+  }
+  if (!/^sha256:[a-f0-9]{64}$/.test(reviewerPacketSha256)) {
+    throw new Error('评审回执 SHA256 格式无效')
+  }
+  if (!reviewerId || reviewerId.length > 120) {
+    throw new Error('评审回执必须填写 1–120 字符的 Reviewer ID')
+  }
+  if (value.blind !== true) {
+    throw new Error('评审回执必须保留 blind=true')
+  }
+  const attestations = isRecord(value.attestations) ? value.attestations : null
+  if (
+    !attestations
+    || attestations.human_reviewer !== true
+    || attestations.origin_and_machine_scores_hidden !== true
+    || attestations.independent_review !== true
+  ) {
+    throw new Error('评审回执的三项真人盲评声明必须全部为 true')
+  }
+  if (!Array.isArray(value.scores) || value.scores.length !== HUMAN_REVIEW_DIMENSIONS.length) {
+    throw new Error('评审回执必须包含完整七维评分')
+  }
+  const expectedDimensions = new Set(HUMAN_REVIEW_DIMENSIONS.map(item => item.key))
+  const seenDimensions = new Set<AiComicHumanReviewDimension>()
+  const scores = value.scores.map((item): AiComicSeriesBlindReviewResponseFile['scores'][number] => {
+    if (!isRecord(item) || typeof item.dimension !== 'string' || !expectedDimensions.has(item.dimension as AiComicHumanReviewDimension)) {
+      throw new Error('评审回执包含未知评分维度')
+    }
+    const dimension = item.dimension as AiComicHumanReviewDimension
+    if (seenDimensions.has(dimension)) {
+      throw new Error(`评审回执重复填写维度：${dimension}`)
+    }
+    seenDimensions.add(dimension)
+    const score = item.score
+    if (typeof score !== 'number' || !Number.isInteger(score) || score < 1 || score > 5) {
+      throw new Error(`评审回执维度 ${dimension} 必须填写 1–5 的整数分`)
+    }
+    const note = typeof item.note === 'string' ? item.note.trim() : ''
+    if (note.length > 1000) {
+      throw new Error(`评审回执维度 ${dimension} 的意见不能超过 1000 字符`)
+    }
+    if (score < 4 && !note) {
+      throw new Error(`评审回执维度 ${dimension} 低于 4 分时必须填写可定位意见`)
+    }
+    return {
+      dimension,
+      label: HUMAN_REVIEW_DIMENSIONS.find(item => item.key === dimension)?.label ?? dimension,
+      score: score as 1 | 2 | 3 | 4 | 5,
+      note,
+    }
+  })
+  if (seenDimensions.size !== expectedDimensions.size) {
+    throw new Error('评审回执缺少评分维度')
+  }
+  return {
+    schema_version: 'ai-comic-series-blind-review-response/v1',
+    candidate_label: candidateLabel,
+    reviewer_packet_sha256: reviewerPacketSha256,
+    reviewer_id: reviewerId,
+    blind: true,
+    instructions: Array.isArray(value.instructions)
+      ? value.instructions.filter((item): item is string => typeof item === 'string')
+      : [],
+    scores,
+    attestations: {
+      human_reviewer: true,
+      origin_and_machine_scores_hidden: true,
+      independent_review: true,
+    },
+  }
+}
+
+async function handleExportCommercialBlindReviewPackage() {
+  if (!seriesProjectId.value) return
+  exportingCommercialBlindReview.value = true
+  commercialHumanReviewError.value = ''
+  commercialHumanReviewImportIssue.value = ''
+  errorMessage.value = ''
+  const res = await exportAiComicSeriesCommercialBlindReviewPackage(seriesProjectId.value)
+  if (res.ok && res.data) {
+    const filenameBase = res.data.candidate_label
+    downloadText(
+      `${filenameBase}-交给reviewer.md`,
+      res.data.reviewer_markdown,
+      'text/markdown;charset=utf-8',
+    )
+    downloadText(
+      `${filenameBase}-评审回执.json`,
+      res.data.reviewer_response_template_json,
+      'application/json;charset=utf-8',
+    )
+    downloadText(
+      `${filenameBase}-仅内部映射.json`,
+      `${JSON.stringify(res.data.operator_manifest, null, 2)}\n`,
+      'application/json;charset=utf-8',
+    )
+    commercialHumanReviewDraft.value.candidate_label = res.data.candidate_label
+    commercialHumanReviewDraft.value.reviewer_packet_sha256 = res.data.reviewer_packet_sha256
+    commercialHumanReviewImportedFilename.value = ''
+    commercialHumanReviewImportIssue.value = ''
+    saveStatus.value = 'saved'
+    saveErrorMessage.value = ''
+    saveMessage.value = `已导出 ${res.data.candidate_label}：把 Reviewer Markdown 与评审回执 JSON 交给评审，内部映射 JSON 不得外发`
+  } else {
+    commercialHumanReviewError.value = res.error?.message ?? '匿名盲评包导出失败'
+    saveStatus.value = 'failed'
+    saveErrorMessage.value = commercialHumanReviewError.value
+  }
+  exportingCommercialBlindReview.value = false
+}
+
+function focusSeriesEpisode(episodeNo: number) {
+  const target = document.getElementById(`series-episode-${episodeNo}`)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function visualIdentityKindLabel(
+  kind: AiComicSeriesSeedanceAssetReportPackage['visual_bible']['identities'][number]['kind'],
+): string {
+  if (kind === 'character') return '人物'
+  if (kind === 'costume') return '服装'
+  if (kind === 'location') return '地点'
+  return '道具'
+}
+
+function visualApprovalStatusLabel(status: SeriesVisualIdentity['approval']['status']): string {
+  if (status === 'approved') return '已人工批准'
+  if (status === 'changes_requested') return '已退回修改'
+  if (status === 'stale') return '源设定变化，审批失效'
+  return '待人工审批'
 }
 
 async function exportSeriesBibleMarkdown() {
@@ -5132,15 +6760,51 @@ function seriesSeedanceAssetPreviewUrl(assetId: string): string | undefined {
   return `/api/story-outline/ai-comic-series-projects/${seriesProjectId.value}/media-assets/media-sha256-${item.content_sha256}/preview`
 }
 
+function seriesSeedanceAssetIdentityBindingStatus(assetId: string): string {
+  const item = seriesSeedanceAssetLibraryItem(assetId)
+  const binding = item?.identity_binding
+  if (!binding) return '未映射'
+  const identity = seedanceAssetReport.value?.visual_bible.identities.find(
+    candidate => candidate.identity_id === binding.series_identity_id,
+  )
+  if (
+    !identity
+    || binding.source_fingerprint !== identity.source_fingerprint
+    || binding.visual_definition_fingerprint !== identity.definition_fingerprint
+  ) {
+    return 'stale'
+  }
+  return binding.status
+}
+
 function seriesSeedanceAssetProductionCredit(assetId: string): boolean {
   const item = seriesSeedanceAssetLibraryItem(assetId)
+  const binding = item?.identity_binding
+  const identity = binding
+    ? seedanceAssetReport.value?.visual_bible.identities.find(candidate => candidate.identity_id === binding.series_identity_id)
+    : undefined
   return Boolean(
     item?.provider === 'local_upload'
     && item.local_path
     && item.content_sha256
     && item.rights_status === 'authorized'
-    && item.human_review_status === 'approved',
+    && item.human_review_status === 'approved'
+    && binding
+    && identity
+    && binding.status === 'approved'
+    && binding.human_confirmed
+    && binding.reviewer_id
+    && binding.source_fingerprint === identity.source_fingerprint
+    && binding.visual_definition_fingerprint === identity.definition_fingerprint,
   )
+}
+
+function seedanceAssetKindLabel(kind: AiComicSeriesSeedanceAssetReportPackage['assets'][number]['kind']): string {
+  if (kind === 'character') return '人物'
+  if (kind === 'costume') return '服装'
+  if (kind === 'location') return '场景'
+  if (kind === 'prop') return '道具'
+  return '未知'
 }
 
 async function bindSeriesSeedanceProviderAssetUrl(
@@ -5170,6 +6834,7 @@ async function bindSeriesSeedanceProviderAssetUrl(
       reference_slot: asset.reference_slot,
       file_url: parsed.toString(),
       description: asset.description,
+      series_identity_id: asset.series_identity_id,
     }],
   })
   if (res.ok && res.data) {
@@ -5203,6 +6868,7 @@ async function uploadSeriesSeedanceAsset(
   form.append('asset_id', asset.asset_id)
   form.append('kind', asset.kind)
   form.append('label', asset.label)
+  if (asset.series_identity_id) form.append('series_identity_id', asset.series_identity_id)
   if (asset.reference_slot) form.append('reference_slot', asset.reference_slot)
   if (asset.description) form.append('description', asset.description)
   const res = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId.value, form)
@@ -5389,6 +7055,7 @@ function parseSeedanceAssetLibraryItem(
     file_url: stringField(value.file_url ?? value.fileUrl ?? value.url),
     file_id: stringField(value.file_id ?? value.fileId),
     description: stringField(value.description ?? value.note),
+    series_identity_id: stringField(value.series_identity_id ?? value.seriesIdentityId),
   }
 }
 
@@ -5460,7 +7127,7 @@ function stringListField(value: unknown): string[] | undefined {
 }
 
 function isSeedanceAssetKind(value: unknown): value is AiComicSeedanceAssetLibraryUpdateRequest['items'][number]['kind'] {
-  return ['character', 'location', 'unknown'].includes(String(value))
+  return ['character', 'costume', 'location', 'prop', 'unknown'].includes(String(value))
 }
 
 function isSeedanceAudioKind(value: unknown): value is AiComicSeedanceAudioLibraryUpdateRequest['items'][number]['kind'] {
@@ -5558,6 +7225,8 @@ function clearCurrentProject() {
   generatedEpisodeStoryIds.value = {}
   continuityLedger.value = null
   seriesQualityAudit.value = null
+  premiseFidelityAudit.value = null
+  commercialQualityAudit.value = null
   seedanceProduction.value = null
   seedanceCutAssembly.value = null
   seedanceSubtitleRender.value = null
@@ -5708,6 +7377,15 @@ function seedanceProductionStatusLabel(status: AiComicSeedanceProductionStatus):
     skipped: '跳过',
   }
   return map[status]
+}
+
+function seedanceCostBoundaryLabel(
+  status: NonNullable<AiComicSeedanceShotProductionItem['execution_cost']>['boundary_status'],
+): string {
+  if (status === 'within_authorization') return '授权内'
+  if (status === 'exceeded_authorization') return '超出授权预算'
+  if (status === 'currency_mismatch') return '币种与授权不一致'
+  return '缺少外部授权'
 }
 
 function gearsJobStatusLabel(status: GearsJobLedgerItem['status']): string {
@@ -6708,6 +8386,423 @@ function episodeProjectPath(episodeNo: number): string {
   line-height: 1.45;
 }
 
+.series-studio__human-review-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  border: 1px solid #c9d8e3;
+  border-radius: 12px;
+  background: #f4f8fa;
+  padding: 18px;
+}
+
+.series-studio__human-review-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.series-studio__human-review-hero > div {
+  display: grid;
+  gap: 4px;
+}
+
+.series-studio__human-review-hero strong {
+  color: #17252e;
+  font-size: 20px;
+}
+
+.series-studio__human-review-hero p {
+  margin: 0;
+  color: #526875;
+  font-size: 13px;
+}
+
+.series-studio__human-review-eyebrow {
+  color: #24736b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.series-studio__human-review-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #fff2cf;
+  padding: 6px 10px;
+  color: #805800;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__human-review-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.series-studio__human-review-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-radius: 8px;
+  background: #e7eef2;
+  padding: 9px 10px;
+  color: #6b7b85;
+  font-size: 12px;
+}
+
+.series-studio__human-review-steps li > span {
+  display: grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #cad5db;
+  color: #52636d;
+  font-weight: 800;
+}
+
+.series-studio__human-review-step--active {
+  background: #dcefeb !important;
+  color: #155e57 !important;
+}
+
+.series-studio__human-review-step--active > span,
+.series-studio__human-review-step--done > span {
+  background: #24736b !important;
+  color: #fff !important;
+}
+
+.series-studio__human-review-step--done {
+  color: #24736b !important;
+}
+
+.series-studio__human-review-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #d4dfe5;
+  border-radius: 10px;
+  background: #fff;
+  padding: 16px;
+}
+
+.series-studio__human-review-card--active {
+  border-color: #66a9a1;
+  box-shadow: 0 0 0 3px rgba(36, 115, 107, 0.08);
+}
+
+.series-studio__human-review-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.series-studio__human-review-card-head > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e1efed;
+  padding: 4px 8px;
+  color: #1e6b63;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.series-studio__human-review-card-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.series-studio__human-review-card-head strong {
+  color: #22333d;
+  font-size: 15px;
+}
+
+.series-studio__human-review-card-head p {
+  margin: 0;
+  color: #61747f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.series-studio__human-review-file-map {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.series-studio__human-review-file-map > div {
+  display: grid;
+  gap: 5px;
+  border-radius: 8px;
+  background: #f5f8fa;
+  padding: 12px;
+}
+
+.series-studio__human-review-file-map strong {
+  color: #263943;
+  font-size: 13px;
+}
+
+.series-studio__human-review-file-map small {
+  color: #687b86;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.series-studio__human-review-file-badge {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.series-studio__human-review-file-badge--send {
+  background: #dcefeb;
+  color: #17655d;
+}
+
+.series-studio__human-review-file-badge--private {
+  background: #fff0d8;
+  color: #8a5b00;
+}
+
+.series-studio__human-review-card > .series-studio__primary-button {
+  width: fit-content;
+}
+
+.series-studio__human-review-inline-status {
+  margin: -4px 0 0;
+  color: #55707b;
+  font-size: 12px;
+}
+
+.series-studio__human-review-import-success {
+  color: #17655d !important;
+  font-weight: 700;
+}
+
+.series-studio__human-review-guidance {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #e8c77d;
+  border-radius: 8px;
+  background: #fff8e8;
+  padding: 12px;
+  color: #684a0b;
+}
+
+.series-studio__human-review-guidance strong {
+  color: #704700;
+  font-size: 13px;
+}
+
+.series-studio__human-review-guidance p,
+.series-studio__human-review-guidance ol {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.series-studio__human-review-guidance ol {
+  display: grid;
+  gap: 3px;
+  padding-left: 18px;
+}
+
+.series-studio__human-review-form-link {
+  width: fit-content;
+  border-radius: 7px;
+  background: #845300;
+  padding: 9px 12px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.series-studio__human-review-form-link:hover {
+  background: #6f4600;
+}
+
+.series-studio__human-review-review-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.series-studio__human-review-review-meta {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(140px, 0.7fr) minmax(260px, 1.7fr);
+  gap: 8px;
+}
+
+.series-studio__human-review-review-meta > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border-radius: 7px;
+  background: #f3f7f9;
+  padding: 9px;
+}
+
+.series-studio__human-review-review-meta span {
+  color: #71838d;
+  font-size: 10px;
+}
+
+.series-studio__human-review-review-meta strong {
+  min-width: 0;
+  color: #263943;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.series-studio__human-review-score-summary {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #dce5e9;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.series-studio__human-review-score-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.series-studio__human-review-score-summary span,
+.series-studio__human-review-score-summary p {
+  color: #5e727d;
+  font-size: 12px;
+}
+
+.series-studio__human-review-score-summary p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.series-studio__human-review-score-summary strong {
+  color: #1f6e65;
+  font-size: 14px;
+}
+
+.series-studio__human-review-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  background: #f4f6f7;
+  padding: 12px;
+  color: #72838c;
+}
+
+.series-studio__human-review-locked > span {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dfe5e8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.series-studio__human-review-locked > div {
+  display: grid;
+  gap: 3px;
+}
+
+.series-studio__human-review-locked strong {
+  color: #596b75;
+  font-size: 12px;
+}
+
+.series-studio__human-review-locked--blocked {
+  background: #fff8e8;
+  color: #72520e;
+}
+
+.series-studio__human-review-locked--blocked > span {
+  background: #f1dba8;
+  color: #795200;
+}
+
+.series-studio__human-review-locked--blocked strong {
+  color: #704700;
+}
+
+.series-studio__human-review-locked p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.series-studio__human-review-score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.series-studio__human-review-binding-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(280px, 1.3fr);
+  gap: 10px;
+}
+
+.series-studio__human-review-import {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.series-studio__human-review-import span {
+  min-width: 0;
+  color: #516471;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.series-studio__human-review-score {
+  display: grid;
+  grid-template-columns: 64px 78px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #24313b;
+  font-size: 13px;
+}
+
+.series-studio__human-review-score .series-studio__input,
+.series-studio__human-review-score .series-studio__select {
+  min-width: 0;
+  width: 100%;
+}
+
+.series-studio__human-review-attestation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #516471;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.series-studio__human-review-attestation input {
+  margin-top: 2px;
+}
+
 .series-studio__thread-closure {
   display: grid;
   gap: 10px;
@@ -6740,6 +8835,288 @@ function episodeProjectPath(episodeNo: number): string {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
+}
+
+.series-studio__visual-readiness-guide {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.series-studio__visual-readiness-guide li {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid #d8e1e6;
+  border-radius: 8px;
+  background: #f8fafb;
+  padding: 10px;
+}
+
+.series-studio__visual-readiness-guide strong {
+  color: #344b57;
+  font-size: 12px;
+}
+
+.series-studio__visual-readiness-guide span,
+.series-studio__visual-readiness-guide small {
+  color: #667986;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.series-studio__visual-readiness-step--complete {
+  border-color: #8fc4bd !important;
+  background: #f1fbf8 !important;
+}
+
+.series-studio__visual-readiness-step--complete strong,
+.series-studio__visual-readiness-step--complete small {
+  color: #17675f !important;
+}
+
+.series-studio__visual-readiness-step--active {
+  border-color: #e2ba63 !important;
+  background: #fff8e8 !important;
+}
+
+.series-studio__visual-readiness-step--active strong,
+.series-studio__visual-readiness-step--active small {
+  color: #8a5b08 !important;
+}
+
+.series-studio__visual-bible-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.series-studio__visual-bible-summary article {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #d5e4e2;
+  border-radius: 8px;
+  background: #f5faf9;
+  padding: 12px;
+}
+
+.series-studio__visual-bible-summary span,
+.series-studio__visual-bible-summary small {
+  color: #667986;
+  font-size: 11px;
+}
+
+.series-studio__visual-bible-summary strong {
+  color: #1c625b;
+  font-size: 17px;
+}
+
+.series-studio__visual-pilot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.series-studio__visual-pilot-grid article {
+  border: 1px solid #d8e1e6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.series-studio__visual-pilot-grid article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.series-studio__visual-pilot-grid span,
+.series-studio__visual-pilot-grid small {
+  color: #667986;
+  font-size: 11px;
+}
+
+.series-studio__visual-pilot-grid p {
+  margin: 8px 0 5px;
+  color: #314a56;
+  font-size: 12px;
+}
+
+.series-studio__visual-bible-details {
+  margin-top: 12px;
+  border: 1px solid #d8e1e6;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.series-studio__visual-bible-details summary {
+  padding: 12px;
+  color: #286f68;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.series-studio__visual-bible-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.series-studio__visual-bible-list article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border-radius: 7px;
+  background: #f7f9fa;
+  padding: 10px;
+}
+
+.series-studio__visual-identity-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.series-studio__visual-identity-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.series-studio__visual-edit-button {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.series-studio__visual-identity-card--editing {
+  grid-column: 1 / -1;
+  border: 1px solid #8fc4bd;
+  background: #f5fbfa !important;
+}
+
+.series-studio__visual-bible-list span,
+.series-studio__visual-bible-list small {
+  color: #667986;
+  font-size: 11px;
+}
+
+.series-studio__visual-bible-list code {
+  overflow-wrap: anywhere;
+  color: #2b657a;
+  font-size: 10px;
+}
+
+.series-studio__visual-bible-list p {
+  margin: 0;
+  color: #405865;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.series-studio__visual-definition-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+  border-top: 1px solid #d3e4e1;
+  padding-top: 12px;
+}
+
+.series-studio__visual-definition-notice {
+  border-radius: 7px;
+  background: #fff7df;
+  padding: 9px 10px;
+  color: #76510b !important;
+}
+
+.series-studio__visual-suggestion-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.series-studio__visual-suggestion-actions small {
+  color: #2b657a;
+  line-height: 1.5;
+}
+
+.series-studio__visual-definition-fields,
+.series-studio__visual-definition-review {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.series-studio__visual-definition-fields--longform,
+.series-studio__visual-definition-review {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.series-studio__visual-definition-editor label {
+  display: grid;
+  gap: 5px;
+  color: #38505c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.series-studio__visual-definition-editor input[type='text'],
+.series-studio__visual-definition-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #bdcdd5;
+  border-radius: 7px;
+  background: #fff;
+  padding: 9px 10px;
+  color: #233842;
+  font: inherit;
+  font-weight: 400;
+}
+
+.series-studio__visual-definition-editor textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.series-studio__visual-definition-confirmation {
+  display: flex !important;
+  align-items: flex-start;
+  grid-template-columns: none !important;
+  gap: 8px !important;
+  border-radius: 7px;
+  background: #eef6f5;
+  padding: 10px;
+  line-height: 1.45;
+}
+
+.series-studio__visual-definition-confirmation input {
+  margin-top: 2px;
+}
+
+.series-studio__visual-definition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.series-studio__visual-bible-issues {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 10px 10px 10px 28px;
+  border-radius: 8px;
+  background: #fff7e8;
+  color: #76510b;
+  font-size: 12px;
 }
 
 .series-studio__series-asset {
@@ -7134,6 +9511,16 @@ function episodeProjectPath(episodeNo: number): string {
   color: #516473;
   font-size: 12px;
   font-weight: 700;
+}
+
+button.series-studio__episode-audit {
+  background: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.series-studio__episode-audit:hover {
+  background: #fff5f1;
 }
 
 .series-studio__episode-audit--passed {
@@ -7868,7 +10255,13 @@ function episodeProjectPath(episodeNo: number): string {
   .series-studio__ledger,
   .series-studio__episode-columns,
   .series-studio__episode-editor-grid,
-  .series-studio__series-assets {
+  .series-studio__series-assets,
+  .series-studio__visual-readiness-guide,
+  .series-studio__visual-bible-summary,
+  .series-studio__visual-pilot-grid,
+  .series-studio__visual-bible-list,
+  .series-studio__visual-definition-fields,
+  .series-studio__visual-definition-review {
     grid-template-columns: 1fr;
   }
 
@@ -7880,6 +10273,36 @@ function episodeProjectPath(episodeNo: number): string {
 @media (max-width: 560px) {
   .series-studio__grid {
     grid-template-columns: 1fr;
+  }
+
+  .series-studio__human-review-binding-grid,
+  .series-studio__human-review-score-grid,
+  .series-studio__human-review-steps,
+  .series-studio__human-review-file-map,
+  .series-studio__human-review-review-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .series-studio__human-review-form {
+    padding: 12px;
+  }
+
+  .series-studio__human-review-hero {
+    flex-direction: column;
+  }
+
+  .series-studio__human-review-card > .series-studio__primary-button,
+  .series-studio__human-review-review-panel > .series-studio__primary-button {
+    width: 100%;
+  }
+
+  .series-studio__human-review-import {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .series-studio__human-review-score {
+    grid-template-columns: 56px 72px minmax(0, 1fr);
   }
 
   .series-studio__summary-actions,

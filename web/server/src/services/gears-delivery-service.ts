@@ -205,7 +205,9 @@ function buildCharacterAsset(
       ...(scene.fictionalized_elements ?? []),
     ]),
   ].filter(Boolean).join(' ');
-  const carriedProps = inferCarriedProps(characterContext);
+  const carriedProps = /当代长沙|皮影|影偶|灯幕|旧戏台/.test(characterContext)
+    ? inferHeritageStageCarriedProps(name)
+    : inferCarriedProps(characterContext);
   const appearanceFeatures = character?.description?.trim()
     || detailSentence(name, characterContext, 1)
     || `${name}的稳定外观需按史料或项目设定补充；保持五官、发型、体型与显著特征在所有单元一致。`;
@@ -309,6 +311,11 @@ function inferAgeRange(name: string, text: string): GearsAgeRange {
 }
 
 function inferClothing(name: string, text: string): string {
+  if (/当代长沙|皮影|影偶|灯幕|旧戏台|拆迁负责人|戏班同伴/.test(text)) {
+    if (name === '拆迁负责人') return '当代城市更新项目工作人员服装：深色夹克或工装外套、长裤、工作证与平底鞋。';
+    if (name === '戏班同伴') return '当代青年戏班排练服装：便于操偶的素色长袖上衣、深色长裤与软底鞋。';
+    return '当代长沙少年守艺者服装：耐磨素色上衣、工装长裤、围裙或护袖与软底鞋。';
+  }
   if (name === '毛泽东') {
     return '按清末民初至1920年代的场次年龄推进：韶山少年阶段穿湖南农家短褂布裤；一师求学与新民学会阶段穿朴素学生长衫或学生装；农民运动阶段穿便于乡村行走的布质长衫、短褂与布鞋，发式和年龄随年代一致。';
   }
@@ -333,7 +340,7 @@ function inferClothing(name: string, text: string): string {
   if (/(毛泽东|韶山|湘潭|第一师范|东山|辛亥|五四|新文化|马克思|革命|近代|民国|清末|191\d|192\d)/.test(text)) {
     return '清末民初至五四前后中国青年固定服装：朴素学生长衫或短褂布鞋，发式按近代青年处理，所有单元保持一致。';
   }
-  if (text.includes('唐') || text.includes('宋') || text.includes('明') || text.includes('清') || text.includes('古代')) {
+  if (/(?:唐代|唐朝|大唐|宋代|宋朝|北宋|南宋|明代|明朝|大明|清代|清朝|大清|古代)/.test(text)) {
     return '符合对应历史时期与身份的固定服装，所有单元保持一致。';
   }
   return '符合人物身份与时代背景的固定服装，所有单元保持一致。';
@@ -345,6 +352,12 @@ function inferCarriedProps(text: string): string | undefined {
   const matched = candidates.filter(item => text.includes(item));
   const filtered = matched.filter(item => !environmentOnly.some(blocked => blocked.includes(item) && text.includes(blocked)));
   return filtered.length > 0 ? [...new Set(filtered)].slice(0, 3).join('、') : undefined;
+}
+
+function inferHeritageStageCarriedProps(name: string): string {
+  if (name === '拆迁负责人') return '清场通知、工程文件、工作证';
+  if (name === '戏班同伴') return '影偶、操偶杆、锣鼓槌';
+  return '机关谱、影偶、修复工具';
 }
 
 function buildSceneAssets(story: StoryGenerateResult): GearsSceneAsset[] {

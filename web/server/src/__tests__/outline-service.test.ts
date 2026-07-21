@@ -33,6 +33,8 @@ import {
   exportAiComicSeriesSeedanceVersionComparisonPackage,
   generateAiComicEpisodeFromPlan,
   generateAiComicSeriesPlan,
+  generateAiComicSeriesVisualIdentitySuggestionDraft,
+  generateAiComicSeriesVisualWorldRuleSuggestionDraft,
   getAiComicSeriesProductionReadiness,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
@@ -42,6 +44,9 @@ import {
   readAiComicSeriesMediaAssetPreview,
   recoverAiComicSeriesSeedanceProviderTimeouts,
   rebuildAiComicSeriesContinuityLedger,
+  rebuildAiComicSeriesVisualBible,
+  updateAiComicSeriesVisualIdentityDefinition,
+  updateAiComicSeriesVisualWorldRuleDefinition,
   rollbackAiComicSeriesSeedanceFinalDelivery,
   renderAiComicSeriesSeedanceSubtitles,
   renderAiComicSeriesSeedanceTitleCards,
@@ -447,6 +452,90 @@ describe('outline-service', () => {
     expect(projectRes.data?.current_story.domain_safety).toEqual(res.data?.domain_safety);
   });
 
+  it('generates an original series episode when the outline has no registered knowledge match', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '少年阿湘为阻止老街戏台拆除，沿着祖父留下的皮影机关线索寻找失散的戏班成员，每集解决一次传承危机，最终完成公开演出。',
+      series_title: '长沙皮影守艺录',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+      pacing_profile: 'balanced_drama',
+      generation_scope: 'full_planning',
+    });
+
+    expect(planRes.ok).toBe(true);
+    expect(planRes.data?.core_theme).toContain('守艺');
+    expect(planRes.data?.main_characters[0]?.name).toBe('阿湘');
+    expect(planRes.data?.episodes.map(episode => episode.title).join('\n')).toMatch(/戏台|皮影|影偶|演出/);
+    expect(JSON.stringify(planRes.data?.episodes)).toMatch(/拆除|戏班|机关谱|公开演出/);
+    expect(JSON.stringify(planRes.data?.episodes)).not.toMatch(/案卷|证词|判词|催签|封泥/);
+    expect(planRes.data?.episodes.every(episode =>
+      episode.foreshadowing.every(foreshadowing =>
+        planRes.data!.plot_threads.some(thread => foreshadowing.includes(thread.title))
+      )
+    )).toBe(true);
+    const saved = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saved.ok).toBe(true);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: saved.data!.project.series_project_id,
+      output_gears_segments: true,
+    });
+
+    expect(episodeRes.ok, JSON.stringify(episodeRes.error)).toBe(true);
+    expect(episodeRes.data?.truth_mode).toBe('fictional_original');
+    expect(episodeRes.data?.source_entry).toMatch(/——用户原创故事种子$/);
+    expect(episodeRes.data?.knowledge_pack?.primary_entries[0]).toMatchObject({
+      entry_name: episodeRes.data?.source_entry,
+      province: '用户素材',
+    });
+    expect(episodeRes.data?.material_pack?.primary_materials[0]?.linked_entry_name)
+      .toBe(episodeRes.data?.source_entry);
+    expect(episodeRes.data?.full_text).toMatch(/阿湘/);
+    expect(episodeRes.data?.full_text).toMatch(/戏台|皮影|影偶|灯幕|演出/);
+    expect(JSON.stringify([
+      episodeRes.data?.full_text,
+      episodeRes.data?.scene_breakdown,
+      episodeRes.data?.gears_segments,
+      episodeRes.data?.credibility_note,
+    ])).not.toMatch(/濂溪|案卷|证词|判词|催签|封泥|宋代衙署/);
+    expect(episodeRes.data?.gears_delivery?.character_assets.map(asset => asset.name).sort())
+      .toEqual(['戏班同伴', '拆迁负责人', '阿湘'].sort());
+    expect(episodeRes.data?.gears_delivery?.scene_assets.map(asset => asset.name).join('\n'))
+      .toMatch(/长沙老街旧戏台前场|旧戏台后台与皮影工作台|旧戏台灯幕后/);
+    expect(episodeRes.data?.gears_delivery?.character_assets.every(asset =>
+      !/少年阿湘|长沙皮影守|拆除告示生|关键见证者|对照角色/.test(asset.name)
+      && !asset.clothing.includes('符合对应历史时期')
+    )).toBe(true);
+    expect(episodeRes.data?.gears_delivery?.scene_assets.every(asset => asset.name !== '用户素材'))
+      .toBe(true);
+    const preReadySubtitlePackage = await exportAiComicSeriesSeedanceSubtitlePackage(
+      saved.data!.project.series_project_id,
+      { episode_no: 1 },
+    );
+    expect(preReadySubtitlePackage.ok, JSON.stringify(preReadySubtitlePackage.error)).toBe(true);
+    expect(preReadySubtitlePackage.data?.cue_count).toBeGreaterThan(0);
+    expect(preReadySubtitlePackage.data?.cues.every(cue => cue.episode_no === 1)).toBe(true);
+    const preReadyTitleCardPackage = await exportAiComicSeriesSeedanceTitleCardPlanPackage(
+      saved.data!.project.series_project_id,
+    );
+    expect(preReadyTitleCardPackage.ok, JSON.stringify(preReadyTitleCardPackage.error)).toBe(true);
+    expect(preReadyTitleCardPackage.data?.cards).toEqual(expect.arrayContaining([
+      expect.objectContaining({ card_id: 'card-series-opening', placement: 'series_opening' }),
+      expect.objectContaining({ card_id: 'card-e1-opening', placement: 'episode_opening', episode_no: 1 }),
+      expect.objectContaining({ card_id: 'card-e1-ending', placement: 'episode_ending', episode_no: 1 }),
+      expect.objectContaining({ card_id: 'card-series-ending', placement: 'series_ending' }),
+    ]));
+    expect(episodeRes.data?.domain_safety).toMatchObject({
+      domain: 'china_culture',
+      passed: true,
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+  });
+
   it('keeps adjacent AI comic episodes distinct and audience-facing after ledger generation', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，后来面对南安军拒签冤案，坚持良知。每集都要让案卷压力、少年见证和拒签选择继续升级。',
@@ -669,6 +758,10 @@ describe('outline-service', () => {
       .toBe('ai-comic-memory-conflict-report/v1');
     expect(saveRes.data?.series_quality_audit?.memory_conflict_report?.total_conflict_count)
       .toBeGreaterThanOrEqual(0);
+    expect(saveRes.data?.visual_bible?.schema_version).toBe('ai-comic-series-visual-bible/v1');
+    expect(saveRes.data?.visual_bible?.identities.some(identity => identity.kind === 'character')).toBe(true);
+    expect(saveRes.data?.visual_bible?.production_credit_identity_count).toBe(0);
+    const savedVisualIdentityIds = saveRes.data?.visual_bible?.identities.map(identity => identity.identity_id);
 
     const getRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
     expect(getRes.ok).toBe(true);
@@ -680,6 +773,8 @@ describe('outline-service', () => {
       story_id: '20260611-story-abc1',
       status: 'unknown',
     });
+    expect(getRes.data?.visual_bible?.identities.map(identity => identity.identity_id))
+      .toEqual(savedVisualIdentityIds);
 
     const listRes = await listAiComicSeriesProjects();
     expect(listRes.ok).toBe(true);
@@ -695,6 +790,8 @@ describe('outline-service', () => {
     expect(exportRes.data?.production_tables.production_constraints.length).toBeGreaterThan(0);
     expect(exportRes.data?.production_tables.episodic_memory.length).toBeGreaterThanOrEqual(0);
     expect(exportRes.data?.production_tables.episode_status).toHaveLength(3);
+    expect(exportRes.data?.visual_bible.identities.map(identity => identity.identity_id))
+      .toEqual(savedVisualIdentityIds);
     expect(exportRes.data?.production_tables.episode_status[0]).toMatchObject({
       episode_no: 1,
       status: 'generated',
@@ -704,6 +801,8 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('## 主线剧情骨架');
     expect(exportRes.data?.markdown).toContain('## 连续性账本');
     expect(exportRes.data?.markdown).toContain('## 系列记忆引擎');
+    expect(exportRes.data?.markdown).toContain('## 系列视觉圣经与稳定身份图谱');
+    expect(exportRes.data?.markdown).toContain('### 稳定视觉身份');
     expect(exportRes.data?.markdown).toContain('## 制作表');
     expect(exportRes.data?.markdown).toContain('### 角色表');
     expect(exportRes.data?.markdown).toContain('### 系列记忆表');
@@ -713,6 +812,251 @@ describe('outline-service', () => {
     expect(exportRes.data?.markdown).toContain('线索闭环');
     expect(exportRes.data?.markdown).toContain('记忆冲突');
     expect(exportRes.data?.markdown).toContain('第1集：未签的案卷');
+
+    const rebuildVisualBibleRes = await rebuildAiComicSeriesVisualBible(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(rebuildVisualBibleRes.ok).toBe(true);
+    expect(rebuildVisualBibleRes.data?.visual_bible?.identities.map(identity => identity.identity_id))
+      .toEqual(savedVisualIdentityIds);
+    const characterIdentity = rebuildVisualBibleRes.data!.visual_bible!.identities
+      .find(identity => identity.kind === 'character')!;
+    const definitionFields = Object.fromEntries(
+      characterIdentity.definition_fields.map(field => [field.field_id, `${field.label}已由测试确认`]),
+    );
+    const incompleteApproval = await updateAiComicSeriesVisualIdentityDefinition(
+      saveRes.data!.project.series_project_id,
+      characterIdentity.identity_id,
+      {
+        expected_source_fingerprint: characterIdentity.source_fingerprint,
+        fields: { [characterIdentity.definition_fields[0].field_id]: '仅填写一项' },
+        action: 'approve',
+        reviewer_id: 'visual-reviewer-001',
+        human_confirmed: true,
+        review_note: '逐项复核',
+      },
+    );
+    expect(incompleteApproval.ok).toBe(false);
+    expect(incompleteApproval.error?.message).toContain('尚未完整');
+    const approvedDefinition = await updateAiComicSeriesVisualIdentityDefinition(
+      saveRes.data!.project.series_project_id,
+      characterIdentity.identity_id,
+      {
+        expected_source_fingerprint: characterIdentity.source_fingerprint,
+        fields: definitionFields,
+        definition_notes: '跨集人物外观保持一致',
+        action: 'approve',
+        reviewer_id: 'visual-reviewer-001',
+        human_confirmed: true,
+        review_note: '已对照角色设定逐项复核',
+      },
+    );
+    expect(approvedDefinition.ok).toBe(true);
+    expect(approvedDefinition.data?.visual_bible?.approved_identity_count).toBe(1);
+    expect(approvedDefinition.data?.visual_bible?.identities
+      .find(identity => identity.identity_id === characterIdentity.identity_id)?.approval.status)
+      .toBe('approved');
+    const readApprovedDefinition = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
+    expect(readApprovedDefinition.data?.visual_bible?.identities
+      .find(identity => identity.identity_id === characterIdentity.identity_id)?.definition_notes)
+      .toBe('跨集人物外观保持一致');
+    const persistedProject = JSON.parse(await readFile(resolve(
+      outlineGeneratedRoot(),
+      'ai-comic-series-projects',
+      saveRes.data!.project.series_project_id,
+      'project.json',
+    ), 'utf8'));
+    expect(persistedProject.visual_bible.schema_version).toBe('ai-comic-series-visual-bible/v1');
+    expect(persistedProject.visual_bible.identities.map((identity: { identity_id: string }) => identity.identity_id))
+      .toEqual(savedVisualIdentityIds);
+    expect(persistedProject.visual_bible.approved_identity_count).toBe(1);
+  });
+
+  it('requires verified E1/E2/E3 world-rule targets before approving and persists the visual mapping', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '当代皮影悬疑：三位守灯人必须遵守午夜灯幕规则，否则会失去共同记忆。',
+      series_title: '守灯规则试验',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+      pacing_profile: 'mystery_cliffhanger',
+      generation_scope: 'full_planning',
+    });
+    expect(planRes.ok).toBe(true);
+    const plan = {
+      ...planRes.data!,
+      premise_contract: {
+        ...planRes.data!.premise_contract!,
+        world_rules: [{
+          rule_id: 'midnight-lamp-screen-rule',
+          statement: '午夜灯幕熄灭后不得跨过白幕禁位',
+          consequence: '违规者会失去共同记忆',
+          required: true,
+          evidence_span: '午夜灯幕熄灭后不得跨过白幕禁位',
+        }],
+      },
+    };
+    const episodeResults = await Promise.all([1, 2, 3].map(episodeNo => generateAiComicEpisodeFromPlan({
+      series_plan: plan,
+      episode_no: episodeNo,
+      output_gears_segments: true,
+      auto_repair_episode: true,
+    })));
+    expect(episodeResults.every(result => result.ok && result.data?.gears_segments.length)).toBe(true);
+    const generatedEpisodeStoryIds = Object.fromEntries(episodeResults.map((result, index) => [
+      String(index + 1),
+      result.data!.storyId,
+    ]));
+    const saveRes = await saveAiComicSeriesProject({ plan, generated_episode_story_ids: generatedEpisodeStoryIds });
+    expect(saveRes.ok).toBe(true);
+    const rule = saveRes.data!.visual_bible!.world_rules[0]!;
+    const fields = Object.fromEntries(rule.definition_fields.map(field => [
+      field.field_id,
+      `${field.label}已由真人确认`,
+    ]));
+    const firstSegmentId = String(episodeResults[0].data!.gears_segments[0]!.segment_id);
+    const incomplete = await updateAiComicSeriesVisualWorldRuleDefinition(
+      saveRes.data!.project.series_project_id,
+      rule.rule_id,
+      {
+        expected_source_fingerprint: rule.source_fingerprint,
+        fields,
+        pilot_bindings: [{ episode_no: 1, target_type: 'gears_segment', target_id: firstSegmentId }],
+        action: 'approve',
+        reviewer_id: 'visual-reviewer-001',
+        human_confirmed: true,
+        review_note: '先核对首集规则目标',
+      },
+    );
+    expect(incomplete.ok).toBe(false);
+    expect(incomplete.error?.message).toContain('E2');
+
+    const approved = await updateAiComicSeriesVisualWorldRuleDefinition(
+      saveRes.data!.project.series_project_id,
+      rule.rule_id,
+      {
+        expected_source_fingerprint: rule.source_fingerprint,
+        fields,
+        definition_notes: '白幕、灯火与逆影必须在三集保持可见因果关系。',
+        pilot_bindings: episodeResults.map((result, index) => ({
+          episode_no: index + 1,
+          target_type: 'gears_segment' as const,
+          target_id: String(result.data!.gears_segments[0]!.segment_id),
+        })),
+        action: 'approve',
+        reviewer_id: 'visual-reviewer-001',
+        human_confirmed: true,
+        review_note: '已逐项核对规则文本、视觉符号、触发条件和三个真实 GEARS 段。',
+      },
+    );
+    expect(approved.ok).toBe(true);
+    expect(approved.data?.visual_bible?.approved_world_rule_count).toBe(1);
+    expect(approved.data?.visual_bible?.world_rules[0]).toMatchObject({
+      definition_status: 'ready',
+      missing_pilot_episode_nos: [],
+      approval: { status: 'approved' },
+    });
+
+    const readRes = await getAiComicSeriesProject(saveRes.data!.project.series_project_id);
+    expect(readRes.data?.visual_bible?.world_rules[0]?.pilot_bindings).toHaveLength(3);
+  });
+
+  it('returns auditable visual suggestion patches without overwriting or persisting project data', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '当代皮影悬疑：守灯人林灯必须遵守午夜灯幕规则，否则会失去共同记忆。',
+      series_title: '视觉建议只读合同试验',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+      pacing_profile: 'mystery_cliffhanger',
+      generation_scope: 'full_planning',
+    });
+    expect(planRes.ok).toBe(true);
+    const plan = {
+      ...planRes.data!,
+      premise_contract: {
+        ...planRes.data!.premise_contract!,
+        world_rules: [{
+          rule_id: 'midnight-lamp-screen-rule',
+          statement: '午夜灯幕熄灭后不得跨过白幕禁位',
+          consequence: '违规者会失去共同记忆',
+          required: true,
+          evidence_span: '午夜灯幕熄灭后不得跨过白幕禁位',
+        }],
+      },
+    };
+    const saveRes = await saveAiComicSeriesProject({ plan });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+    const identity = saveRes.data!.visual_bible!.identities.find(item => item.kind === 'character')!;
+    const bodyTypeField = identity.definition_fields.find(field => field.field_id === 'body_type')!;
+    const draftSaved = await updateAiComicSeriesVisualIdentityDefinition(
+      seriesProjectId,
+      identity.identity_id,
+      {
+        expected_source_fingerprint: identity.source_fingerprint,
+        fields: { [bodyTypeField.field_id]: '真人已填写的瘦高体态，不得覆盖' },
+        action: 'save_draft',
+      },
+    );
+    expect(draftSaved.ok).toBe(true);
+    const projectPath = resolve(
+      outlineGeneratedRoot(),
+      'ai-comic-series-projects',
+      seriesProjectId,
+      'project.json',
+    );
+    const beforeBytes = await readFile(projectPath, 'utf8');
+    const beforeUpdatedAt = draftSaved.data!.project.updated_at;
+
+    const identitySuggestion = await generateAiComicSeriesVisualIdentitySuggestionDraft(
+      seriesProjectId,
+      identity.identity_id,
+    );
+    expect(identitySuggestion.ok).toBe(true);
+    expect(identitySuggestion.data).toMatchObject({
+      schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+      target_type: 'visual_identity',
+      target_id: identity.identity_id,
+      suggestion_source: 'deterministic_template',
+      suggestion_version: 'visual-definition-suggestions/v1',
+      persisted: false,
+      auto_approved: false,
+    });
+    expect(identitySuggestion.data?.fields).not.toHaveProperty('body_type');
+    expect(identitySuggestion.data?.fields).not.toHaveProperty('age_range');
+    expect(identitySuggestion.data?.fields).not.toHaveProperty('gender_pronouns');
+    expect(identitySuggestion.data?.unresolved_field_ids).toEqual(expect.arrayContaining([
+      'age_range',
+      'gender_pronouns',
+    ]));
+    expect(identitySuggestion.data?.definition_notes).toContain('尚未人工批准');
+
+    const rule = draftSaved.data!.visual_bible!.world_rules[0]!;
+    const ruleSuggestion = await generateAiComicSeriesVisualWorldRuleSuggestionDraft(
+      seriesProjectId,
+      rule.rule_id,
+    );
+    expect(ruleSuggestion.ok).toBe(true);
+    expect(ruleSuggestion.data).toMatchObject({
+      schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+      target_type: 'visual_world_rule',
+      target_id: rule.rule_id,
+      suggestion_source: 'deterministic_template',
+      suggestion_version: 'visual-definition-suggestions/v1',
+      persisted: false,
+      auto_approved: false,
+      unresolved_field_ids: [],
+    });
+    expect(ruleSuggestion.data?.fields).toHaveProperty('visual_symbol');
+    expect(ruleSuggestion.data?.fields).toHaveProperty('trigger_condition');
+    expect(ruleSuggestion.data?.definition_notes).toContain('不会创建或替换真实镜头绑定');
+
+    const afterBytes = await readFile(projectPath, 'utf8');
+    const afterRead = await getAiComicSeriesProject(seriesProjectId);
+    expect(afterBytes).toBe(beforeBytes);
+    expect(afterRead.data?.project.updated_at).toBe(beforeUpdatedAt);
+    expect(afterRead.data?.visual_bible?.approved_identity_count).toBe(0);
+    expect(afterRead.data?.visual_bible?.approved_world_rule_count).toBe(0);
+    expect(afterRead.data?.visual_bible?.production_credit_identity_count).toBe(0);
   });
 
   it('flags duplicated generated AI comic story ids for episode regeneration', async () => {
@@ -1156,6 +1500,21 @@ describe('outline-service', () => {
     expect(seedanceExportRes.ok).toBe(true);
     const sourceItem = seedanceExportRes.data!.seedance_production!.items[0]!;
 
+    const externalVisualBlockedRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      source_unit_id: sourceItem.production_id,
+      use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'test-authorization:visual-gate',
+        max_cost_amount: 1,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
+      note: '必须先通过视觉资产生产门禁',
+    });
+    expect(externalVisualBlockedRes.ok).toBe(false);
+    expect(externalVisualBlockedRes.error?.message).toContain('视觉资产生产门禁');
+
     const submitRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
       source_unit_id: sourceItem.production_id,
       note: 'series readiness test submit',
@@ -1164,6 +1523,7 @@ describe('outline-service', () => {
 
     const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
     const gearsLane = readiness.data?.lanes.find(lane => lane.key === 'gears_execution');
+    const visualAssetLane = readiness.data?.lanes.find(lane => lane.key === 'visual_asset_readiness');
 
     expect(readiness.ok).toBe(true);
     expect(readiness.data?.schema_version).toBe('ai-comic-series-production-readiness/v1');
@@ -1172,7 +1532,31 @@ describe('outline-service', () => {
     expect(readiness.data?.summary.total_episode_count).toBe(2);
     expect(readiness.data?.summary.gears_job_count).toBe(1);
     expect(readiness.data?.summary.active_gears_job_count).toBe(1);
+    expect(readiness.data?.seedance_cost_governance).toEqual({
+      status: 'not_applicable',
+      authorized_shot_count: 0,
+      reported_cost_count: 0,
+      pending_terminal_cost_report_count: 0,
+      boundary_violation_count: 0,
+      exceeded_authorization_count: 0,
+      currency_mismatch_count: 0,
+      authorization_missing_count: 0,
+    });
     expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('episodes-not-complete');
+    expect(readiness.data?.issues.map(issue => issue.issue_id)).toContain('series-visual-production-gate');
+    expect(visualAssetLane).toMatchObject({
+      status: 'blocked',
+      action_key: 'complete_visual_asset_chain',
+    });
+    const visualAssetStep = readiness.data?.automation_plan.steps.find(step => (
+      step.action_key === 'complete_visual_asset_chain'
+    ));
+    expect(visualAssetStep).toMatchObject({
+      runner: 'operator_review',
+      mode: 'manual',
+      status: 'manual',
+      can_auto_execute: false,
+    });
     expect(readiness.data?.next_actions.map(action => action.action_key)).toContain('generate_next_episode');
     expect(readiness.data?.automation_plan.schema_version).toBe('production-readiness-automation-plan/v1');
     const generateStep = readiness.data?.automation_plan.steps.find(step => step.action_key === 'generate_next_episode');
@@ -1215,6 +1599,7 @@ describe('outline-service', () => {
       total_shot_count: expect.any(Number),
     });
     expect(readiness.data?.markdown).toContain('系列制作 readiness');
+    expect(readiness.data?.markdown).toContain('Seedance Cost Governance');
     expect(readiness.data?.markdown).toContain('Automation Plan');
   });
 
@@ -1537,7 +1922,7 @@ describe('outline-service', () => {
     expect(result.error?.message).toContain(`GEARS callback batch item count must be <= ${GEARS_CALLBACK_BATCH_ITEM_LIMIT}`);
   });
 
-  it('submits AI comic series retry candidates to GEARS with retry context payload', async () => {
+  it('blocks external GEARS retry submission until visual assets have current identity bindings', async () => {
     process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
     process.env.GEARS_API_TOKEN = 'series-gears-token';
 
@@ -1730,91 +2115,460 @@ describe('outline-service', () => {
       note: '系列 GEARS retry payload smoke',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(submitRes.ok).toBe(true);
-    expect(submitRes.data).toMatchObject({
-      job_type: 'seedance_video',
-      job_type_label: '视频返修/重试',
-      submit_intent: expect.stringContaining('重试执行计划'),
-      submitted_count: 1,
-      failed_count: 0,
-      provider_adapter: {
-        endpoint_configured: true,
-        status: 'submitted',
-        requested_count: 1,
-        accepted_count: 1,
-        provider_asset_input_count: requiredSlots.length,
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(submitRes.ok).toBe(false);
+    expect(submitRes.error?.message).toContain('视觉资产生产门禁');
+    expect(submitRes.error?.message).toContain('当前映射');
+  });
+
+  it('submits external GEARS only after a fixture has a complete approved visual asset chain', async () => {
+    process.env.GEARS_API_BASE_URL = 'https://gears.example.test/api-root';
+    process.env.GEARS_API_TOKEN = 'series-gears-token';
+
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '少年守灯人阿舟带着祖传皮影灯和铜钥匙，在古戏台后台守住最后一盏灯，阻止影偶吞没老街记忆。',
+      series_title: '守灯人视觉链放行 fixture',
+      episode_count: 1,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+    const plan = {
+      ...planRes.data!,
+      premise_contract: {
+        ...planRes.data!.premise_contract!,
+        world_rules: [],
       },
-      submitted_jobs: [{
-        source_unit_id: sourceItem.production_id,
-        gears_job_id: 'gears-retry-real-job-001',
+    };
+    const saveRes = await saveAiComicSeriesProject({ plan });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: plan,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+    const refreshed = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan,
+      generated_episode_story_ids: { 1: episodeRes.data!.storyId },
+    });
+    expect(refreshed.ok).toBe(true);
+
+    const retryPlanRes = await exportAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId);
+    expect(retryPlanRes.ok).toBe(true);
+    const retryCandidate = retryPlanRes.data?.episodes[0]?.candidates.find(candidate => candidate.can_submit);
+    expect(retryCandidate).toBeTruthy();
+    const requiredSlots = retryCandidate!.prompt.asset_slots.filter(slot => slot.required);
+
+    const requiredSlotCharacterNames = [...new Set(requiredSlots
+      .filter(slot => slot.kind === 'character')
+      .map(slot => slot.label))];
+    const existingCharacterNames = new Set(plan.main_characters.map(character => character.name));
+    const expandedPlan = {
+      ...plan,
+      main_characters: [
+        ...plan.main_characters,
+        ...requiredSlotCharacterNames
+          .filter(name => !existingCharacterNames.has(name))
+          .map(name => ({
+            name,
+            role: 'fixture 锁定出场人物',
+            starting_state: '等待视觉定义与审核',
+            desire: '完成隔离测试中的镜头出场',
+            long_arc: '仅用于验证稳定身份资产链',
+            turning_points: [{ episode_no: 1, change: '已纳入 fixture 视觉身份清单' }],
+            visual_signature: 'fixture 审核中的稳定视觉外观',
+          })),
+      ],
+      premise_contract: {
+        ...plan.premise_contract!,
+        locked_characters: [
+          ...plan.premise_contract!.locked_characters,
+          ...requiredSlotCharacterNames
+            .filter(name => !plan.premise_contract!.locked_characters.some(character => character.name === name))
+            .map(name => ({
+              name,
+              role: 'fixture 锁定出场人物',
+              required: true,
+              evidence_span: 'fixture 的实际 Seedance 必需素材槽位',
+            })),
+        ],
+      },
+    };
+    const expandedSave = await saveAiComicSeriesProject({
+      series_project_id: seriesProjectId,
+      plan: expandedPlan,
+      generated_episode_story_ids: { 1: episodeRes.data!.storyId },
+    });
+    expect(expandedSave.ok).toBe(true);
+
+    let project = await getAiComicSeriesProject(seriesProjectId);
+    expect(project.ok).toBe(true);
+    expect(project.data?.visual_bible?.pilot_episode_bindings[0]?.missing_identity_kinds).toEqual([]);
+    expect(project.data?.visual_bible?.identities.length).toBeGreaterThan(0);
+
+    for (const identity of project.data!.visual_bible!.identities) {
+      const approvedDefinition = await updateAiComicSeriesVisualIdentityDefinition(
+        seriesProjectId,
+        identity.identity_id,
+        {
+          expected_source_fingerprint: identity.source_fingerprint,
+          fields: Object.fromEntries(identity.definition_fields.map(field => [
+            field.field_id,
+            `${identity.label}${field.label}由 fixture 审核确认`,
+          ])),
+          definition_notes: '隔离测试 fixture 的完整视觉定义，不对应任何正式项目资料。',
+          action: 'approve',
+          reviewer_id: 'fixture-visual-reviewer',
+          human_confirmed: true,
+          review_note: 'fixture 人工复核：定义字段完整。',
+        },
+      );
+      expect(approvedDefinition.ok).toBe(true);
+    }
+
+    project = await getAiComicSeriesProject(seriesProjectId);
+    for (const identity of project.data!.visual_bible!.identities) {
+      const matchingSlot = requiredSlots.find(slot => (
+        slot.kind === identity.kind && slot.label === identity.label
+      ));
+      const assetId = matchingSlot?.asset_id ?? `fixture-${identity.identity_id}`;
+      const upload = await uploadAiComicSeriesSeedanceAssetFile(seriesProjectId, {
+        asset_id: assetId,
+        kind: identity.kind,
+        label: identity.label,
+        reference_slot: matchingSlot?.reference_slot,
+        series_identity_id: identity.identity_id,
+        file: {
+          original_filename: `${identity.identity_id}.png`,
+          mime_type: 'image/png',
+          buffer: ONE_PIXEL_PNG,
+        },
+      });
+      expect(upload.ok).toBe(true);
+      const review = await updateAiComicSeriesMediaAssetReview(seriesProjectId, {
+        asset_id: assetId,
+        expected_content_sha256: upload.data!.content_sha256,
+        rights_status: 'authorized',
+        authorization_reference: `fixture://visual-rights/${identity.identity_id}`,
+        human_review_status: 'approved',
+        review_note: 'fixture 人工媒体审核：原始文件、权利依据和身份映射一致。',
+      }, {
+        actor_id: 'fixture-media-reviewer',
+        authentication_method: 'signed_session',
+      });
+      expect(review.ok).toBe(true);
+      const publicUrl = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId, {
+        items: [{
+          asset_id: assetId,
+          kind: identity.kind,
+          label: identity.label,
+          reference_slot: matchingSlot?.reference_slot,
+          file_url: `https://assets.fixture.example/visual/${encodeURIComponent(identity.identity_id)}.png`,
+          series_identity_id: identity.identity_id,
+        }],
+      });
+      expect(publicUrl.ok).toBe(true);
+    }
+
+    project = await getAiComicSeriesProject(seriesProjectId);
+    expect(project.data?.visual_bible).toMatchObject({
+      blocker_count: 0,
+      ready_identity_count: project.data?.visual_bible?.identities.length,
+      approved_identity_count: project.data?.visual_bible?.identities.length,
+      production_credit_identity_count: project.data?.visual_bible?.identities.length,
+    });
+
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).endsWith('/gears/capabilities')) return gearsExecutionWorkerCapabilityResponse();
+      expect(String(input)).toBe('https://gears.example.test/api-root/gears/jobs');
+      const body = JSON.parse(String(init?.body)) as { payload?: { units?: Array<{ provider_asset_inputs?: unknown[] }> } };
+      expect(body.payload?.units).toHaveLength(1);
+      expect(body.payload?.units?.[0]?.provider_asset_inputs).toHaveLength(requiredSlots.length);
+      return new Response(JSON.stringify({
+        jobs: [{
+          source_unit_id: retryCandidate!.production_id,
+          gears_job_id: 'fixture-visual-chain-gears-job-001',
+          status: 'queued',
+        }],
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const submit = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'seedance_video',
+      source_unit_id: retryCandidate!.production_id,
+      use_gears_api: true,
+      external_call_authorization: {
+        authorized: true,
+        authorization_reference: 'fixture://external-gears-authorization',
+        max_cost_amount: 1,
+        cost_currency: 'CNY',
+        data_transfer_acknowledged: true,
+      },
+      note: '仅验证隔离 fixture 的视觉生产门禁放行。',
+    });
+
+    expect(submit.ok, JSON.stringify(submit.error)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(submit.data?.provider_adapter).toMatchObject({
+      status: 'submitted',
+      provider_asset_input_count: requiredSlots.length,
+    });
+    const submittedProductionItem = submit.data?.seedance_production?.items.find(item => (
+      item.production_id === retryCandidate!.production_id
+    ));
+    expect(submittedProductionItem?.external_call_authorization).toMatchObject({
+      authorization_reference: 'fixture://external-gears-authorization',
+      max_cost_amount: 1,
+      cost_currency: 'CNY',
+      data_transfer_acknowledged: true,
+      confirmed_at: expect.any(String),
+    });
+    expect(submittedProductionItem?.versions.at(-1)?.external_call_authorization)
+      .toEqual(submittedProductionItem?.external_call_authorization);
+
+    const failedForDirectRetry = await updateAiComicSeriesSeedanceProductionStatus(seriesProjectId, {
+      episode_no: retryCandidate!.episode_no,
+      shot_id: retryCandidate!.shot_id,
+      status: 'failed',
+      provider_job_id: 'fixture-visual-chain-gears-job-001',
+      failure_reason: 'fixture 准备直接 Seedance adapter 重试',
+      increment_retry: true,
+    });
+    expect(failedForDirectRetry.ok).toBe(true);
+    expect(failedForDirectRetry.data?.seedance_production?.items.find(item => (
+      item.production_id === retryCandidate!.production_id
+    ))?.external_call_authorization?.authorization_reference)
+      .toBe('fixture://external-gears-authorization');
+
+    const previousSeedanceEndpoint = process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+    process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = 'https://seedance.fixture.example/retry-submit';
+    const directFetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe('https://seedance.fixture.example/retry-submit');
+      const body = JSON.parse(String(init?.body)) as {
+        external_call_authorization?: {
+          authorization_reference?: string;
+          max_cost_amount?: number;
+          cost_currency?: string;
+        };
+        shots?: Array<{ production_id?: string; shot_id?: string }>;
+      };
+      expect(body.external_call_authorization).toMatchObject({
+        authorization_reference: 'fixture://direct-seedance-authorization',
+        max_cost_amount: 2,
+        cost_currency: 'CNY',
+      });
+      return new Response(JSON.stringify({
+        results: (body.shots ?? []).map((shot, index) => ({
+          production_id: shot.production_id,
+          shot_id: shot.shot_id,
+          provider_job_id: `fixture-direct-seedance-job-${String(index + 1).padStart(3, '0')}`,
+          status: 'processing',
+        })),
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', directFetchMock);
+    try {
+      const directSubmit = await submitAiComicSeriesSeedanceRetryExecutionPlan(seriesProjectId, {
+        limit: 2,
+        use_provider_adapter: true,
         external_call_authorization: {
-          authorization_reference: 'test-approval://series-gears-retry-001',
-          max_cost_amount: 15,
+          authorized: true,
+          authorization_reference: 'fixture://direct-seedance-authorization',
+          max_cost_amount: 2,
           cost_currency: 'CNY',
           data_transfer_acknowledged: true,
         },
-        provider_asset_handoffs: expect.arrayContaining([
-          expect.objectContaining({
-            asset_id: requiredSlots[0]!.asset_id,
-            transport_kind: 'https_url',
-            url_origin: 'https://assets.culture-production.cn',
-          }),
-        ]),
-      }],
-    });
-    expect(JSON.stringify(submitRes.data?.submitted_jobs)).not.toContain('signature=test-only');
-    expect(submitRes.data?.markdown).toContain('submit_intent: 从 AI 漫剧 Seedance 重试执行计划提交 GEARS v2 视频返修/重试任务');
-    expect(submitRes.data?.markdown).toContain('## GEARS Adapter');
-    expect(submitRes.data?.markdown).toContain('- accepted_count: 1');
-    expect(submitRes.data?.seedance_production?.items.find(item =>
-      item.production_id === sourceItem.production_id
-    )).toMatchObject({
-      status: 'submitted',
-      provider_job_id: 'gears-retry-real-job-001',
-      retry_count: 2,
-    });
+        note: '隔离 fixture 直接 Seedance adapter 授权审计测试。',
+      });
+      expect(directSubmit.ok, JSON.stringify(directSubmit.error)).toBe(true);
+      expect(directFetchMock).toHaveBeenCalledTimes(1);
+      expect(directSubmit.data?.submitted_count).toBe(2);
+      expect(directSubmit.data?.external_call_authorization?.authorization_reference)
+        .toBe('fixture://direct-seedance-authorization');
+      const directProductionItem = directSubmit.data?.seedance_production?.items.find(item => (
+        item.production_id === retryCandidate!.production_id
+      ));
+      expect(directProductionItem?.external_call_authorization?.authorization_reference)
+        .toBe('fixture://direct-seedance-authorization');
+      expect(directProductionItem?.versions.some(version => (
+        version.external_call_authorization?.authorization_reference === 'fixture://external-gears-authorization'
+      ))).toBe(true);
+      expect(directProductionItem?.versions.at(-1)?.external_call_authorization?.authorization_reference)
+        .toBe('fixture://direct-seedance-authorization');
 
-    const callbackRes = await importAiComicSeriesGearsCallback(seriesProjectId, {
-      jobId: 'gears-retry-real-job-001',
-      sourceUnitId: sourceItem.production_id,
-      jobType: 'seedance_video',
-      taskStatus: 'COMPLETED',
-      outputUrl: 'https://gears.example.test/output/series-retry-shot-1.mp4',
-      actual_cost_amount: 10,
-      cost_currency: 'CNY',
-      eventId: 'series-gears-real-cost-event-001',
-      completedAt: '2026-07-19T11:01:00.000Z',
-    });
-    expect(callbackRes.ok).toBe(true);
-    expect(callbackRes.data?.gears_job_ledger?.items.find(item =>
-      item.gears_job_id === 'gears-retry-real-job-001'
-    )).toMatchObject({
-      execution_cost: {
-        actual_cost_amount: 10,
+      const secondSubmittedShot = directSubmit.data?.submitted_shots.find(shot => (
+        shot.production_id !== retryCandidate!.production_id
+      ));
+      expect(secondSubmittedShot).toBeTruthy();
+
+      const lateHistoricalCallback = await applyAiComicSeriesSeedanceProductionCallback(seriesProjectId, {
+        provider_job_id: 'fixture-visual-chain-gears-job-001',
+        status: 'ready',
+        video_url: 'https://outputs.fixture.example/gears/late-shot-001.mp4',
+        actual_cost_amount: 0.5,
         cost_currency: 'CNY',
-        authorization_reference: 'test-approval://series-gears-retry-001',
-        authorized_max_cost_amount: 15,
-        authorization_total_actual_cost_amount: 10,
+        note: 'fixture 旧 GEARS job 迟到回调只允许更新历史版本',
+      });
+      expect(lateHistoricalCallback.ok).toBe(true);
+      const itemAfterLateHistoricalCallback = lateHistoricalCallback.data?.seedance_production?.items.find(item => (
+        item.production_id === retryCandidate!.production_id
+      ));
+      expect(itemAfterLateHistoricalCallback).toMatchObject({
+        provider_job_id: 'fixture-direct-seedance-job-001',
+        status: 'processing',
+        external_call_authorization: {
+          authorization_reference: 'fixture://direct-seedance-authorization',
+        },
+      });
+      expect(itemAfterLateHistoricalCallback?.execution_cost).toBeUndefined();
+      expect(itemAfterLateHistoricalCallback?.versions.filter(version => (
+        version.provider_job_id === 'fixture-visual-chain-gears-job-001'
+      )).at(-1)).toMatchObject({
+        status: 'ready',
+        execution_cost: {
+          actual_cost_amount: 0.5,
+          boundary_status: 'within_authorization',
+          authorization_reference: 'fixture://external-gears-authorization',
+        },
+      });
+
+      const callback = await applyAiComicSeriesSeedanceProductionCallback(seriesProjectId, {
+        provider_job_id: 'fixture-direct-seedance-job-001',
+        status: 'ready',
+        video_url: 'https://outputs.fixture.example/seedance/shot-001.mp4',
+        actual_cost_amount: 1.25,
+        cost_currency: 'CNY',
+        note: 'fixture 第一镜费用回执仍在总授权内',
+      });
+      expect(callback.ok).toBe(true);
+      const callbackItem = callback.data?.seedance_production?.items.find(item => (
+        item.production_id === retryCandidate!.production_id
+      ));
+      expect(callbackItem?.external_call_authorization?.authorization_reference)
+        .toBe('fixture://direct-seedance-authorization');
+      expect(callbackItem?.versions.at(-1)?.external_call_authorization?.authorization_reference)
+        .toBe('fixture://direct-seedance-authorization');
+      expect(callbackItem?.execution_cost).toMatchObject({
+        actual_cost_amount: 1.25,
         boundary_status: 'within_authorization',
-      },
-    });
-    const readinessRes = await getAiComicSeriesProductionReadiness(seriesProjectId);
-    expect(readinessRes.ok).toBe(true);
-    expect(readinessRes.data?.issues.some(issue =>
-      issue.issue_id === 'series-gears-execution-cost-boundary-violated'
-      || issue.issue_id === 'series-gears-execution-cost-settlement-pending'
-    )).toBe(false);
-    expect(readinessRes.data?.gears_operational_metrics).toMatchObject({
-      scope: 'authorized_external_jobs_only',
-      authorized_external_job_count: 1,
-      terminal_job_count: 1,
-      ready_external_output_count: 1,
-      actual_output_rate_percent: 100,
-      failure_rate_percent: 0,
-      actual_cost_by_currency: { CNY: 10 },
-      local_acceptance_excluded: true,
-    });
+        authorization_total_actual_cost_amount: 1.25,
+      });
+
+      const secondReadyCallback = await applyAiComicSeriesSeedanceProductionCallback(seriesProjectId, {
+        provider_job_id: secondSubmittedShot!.provider_job_id,
+        status: 'ready',
+        video_url: 'https://outputs.fixture.example/seedance/shot-002.mp4',
+        note: 'fixture 第二镜进入终态但尚未结算费用',
+      });
+      expect(secondReadyCallback.ok).toBe(true);
+      const secondReadyItem = secondReadyCallback.data?.seedance_production?.items.find(item => (
+        item.production_id === secondSubmittedShot!.production_id
+      ));
+
+      const pendingSettlementReadiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
+      expect(pendingSettlementReadiness.ok).toBe(true);
+      expect(pendingSettlementReadiness.data?.issues.map(issue => issue.issue_id))
+        .toContain('series-seedance-execution-cost-settlement-pending');
+      const pendingSettlementDelivery = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, {
+        dry_run: false,
+        missing_dependency_mode: 'tolerant',
+      });
+      expect(pendingSettlementDelivery.ok).toBe(false);
+      expect(pendingSettlementDelivery.error?.message).toContain('pending actual cost settlement');
+
+      const versionCountBeforeSettlement = secondReadyItem?.versions.length;
+      expect(versionCountBeforeSettlement).toBeGreaterThan(0);
+      const settlementCallback = await applyAiComicSeriesSeedanceProductionCallback(seriesProjectId, {
+        provider_job_id: secondSubmittedShot!.provider_job_id,
+        status: 'ready',
+        video_url: 'https://outputs.fixture.example/seedance/shot-002.mp4',
+        actual_cost_amount: 1,
+        cost_currency: 'CNY',
+        note: 'fixture 第二镜延迟费用使同一授权累计超过 2 CNY 上限',
+      });
+      expect(settlementCallback.ok).toBe(true);
+      const settledItem = settlementCallback.data?.seedance_production?.items.find(item => (
+        item.production_id === secondSubmittedShot!.production_id
+      ));
+      expect(settledItem?.versions.length).toBe(versionCountBeforeSettlement);
+      expect(settledItem?.execution_cost).toMatchObject({
+        actual_cost_amount: 1,
+        cost_currency: 'CNY',
+        boundary_status: 'exceeded_authorization',
+        authorization_reference: 'fixture://direct-seedance-authorization',
+        authorized_max_cost_amount: 2,
+        authorization_total_actual_cost_amount: 2.25,
+      });
+      expect(settledItem?.versions.at(-1)?.execution_cost).toEqual(settledItem?.execution_cost);
+      expect(settlementCallback.data?.seedance_production?.items.find(item => (
+        item.production_id === retryCandidate!.production_id
+      ))?.execution_cost).toMatchObject({
+        actual_cost_amount: 1.25,
+        boundary_status: 'exceeded_authorization',
+        authorization_total_actual_cost_amount: 2.25,
+      });
+
+      const violatedReadiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
+      expect(violatedReadiness.ok).toBe(true);
+      expect(violatedReadiness.data?.seedance_cost_governance).toMatchObject({
+        status: 'blocked',
+        authorized_shot_count: 2,
+        reported_cost_count: 3,
+        pending_terminal_cost_report_count: 0,
+        boundary_violation_count: 2,
+        exceeded_authorization_count: 2,
+      });
+      expect(violatedReadiness.data?.issues.map(issue => issue.issue_id))
+        .toContain('series-seedance-execution-cost-boundary-violated');
+      expect(violatedReadiness.data?.issues.map(issue => issue.issue_id))
+        .not.toContain('series-seedance-execution-cost-settlement-pending');
+      expect(violatedReadiness.data?.lanes.find(lane => lane.key === 'delivery_contract'))
+        .toMatchObject({
+          status: 'blocked',
+          action_label: '处理 Seedance 费用阻断',
+        });
+      expect(violatedReadiness.data?.lanes.find(lane => lane.key === 'commercial_ops'))
+        .toMatchObject({
+          status: 'blocked',
+          action_label: '处理 Seedance 费用阻断',
+        });
+      const costAuditCut = await assembleAiComicSeriesSeedanceCut(seriesProjectId, { dry_run: true });
+      expect(costAuditCut.ok).toBe(true);
+      const costAuditManifest = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, {
+        dry_run: true,
+        include_subtitles: false,
+        include_audio_mix: false,
+        include_title_cards: false,
+        missing_dependency_mode: 'strict',
+      });
+      expect(costAuditManifest.ok).toBe(true);
+      expect(costAuditManifest.data?.manifest.cost_governance).toMatchObject({
+        status: 'blocked',
+        authorized_shot_count: 2,
+        reported_cost_count: 3,
+        pending_terminal_cost_report_count: 0,
+        boundary_violation_count: 2,
+      });
+      expect(costAuditManifest.data?.manifest.validation_notes)
+        .toContain('Seedance 费用治理：阻断（待结算 0，越界 2）');
+      const violatedDelivery = await assembleAiComicSeriesSeedanceFinalDelivery(seriesProjectId, {
+        dry_run: false,
+        missing_dependency_mode: 'tolerant',
+      });
+      expect(violatedDelivery.ok).toBe(false);
+      expect(violatedDelivery.error?.message).toContain('actual cost records violate');
+    } finally {
+      if (previousSeedanceEndpoint === undefined) {
+        delete process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT;
+      } else {
+        process.env.SEEDANCE_PROVIDER_SUBMIT_ENDPOINT = previousSeedanceEndpoint;
+      }
+    }
   });
 
   it('syncs AI comic series GEARS job status through the HTTP status contract', async () => {
@@ -2420,10 +3174,23 @@ describe('outline-service', () => {
     });
     expect(sceneRes.data?.submitted_jobs[0].source_unit_id).toContain('scene');
 
-    const ledgerItems = sceneRes.data?.gears_job_ledger?.items ?? [];
+    const propRes = await submitAiComicSeriesGearsJobs(seriesProjectId, {
+      job_type: 'prop_image',
+      note: '提交 GEARS 道具图任务',
+    });
+    expect(propRes.ok).toBe(true);
+    expect(propRes.data?.submitted_count).toBeGreaterThan(0);
+    expect(propRes.data?.submitted_jobs.every(job => (
+      job.job_type === 'prop_image'
+      && job.source_unit_id.startsWith('episode:1:prop:')
+      && Boolean(job.payload_summary?.length)
+    ))).toBe(true);
+
+    const ledgerItems = propRes.data?.gears_job_ledger?.items ?? [];
     expect(ledgerItems.some(item => item.job_type === 'storyboard_image')).toBe(true);
     expect(ledgerItems.some(item => item.job_type === 'character_image')).toBe(true);
     expect(ledgerItems.some(item => item.job_type === 'scene_image')).toBe(true);
+    expect(ledgerItems.some(item => item.job_type === 'prop_image')).toBe(true);
 
     const characterJob = characterRes.data!.submitted_jobs[0];
     const imageCallback = {
@@ -2610,6 +3377,8 @@ describe('outline-service', () => {
     expect(copyRes.data?.generated_episode_story_ids['1']).toBe('20260611-story-abc1');
     expect(copyRes.data?.continuity_ledger.schema_version).toBe('ai-comic-continuity-ledger/v1');
     expect(copyRes.data?.memory_recall_preferences?.locked_memory_ids).toContain('character-abc-1');
+    expect(copyRes.data?.visual_bible?.identities.map(identity => identity.identity_id))
+      .toEqual(saveRes.data?.visual_bible?.identities.map(identity => identity.identity_id));
 
     const archiveRes = await archiveAiComicSeriesProject(copyRes.data!.project.series_project_id, {
       archived: true,
@@ -2717,12 +3486,40 @@ describe('outline-service', () => {
     expect(seedanceAssetReportRes.data?.total_asset_count).toBeGreaterThan(0);
     expect(seedanceAssetReportRes.data?.shot_binding_count).toBe(seedanceExportRes.data?.total_shot_count);
     expect(seedanceAssetReportRes.data?.assets.some(asset => asset.kind === 'character')).toBe(true);
+    expect(seedanceAssetReportRes.data?.assets.some(asset => asset.kind === 'costume')).toBe(true);
+    expect(seedanceAssetReportRes.data?.assets.some(asset => asset.kind === 'prop')).toBe(true);
+    expect(seedanceAssetReportRes.data?.visual_bible.schema_version).toBe('ai-comic-series-visual-bible/v1');
+    expect(seedanceAssetReportRes.data?.completion_plan.summary.identity_total).toBe(
+      seedanceAssetReportRes.data?.visual_bible.identities.length,
+    );
+    expect(seedanceAssetReportRes.data?.completion_plan.identities).toHaveLength(
+      seedanceAssetReportRes.data!.visual_bible.identities.length,
+    );
+    expect(seedanceAssetReportRes.data?.completion_plan.stages.map(stage => stage.key)).toEqual([
+      'visual_definitions',
+      'human_approvals',
+      'real_asset_files',
+      'production_credit',
+      'provider_shot_films',
+    ]);
+    expect(seedanceAssetReportRes.data?.completion_plan.stages.filter(stage => stage.status === 'current')).toHaveLength(1);
+    expect(seedanceAssetReportRes.data?.completion_plan.identities[0].next_action).toBeTruthy();
+    expect(seedanceAssetReportRes.data?.assets.find(asset => (
+      asset.kind === 'character' && Boolean(asset.series_identity_id)
+    ))?.series_identity_id)
+      .toMatch(/^series-character-[a-f0-9]{12}$/);
+    expect(seedanceAssetReportRes.data?.shots.some(shot => shot.required_series_identity_ids.length > 0)).toBe(true);
     expect(seedanceAssetReportRes.data?.shots[0].required_asset_ids.length).toBeGreaterThan(0);
     expect(seedanceAssetReportRes.data?.markdown).toContain('Seedance 素材引用完整性报告');
+    expect(seedanceAssetReportRes.data?.markdown).toContain('正式生产完成计划');
     const firstShotAssetIds = seedanceAssetReportRes.data!.shots[0].required_asset_ids;
     const bindableAsset = seedanceAssetReportRes.data!.assets.find(asset =>
-      asset.has_reference_slot && firstShotAssetIds.includes(asset.asset_id)
-    ) ?? seedanceAssetReportRes.data!.assets.find(asset => asset.has_reference_slot);
+      asset.has_reference_slot
+      && firstShotAssetIds.includes(asset.asset_id)
+      && Boolean(asset.series_identity_id)
+    ) ?? seedanceAssetReportRes.data!.assets.find(asset => (
+      asset.has_reference_slot && Boolean(asset.series_identity_id)
+    ));
     expect(bindableAsset).toBeTruthy();
     const assetLibraryRes = await updateAiComicSeriesSeedanceAssetLibrary(
       saveRes.data!.project.series_project_id,
@@ -2734,6 +3531,7 @@ describe('outline-service', () => {
           reference_slot: bindableAsset!.reference_slot,
           file_url: 'https://example.com/seedance-assets/asset-001.png',
           description: '测试绑定素材文件',
+          series_identity_id: bindableAsset!.series_identity_id,
         }],
       },
     );
@@ -2817,13 +3615,30 @@ describe('outline-service', () => {
     expect(reviewedAssetRes.ok).toBe(true);
     expect(reviewedAssetRes.data).toMatchObject({
       reviewer_id: 'reviewer-series-001',
-      production_credit_granted: true,
+      production_credit_granted: false,
     });
     expect(reviewedAssetRes.data?.asset).toMatchObject({
       rights_status: 'authorized',
       human_review_status: 'approved',
       reviewer_id: 'reviewer-series-001',
+      identity_binding: expect.objectContaining({
+        series_identity_id: bindableAsset!.series_identity_id,
+        status: 'approved',
+      }),
     });
+    const auditedAssetReportRes = await exportAiComicSeriesSeedanceAssetReportPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(auditedAssetReportRes.ok).toBe(true);
+    expect(auditedAssetReportRes.data?.assets.find(asset => asset.asset_id === bindableAsset!.asset_id)).toMatchObject({
+      content_sha256: immutableUploadRes.data!.content_sha256,
+      rights_status: 'authorized',
+      authorization_reference: 'contract://series-assets/001',
+      human_review_status: 'approved',
+      reviewer_id: 'reviewer-series-001',
+      identity_binding_status: 'approved',
+    } as any);
+    expect(auditedAssetReportRes.data?.markdown).toContain(immutableUploadRes.data!.content_sha256);
 
     const replacementUploadRes = await uploadAiComicSeriesSeedanceAssetFile(
       saveRes.data!.project.series_project_id,
@@ -2841,6 +3656,7 @@ describe('outline-service', () => {
     expect(replacementUploadRes.data?.asset).toMatchObject({
       rights_status: 'pending',
       human_review_status: 'pending',
+      identity_binding: expect.objectContaining({ status: 'stale' }),
     });
     expect(replacementUploadRes.data?.asset.reviewer_id).toBeUndefined();
 
@@ -3730,6 +4546,18 @@ describe('outline-service', () => {
     expect(finalDeliveryDryRunRes.data?.manifest.inputs.some(input => input.input_type === 'source_cut')).toBe(true);
     expect(finalDeliveryDryRunRes.data?.manifest.inputs.some(input => input.input_type === 'concat_list')).toBe(true);
     expect(finalDeliveryDryRunRes.data?.manifest.deliverables.some(deliverable => deliverable.deliverable_type === 'manifest')).toBe(true);
+    expect(finalDeliveryDryRunRes.data?.manifest.cost_governance).toEqual({
+      status: 'not_applicable',
+      authorized_shot_count: 0,
+      reported_cost_count: 0,
+      pending_terminal_cost_report_count: 0,
+      boundary_violation_count: 0,
+      exceeded_authorization_count: 0,
+      currency_mismatch_count: 0,
+      authorization_missing_count: 0,
+    });
+    expect(finalDeliveryDryRunRes.data?.manifest.validation_notes)
+      .toContain('Seedance 费用治理：无外部授权镜头或费用回执');
     expect(finalDeliveryDryRunRes.data?.seedance_final_delivery).toMatchObject({
       status: 'planned',
       output_profile: 'mp4_h264_720p',
@@ -4117,32 +4945,9 @@ describe('outline-service', () => {
           note: '服务测试 adapter 提交重试执行计划',
         },
       );
-      expect(retryAdapterSubmitRes.ok).toBe(true);
-      expect(providerFetchCalls).toHaveLength(1);
-      expect(providerFetchCalls[0].url).toBe('https://adapter.example.test/series/retry-submit');
-      expect(providerFetchCalls[0].headers['X-Series-Submit-Key']).toBe('Token series-submit-token');
-      expect(retryAdapterSubmitRes.data?.provider_adapter).toMatchObject({
-        request_mode: 'batch',
-        requested_count: 1,
-        accepted_count: 1,
-        failed_count: 0,
-      });
-      expect(retryAdapterSubmitRes.data?.failed_count).toBe(0);
-      expect(retryAdapterSubmitRes.data?.submitted_count).toBe(1);
-      const adapterSubmittedShot = retryAdapterSubmitRes.data?.submitted_shots[0];
-      expect(adapterSubmittedShot).toMatchObject({
-        provider_job_id: 'series-adapter-job-001',
-        provider_queue_id: 'series-adapter-queue',
-        provider_queue_position: 7,
-        status: 'processing',
-      });
-      expect(retryAdapterSubmitRes.data?.seedance_production?.items.find(item =>
-        item.production_id === adapterSubmittedShot?.production_id
-      )).toMatchObject({
-        status: 'processing',
-        provider_job_id: 'series-adapter-job-001',
-      });
-      expect(retryAdapterSubmitRes.data?.markdown).toContain('Provider Adapter');
+      expect(retryAdapterSubmitRes.ok).toBe(false);
+      expect(retryAdapterSubmitRes.error?.message).toContain('external_call_authorization');
+      expect(providerFetchCalls).toHaveLength(0);
     } finally {
       globalThis.fetch = originalFetch;
       for (const [key, value] of previousProviderEnv.entries()) {

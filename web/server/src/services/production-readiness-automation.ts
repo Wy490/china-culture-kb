@@ -52,14 +52,22 @@ function actionApi(
 
 function actionRunner(actionKey: string): ProductionReadinessAutomationRunner {
   if (actionKey === 'submit_gears_jobs' || actionKey === 'sync_gears_jobs') return 'gears_worker';
-  if (actionKey === 'accept_local_gears_artifacts' || actionKey === 'export_gears_external_callback_handoff') return 'operator_review';
+  if (
+    actionKey === 'accept_local_gears_artifacts'
+    || actionKey === 'export_gears_external_callback_handoff'
+    || actionKey === 'complete_visual_asset_chain'
+  ) return 'operator_review';
   if (actionKey === 'import_seedance_returns' || actionKey === 'export_review_repair_package') return 'operator_review';
   return 'story_agent_api';
 }
 
 function actionMode(actionKey: string): ProductionReadinessAutomationMode {
   if (actionKey === 'submit_gears_jobs' || actionKey === 'sync_gears_jobs') return 'external_execution';
-  if (actionKey === 'accept_local_gears_artifacts' || actionKey === 'export_gears_external_callback_handoff') return 'manual';
+  if (
+    actionKey === 'accept_local_gears_artifacts'
+    || actionKey === 'export_gears_external_callback_handoff'
+    || actionKey === 'complete_visual_asset_chain'
+  ) return 'manual';
   if (actionKey === 'import_seedance_returns' || actionKey === 'export_review_repair_package') return 'manual';
   return 'writes_project';
 }
@@ -113,6 +121,14 @@ function actionPrerequisites(actionKey: string): string[] {
   if (actionKey === 'sync_gears_jobs') return ['existing GEARS Job Ledger', 'GEARS_EXECUTION_WORKER_API_BASE_URL configured (legacy accepted)'];
   if (actionKey === 'accept_local_gears_artifacts') return ['existing local GEARS Job Ledger', 'operator confirms mocked acceptance boundary'];
   if (actionKey === 'export_gears_external_callback_handoff') return ['ready GEARS jobs without external artifact', 'operator confirms local_acceptance is not final media'];
+  if (actionKey === 'complete_visual_asset_chain') {
+    return [
+      'stable visual identity and world-rule definitions complete',
+      'human approval recorded for every required identity and world rule',
+      'each required identity has a local immutable SHA-256 asset with rights authorization and human media review',
+      'asset identity binding matches the current definition fingerprint',
+    ];
+  }
   if (actionKey === 'generate_next_episode') return ['series plan loaded', 'previous episode context reviewed'];
   if (actionKey === 'import_seedance_returns') return ['external callback payload reviewed', 'matching source_unit_id or production_id'];
   if (actionKey === 'export_review_repair_package') return ['open review ledger items reviewed'];
@@ -138,6 +154,7 @@ function actionExpectedResult(actionKey: string): string {
     sync_gears_jobs: '轮询 GEARS status 并写回项目/系列生产账本。',
     accept_local_gears_artifacts: '把本地 mocked GEARS job 写入 local acceptance artifact，刷新项目账本。',
     export_gears_external_callback_handoff: '导出真实外部回片交接包，供 GEARS/Seedance worker 回传 artifact。',
+    complete_visual_asset_chain: '人工完成视觉定义、批准、真实文件、授权和当前身份映射链。',
   };
   return map[actionKey] ?? '执行对应生产指挥动作并刷新 readiness。';
 }
@@ -147,6 +164,7 @@ function actionSafetyNote(actionKey: string): string {
   if (actionKey === 'sync_gears_jobs') return '只同步 GEARS 状态，不应把临时 poll 失败误写成终态 failed。';
   if (actionKey === 'accept_local_gears_artifacts') return '只用于本地 mocked GEARS 验收；不代表外部 GEARS/Seedance 已真实回片。';
   if (actionKey === 'export_gears_external_callback_handoff') return '交接包中的 sample outputUrl 必须替换成真实外部 artifact URL 后才能导入回调。';
+  if (actionKey === 'complete_visual_asset_chain') return '此步骤必须人工审核和记录；系统不会以占位卡、模拟文件或自动批准替代真实视觉资产。';
   if (actionKey === 'draft_seedance_asset_placeholders') return '只生成本地占位参考卡；正式投产前仍可替换为定稿视觉素材。';
   if (actionKey === 'assemble_final_delivery') return '当前仓库只维护最终交付合同/manifest，真实 final assemble 仍归 GEARS v2。';
   if (actionKey === 'import_seedance_returns' || actionKey === 'export_review_repair_package') return '涉及外部回传或审片意见取舍，建议保留人工复核。';

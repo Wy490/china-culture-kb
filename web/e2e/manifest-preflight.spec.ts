@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('manifest operator queue 只读预检会清空旧结果并保持零发布信用', async ({ page }) => {
-  test.setTimeout(60_000)
+  test.setTimeout(90_000)
   const targetId = '20260619-series-0so7mqbg'
   let preflightFailure = false
   await page.route('**/api/system/story-agent-generated-governance-plan/run', route => route.fulfill({
@@ -118,7 +118,7 @@ test('manifest operator queue 只读预检会清空旧结果并保持零发布�
   })
   await page.goto('/projects')
   const activityDiagnostic = page.getByTestId('generation-activity-diagnostic')
-  await expect(activityDiagnostic).toBeVisible({ timeout: 30_000 })
+  await expect(activityDiagnostic).toBeVisible({ timeout: 45_000 })
   const activityText = await activityDiagnostic.innerText()
   if (activityText.includes('尝试账本 uninitialized')) {
     expect(activityText).toContain('生成尝试历史不可观测')

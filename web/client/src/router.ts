@@ -185,6 +185,11 @@ export const router = createRouter({
       component: () => import('./views/AiComicSeriesStudio.vue'),
     },
     {
+      path: '/ai-comic-series/blind-review-form',
+      name: 'AiComicBlindReviewForm',
+      component: () => import('./views/AiComicBlindReviewForm.vue'),
+    },
+    {
       path: '/story/:storyId',
       name: 'StoryDetail',
       component: () => import('./views/StoryDetail.vue'),

@@ -78,6 +78,26 @@ const requiredCopyChecks = [
     label: 'series-to-single switch',
     pattern: /<RouterLink class="series-studio__switch-link" to="\/story\/new">单片短片<\/RouterLink>/,
   },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'visual definition review workflow',
+    pattern: /系统建议草稿 → 人工复核 → 真人批准/,
+  },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'visual identity definition notes',
+    pattern: /定义备注（可选，跨集连续性）/,
+  },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'world rule definition notes',
+    pattern: /定义备注（可选，规则连续性）/,
+  },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'non-destructive system suggestion action',
+    pattern: /填入系统建议（不覆盖已填）/,
+  },
 ]
 
 function readVisibleFile(relativePath) {

@@ -9165,6 +9165,31 @@ describe('Seedance Production Callback API', () => {
     expectFailure(res.body, 'STORY_NOT_FOUND');
     delete process.env.SEEDANCE_CALLBACK_SECRET;
   });
+
+  it('requires actual Seedance cost amount and currency to arrive together', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-production-callback')
+      .send({
+        jobId: 'seedance-job-001',
+        status: 'COMPLETED',
+        actual_cost_amount: 1.25,
+      });
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+  });
+
+  it('accepts a complete actual Seedance cost pair before project lookup', async () => {
+    const res = await request
+      .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-production-callback')
+      .send({
+        jobId: 'seedance-job-001',
+        status: 'COMPLETED',
+        actualCostAmount: '1.25',
+        costCurrency: 'CNY',
+      });
+    expect(res.status).toBe(404);
+    expectFailure(res.body, 'STORY_NOT_FOUND');
+  });
 });
 
 describe('Seedance Thumbnail Capture API', () => {
@@ -9352,12 +9377,13 @@ describe('Seedance Title Cards and Final Delivery API', () => {
     expectFailure(res.body, 'VALIDATION_ERROR');
   });
 
-  it('accepts a retry submit request before looking up the series project', async () => {
+  it('requires explicit authorization before accepting a Seedance provider retry request', async () => {
     const res = await request
       .post('/api/story-outline/ai-comic-series-projects/20260616-series-abc1/seedance-retry/submit')
       .send({ limit: 2, job_prefix: 'api-retry-test', use_provider_adapter: true });
-    expect(res.status).toBe(404);
-    expectFailure(res.body, 'STORY_NOT_FOUND');
+    expect(res.status).toBe(400);
+    expectFailure(res.body, 'VALIDATION_ERROR');
+    expect(res.body.error.message).toContain('external_call_authorization');
   });
 
   it('validates provider recovery timeout minutes', async () => {
@@ -9581,6 +9607,319 @@ describe('Story Outline API', () => {
 
       expect(res.status).toBe(403);
       expectFailure(res.body, 'ACCESS_FORBIDDEN');
+    });
+
+    it('repairs only failed commercial quality dimensions and persists the improved audit', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '当代悬疑漫剧：沈砚与林灯追查午夜皮影规则，违反规则会失去记忆，盗谱者持续施压。',
+        series_title: '商业质量修复测试',
+        episode_count: 3,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'mystery_cliffhanger',
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+      planRes.body.data.episodes[1].commercial_beats = structuredClone(
+        planRes.body.data.episodes[0].commercial_beats,
+      );
+
+      const saveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        plan: planRes.body.data,
+      });
+      expect(saveRes.status).toBe(200);
+      expectSuccess(saveRes.body);
+      expect(saveRes.body.data.commercial_quality_audit.machine_gate_passed).toBe(false);
+
+      const projectId = saveRes.body.data.project.series_project_id;
+      const prematureReviewRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/commercial-quality-human-review`)
+        .send({
+          reviewer_id: 'blind-reviewer-before-machine-gate',
+          blind: true,
+          candidate_label: '候选-ABCDEFGH',
+          reviewer_packet_sha256: `sha256:${'0'.repeat(64)}`,
+          scores: [
+            { dimension: 'hook', score: 4 },
+            { dimension: 'character', score: 4 },
+            { dimension: 'dialogue', score: 4 },
+            { dimension: 'progression', score: 4 },
+            { dimension: 'turn', score: 4 },
+            { dimension: 'ending', score: 4 },
+            { dimension: 'cultural_credibility', score: 4 },
+          ],
+        });
+      expect(prematureReviewRes.status).toBe(400);
+      expectFailure(prematureReviewRes.body, 'VALIDATION_ERROR');
+
+      const repairRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/repair-commercial-quality`)
+        .send({});
+      expect(repairRes.status).toBe(200);
+      expectSuccess(repairRes.body);
+      expect(repairRes.body.data).toMatchObject({
+        schema_version: 'ai-comic-series-commercial-repair-result/v1',
+        success: true,
+        improved: true,
+        changed_episode_nos: [2],
+        generated_episodes_need_regeneration: [],
+        commercial_quality_audit: {
+          machine_gate_passed: true,
+          human_review: { status: 'pending', reviewer_count: 0 },
+        },
+      });
+      expect(repairRes.body.data.after_score).toBeGreaterThan(repairRes.body.data.before_score);
+
+      const getRes = await request.get(`/api/story-outline/ai-comic-series-projects/${projectId}`);
+      expect(getRes.body.data.commercial_quality_audit.machine_gate_passed).toBe(true);
+    });
+
+    it('serves read-only visual suggestion draft routes without persisting them', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '当代皮影悬疑：守灯人必须遵守午夜灯幕规则，否则会失去共同记忆。',
+        series_title: '视觉建议 API 试验',
+        episode_count: 3,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'mystery_cliffhanger',
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+      const saveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        plan: planRes.body.data,
+      });
+      expect(saveRes.status).toBe(200);
+      expectSuccess(saveRes.body);
+      const projectId = saveRes.body.data.project.series_project_id;
+      const identity = saveRes.body.data.visual_bible.identities.find(
+        (item: { kind: string }) => item.kind === 'character',
+      );
+      const rule = saveRes.body.data.visual_bible.world_rules[0];
+      expect(identity).toBeTruthy();
+      expect(rule).toBeTruthy();
+      const projectPath = resolve(
+        process.env.WEB_GENERATED_ROOT!,
+        'ai-comic-series-projects',
+        projectId,
+        'project.json',
+      );
+      const beforeBytes = await readFile(projectPath, 'utf8');
+
+      const identityRes = await request.post(
+        `/api/story-outline/ai-comic-series-projects/${projectId}/visual-identities/${identity.identity_id}/visual-identity-suggestion-draft`,
+      );
+      expect(identityRes.status).toBe(200);
+      expectSuccess(identityRes.body);
+      expect(identityRes.body.data).toMatchObject({
+        schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+        target_type: 'visual_identity',
+        target_id: identity.identity_id,
+        persisted: false,
+        auto_approved: false,
+      });
+
+      const ruleRes = await request.post(
+        `/api/story-outline/ai-comic-series-projects/${projectId}/visual-world-rules/${rule.rule_id}/visual-world-rule-suggestion-draft`,
+      );
+      expect(ruleRes.status).toBe(200);
+      expectSuccess(ruleRes.body);
+      expect(ruleRes.body.data).toMatchObject({
+        schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+        target_type: 'visual_world_rule',
+        target_id: rule.rule_id,
+        persisted: false,
+        auto_approved: false,
+      });
+      expect(await readFile(projectPath, 'utf8')).toBe(beforeBytes);
+    });
+
+    it('accepts a complete blind human review and persists reviewer evidence separately from the machine gate', async () => {
+      const planRes = await request.post('/api/story-outline/ai-comic-series-plan').send({
+        outline: '当代悬疑漫剧：沈砚与林灯追查午夜皮影规则，违反规则会失去记忆，盗谱者持续施压。',
+        series_title: '商业质量真人盲评测试',
+        episode_count: 3,
+        episode_duration_range_sec: { min: 60, max: 120 },
+        pacing_profile: 'mystery_cliffhanger',
+      });
+      expect(planRes.status).toBe(200);
+      expectSuccess(planRes.body);
+
+      const generatedEpisodeStoryIds: Record<string, string> = {};
+      for (const episodeNo of [1, 2, 3]) {
+        const episodeRes = await request.post('/api/story-outline/ai-comic-episode').send({
+          series_plan: planRes.body.data,
+          episode_no: episodeNo,
+          output_gears_segments: false,
+        });
+        expect(episodeRes.status).toBe(200);
+        expectSuccess(episodeRes.body);
+        generatedEpisodeStoryIds[String(episodeNo)] = episodeRes.body.data.storyId;
+      }
+
+      const saveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        plan: planRes.body.data,
+        generated_episode_story_ids: generatedEpisodeStoryIds,
+      });
+      expect(saveRes.status).toBe(200);
+      expectSuccess(saveRes.body);
+      expect(saveRes.body.data.commercial_quality_audit).toMatchObject({
+        machine_gate_passed: true,
+        human_review: { status: 'pending', reviewer_count: 0 },
+      });
+
+      const projectId = saveRes.body.data.project.series_project_id;
+      const packageRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/export-commercial-blind-review-package`)
+        .send({});
+      expect(packageRes.status).toBe(200);
+      expectSuccess(packageRes.body);
+      expect(packageRes.body.data).toMatchObject({
+        schema_version: 'ai-comic-series-blind-review-package/v1',
+        reviewer_packet: {
+          schema_version: 'ai-comic-series-blind-review-reviewer-packet/v1',
+          origin_hidden: true,
+          machine_scores_included: false,
+          source_engine_included: false,
+        },
+        reviewer_response_template: {
+          schema_version: 'ai-comic-series-blind-review-response/v1',
+          reviewer_id: '',
+          blind: true,
+          attestations: {
+            human_reviewer: false,
+            origin_and_machine_scores_hidden: false,
+            independent_review: false,
+          },
+        },
+        operator_manifest: {
+          schema_version: 'ai-comic-series-blind-review-operator-manifest/v1',
+          series_project_id: projectId,
+          share_with_reviewer: false,
+        },
+      });
+      expect(packageRes.body.data.reviewer_packet.episode_samples).toHaveLength(3);
+      expect(packageRes.body.data.reviewer_packet.scorecard).toHaveLength(7);
+      expect(packageRes.body.data.reviewer_response_template.scores).toHaveLength(7);
+      expect(packageRes.body.data.reviewer_response_template.scores.every(
+        (score: { score: number | null }) => score.score === null,
+      )).toBe(true);
+      expect(packageRes.body.data.candidate_label).toMatch(/^候选-[A-Z0-9]{8}$/);
+      expect(packageRes.body.data.reviewer_packet_sha256).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(JSON.parse(packageRes.body.data.reviewer_response_template_json)).toEqual(
+        packageRes.body.data.reviewer_response_template,
+      );
+      const repeatedPackageRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/export-commercial-blind-review-package`)
+        .send({});
+      expect(repeatedPackageRes.status).toBe(200);
+      expect(repeatedPackageRes.body.data).toMatchObject({
+        candidate_label: packageRes.body.data.candidate_label,
+        reviewer_packet_sha256: packageRes.body.data.reviewer_packet_sha256,
+      });
+      const reviewerVisibleText = JSON.stringify({
+        packet: packageRes.body.data.reviewer_packet,
+        markdown: packageRes.body.data.reviewer_markdown,
+        response_template: packageRes.body.data.reviewer_response_template,
+        response_template_json: packageRes.body.data.reviewer_response_template_json,
+      });
+      expect(reviewerVisibleText).not.toContain(planRes.body.data.series_title);
+      expect(reviewerVisibleText).not.toContain(projectId);
+      expect(reviewerVisibleText).not.toContain('"machine_score":');
+      expect(reviewerVisibleText).not.toContain('local_story_engine');
+      expect(reviewerVisibleText).not.toContain('用户原创故事种子');
+      for (const storyId of Object.values(generatedEpisodeStoryIds)) {
+        expect(reviewerVisibleText).not.toContain(storyId);
+      }
+
+      const blindReviewScores = [
+        { dimension: 'hook', score: 5, note: '开场钩子可视化明确。' },
+        { dimension: 'character', score: 4 },
+        { dimension: 'dialogue', score: 4 },
+        { dimension: 'progression', score: 4 },
+        { dimension: 'turn', score: 4 },
+        { dimension: 'ending', score: 5 },
+        { dimension: 'cultural_credibility', score: 4, note: '事实与原创机制边界清楚。' },
+      ];
+      const mismatchedPackageRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/commercial-quality-human-review`)
+        .send({
+          reviewer_id: 'blind-reviewer-mismatched-package',
+          blind: true,
+          candidate_label: packageRes.body.data.candidate_label,
+          reviewer_packet_sha256: `sha256:${'0'.repeat(64)}`,
+          scores: blindReviewScores,
+        });
+      expect(mismatchedPackageRes.status).toBe(400);
+      expectFailure(mismatchedPackageRes.body, 'VALIDATION_ERROR');
+
+      const missingLowScoreNoteRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/commercial-quality-human-review`)
+        .send({
+          reviewer_id: 'blind-reviewer-missing-low-score-note',
+          blind: true,
+          candidate_label: packageRes.body.data.candidate_label,
+          reviewer_packet_sha256: packageRes.body.data.reviewer_packet_sha256,
+          scores: blindReviewScores.map(score => score.dimension === 'hook'
+            ? { dimension: score.dimension, score: 3 }
+            : score),
+        });
+      expect(missingLowScoreNoteRes.status).toBe(400);
+      expectFailure(missingLowScoreNoteRes.body, 'VALIDATION_ERROR');
+
+      const reviewRes = await request
+        .post(`/api/story-outline/ai-comic-series-projects/${projectId}/commercial-quality-human-review`)
+        .send({
+          reviewer_id: 'blind-reviewer-01',
+          blind: true,
+          candidate_label: packageRes.body.data.candidate_label,
+          reviewer_packet_sha256: packageRes.body.data.reviewer_packet_sha256,
+          scores: blindReviewScores,
+        });
+      expect(reviewRes.status).toBe(200);
+      expectSuccess(reviewRes.body);
+      expect(reviewRes.body.data.commercial_quality_audit).toMatchObject({
+        machine_gate_passed: true,
+        human_review: {
+          status: 'completed',
+          reviewer_count: 1,
+          passed: true,
+          overall_average: 4.29,
+          minimum_dimension_average: 4,
+        },
+      });
+      expect(reviewRes.body.data.commercial_quality_audit.human_review.scores).toHaveLength(7);
+      expect(reviewRes.body.data.commercial_quality_audit.human_review.scores[0]).toMatchObject({
+        reviewer_id: 'blind-reviewer-01',
+        blind: true,
+      });
+      expect(reviewRes.body.data.commercial_quality_audit.human_review).toMatchObject({
+        candidate_label: packageRes.body.data.candidate_label,
+        reviewer_packet_sha256: packageRes.body.data.reviewer_packet_sha256,
+      });
+      expect(reviewRes.body.data.commercial_quality_audit.human_review.scores[0].reviewed_at).toEqual(expect.any(String));
+
+      const getRes = await request.get(`/api/story-outline/ai-comic-series-projects/${projectId}`);
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.data.commercial_quality_audit.human_review).toMatchObject({
+        status: 'completed',
+        reviewer_count: 1,
+        passed: true,
+      });
+
+      const revisedPlan = structuredClone(getRes.body.data.plan);
+      revisedPlan.episodes[0].commercial_beats.hook_3s += '（改稿后重新评审）';
+      const revisedSaveRes = await request.post('/api/story-outline/ai-comic-series-projects').send({
+        series_project_id: projectId,
+        plan: revisedPlan,
+      });
+      expect(revisedSaveRes.status).toBe(200);
+      expectSuccess(revisedSaveRes.body);
+      expect(revisedSaveRes.body.data.commercial_quality_audit.human_review).toMatchObject({
+        status: 'stale',
+        reviewer_count: 1,
+      });
+      expect(revisedSaveRes.body.data.commercial_quality_audit.human_review.passed).toBeUndefined();
+      expect(revisedSaveRes.body.data.commercial_quality_audit.human_review.issues).toContain(
+        '当前系列文本或代表集分镜已变化；旧真人盲评不再计入当前版本，必须重新盲评',
+      );
     });
 
     it('saves, loads, and reports production readiness for a series project', async () => {

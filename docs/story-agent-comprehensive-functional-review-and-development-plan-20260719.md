@@ -410,9 +410,9 @@ placeholder 继续保留，但字段和 UI 必须始终为 `placeholder=true`、
 
 ### P1-8：拆分超大服务
 
-> 实施状态：已于 2026-07-19 完成第一切片，将项目标识、版本标识、仓储路径和乐观并发元数据提取为独立 project core 边界；2026-07-20 完成第二至第十切片，将 Seedance Provider 队列/callback/retry/overview policy、Production Readiness、GEARS external artifact/preflight、callback ledger application、external callback handoff 和 Seedance retry package 纯逻辑拆出；详见 10.14–10.23。其余 production board orchestration、图片归档、其他 handoff/export 与 final delivery 仍待按能力继续拆分。
+> 实施状态：已于 2026-07-19 完成第一切片，将项目标识、版本标识、仓储路径和乐观并发元数据提取为独立 project core 边界；2026-07-20 完成第二至第十六切片，将 Seedance Provider 队列/callback/retry/overview policy、Production Readiness、GEARS external artifact/preflight、callback ledger application、external callback handoff、Seedance retry package、Production Board export，以及 Seedance 占位/复用/资产库/本地上传/素材评审纯策略拆出；详见 10.14–10.29。其余 production board orchestration、shot/version policy、图片归档、其他 handoff 与 final delivery 仍待按能力继续拆分。
 
-`project-service.ts` 已超过一万行，`ai-comic-series-service.ts` 也同时承担规划、资产、GEARS、Seedance、后期、审片和交付。
+`project-service.ts` 曾超过一万行，十六轮安全拆分后已降至 9,825 行；`ai-comic-series-service.ts` 仍同时承担规划、资产、GEARS、Seedance、后期、审片和交付。
 
 按能力拆分，而不是按路由机械拆分：
 
@@ -1037,23 +1037,189 @@ P1-8 第十切片把 Seedance Provider queue overview 的状态、batch、timeou
 
 阶段 E 当前完成度为 92%。按 A–E 五阶段等权口径，整改总计划完成度为 96.2%。新增 0.6 个百分点只表示 P1-8 第十个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
 
+### 10.24 阶段 E 第十四切片：Production Board export 纯构建拆分（2026-07-20）
+
+P1-8 第十一切片把 Production Board 导出的文件描述、交付 manifest、Seedance prompts JSON/Markdown 和 shot ledger Markdown 从 `project-service.ts` 移入独立纯模块；项目读取、Production Board 构建、文件落盘、绝对路径/字节数采集和项目仓储提交继续留在 application orchestration：
+
+- 新增 `production-board-export-service.ts`，集中 12 个非 manifest 文件的稳定 ID、kind、label、文件名、MIME 和内容，以及最终 delivery manifest 的确定性构建。
+- 12 个正文文件仍按 `production-board.json`、Markdown、监督/修复、Seedance prompts、资产报告、媒体资产库、图片任务计划和 shot ledger 的既有顺序串行写入；manifest 继续最后写入。
+- manifest 只接收已经成功写盘并带真实 `file_path`、`relative_path`、`byte_size` 的 12 条文件记录，不把尚未写入的 manifest 自身误列入清单，保持原有交付语义。
+- Seedance JSON 继续只交付镜头制作所需的 `prompt`、asset slots、material validation 和 validation notes，不混入内部 `production_prompt`；脚本、视觉、镜头和 Provider 运营字段仍保持分层。
+- `project-service.ts` 从 10,558 行降至 10,392 行，本切片净移出 166 行；十一轮 P1-8 已累计从 12,232 行降至 10,392 行，共移出 1,840 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖 Seedance JSON 字段边界、prompts/ledger Markdown 运营上下文、12 文件稳定顺序与内容，以及 manifest 对实际写盘记录的封装。
+- export service 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：152 个测试文件执行，151 个通过、1 个条件跳过；1349 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；本地 board、ledger、文件记录 fixture 只验证导出合同。
+
+阶段 E 当前完成度为 95%。按 A–E 五阶段等权口径，整改总计划完成度为 96.8%。新增 0.6 个百分点只表示 P1-8 第十一个可验证拆分边界完成；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据。
+
+### 10.25 阶段 E 第十五切片：Seedance 本地占位资产与历史合同拆分（2026-07-20）
+
+P1-8 第十二切片把 Seedance 本地占位参考卡的候选门禁、文件/路径规划、SVG 渲染、占位资产元数据、历史事件和返回 item 物化从 `project-service.ts` 移入独立边界；项目读取、Production Board 构建、`FileArtifactStore` 写盘、真实路径/字节数采集、仓储提交和 Production Board 重导出继续留在 application orchestration：
+
+- 新增 `seedance-asset-placeholder-service.ts`，统一未绑定且具有有效 `reference_slot` 的候选规则、稳定文件名、本地路径、中文占位说明、SVG palette/文案/XML 转义和写盘后 materialization。
+- SVG 对项目名、资产名和 prompt usage 做 XML 转义与长度裁剪，卡面继续明确写出“本地占位参考卡”，避免将 SVG 当作真实图片或 Provider 回片。
+- materialization 继续记录 `provider=story_agent_placeholder`、`local:` provider asset ID、`image/svg+xml`、created/updated 状态和 `placeholder_draft` 审计事件；不会授予真实生产素材 credit。
+- 新增 `seedance-asset-history-service.ts`，集中既有历史记录清洗、排序、25 条上限、事件快照和事件 ID 生成；项目服务中的批量导入、上传、人工审核、跨项目复用及 GEARS 图片归档继续复用同一合同。
+- `project-service.ts` 从 10,392 行降至 10,185 行，本切片净移出 207 行；十二轮 P1-8 已累计从 12,232 行降至 10,185 行，共移出 2,047 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖候选门禁、稳定路径与占位说明、SVG XML 转义、写盘元数据物化、created/updated 状态及 25 条历史上限。
+- placeholder service 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：153 个测试文件执行，152 个通过、1 个条件跳过；1353 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；SVG 和本地文件 fixture 只验证占位合同，明确不计为外部图片产出。
+
+阶段 E 当前完成度为 96%。按 A–E 五阶段等权口径，整改总计划完成度为 97.0%。本轮仅增加 0.2 个百分点，因为本地架构治理已接近可验证上限；真实 Provider 闭环、真人盲评、成本凭证与生产恢复演练仍须外部证据，不能由继续拆文件补足。
+
+### 10.26 阶段 E 第十六切片：Seedance 全局资产与跨项目复用策略拆分（2026-07-20）
+
+P1-8 第十三切片把 Seedance 资产 identity/reusable 门禁、global item 映射/排序、目标 Production Board 资产匹配和跨项目 reused asset/history 物化从 `project-service.ts` 移入独立纯策略模块；项目列表读取、源/目标项目读取、Production Board 构建、仓储提交和回读继续留在 application orchestration：
+
+- 新增 `seedance-asset-reuse-service.ts`，集中 label slug、稳定 asset ID/lookup key、可复用资格、global item 映射，以及 kind → 中文 label → `updated_at` 倒序的稳定排序。
+- global library 继续排除当前项目和没有文件/平台 identity 的资产；`file_url`、`file_id`、`local_path`、`provider_asset_id` 或 uploaded/external 状态任一成立时沿用既有 reusable 语义。
+- 跨项目复用继续按显式 `target_asset_id`、Production Board 同 kind+label requirement、稳定生成 ID 的优先级解析目标，并保留目标已有 modality/role/reference slot 优先级。
+- 来源文件 identity、hash/model、rights、授权/同意引用、人审状态和 reviewer 证据原样继承；`story_agent_placeholder` 来源缺少授权与人审时继续保持 fail-closed，不因复用获得真实生产素材 credit。
+- `cross_project_reuse` 事件继续记录 source project/asset 和 25 条历史上限；事件 ID 生成统一复用 `seedance-asset-history-service.ts`。
+- `project-service.ts` 从 10,185 行降至 10,082 行，本切片净移出 103 行；十三轮 P1-8 已累计从 12,232 行降至 10,082 行，共移出 2,150 行。
+
+验证证据：
+
+- 新增 4 项 characterization tests，覆盖 reusable 门禁、跨项目映射/稳定排序、Production Board requirement 匹配、显式目标覆盖，以及 rights/人审/placeholder fail-closed 继承。
+- reuse service 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：154 个测试文件执行，153 个通过、1 个条件跳过；1357 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；URL、hash、review 和 placeholder fixture 只验证复用合同。
+
+阶段 E 当前完成度为 97%。按 A–E 五阶段等权口径，整改总计划完成度为 97.2%。本轮仅增加 0.2 个百分点；剩余阶段 E 进度依赖真实项目、真人盲评、实际成本和生产恢复证据，不能由本地资产复用测试替代。
+
+### 10.27 阶段 E 第十七切片：Seedance asset library 与 batch import 策略拆分（2026-07-20）
+
+P1-8 第十四切片把 Seedance asset library normalization、默认 modality/role、手动绑定 merge、batch import target resolution/skip/history/result 从 `project-service.ts` 移入独立纯策略模块；项目/版本读取、Production Board 构建、仓储提交、文件上传与媒体字节检查继续留在 application orchestration：
+
+- 新增 `seedance-asset-library-service.ts`，集中 legacy library 清洗、缺失 asset ID 补全、空 label 过滤、默认 modality/role、历史记录归一化和稳定 kind/中文 label 排序。
+- 手动绑定继续按显式字段 → 已有资产 → kind 默认值合并，并保留已有 content/prompt hash、model、rights、授权/同意引用、人审 reviewer 和 review note。
+- batch import 继续支持直接 asset ID、Production Board 同 kind+label requirement 和稳定生成 ID 三种解析路径，保持既有缺 identity/缺文件引用两类 skip reason、成功行计数和唯一 updated asset ID 语义。
+- 修复 batch import 重新物化资产时未带回审核证据的问题：更新 provider/file/local reference 后，已有 hash/model/rights/授权/同意/人审字段不再被静默清除。
+- manual/batch history event ID 由 application 层生成后注入纯构建器，事件内容、source note 和 25 条历史上限保持可测试且稳定。
+- `project-service.ts` 从 10,082 行降至 9,908 行，本切片净移出 174 行；十四轮 P1-8 已累计从 12,232 行降至 9,908 行，共移出 2,324 行，并首次回到一万行以内。
+
+验证证据：
+
+- 新增 5 项 characterization/safety tests，覆盖 legacy normalization、五类默认 modality/role、手动绑定证据保留、batch target/skip/count/history，以及重复成功行与唯一 ID 语义。
+- asset library service 与项目服务联合定向回归 73 项通过。
+- Web server 全量 Vitest：155 个测试文件执行，154 个通过、1 个条件跳过；1362 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；文件 ID、URL、hash、rights 和 review fixture 只验证资产库合同。
+
+阶段 E 当前完成度为 98%。按 A–E 五阶段等权口径，整改总计划完成度为 97.4%。本轮增加 0.2 个百分点；本地架构治理不再足以填满剩余阶段 E 进度，真实项目、真人盲评、实际成本与生产恢复演练仍是退出证据。
+
+### 10.28 阶段 E 第十八切片：Seedance 本地资产上传纯规划拆分（2026-07-20）
+
+P1-8 第十五切片把 `uploadProjectSeedanceAssetFile` 的 target resolution、ingest 后 immutable 文件 identity/path/preview 规划，以及上传资产/history/library 物化从 `project-service.ts` 移入独立纯策略模块；项目读取、Production Board 构建、空文件门禁、媒体字节/MIME 检查、`FileArtifactStore` 写盘、仓储提交和项目回读继续留在 application orchestration：
+
+- 新增 `seedance-asset-upload-service.ts`，按显式 asset ID、Production Board 同 kind+label requirement、稳定生成 ID 的顺序解析上传目标，并保持 existing/report/default modality 与 role 优先级。
+- 只有 `inspectMediaAssetUpload` 返回 verified ingest 后才生成 `media-{sha256}` 文件 ID、`{sha256}.{canonical_extension}` immutable 文件名、本地路径和 preview URL。
+- 上传物化统一记录 detected MIME、真实 byte size、content SHA-256、`provider=local_upload`、uploaded 状态和 `file_upload` 历史事件。
+- 新字节覆盖已有资产时强制把 rights 和 human review 重置为 pending，并清除旧 authorization/consent、reviewer、review note、prompt hash 和 model，防止旧文件审核结论错误迁移到新内容。
+- `project-service.ts` 从 9,908 行降至 9,867 行，本切片净移出 41 行；十五轮 P1-8 已累计从 12,232 行降至 9,867 行，共移出 2,365 行。
+
+验证证据：
+
+- 新增 4 项 characterization/safety tests，覆盖显式/requirement/稳定 ID 目标解析、无法解析门禁、immutable 文件计划，以及新字节的 pending 审核重置和旧证据清除。
+- upload service 与项目服务联合定向回归 72 项通过。
+- Web server 全量 Vitest：156 个测试文件执行，155 个通过、1 个条件跳过；1366 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；server 生产构建与 `git diff --check` 通过。
+- MCP 本轮未修改，继续沿用提交 `5ff20d87` 前已验证的 89 个测试文件、483 项全绿基线，没有误报为本轮重跑。
+- 本切片未调用真实 Seedance、GEARS、文本/图片模型或付费 Provider；ingest、hash、路径和审核 fixture 只验证本地上传合同。
+
+阶段 E 当前完成度为 99%。按 A–E 五阶段等权口径，整改总计划完成度为 97.6%。本轮增加 0.2 个百分点；阶段 E 剩余 1% 只接受真实项目、真人盲评、实际成本和生产恢复证据，不再用本地重构填充。
+
+### 10.29 阶段 E 第十九切片：Seedance 素材评审策略拆分与前端全流程复验（2026-07-20）
+
+P1-8 第十六切片把 `updateProjectMediaAssetReview` 的 rights/human review validation、审核资产/history 物化和 review evidence result 从 `project-service.ts` 移入独立纯策略模块；reviewer 身份、项目/版本读取、Production Board 与 immutable artifact 查找、仓储写入和项目回读继续留在 application orchestration：
+
+- 新增 `seedance-asset-review-service.ts`，集中 review dimension 门禁、当前 content SHA 乐观锁、授权引用、非 pending 真人结论的 reviewer note/expected SHA 约束，以及 verified local immutable artifact 要求。
+- `authorized` rights 必须带 authorization reference；非 pending human review 必须绑定当前资产 SHA、审核说明和本地 verified immutable artifact，placeholder、远程未验字节和旧 SHA 均不能获得真人视觉信用。
+- rights 与 human review 历史事件 ID 由 application 层生成后注入纯物化器；pending 回退会清理旧 reviewer 结论，结果仍同时返回当前 binding、artifact、reviewer identity 和 `real_credit_granted=false`。
+- `project-service.ts` 从 9,867 行降至 9,825 行，本切片净移出 42 行；十六轮 P1-8 已累计从 12,232 行降至 9,825 行，共移出 2,407 行。
+
+本轮同时通过真实前端操作发现并修复两处持久化流程阻塞：
+
+1. Production Board 修复会重新执行 Domain Pack safety；用户原创素材只存在于持久化的 `knowledge_pack/material_pack`，不在静态中国文化条目注册表，导致合法项目 v1 无法生成 v2。`story-domain-revision-safety.ts` 现在只对名称、主素材、province 和已持久化来源文本严格一致的用户/项目素材重建 revision source；任意改名或缺失来源仍 fail closed。
+2. 漫剧系列规划允许只输入原创梗概，但第一个分集此前强制要求知识库 primary entry；匹配不到静态条目时，系列会永久停在 400。`ai-comic-series-service.ts` 现在在无注册知识命中时沿用标准用户原创素材链，显式生成 `original_ai_comic + fictional_original` 合同并保留原 credibility/source boundary；有知识命中的改编系列仍走原 `adapted_ai_comic + source_adaptation` 路径。
+
+前端全流程证据（严格本地模式）：
+
+- 前端地址：`http://localhost:5174/`；单片复验项目：`http://localhost:5174/projects/20260720-story-i3il1948b2a1--ai_comic_drama#production-board`。
+- 从 `/story/new` 输入长沙老街皮影原创梗概，完成大纲分析、5 条素材匹配（页面置信度 100%）和本地故事生成；生成结果明确显示未调用外部模型。
+- 草拟 8 个生产素材字段后，生产素材从 blocked 进入 ready，模板达到 100/100，待补素材从 13 降至 5。
+- 同一项目经前端执行 Production Board 修复后从 v1 生成 v2，监督分 20/100 → 44/100；随后生成 2 个 SVG placeholder，把未绑定镜头 12 → 0，但页面继续显示正式生产信用 0/2。
+- “一键落盘交付包”成功写入 13 个文件，项目状态进入已导出；目录为 `/private/tmp/story-agent-browser-full-flow-20260720/projects/20260720-story-i3il1948b2a1--ai_comic_drama/production-board`。
+- GEARS Workbench 缺 `GEARS_WORKBENCH_API_BASE_URL/TOKEN` 时返回明确安全阻断；Seedance submit/poll adapter 未配置时只展示缺失环境与本地 queue overview，没有提交外部任务。
+- 项目列表、项目搜索、知识库省份浏览、素材关键词检索（“皮影”返回 2 条）、生产工作区、Stage 6 修订/桌读和创作者评审空队列均通过前端导航与状态检查。
+- 新建 3 集系列 `20260720-series-rrh91yax`，完成连续性上下文预览并成功生成第 1 集项目 `20260720-story-8zz9d6c6b586--ai_comic_drama`；系列账本记录 1 集已生成、2 集待生成，来源为“长沙皮影守艺录——用户原创故事种子”。
+- 前端截图：`output/playwright/full-flow-20260720/.playwright-cli/page-2026-07-20T04-39-49-158Z.png`（单片 Production Board）与 `output/playwright/full-flow-20260720/.playwright-cli/page-2026-07-20T04-33-57-789Z.png`（系列第 1 集）。
+
+验证证据：
+
+- 新增 Seedance 素材评审 6 项 characterization/safety tests，并为两处浏览器回归各新增 1 项端到端服务测试；相关 4 个测试文件合计 111 项通过。
+- Web server 全量 Vitest：157 个测试文件执行，156 个通过、1 个条件跳过；1374 项通过、2 项条件跳过、0 失败。
+- `npm run check` 通过 visible copy audit、server `tsc --noEmit` 和 client `vue-tsc --noEmit`；完整 Web server/client 生产构建与 `git diff --check` 通过。
+- Track A Playwright：7/7 通过，覆盖 manifest 只读预检、五工作区导航、单片/系列切换、单一主 NEXT、前后端角色/feature gate、零真人信用和会话失效 handoff。
+- 本轮未调用真实文本/图片模型、GEARS 或 Seedance Provider；SVG placeholder、local-only 故事、fixture、能力阻断和本地 queue overview 均不计真实外部产出。
+
+阶段 E 继续保持 99%。按 A–E 五阶段等权口径，整改总计划完成度继续保持 97.6%。本轮完成了第十六个本地安全拆分边界并消除两处真实前端阻塞，但阶段 E 剩余 1% 仍只接受真实项目、真人盲评、实际成本和生产恢复证据，不能由更多本地重构或 fixture 填满。
+
+### 10.30 阶段 D/E 前端全片型、10/20/30 集与 GEARS 任务链复验（2026-07-20）
+
+本轮从前端地址完成 15 种单片文本片型、10/20/30 集 AI 漫剧和代表项目 GEARS 全任务链复验，并修复实测暴露的系列模板污染、预渲染字幕/标题卡缺口与皮影错套湘绣流程：
+
+- `http://localhost:5174/story/new` 页面上下文发起 15 种单片生成，15/15 返回 HTTP 200；正文、分场、GEARS 段和交付单元齐全，文化域机器门禁通过，外部文本模型调用为 0。
+- 10/20/30 集分别生成 50/100/150 个场景与同数 GEARS 段；系列审计均为 100，孤立伏笔和记忆冲突为 0。
+- 30 集系列选择 E1/E15/E30，建立 89 项本地 GEARS 账本：storyboard 27、角色 9、场景 12、道具 3、视频 27、字幕/混音/最终装配各 1、标题卡 8；89 项均 submitted、0 失败。
+- 四篇代表单片最终账本合计 133 项、0 失败；皮影非遗宣传片修复后自动提取影偶、雕刀、操纵杆、唱本、灯幕、牛皮和颜料 7 类道具。
+- 没有 ready 视频时，字幕会从已生成分集 prompt 预生成；30 集导出 270 条 cue。标题卡计划覆盖系列头尾和所有已生成分集，30 集共 62 张。
+- 非遗生成现在区分皮影、刺绣、表演和通用工艺；皮影正文不再出现绣架、劈丝、穿针、落针、针脚或绸面。
+
+验证证据：
+
+- Web server 全量 Vitest：157 个测试文件执行，156 个通过、1 个条件跳过；1375 项通过、2 项条件跳过、0 失败。
+- Track A Playwright 7/7 通过；重型 generated-health 冷启动扫描的单用例等待预算调整为 45 秒，整套耗时约 36 秒。
+- `npm run check`、完整 Web 生产构建与 `git diff --check` 通过。
+- 详细报告：`docs/story-agent-frontend-text-series-gears-full-flow-test-20260720.md`。
+- 前端截图：`output/playwright/series-scale-20260720/heritage-promo-shadow-puppetry-production-board.png` 与 `output/playwright/series-scale-20260720/ai-comic-series-30-episodes.png`。
+
+外部生产边界保持不变：`ready_for_submit=false`，`GEARS_EXECUTION_WORKER_API_BASE_URL`、callback secret/base 均未配置；本轮只建立本地 mocked 任务包与账本，不计真实图片、音视频或成片回片。
+
+按 A100、B100、C99、D96、E99 的等权口径，当前整改总计划完成度为 **98.8%**。D/E 剩余部分只接受真实外部回片、真人评审、实际成本和生产恢复证据。
+
 ## 11. 下一段对话可直接使用的提示词
 
 ```text
 请阅读：
 /Users/wuyu/Desktop/china-culture-kb/docs/story-agent-comprehensive-functional-review-and-development-plan-20260719.md
 
-然后继续推进 P1-8 的第十一个安全拆分边界。先检查当前分支、HEAD、dirty workspace 和已有用户改动，不要覆盖或清理无关改动。使用 china-culture-story-agent、gears-seedance-delivery 与 superpowers-lite 技能，优先从 `project-service.ts` 拆出 Production Board export 的文件描述、交付 manifest、Seedance prompts/ledger Markdown 等纯构建逻辑；先补 characterization tests，不移动项目读取、仓储写入、文件落盘或真实 Provider 调用。继续保持脚本、视觉、镜头、Seedance prompt、validation notes 分字段交付，不把 fixture 或 dry-run 计作真实产出。完成后运行相关定向测试、Web server 全测、npm run check、受影响构建和 git diff --check，并更新本文档的实施证据与百分比。
+然后继续推进 P1-8 的第十七个安全拆分边界。先检查当前分支、HEAD、dirty workspace 和已有用户改动，不要覆盖或清理无关改动。使用 china-culture-story-agent、gears-seedance-delivery 与 superpowers-lite 技能，优先从 `updateProjectSeedanceShotStatus`、`selectProjectSeedanceShotVersion` 和 `autoSelectProjectSeedanceShotVersions` 拆出 ledger item 状态应用、video version 追加/选择、失败字段清理、retry/note 合并和稳定排序等纯策略；先补 characterization tests，不移动项目/版本读取、Production Board 构建、仓储写入或真实 Provider 调用。ready 版本必须有 video URL，自动选择不得覆盖人工版本，除非显式 `overwrite_manual`。完成后运行相关定向测试、Web server 全测、npm run check、完整 Web 构建和 git diff --check，并更新本文档的实施证据与百分比；阶段 E 保持 99%，不要用本地重构填满最后 1%。
 ```
 
 ## 12. 工作区与 Git 交接
 
 - 当前分支：`codex/story-agent-manifest-integrity-20260718`
-- 当前 HEAD：`5ff20d87`
-- 工作区包含 2026-07-20 的 P1-8 第二至第十切片修改，等待本轮统一提交并推送。
+- 当前 HEAD：`4fadfb6b`，与上游分支一致。
+- P1-8 第二至第十切片已经提交并推送；工作区当前包含第十一至第十六切片、两处前端回归修复和本文档的未提交修改。
 - 当前改动属于持续开发成果；下一对话不得 reset、checkout 或覆盖无关改动。
 - 本文档是审查与计划，不代表上述 P0 已实现。
-- 本轮没有因本审查调用外部文本模型、图片模型、GEARS 或 Seedance provider。
+- 本轮没有因本审查调用外部文本模型、图片模型、GEARS 或 Seedance provider；前端仅运行 local-only 故事、SVG placeholder 和安全能力探测。
 
 重要证据文件：
 
@@ -1061,6 +1227,9 @@ P1-8 第十切片把 Seedance Provider queue overview 的状态、batch、timeou
 - `web/generated/projects/20260719-story-8ntif7ac0079--historical_drama/project.json`
 - `web/generated/projects/20260719-story-8ntif7ac0079--historical_drama/production-board/`
 - `docs/story-agent-next-conversation-handoff-20260717.md`
+- `output/playwright/track-a-results.json`
+- `output/playwright/full-flow-20260720/.playwright-cli/page-2026-07-20T04-39-49-158Z.png`
+- `output/playwright/full-flow-20260720/.playwright-cli/page-2026-07-20T04-33-57-789Z.png`
 
 ## 13. 不得误报的边界
 

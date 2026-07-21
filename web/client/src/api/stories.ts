@@ -22,12 +22,17 @@ import type {
   AiComicEpisodeContextPreviewRequest,
   AiComicEpisodeGenerateRequest,
   AiComicSeriesBibleExportPackage,
+  AiComicSeriesBlindReviewPackage,
   AiComicSeriesLedgerRebuildRequest,
   AiComicSeriesProductionReadinessReport,
   AiComicSeriesProjectArchiveRequest,
   AiComicSeriesProjectCopyRequest,
   AiComicSeriesProjectDeleteResult,
   AiComicSeriesProjectDetail,
+  AiComicSeriesCommercialRepairResult,
+  AiComicSeriesHumanReviewSubmitRequest,
+  AiComicSeriesVisualIdentityDefinitionUpdateRequest,
+  AiComicSeriesVisualWorldRuleDefinitionUpdateRequest,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
   AiComicSeedanceAssetLibraryUpdateRequest,
@@ -193,10 +198,63 @@ export function rebuildAiComicSeriesLedger(seriesProjectId: string, req: AiComic
   )
 }
 
+export function repairAiComicSeriesCommercialQuality(seriesProjectId: string) {
+  return apiPost<AiComicSeriesCommercialRepairResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/repair-commercial-quality`,
+    {},
+  )
+}
+
+export function submitAiComicSeriesCommercialHumanReview(
+  seriesProjectId: string,
+  req: AiComicSeriesHumanReviewSubmitRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/commercial-quality-human-review`,
+    req,
+  )
+}
+
+export function exportAiComicSeriesCommercialBlindReviewPackage(seriesProjectId: string) {
+  return apiPost<AiComicSeriesBlindReviewPackage>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-commercial-blind-review-package`,
+    {},
+  )
+}
+
 export function exportAiComicSeriesBible(seriesProjectId: string) {
   return apiPost<AiComicSeriesBibleExportPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-bible`,
     {},
+  )
+}
+
+export function rebuildAiComicSeriesVisualBible(seriesProjectId: string) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/rebuild-visual-bible`,
+    {},
+  )
+}
+
+export function updateAiComicSeriesVisualIdentityDefinition(
+  seriesProjectId: string,
+  visualIdentityId: string,
+  req: AiComicSeriesVisualIdentityDefinitionUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-identities/${visualIdentityId}/visual-identity-definition`,
+    req,
+  )
+}
+
+export function updateAiComicSeriesVisualWorldRuleDefinition(
+  seriesProjectId: string,
+  worldRuleId: string,
+  req: AiComicSeriesVisualWorldRuleDefinitionUpdateRequest,
+) {
+  return apiPost<AiComicSeriesProjectDetail>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-world-rules/${worldRuleId}/visual-world-rule-definition`,
+    req,
   )
 }
 

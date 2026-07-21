@@ -1922,6 +1922,7 @@ export type ProductionReadinessLaneKey =
   | 'story_quality'
   | 'series_quality'
   | 'episode_generation'
+  | 'visual_asset_readiness'
   | 'production_board'
   | 'delivery_contract'
   | 'shot_production'
@@ -2189,6 +2190,7 @@ export interface AiComicSeriesProductionReadinessReport {
   series_title: string;
   generated_at: string;
   summary: ProductionReadinessSummary;
+  seedance_cost_governance: AiComicSeedanceExecutionCostGovernanceSummary;
   gears_operational_metrics: GearsExecutionOperationalMetrics;
   gears_recovery_plan: GearsExecutionRecoveryPlan;
   lanes: ProductionReadinessLane[];
@@ -5456,6 +5458,35 @@ export interface AiComicSeedanceVideoVersion {
   note?: string;
   quality_score?: number;
   review_note?: string;
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
+  execution_cost?: AiComicSeedanceExecutionCostRecord;
+}
+
+export interface AiComicSeedanceExecutionCostRecord {
+  actual_cost_amount: number;
+  cost_currency: string;
+  provider_reported_at: string;
+  reporting_channel: 'callback_or_poll';
+  boundary_status: GearsExecutionCostBoundaryStatus;
+  authorization_reference?: string;
+  authorized_max_cost_amount?: number;
+  authorization_total_actual_cost_amount?: number;
+}
+
+export type AiComicSeedanceExecutionCostGovernanceStatus =
+  | 'not_applicable'
+  | 'clear'
+  | 'blocked';
+
+export interface AiComicSeedanceExecutionCostGovernanceSummary {
+  status: AiComicSeedanceExecutionCostGovernanceStatus;
+  authorized_shot_count: number;
+  reported_cost_count: number;
+  pending_terminal_cost_report_count: number;
+  boundary_violation_count: number;
+  exceeded_authorization_count: number;
+  currency_mismatch_count: number;
+  authorization_missing_count: number;
 }
 
 export type AiComicSeedanceThumbnailStatus =
@@ -5491,6 +5522,8 @@ export interface AiComicSeedanceShotProductionItem {
   completed_at?: string;
   updated_at: string;
   provider_job_id?: string;
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
+  execution_cost?: AiComicSeedanceExecutionCostRecord;
   video_url?: string;
   failure_reason?: string;
   retry_count: number;
@@ -5545,6 +5578,10 @@ export interface AiComicSeedanceProductionCallbackRequest {
   qualityScore?: number;
   review_note?: string;
   reviewNote?: string;
+  actual_cost_amount?: number | string;
+  actualCostAmount?: number | string;
+  cost_currency?: string;
+  costCurrency?: string;
 }
 
 export interface AiComicSeedanceProductionVersionSelectRequest {
@@ -6062,6 +6099,7 @@ export interface AiComicSeedanceFinalDeliveryManifest {
   concat_list_path?: string;
   ffmpeg_command: string;
   dependency_status: AiComicSeedanceFinalDependencyStatus;
+  cost_governance: AiComicSeedanceExecutionCostGovernanceSummary;
   inputs: AiComicSeedanceFinalDeliveryManifestInput[];
   deliverables: AiComicSeedanceFinalDeliveryManifestDeliverable[];
   validation_notes: string[];
@@ -6568,6 +6606,7 @@ export interface AiComicSeedanceRetrySubmitRequest {
   limit?: number;
   job_prefix?: string;
   use_provider_adapter?: boolean;
+  external_call_authorization?: ExternalProviderCallAuthorizationRequest;
   note?: string;
 }
 
@@ -6595,6 +6634,7 @@ export interface AiComicSeriesSeedanceRetrySubmitResult {
   skipped_due_to_limit_count: number;
   failed_count?: number;
   provider_adapter?: SeedanceShotProviderSubmitAdapterSummary;
+  external_call_authorization?: ExternalProviderCallAuthorizationRecord;
   provider_failures?: SeedanceShotProviderSubmitFailure[];
   submitted_shots: AiComicSeedanceRetrySubmitShot[];
   seedance_production?: AiComicSeedanceProductionLedger;
@@ -6744,15 +6784,41 @@ export interface AiComicSeriesSeedanceVersionComparisonPackage {
   markdown: string;
 }
 
-export type AiComicSeedanceAssetReferenceKind = 'character' | 'location' | 'unknown';
+export type AiComicSeedanceAssetReferenceKind = 'character' | 'costume' | 'location' | 'prop' | 'unknown';
+
+export type AiComicSeedanceAssetIdentityBindingStatus = 'pending' | 'approved' | 'changes_requested' | 'stale';
+
+export interface AiComicSeedanceAssetIdentityBinding {
+  series_identity_id: string;
+  source_fingerprint: string;
+  visual_definition_fingerprint: string;
+  status: AiComicSeedanceAssetIdentityBindingStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_note?: string;
+  human_confirmed: boolean;
+}
 
 export interface AiComicSeedanceAssetReferenceItem {
   asset_id: string;
+  series_identity_id?: string;
+  identity_binding_status?: AiComicSeedanceAssetIdentityBindingStatus;
   kind: AiComicSeedanceAssetReferenceKind;
   label: string;
   reference_slot?: string;
   file_url?: string;
   file_id?: string;
+  local_path?: string;
+  original_filename?: string;
+  provider?: string;
+  content_sha256?: string;
+  rights_status?: MediaArtifactRightsStatus;
+  authorization_reference?: string;
+  person_consent_reference?: string;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_note?: string;
   description?: string;
   source_episode_nos: number[];
   source_shot_ids: string[];
@@ -6786,6 +6852,7 @@ export interface AiComicSeedanceAssetLibraryItem {
   reviewer_id?: string;
   reviewed_at?: string;
   review_note?: string;
+  identity_binding?: AiComicSeedanceAssetIdentityBinding;
   history?: SeedanceAssetHistoryEvent[];
   description?: string;
   updated_at: string;
@@ -6806,6 +6873,7 @@ export interface AiComicSeedanceAssetLibraryUpdateRequest {
     file_url?: string;
     file_id?: string;
     description?: string;
+    series_identity_id?: string;
   }>;
 }
 
@@ -6840,9 +6908,77 @@ export interface AiComicSeedanceShotAssetBinding {
   characters: string[];
   location: string;
   required_asset_ids: string[];
+  required_series_identity_ids: string[];
   missing_reference_asset_ids: string[];
   reference_slots: string[];
   prompt_preview: string;
+}
+
+export type AiComicSeriesVisualProductionCompletionStatus =
+  | 'needs_visual_definitions'
+  | 'needs_human_approvals'
+  | 'needs_real_asset_files'
+  | 'needs_production_credit'
+  | 'ready_for_provider'
+  | 'provider_in_progress'
+  | 'complete';
+
+export type AiComicSeriesVisualProductionStageKey =
+  | 'visual_definitions'
+  | 'human_approvals'
+  | 'real_asset_files'
+  | 'production_credit'
+  | 'provider_shot_films';
+
+export interface AiComicSeriesVisualProductionCompletionStage {
+  key: AiComicSeriesVisualProductionStageKey;
+  label: string;
+  status: 'complete' | 'current' | 'blocked';
+  current_count: number;
+  required_count: number;
+  next_action: string;
+  completion_rule: string;
+  operator_required: boolean;
+}
+
+export interface AiComicSeriesVisualProductionCompletionIdentity {
+  identity_id: string;
+  kind: AiComicSeriesVisualIdentityKind;
+  label: string;
+  missing_definition_fields: string[];
+  definition_ready: boolean;
+  definition_approved: boolean;
+  asset_id?: string;
+  immutable_local_file_ready: boolean;
+  rights_authorized: boolean;
+  human_media_review_approved: boolean;
+  current_identity_mapping_approved: boolean;
+  production_credit: boolean;
+  next_action: string;
+}
+
+export interface AiComicSeriesVisualProductionCompletionPlan {
+  overall_status: AiComicSeriesVisualProductionCompletionStatus;
+  summary: {
+    identity_total: number;
+    identity_definition_ready_count: number;
+    identity_approved_count: number;
+    world_rule_total: number;
+    world_rule_definition_ready_count: number;
+    world_rule_approved_count: number;
+    pilot_binding_blocker_count: number;
+    immutable_local_file_count: number;
+    rights_authorized_count: number;
+    human_media_review_approved_count: number;
+    current_identity_mapping_approved_count: number;
+    production_credit_count: number;
+    provider_required_shot_count: number;
+    provider_ready_shot_count: number;
+  };
+  stages: AiComicSeriesVisualProductionCompletionStage[];
+  identities: AiComicSeriesVisualProductionCompletionIdentity[];
+  blocking_issues: string[];
+  real_completion_boundary: string;
 }
 
 export interface AiComicSeriesSeedanceAssetReportPackage {
@@ -6855,6 +6991,8 @@ export interface AiComicSeriesSeedanceAssetReportPackage {
   upload_required_count: number;
   shot_binding_count: number;
   unbound_shot_count: number;
+  visual_bible: AiComicSeriesVisualBible;
+  completion_plan: AiComicSeriesVisualProductionCompletionPlan;
   assets: AiComicSeedanceAssetReferenceItem[];
   shots: AiComicSeedanceShotAssetBinding[];
   markdown: string;
@@ -8676,6 +8814,49 @@ export interface AiComicDurationRange {
   max: number;
 }
 
+export type SeriesPremiseTruthMode =
+  | 'verified_fact'
+  | 'oral_tradition'
+  | 'legend'
+  | 'fictional_mechanism';
+
+export interface SeriesPremiseContractLockedCharacter {
+  name: string;
+  role?: string;
+  required: boolean;
+  evidence_span: string;
+}
+
+export interface SeriesPremiseContractWorldRule {
+  rule_id: string;
+  statement: string;
+  required: boolean;
+  consequence?: string;
+  evidence_span: string;
+}
+
+export interface SeriesPremiseContractAntagonisticForce {
+  label: string;
+  function: string;
+  required: boolean;
+}
+
+export interface SeriesPremiseContractCulturalBoundary {
+  statement: string;
+  truth_mode: SeriesPremiseTruthMode;
+}
+
+export interface SeriesPremiseContract {
+  schema_version: 'series-premise-contract/v1';
+  locked_characters: SeriesPremiseContractLockedCharacter[];
+  world_rules: SeriesPremiseContractWorldRule[];
+  antagonistic_forces: SeriesPremiseContractAntagonisticForce[];
+  core_stakes: string[];
+  must_cover_beats: string[];
+  forbidden_substitutions: string[];
+  cultural_boundaries: SeriesPremiseContractCulturalBoundary[];
+}
+
 export interface AiComicSeriesPlanRequest {
   outline: string;
   series_title?: string;
@@ -8686,6 +8867,7 @@ export interface AiComicSeriesPlanRequest {
   narrative_pattern_ids?: NarrativePatternId[];
   knowledge_pack?: KnowledgePack;
   character_hints?: StoryDetectedCharacter[];
+  premise_contract?: SeriesPremiseContract;
 }
 
 export interface AiComicSeriesCharacterArc {
@@ -8740,6 +8922,30 @@ export type AiComicEndingHookType =
   | 'quiet_aftertaste'
   | 'final_echo';
 
+export type AiComicCommercialOpeningHookType =
+  | 'visual_anomaly'
+  | 'countdown'
+  | 'forbidden_action'
+  | 'identity_gap'
+  | 'evidence_reversal'
+  | 'relationship_rupture';
+
+export interface AiComicEpisodeCommercialBeats {
+  schema_version: 'ai-comic-episode-commercial-beats/v1';
+  hook_3s: string;
+  opening_hook_type: AiComicCommercialOpeningHookType;
+  episode_goal: string;
+  external_pressure: string;
+  failure_cost: string;
+  midpoint_turn: string;
+  character_choice: string;
+  state_change: string;
+  cliffhanger_question: string;
+  opening_dialogue: string;
+  scene_function_sequence: string[];
+  signature_combo: string;
+}
+
 export interface AiComicEpisodePlan {
   episode_no: number;
   title: string;
@@ -8760,6 +8966,8 @@ export interface AiComicEpisodePlan {
   thread_action?: string;
   knowledge_focus: string[];
   continuity_state_after: string[];
+  premise_anchor_ids?: string[];
+  commercial_beats?: AiComicEpisodeCommercialBeats;
 }
 
 export interface AiComicEpisodeBlueprint {
@@ -8778,6 +8986,9 @@ export interface AiComicEpisodeBlueprint {
   continuity_state_after: string[];
   knowledge_focus: string[];
   target_scene_functions: string[];
+  premise_anchor_ids?: string[];
+  premise_anchors?: string[];
+  commercial_beats?: AiComicEpisodeCommercialBeats;
 }
 
 export interface AiComicSeriesPlan {
@@ -8790,6 +9001,7 @@ export interface AiComicSeriesPlan {
   narrative_pattern_ids?: NarrativePatternId[];
   recommended_narrative_patterns?: RecommendedNarrativePattern[];
   premise: string;
+  premise_contract?: SeriesPremiseContract;
   logline: string;
   core_theme: string;
   main_characters: AiComicSeriesCharacterArc[];
@@ -9114,6 +9326,433 @@ export interface AiComicSeriesQualityAudit {
   memory_conflict_report?: AiComicMemoryConflictReport;
 }
 
+export type AiComicPremiseFidelityAnchorCategory =
+  | 'character'
+  | 'world_rule'
+  | 'antagonistic_force'
+  | 'core_stake';
+
+export interface AiComicPremiseFidelityEvidenceItem {
+  anchor_id: string;
+  category: AiComicPremiseFidelityAnchorCategory;
+  label: string;
+  required: boolean;
+  matched: boolean;
+  evidence_spans: string[];
+  episode_nos: number[];
+}
+
+export interface AiComicPremiseFidelityEpisodeReport {
+  episode_no: number;
+  hard_gate_passed: boolean;
+  premise_coverage_score: number;
+  missing_required_anchor_ids: string[];
+  generic_substitution_issues: string[];
+  evidence: AiComicPremiseFidelityEvidenceItem[];
+}
+
+export interface AiComicSeriesPremiseFidelityAudit {
+  schema_version: 'ai-comic-series-premise-fidelity-audit/v2';
+  hard_gate_passed: boolean;
+  premise_coverage_score: number;
+  named_character_coverage: number;
+  world_rule_coverage: number;
+  antagonistic_force_coverage: number;
+  core_stakes_coverage: number;
+  missing_required_anchor_ids: string[];
+  generic_substitution_issues: string[];
+  issues: string[];
+  evidence: AiComicPremiseFidelityEvidenceItem[];
+  episode_reports: AiComicPremiseFidelityEpisodeReport[];
+}
+
+export type AiComicCommercialBeatKey =
+  | 'hook_3s'
+  | 'episode_goal'
+  | 'external_pressure'
+  | 'failure_cost'
+  | 'midpoint_turn'
+  | 'character_choice'
+  | 'state_change'
+  | 'cliffhanger_question';
+
+export interface AiComicCommercialQualityEvidenceItem {
+  beat_key: AiComicCommercialBeatKey;
+  label: string;
+  matched: boolean;
+  evidence_span?: string;
+}
+
+export interface AiComicCommercialQualityEpisodeReport {
+  episode_no: number;
+  machine_gate_passed: boolean;
+  score: number;
+  evidence: AiComicCommercialQualityEvidenceItem[];
+  issues: string[];
+}
+
+export interface AiComicSeriesDiversityThresholds {
+  max_adjacent_token_overlap: number;
+  max_dialogue_token_overlap: number;
+  max_hook_type_streak: number;
+  max_scene_sequence_repetitions: number;
+  max_signature_combo_streak: number;
+}
+
+export interface AiComicSeriesDiversityExactDuplicateGroup {
+  normalized_hash: string;
+  episode_nos: number[];
+  evidence: string[];
+}
+
+export interface AiComicSeriesDiversityPairReport {
+  left_episode_no: number;
+  right_episode_no: number;
+  token_overlap: number;
+  dialogue_token_overlap: number;
+  passed: boolean;
+  issues: string[];
+}
+
+export interface AiComicSeriesDiversityReport {
+  schema_version: 'ai-comic-series-diversity-report/v1';
+  passed: boolean;
+  score: number;
+  thresholds: AiComicSeriesDiversityThresholds;
+  exact_opening_duplicate_groups: AiComicSeriesDiversityExactDuplicateGroup[];
+  adjacent_pair_reports: AiComicSeriesDiversityPairReport[];
+  repeated_scene_function_sequences: Array<{
+    sequence_key: string;
+    episode_nos: number[];
+  }>;
+  hook_type_streak_issues: string[];
+  signature_combo_streak_issues: string[];
+  issues: string[];
+}
+
+export type AiComicHumanReviewDimension =
+  | 'hook'
+  | 'character'
+  | 'dialogue'
+  | 'progression'
+  | 'turn'
+  | 'ending'
+  | 'cultural_credibility';
+
+export interface AiComicHumanReviewScore {
+  reviewer_id: string;
+  blind: true;
+  dimension: AiComicHumanReviewDimension;
+  score: 1 | 2 | 3 | 4 | 5;
+  note?: string;
+  reviewed_at?: string;
+}
+
+export interface AiComicSeriesHumanReviewSubmitRequest {
+  reviewer_id: string;
+  blind: true;
+  candidate_label: string;
+  reviewer_packet_sha256: string;
+  scores: Array<{
+    dimension: AiComicHumanReviewDimension;
+    score: 1 | 2 | 3 | 4 | 5;
+    note?: string;
+  }>;
+}
+
+export interface AiComicSeriesHumanReview {
+  schema_version: 'ai-comic-series-human-review/v1';
+  status: 'pending' | 'completed' | 'stale';
+  blind_review_required: true;
+  reviewer_count: number;
+  dimension_averages: Partial<Record<AiComicHumanReviewDimension, number>>;
+  overall_average?: number;
+  minimum_dimension_average?: number;
+  passed?: boolean;
+  content_fingerprint?: string;
+  reviewed_episode_story_ids?: Record<string, string>;
+  candidate_label?: string;
+  reviewer_packet_sha256?: string;
+  scores: AiComicHumanReviewScore[];
+  issues: string[];
+}
+
+export interface AiComicSeriesBlindReviewSceneSample {
+  scene_order: number;
+  title: string;
+  location: string;
+  time_of_day: string;
+  dramatic_function: string;
+  plot: string;
+  key_action: string;
+  dialogue_or_narration?: string;
+  cultural_note?: string;
+}
+
+export interface AiComicSeriesBlindReviewEpisodeSample {
+  sample_label: string;
+  position_label: '开篇样本' | '中段样本' | '终局样本';
+  title: string;
+  full_text: string;
+  scenes: AiComicSeriesBlindReviewSceneSample[];
+}
+
+export interface AiComicSeriesBlindReviewScorecardItem {
+  dimension: AiComicHumanReviewDimension;
+  label: string;
+  review_prompt: string;
+  score: null;
+  note: string;
+}
+
+export interface AiComicSeriesBlindReviewReviewerPacket {
+  schema_version: 'ai-comic-series-blind-review-reviewer-packet/v1';
+  candidate_label: string;
+  origin_hidden: true;
+  machine_scores_included: false;
+  source_engine_included: false;
+  episode_order_preserved: true;
+  instructions: string[];
+  cultural_review_boundary: string[];
+  episode_samples: AiComicSeriesBlindReviewEpisodeSample[];
+  scorecard: AiComicSeriesBlindReviewScorecardItem[];
+  required_attestations: string[];
+}
+
+export interface AiComicSeriesBlindReviewResponseScore {
+  dimension: AiComicHumanReviewDimension;
+  label: string;
+  score: null | 1 | 2 | 3 | 4 | 5;
+  note: string;
+}
+
+export interface AiComicSeriesBlindReviewResponseFile {
+  schema_version: 'ai-comic-series-blind-review-response/v1';
+  candidate_label: string;
+  reviewer_packet_sha256: string;
+  reviewer_id: string;
+  blind: true;
+  instructions: string[];
+  scores: AiComicSeriesBlindReviewResponseScore[];
+  attestations: {
+    human_reviewer: boolean;
+    origin_and_machine_scores_hidden: boolean;
+    independent_review: boolean;
+  };
+}
+
+export interface AiComicSeriesBlindReviewOperatorManifest {
+  schema_version: 'ai-comic-series-blind-review-operator-manifest/v1';
+  exported_at: string;
+  series_project_id: string;
+  series_title: string;
+  candidate_label: string;
+  review_content_fingerprint: string;
+  reviewer_packet_sha256: string;
+  reviewed_episode_story_ids: Record<string, string>;
+  share_with_reviewer: false;
+  instructions: string[];
+}
+
+export interface AiComicSeriesBlindReviewPackage {
+  schema_version: 'ai-comic-series-blind-review-package/v1';
+  candidate_label: string;
+  reviewer_packet_sha256: string;
+  reviewer_packet: AiComicSeriesBlindReviewReviewerPacket;
+  reviewer_markdown: string;
+  reviewer_response_template: AiComicSeriesBlindReviewResponseFile;
+  reviewer_response_template_json: string;
+  operator_manifest: AiComicSeriesBlindReviewOperatorManifest;
+  operator_markdown: string;
+}
+
+export interface AiComicSeriesCommercialQualityAudit {
+  schema_version: 'ai-comic-series-commercial-quality-audit/v1';
+  machine_gate_passed: boolean;
+  machine_score: number;
+  ready_for_human_review: boolean;
+  required_human_review_episode_nos: number[];
+  missing_human_review_episode_nos: number[];
+  review_content_fingerprint: string;
+  issues: string[];
+  episodes_need_attention: number[];
+  episode_reports: AiComicCommercialQualityEpisodeReport[];
+  diversity_report: AiComicSeriesDiversityReport;
+  human_review: AiComicSeriesHumanReview;
+}
+
+export interface AiComicSeriesCommercialRepairResult {
+  schema_version: 'ai-comic-series-commercial-repair-result/v1';
+  project: AiComicSeriesProjectMeta;
+  success: boolean;
+  improved: boolean;
+  changed_episode_nos: number[];
+  changed_fields: string[];
+  before_score: number;
+  after_score: number;
+  issues: string[];
+  plan: AiComicSeriesPlan;
+  commercial_quality_audit: AiComicSeriesCommercialQualityAudit;
+  generated_episodes_need_regeneration: number[];
+}
+
+export type AiComicSeriesVisualIdentityKind = 'character' | 'costume' | 'location' | 'prop';
+
+export interface AiComicSeriesVisualDefinitionField {
+  field_id: string;
+  label: string;
+  value: string;
+  required: boolean;
+}
+
+export type AiComicSeriesVisualApprovalStatus = 'pending' | 'approved' | 'changes_requested' | 'stale';
+
+export interface AiComicSeriesVisualDefinitionApproval {
+  status: AiComicSeriesVisualApprovalStatus;
+  reviewer_id?: string;
+  reviewed_at?: string;
+  review_note?: string;
+  source_fingerprint?: string;
+  human_confirmed: boolean;
+}
+
+export interface AiComicSeriesVisualIdentity {
+  identity_id: string;
+  kind: AiComicSeriesVisualIdentityKind;
+  label: string;
+  canonical_description: string;
+  parent_identity_id?: string;
+  source: 'plan_character' | 'premise_antagonist' | 'derived_costume' | 'series_memory';
+  source_episode_nos: number[];
+  pilot_episode_nos: number[];
+  continuity_constraints: string[];
+  negative_constraints: string[];
+  source_fingerprint: string;
+  definition_fingerprint: string;
+  definition_fields: AiComicSeriesVisualDefinitionField[];
+  definition_notes: string;
+  approval: AiComicSeriesVisualDefinitionApproval;
+  missing_definition_fields: string[];
+  definition_status: 'ready' | 'needs_definition';
+  production_credit: boolean;
+}
+
+export interface AiComicSeriesVisualWorldRule {
+  rule_id: string;
+  statement: string;
+  consequence?: string;
+  visual_symbol?: string;
+  trigger_condition?: string;
+  source_story_ids: Record<string, string>;
+  source_fingerprint: string;
+  definition_fields: AiComicSeriesVisualDefinitionField[];
+  definition_notes: string;
+  approval: AiComicSeriesVisualDefinitionApproval;
+  missing_definition_fields: string[];
+  definition_status: 'ready' | 'needs_definition';
+  pilot_bindings: AiComicSeriesVisualWorldRulePilotBinding[];
+  missing_pilot_episode_nos: number[];
+  missing_visual_mapping: boolean;
+}
+
+export type AiComicSeriesVisualWorldRulePilotTargetType = 'seedance_shot' | 'gears_segment';
+
+export interface AiComicSeriesVisualWorldRulePilotBinding {
+  episode_no: number;
+  target_type: AiComicSeriesVisualWorldRulePilotTargetType;
+  target_id: string;
+  story_id: string;
+}
+
+export interface AiComicSeriesVisualPilotBinding {
+  episode_no: number;
+  generated_story_id?: string;
+  character_identity_ids: string[];
+  costume_identity_ids: string[];
+  location_identity_ids: string[];
+  prop_identity_ids: string[];
+  required_identity_ids: string[];
+  production_credit_identity_ids: string[];
+  identity_coverage_percent: number;
+  production_credit_coverage_percent: number;
+  missing_identity_kinds: AiComicSeriesVisualIdentityKind[];
+  world_rule_ids: string[];
+  missing_world_rule_ids: string[];
+  world_rule_coverage_percent: number;
+}
+
+export interface AiComicSeriesVisualBible {
+  schema_version: 'ai-comic-series-visual-bible/v1';
+  generated_at: string;
+  source_fingerprint: string;
+  pilot_episode_nos: number[];
+  world: {
+    period: string;
+    region: string;
+    architectural_language: string[];
+    lighting_and_color_rules: string[];
+    material_rules: string[];
+  };
+  world_rules: AiComicSeriesVisualWorldRule[];
+  cultural_boundaries: SeriesPremiseContractCulturalBoundary[];
+  identities: AiComicSeriesVisualIdentity[];
+  pilot_episode_bindings: AiComicSeriesVisualPilotBinding[];
+  ready_identity_count: number;
+  needs_definition_identity_count: number;
+  approved_identity_count: number;
+  needs_approval_identity_count: number;
+  production_credit_identity_count: number;
+  ready_world_rule_count: number;
+  needs_definition_world_rule_count: number;
+  approved_world_rule_count: number;
+  needs_approval_world_rule_count: number;
+  blocker_count: number;
+  warning_count: number;
+  issues: string[];
+}
+
+export interface AiComicSeriesVisualIdentityDefinitionUpdateRequest {
+  expected_source_fingerprint: string;
+  fields: Record<string, string>;
+  definition_notes?: string;
+  action: 'save_draft' | 'approve' | 'request_changes';
+  reviewer_id?: string;
+  human_confirmed?: true;
+  review_note?: string;
+}
+
+export interface AiComicSeriesVisualWorldRuleDefinitionUpdateRequest {
+  expected_source_fingerprint: string;
+  fields: Record<string, string>;
+  definition_notes?: string;
+  pilot_bindings: Array<{
+    episode_no: number;
+    target_type: AiComicSeriesVisualWorldRulePilotTargetType;
+    target_id: string;
+  }>;
+  action: 'save_draft' | 'approve' | 'request_changes';
+  reviewer_id?: string;
+  human_confirmed?: true;
+  review_note?: string;
+}
+
+export interface AiComicSeriesVisualSuggestionDraft {
+  schema_version: 'ai-comic-series-visual-suggestion-draft/v1';
+  target_type: 'visual_identity' | 'visual_world_rule';
+  target_id: string;
+  source_fingerprint: string;
+  input_fingerprint: string;
+  suggestion_source: 'deterministic_template';
+  suggestion_version: 'visual-definition-suggestions/v1';
+  generated_at: string;
+  fields: Record<string, string>;
+  definition_notes?: string;
+  suggested_field_ids: string[];
+  unresolved_field_ids: string[];
+  persisted: false;
+  auto_approved: false;
+}
+
 export interface AiComicSeriesProjectDetail {
   project: AiComicSeriesProjectMeta;
   plan: AiComicSeriesPlan;
@@ -9121,6 +9760,9 @@ export interface AiComicSeriesProjectDetail {
   continuity_ledger: AiComicContinuityLedger;
   memory_recall_preferences?: AiComicSeriesMemoryRecallPreferences;
   series_quality_audit?: AiComicSeriesQualityAudit;
+  premise_fidelity_audit?: AiComicSeriesPremiseFidelityAudit;
+  commercial_quality_audit?: AiComicSeriesCommercialQualityAudit;
+  visual_bible?: AiComicSeriesVisualBible;
   seedance_production?: AiComicSeedanceProductionLedger;
   seedance_asset_library?: AiComicSeedanceAssetLibrary;
   seedance_cut_assembly?: AiComicSeedanceCutAssemblyLedger;
@@ -9240,6 +9882,7 @@ export interface AiComicSeriesBibleExportPackage {
   generated_episode_story_ids: Record<string, string>;
   continuity_ledger: AiComicContinuityLedger;
   series_quality_audit?: AiComicSeriesQualityAudit;
+  visual_bible: AiComicSeriesVisualBible;
   episode_blueprints: AiComicEpisodeBlueprint[];
   production_tables: AiComicSeriesBibleProductionTables;
   markdown: string;
