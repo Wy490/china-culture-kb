@@ -8,6 +8,7 @@ import { createJsonBodyParser } from '../middleware/json-body.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { storiesRouter } from '../routes/stories.js';
 import { buildStoryProductionBoard } from '../services/production-board-service.js';
+import { getProject } from '../services/project-service.js';
 import type { GenerationType, PresentationStyle, VideoType } from '@shared/types.js';
 
 let workspaceRoot = '';
@@ -182,6 +183,33 @@ describe('all video type API generation matrix', () => {
       expect(story.scene_breakdown.length).toBeGreaterThanOrEqual(3);
       expect(story.gears_segments.length).toBe(story.scene_breakdown.length);
       expect(story.gears_delivery.units.length).toBeGreaterThanOrEqual(story.scene_breakdown.length);
+      expect(story.professional_text_package?.video_type).toBe(item.videoType);
+      expect(story.professional_text_package?.story_id).toBe(story.storyId);
+      expect(story.professional_text_package?.project_id).toBe(story.project_id);
+      expect(story.professional_text_package?.scene_breakdown.map((scene: Record<string, unknown>) => ({
+        scene_id: scene.scene_id,
+        key_action: scene.key_action,
+        plot: scene.plot,
+      }))).toEqual(story.scene_breakdown.map((scene: Record<string, unknown>) => ({
+        scene_id: scene.scene_id,
+        key_action: scene.key_action,
+        plot: scene.plot,
+      })));
+      expect(story.professional_text_package?.full_text).toBe(story.full_text);
+      expect(story.professional_text_package?.delivery_text_package?.scene_units)
+        .toHaveLength(story.scene_breakdown.length);
+      const professionalHardGates = story.professional_text_package?.quality_report?.hard_gate_failures ?? [];
+      const machineRepairableHardGates = professionalHardGates.filter((gate: string) =>
+        !gate.startsWith('interview_consent_missing:')
+      );
+      expect(machineRepairableHardGates, `${item.videoType} unresolved professional hard gates`)
+        .toEqual([]);
+      const projectResult = await getProject(story.project_id);
+      expect(projectResult.ok).toBe(true);
+      expect(projectResult.data?.current_story.professional_text_package?.project_id)
+        .toBe(story.project_id);
+      expect(projectResult.data?.current_story.professional_text_package?.video_type)
+        .toBe(item.videoType);
       if (!['character_story', 'historical_drama', 'legend_story', 'children_story', 'ai_comic_drama'].includes(item.videoType)) {
         expect(story.gears_delivery.character_assets, `${item.videoType} should not turn a place/craft/event into a person`)
           .toEqual([]);

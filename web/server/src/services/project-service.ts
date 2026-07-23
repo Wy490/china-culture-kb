@@ -1930,6 +1930,13 @@ function buildInitialProjectSnapshot(
     sourceDomain: resolveStorySourceDomain(story),
     project_id: projectId,
     current_version_id: versionId,
+    professional_text_package: story.professional_text_package
+      ? {
+          ...story.professional_text_package,
+          story_id: story.storyId,
+          project_id: projectId,
+        }
+      : undefined,
   };
 
   return {
@@ -2001,7 +2008,9 @@ async function persistProjectVersion(
     project_id: project.project_id,
     current_version_id: versionId,
   };
-  const updatedStory = await rebuildDerivedStoryState(storyWithVersionIdentity);
+  const updatedStory = await rebuildDerivedStoryState(storyWithVersionIdentity, {
+    professionalTextNow: createdAt,
+  });
 
   const snapshot: StoryProjectVersionSnapshot = {
     project_id: project.project_id,
@@ -2075,6 +2084,13 @@ export async function createProjectFromGeneratedStory(
     sourceDomain: meta.source_domain,
     project_id: meta.project_id,
     current_version_id: meta.current_version_id,
+    professional_text_package: story.professional_text_package
+      ? {
+          ...story.professional_text_package,
+          story_id: story.storyId,
+          project_id: meta.project_id,
+        }
+      : undefined,
   };
 }
 

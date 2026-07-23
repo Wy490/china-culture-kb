@@ -194,6 +194,7 @@ const SUPPLEMENT_TASK_SOURCES: KnowledgeSupplementTaskSource[] = [
   'knowledge_pack_missing_need',
   'material_sufficiency_missing_item',
   'production_material_missing_field',
+  'professional_evidence_missing',
 ];
 const SUPPLEMENT_TASK_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'draft_ready',

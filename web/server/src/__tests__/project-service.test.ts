@@ -6009,7 +6009,10 @@ describe('project-service', () => {
 
       const afterDetail = await getProject(enriched.project_id!);
       expect(afterDetail.ok).toBe(true);
-      expect(afterDetail.data?.current_story.supplement_tasks?.map(task => task.status))
+      const productionMaterialTasks = afterDetail.data?.current_story.supplement_tasks?.filter(
+        task => task.source === 'production_material_missing_field',
+      );
+      expect(productionMaterialTasks?.map(task => task.status))
         .toEqual(item.fieldIds.map(() => 'resolved'));
       const expectedAvailableFields = item.fieldIds.filter(fieldId => (
         fieldId !== 'project_name'
@@ -6018,7 +6021,7 @@ describe('project-service', () => {
       expect(afterDetail.data?.current_story.production_material_readiness?.available_fields)
         .toEqual(expect.arrayContaining(expectedAvailableFields));
       const draftedFieldValues = JSON.stringify(
-        afterDetail.data?.current_story.supplement_tasks?.map(task => task.supplement_field_values),
+        productionMaterialTasks?.map(task => task.supplement_field_values),
       );
       expect(draftedFieldValues).toContain(item.expectedSnippet);
       if (item.forbiddenSnippet) expect(draftedFieldValues).not.toContain(item.forbiddenSnippet);

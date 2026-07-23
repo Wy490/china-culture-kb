@@ -558,7 +558,7 @@ kb_export_story_agent_preproduction
 
 ## 4. 下一阶段开发顺序
 
-### 4.1 P0-A：统一专业脚本 dispatcher
+### 4.1 P0-A：统一专业脚本 dispatcher（2026-07-24 已完成）
 
 优先实现，因为它决定“故事”和“专业脚本”是否真正成为一个 Agent。
 
@@ -577,6 +577,21 @@ web/server/src/__tests__/professional-text-dispatch-service.test.ts
 - 缺素材返回 supplement tasks；
 - `professional_text_package` 写入 StoryGenerateResult 和项目版本；
 - repair 后 scenes、delivery units、Seedance prompts 不陈旧。
+
+当前实现：
+
+```text
+professional-evidence-resolver-service.ts
+  → 从 material_pack / knowledge_pack / StoryBlueprint / scenes 解析 research 与类型 evidence
+professional-text-dispatch-service.ts
+  → 15/15 VideoType 唯一分派到现有专业管线
+derived-story-state-service.ts
+  → 每次 canonical derived-state 重建时重建 professional_text_package
+project-service.ts
+  → 初始版本和后续版本都绑定 story_id / project_id
+```
+
+缺可核验事实时会返回 `professional_evidence_missing` 类型的结构化补充任务；纪录片不会自动声称采访或授权已确认。15 类型本地 canonical 生成矩阵中，除纪录片真实采访授权这一外部证据门禁外，机器可完成的专业硬门槛为 0。
 
 ### 4.2 P0-B：通用前置制作包
 
@@ -777,19 +792,19 @@ mcp-server/src/tools/story-agent-generate.ts
 mcp-server/src/tools/generate-script.ts
 ```
 
-### 7.3 从 P0-A 开始
+### 7.3 从 P0-B 开始
 
-下一对话不要再调查视频、后期或真人测试。直接先做：
+P0-A 已完成。下一对话不要再调查视频、后期或真人测试，直接做：
 
 ```text
-统一 professional text dispatcher
-  → 自动 evidence resolver
-  → 15 类型接入 canonical story generation
-  → professional_text_package 持久化
-  → 聚焦回归
+通用 story-agent-seedance-preproduction-package/v1
+  → 普通 story / project 与 series project 共用外部 schema
+  → 包含 professional_text_package
+  → 统一逐镜 Seedance prompt、图片映射与 acceptance
+  → Web API / MCP canonical export
 ```
 
-完成 P0-A 后，再做通用 preproduction package 和 image manifest。
+完成 P0-B 后，再做 P0-C image-generation request/result manifest 与断点续跑。
 
 ### 7.4 验证命令
 
@@ -818,6 +833,19 @@ npm run smoke:story-agent-cross-seed-images
 ```text
 smoke:story-agent-persistent-lifecycle
 任何视频 Provider / playable media / postproduction smoke
+```
+
+### 7.5 P0-A 最新验证基线
+
+```text
+15 类型 dispatcher / canonical generation / project persistence：通过
+professional dispatcher 聚焦测试：3 项通过
+服务端全量：163 files passed，1 skipped
+测试：1412 passed，2 skipped
+server source/scripts TypeScript：通过
+server tsup production build：通过
+MCP canonical bridge 聚焦测试与 TypeScript build：通过
+前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 ```
 
 ## 8. 当前权威数据与注意事项

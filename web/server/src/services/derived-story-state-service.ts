@@ -12,6 +12,8 @@ import { combineQualityReports, validateReferenceSafety } from './reference-qual
 import { validateStoryFamilyBaseQuality } from './story-family-quality-service.js';
 import { attachBlueprintScenes } from './story-blueprint-service.js';
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
+import { dispatchProfessionalTextPackageForStory } from './professional-text-dispatch-service.js';
+import { resolveProfessionalEvidenceForStory } from './professional-evidence-resolver-service.js';
 
 export class StoryDerivedStateValidationError extends Error {
   constructor(
@@ -33,6 +35,7 @@ export async function rebuildDerivedStoryState(
   options: {
     narrativePatternIds?: NarrativePatternId[];
     revalidateDomainSafety?: boolean;
+    professionalTextNow?: string;
   } = {},
 ): Promise<StoryGenerateResult> {
   const storyBlueprint = story.story_blueprint
@@ -61,6 +64,22 @@ export async function rebuildDerivedStoryState(
     ...canonicalStory,
     gears_segments: rebuildLegacyGearsSegments(canonicalStory, gearsDelivery),
     gears_delivery: gearsDelivery,
+  };
+  const professionalDispatch = dispatchProfessionalTextPackageForStory(
+    canonicalStory,
+    resolveProfessionalEvidenceForStory(canonicalStory, {
+      now: options.professionalTextNow,
+    }),
+  );
+  canonicalStory = {
+    ...canonicalStory,
+    professional_text_package: professionalDispatch.package,
+    supplement_tasks: [
+      ...(canonicalStory.supplement_tasks ?? []).filter(task =>
+        task.source !== 'professional_evidence_missing' || task.status === 'resolved'
+      ),
+      ...professionalDispatch.supplement_tasks,
+    ],
   };
 
   const structuralQuality = validateStoryFamilyBaseQuality(canonicalStory, {

@@ -78,6 +78,7 @@ export async function persistGeneratedStoryAndNotifyGears(input: {
     // user-supplied/ephemeral entries do not exist in the durable Domain Pack,
     // so a registry lookup here would replace a valid report with "not found".
     revalidateDomainSafety: false,
+    professionalTextNow: input.createdAt,
   });
   const storyWithProject = await createProjectFromGeneratedStory(
     rebuiltStory,

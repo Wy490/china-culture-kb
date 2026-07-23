@@ -9043,7 +9043,8 @@ export type KnowledgeWritebackStatus = 'draft_ready' | 'queued' | 'written_back'
 export type KnowledgeSupplementTaskSource =
   | 'knowledge_pack_missing_need'
   | 'material_sufficiency_missing_item'
-  | 'production_material_missing_field';
+  | 'production_material_missing_field'
+  | 'professional_evidence_missing';
 export type KnowledgeSupplementTaskCategory =
   | 'person_experience'
   | 'architecture_detail'
