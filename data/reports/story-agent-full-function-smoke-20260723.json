@@ -194,6 +194,57 @@
     "external_authorization_count": 0,
     "external_provider_called": false
   },
+  "isolated_postproduction_lifecycle_smoke": {
+    "schema_version": "story-agent-isolated-full-function-smoke/v1",
+    "status": "passed",
+    "mode": "isolated_synthetic_artifacts",
+    "repeat_run_count": 4,
+    "formal_project_contaminated": false,
+    "isolated_workspace_removed_after_each_run": true,
+    "external_provider_called": false,
+    "external_authorization_used": false,
+    "human_review_required": false,
+    "series": {
+      "title": "影灯三夜",
+      "planned_episode_count": 3,
+      "generated_episode_count": 3,
+      "shot_count": 27
+    },
+    "gears": {
+      "adapter_status": "mocked",
+      "initial_job_count": 27,
+      "synthetic_failure_count": 1,
+      "retry_job_count": 1,
+      "ready_shot_count": 27,
+      "callback_import_failure_count": 0
+    },
+    "stages": {
+      "story_plan": "passed",
+      "episode_generation": "passed",
+      "shot_prompt_export": "passed",
+      "mocked_gears_submit_callback_retry": "passed",
+      "cut_assembly": "ready",
+      "subtitle_render": "ready",
+      "audio_mix": "ready",
+      "title_card_render": "ready",
+      "final_delivery": "ready"
+    },
+    "artifact_counts": {
+      "episode_story": 3,
+      "shot_prompt": 27,
+      "ready_shot": 27,
+      "subtitle_cue": 27,
+      "bound_audio_source": 1,
+      "title_card": 8,
+      "final_manifest_deliverable": 3
+    },
+    "latest_release": {
+      "immutable": true,
+      "output_sha256": "b6930bf0e280e3bac4b7a35c84a340e53737ec004c9d0e3958aff83a301e7c9f",
+      "manifest_sha256": "052ddb8b3e210b4521794ee60bd4ba84f459eed133bb9fce44ec293e3c976148"
+    },
+    "evidence_boundary": "Synthetic artifact bytes exercise repository, callback, retry, assembly, manifest, immutable-release, and cleanup contracts; they are not playable Provider video or production media."
+  },
   "defects_found_and_fixed": [
     "openai_imagegen trusted-source assets were not accepted by immutable preview",
     "first real file replacing a placeholder was incorrectly marked stale solely because the placeholder record existed",
@@ -207,11 +258,14 @@
     "workspace_check": "visible copy audit, server tsc, client vue-tsc passed",
     "production_build": "server tsup and client Vite build passed; 171 client modules transformed",
     "generated_asset_and_local_gears_smoke": "14 immutable image previews verified; 180 local mocked GEARS jobs accepted, 0 failed, 0 external authorization",
+    "isolated_postproduction_smoke": "4 consecutive runs passed; 3 episodes, 27 shots, 1 synthetic failure and retry, cut/subtitle/audio/title-card/final delivery ready",
+    "postproduction_regression": "outline-service.test.ts: 1 file, 37 tests passed",
+    "server_and_script_typecheck": "server source and scripts strict TypeScript checks passed",
     "git_diff_check": "passed"
   },
   "remaining_functional_work": [
-    "Exercise callback, artifact ingestion, retry, cut-assembly, audio, subtitle, title-card, and final-assembly lifecycles with isolated synthetic test artifacts rather than contaminating the formal series with fake ready videos",
     "Repeat the 15-type generation and 14-asset workflow on additional series seeds to build cross-project stability evidence",
+    "Exercise the same callback and post-production contract against a separately authorized real video Provider when credentials, budget, and explicit external-call authorization are available",
     "Keep external video Provider submission disabled until separately authorized",
     "Keep human media review and production credit deferred without weakening their strict semantics"
   ]

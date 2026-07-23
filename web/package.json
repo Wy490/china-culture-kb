@@ -19,7 +19,8 @@
     "audit:writeback-acceptance": "npm run audit:writeback-acceptance -w client",
     "check": "npm run audit:copy && npm run lint",
     "e2e:track-a": "playwright test --config playwright.config.ts",
-    "smoke:audit-crash": "npm run smoke:audit-crash -w server --"
+    "smoke:audit-crash": "npm run smoke:audit-crash -w server --",
+    "smoke:story-agent-full-function": "npm run smoke:story-agent-full-function -w server --"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
