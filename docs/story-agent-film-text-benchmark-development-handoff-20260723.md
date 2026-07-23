@@ -679,11 +679,70 @@ git diff --check：通过
 
 本切片完成度 100%；Reference Intelligence v1 仍未完成的下一边界是：
 
-1. benchmark card / style pack 的创建、组合和审计持久化；
+1. **已完成**：benchmark card / style pack 的创建、组合和审计持久化；
 2. AI 漫剧工作台“参考资料”录入与分析卡 UI；
 3. 将已批准的 `reusable_principles` 与 `avoid_copying` 接入生成包和质量报告；
 4. 保持 reference 不自动写入文化 KB、不自动获得 production credit；
 5. 一旦真实图片 Provider、凭证、预算和外呼授权齐备，立即恢复 P0 四人物真实资产试产。
+
+### 12.5 2026-07-23 继续开发：benchmark card / style pack 组合闭环
+
+在上一小节的来源与分析卡基础上，已完成“两条以上参考 → benchmark card → audited style pack”的服务端闭环。
+
+新增共享合同：
+
+- `BenchmarkCardCreateRequestSchema`
+- `BenchmarkCardSchema`
+- `ReferenceStylePackCreateRequestSchema`
+- `ReferenceStylePackRecordSchema`
+- `ReferenceGovernanceBoundary`
+- `ReferenceApprovedAudit`
+- `ReferenceStylePackRecord`
+
+新增 API：
+
+- `POST /api/reference-library/benchmark-cards`
+- `GET /api/reference-library/benchmark-cards`
+- `GET /api/reference-library/benchmark-cards/:benchmarkId`
+- `POST /api/reference-library/style-packs`
+- `GET /api/reference-library/style-packs`
+- `GET /api/reference-library/style-packs/:stylePackId`
+
+组合门禁：
+
+1. benchmark 必须绑定至少两个唯一 analysis ID 和两个不同 reference 来源；
+2. 所有 analysis 必须先获得人工批准，pending 分析不能进入 benchmark；
+3. `evidence_refs` 必须解析到已选 analysis，并覆盖每一个来源；
+4. benchmark 保存目标片型、目标维度、抽象原则、创建人与批准人；
+5. style pack 只能由已持久化 benchmark 组合；
+6. `compatible_video_types` 必须覆盖所有 benchmark 的目标片型；
+7. style pack 自动继承来源 ID、analysis ID、benchmark ID、抽象原则和所有 `avoid_copying`；
+8. 所有组合记录固定：
+   - `knowledge_writeback_allowed=false`
+   - `production_credit_eligible=false`
+9. audited style pack 独立保存到 `references/creative/library/style-packs/*.json`，不会覆盖旧静态 style pack。
+
+测试先观察到三个组合端点 404/缺失门禁失败，再完成实现。最终证据：
+
+```text
+Reference Library 聚焦回归：2 files / 6 tests passed
+服务端全量：162 files passed，1 skipped；1404 tests passed，2 skipped
+全仓 check：visible copy 9 files / 17 checks、server tsc、client vue-tsc 全部通过
+生产构建：server tsup、client vue-tsc / Vite 通过，171 modules transformed
+git diff --check：通过
+```
+
+新增测试覆盖：
+
+- 两条已批准影视分析成功组合 benchmark；
+- benchmark 成功组合 audited style pack；
+- 来源、analysis、benchmark、原则和 `avoid_copying` 可回溯；
+- style pack 原子 JSON 落盘、列表与详情读取；
+- pending 分析被 409 门禁阻断；
+- 重复 analysis 不能冒充两个来源；
+- 片型兼容范围遗漏时失败关闭。
+
+本切片完成度 100%。正式《皮影诡戏：守灯人》项目仍未修改，production credit 仍为 0/14。下一工程边界是把**已批准 audited style pack**接入生成 prompt package、`reference_trace` 和 reference quality report；在此之前，创建 style pack 不会自动影响任何故事生成。
 
 ## 13. 最终判断
 

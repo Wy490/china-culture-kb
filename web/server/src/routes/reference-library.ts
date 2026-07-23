@@ -4,11 +4,17 @@ import { Router } from 'express';
 import { success } from '@shared/types.js';
 import { requireProductAccess } from '../middleware/product-access.js';
 import {
+  createBenchmarkCard,
   createFilmReferenceAnalysis,
   createReferenceSource,
+  createReferenceStylePack,
   createTextReferenceAnalysis,
+  getBenchmarkCard,
   getReferenceLibraryDetail,
+  getReferenceStylePack,
+  listBenchmarkCards,
   listReferenceSources,
+  listReferenceStylePacks,
 } from '../services/reference-library-service.js';
 
 function resolveDefaultRepoRoot(): string {
@@ -38,6 +44,62 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     try {
       const record = await createReferenceSource({ repoRoot, request: req.body });
       res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/benchmark-cards', async (_req, res, next) => {
+    try {
+      res.json(success(await listBenchmarkCards({ repoRoot })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/benchmark-cards', async (req, res, next) => {
+    try {
+      const record = await createBenchmarkCard({ repoRoot, request: req.body });
+      res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/benchmark-cards/:benchmarkId', async (req, res, next) => {
+    try {
+      res.json(success(await getBenchmarkCard({
+        repoRoot,
+        benchmarkId: req.params.benchmarkId,
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/style-packs', async (_req, res, next) => {
+    try {
+      res.json(success(await listReferenceStylePacks({ repoRoot })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/style-packs', async (req, res, next) => {
+    try {
+      const record = await createReferenceStylePack({ repoRoot, request: req.body });
+      res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/style-packs/:stylePackId', async (req, res, next) => {
+    try {
+      res.json(success(await getReferenceStylePack({
+        repoRoot,
+        stylePackId: req.params.stylePackId,
+      })));
     } catch (error) {
       next(error);
     }

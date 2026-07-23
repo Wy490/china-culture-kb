@@ -3,22 +3,31 @@ import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { z } from 'zod';
 import {
+  BenchmarkCardCreateRequestSchema,
+  BenchmarkCardSchema,
   FilmReferenceAnalysisCreateRequestSchema,
   ReferenceAnalysisRecordSchema,
   ReferenceSourceCreateRequestSchema,
   ReferenceSourceRecordSchema,
+  ReferenceStylePackCreateRequestSchema,
+  ReferenceStylePackRecordSchema,
   TextReferenceAnalysisCreateRequestSchema,
 } from '@shared/schemas.js';
 import type {
+  BenchmarkCard,
   FilmReferenceAnalysisRecord,
   ReferenceAnalysisRecord,
   ReferenceLibraryDetail,
   ReferenceSourceMediaType,
   ReferenceSourceRecord,
+  ReferenceStylePackRecord,
   TextReferenceAnalysisRecord,
 } from '@shared/types.js';
 
 const REFERENCE_ID_PATTERN = /^reference-[a-f0-9-]+$/;
+const ANALYSIS_ID_PATTERN = /^analysis-[a-f0-9-]+$/;
+const BENCHMARK_ID_PATTERN = /^benchmark-[a-f0-9-]+$/;
+const STYLE_PACK_ID_PATTERN = /^reference-style-pack-[a-f0-9-]+$/;
 const FILM_MEDIA_TYPES: ReadonlySet<ReferenceSourceMediaType> = new Set([
   'film',
   'episode',
@@ -55,11 +64,35 @@ function analysesDirectory(repoRoot: string): string {
   return path.join(libraryRoot(repoRoot), 'analyses');
 }
 
+function benchmarkCardsDirectory(repoRoot: string): string {
+  return path.join(libraryRoot(repoRoot), 'benchmark-cards');
+}
+
+function referenceStylePacksDirectory(repoRoot: string): string {
+  return path.join(libraryRoot(repoRoot), 'style-packs');
+}
+
 function validateReferenceId(referenceId: string): string {
   if (!REFERENCE_ID_PATTERN.test(referenceId)) {
     throw new ReferenceLibraryError('REFERENCE_NOT_FOUND', `Reference not found: ${referenceId}`);
   }
   return referenceId;
+}
+
+function validateRecordId(input: {
+  id: string;
+  pattern: RegExp;
+  code: string;
+  label: string;
+}): string {
+  if (!input.pattern.test(input.id)) {
+    throw new ReferenceLibraryError(input.code, `${input.label} not found: ${input.id}`);
+  }
+  return input.id;
+}
+
+function unique<T>(values: T[]): T[] {
+  return [...new Set(values)];
 }
 
 async function atomicWriteJson(filePath: string, value: unknown): Promise<void> {
@@ -80,6 +113,16 @@ async function readSourceFile(filePath: string): Promise<ReferenceSourceRecord> 
 async function readAnalysisFile(filePath: string): Promise<ReferenceAnalysisRecord> {
   const raw = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
   return ReferenceAnalysisRecordSchema.parse(raw) as ReferenceAnalysisRecord;
+}
+
+async function readBenchmarkCardFile(filePath: string): Promise<BenchmarkCard> {
+  const raw = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
+  return BenchmarkCardSchema.parse(raw) as BenchmarkCard;
+}
+
+async function readReferenceStylePackFile(filePath: string): Promise<ReferenceStylePackRecord> {
+  const raw = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
+  return ReferenceStylePackRecordSchema.parse(raw) as ReferenceStylePackRecord;
 }
 
 async function readJsonFiles<T>(
@@ -158,6 +201,29 @@ export async function listReferenceAnalyses(input: {
     .sort((left, right) =>
       left.analyzed_at.localeCompare(right.analyzed_at)
       || left.analysis_id.localeCompare(right.analysis_id));
+}
+
+export async function getReferenceAnalysis(input: {
+  repoRoot: string;
+  analysisId: string;
+}): Promise<ReferenceAnalysisRecord> {
+  const analysisId = validateRecordId({
+    id: input.analysisId,
+    pattern: ANALYSIS_ID_PATTERN,
+    code: 'REFERENCE_ANALYSIS_NOT_FOUND',
+    label: 'Reference analysis',
+  });
+  try {
+    return await readAnalysisFile(path.join(analysesDirectory(input.repoRoot), `${analysisId}.json`));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ReferenceLibraryError(
+        'REFERENCE_ANALYSIS_NOT_FOUND',
+        `Reference analysis not found: ${analysisId}`,
+      );
+    }
+    throw error;
+  }
 }
 
 export async function getReferenceLibraryDetail(input: {
@@ -245,4 +311,209 @@ export async function createTextReferenceAnalysis(input: {
     approval: approvalFromRequest(request.approval),
   };
   return await persistAnalysis(input.repoRoot, record) as TextReferenceAnalysisRecord;
+}
+
+export async function createBenchmarkCard(input: {
+  repoRoot: string;
+  request: unknown;
+  now?: string;
+}): Promise<BenchmarkCard> {
+  const request = BenchmarkCardCreateRequestSchema.parse(input.request);
+  const analyses = await Promise.all(request.analysis_ids.map(analysisId =>
+    getReferenceAnalysis({ repoRoot: input.repoRoot, analysisId })));
+  if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_ANALYSIS_APPROVAL_CONFLICT',
+      'Every analysis must be human-approved before benchmark composition',
+    );
+  }
+  const referenceIds = unique(analyses.map(analysis => analysis.reference_id));
+  if (referenceIds.length < 2) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_BENCHMARK_SOURCE_INVALID',
+      'A benchmark card requires at least two distinct reference sources',
+    );
+  }
+  if (request.evidence_refs.some(analysisId => !request.analysis_ids.includes(analysisId))) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_BENCHMARK_EVIDENCE_INVALID',
+      'Every evidence_ref must resolve to one of the selected approved analyses',
+    );
+  }
+  const evidenceReferenceIds = unique(analyses
+    .filter(analysis => request.evidence_refs.includes(analysis.analysis_id))
+    .map(analysis => analysis.reference_id));
+  if (referenceIds.some(referenceId => !evidenceReferenceIds.includes(referenceId))) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_BENCHMARK_EVIDENCE_INVALID',
+      'evidence_refs must cover every selected reference source',
+    );
+  }
+  const record = BenchmarkCardSchema.parse({
+    schema_version: 'reference-benchmark-card/v1',
+    benchmark_id: `benchmark-${randomUUID()}`,
+    reference_ids: referenceIds,
+    analysis_ids: request.analysis_ids,
+    target_video_type: request.target_video_type,
+    target_dimension: request.target_dimension,
+    principle: request.principle,
+    evidence_refs: request.evidence_refs,
+    created_by: request.created_by,
+    created_at: input.now ?? new Date().toISOString(),
+    approval: {
+      status: 'approved',
+      approved_by: request.approval.approved_by,
+      approved_at: request.approval.approved_at,
+    },
+    governance: {
+      knowledge_writeback_allowed: false,
+      production_credit_eligible: false,
+    },
+  }) as BenchmarkCard;
+  await atomicWriteJson(
+    path.join(benchmarkCardsDirectory(input.repoRoot), `${record.benchmark_id}.json`),
+    record,
+  );
+  return record;
+}
+
+export async function getBenchmarkCard(input: {
+  repoRoot: string;
+  benchmarkId: string;
+}): Promise<BenchmarkCard> {
+  const benchmarkId = validateRecordId({
+    id: input.benchmarkId,
+    pattern: BENCHMARK_ID_PATTERN,
+    code: 'REFERENCE_BENCHMARK_NOT_FOUND',
+    label: 'Reference benchmark',
+  });
+  try {
+    return await readBenchmarkCardFile(
+      path.join(benchmarkCardsDirectory(input.repoRoot), `${benchmarkId}.json`),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ReferenceLibraryError(
+        'REFERENCE_BENCHMARK_NOT_FOUND',
+        `Reference benchmark not found: ${benchmarkId}`,
+      );
+    }
+    throw error;
+  }
+}
+
+export async function listBenchmarkCards(input: {
+  repoRoot: string;
+}): Promise<BenchmarkCard[]> {
+  const cards = await readJsonFiles(benchmarkCardsDirectory(input.repoRoot), readBenchmarkCardFile);
+  return cards.sort((left, right) =>
+    right.created_at.localeCompare(left.created_at)
+    || left.benchmark_id.localeCompare(right.benchmark_id));
+}
+
+export async function createReferenceStylePack(input: {
+  repoRoot: string;
+  request: unknown;
+  now?: string;
+}): Promise<ReferenceStylePackRecord> {
+  const request = ReferenceStylePackCreateRequestSchema.parse(input.request);
+  const benchmarkCards = await Promise.all(request.benchmark_card_ids.map(benchmarkId =>
+    getBenchmarkCard({ repoRoot: input.repoRoot, benchmarkId })));
+  const omittedTargetTypes = unique(benchmarkCards
+    .map(card => card.target_video_type)
+    .filter(videoType => !request.compatible_video_types.includes(videoType)));
+  if (omittedTargetTypes.length > 0) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_STYLE_PACK_COMPATIBILITY_INVALID',
+      `compatible_video_types omits benchmark target types: ${omittedTargetTypes.join(', ')}`,
+    );
+  }
+
+  const sourceReferenceIds = unique(benchmarkCards.flatMap(card => card.reference_ids));
+  const sourceAnalysisIds = unique(benchmarkCards.flatMap(card => card.analysis_ids));
+  const analyses = await Promise.all(sourceAnalysisIds.map(analysisId =>
+    getReferenceAnalysis({ repoRoot: input.repoRoot, analysisId })));
+  if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_ANALYSIS_APPROVAL_CONFLICT',
+      'Every source analysis must remain human-approved for style-pack composition',
+    );
+  }
+  const reusablePrinciples = unique(benchmarkCards.map(card => card.principle));
+  const avoidCopying = unique(analyses.flatMap(analysis => analysis.analysis.avoid_copying));
+  const record = ReferenceStylePackRecordSchema.parse({
+    schema_version: 'reference-style-pack/v1',
+    id: `reference-style-pack-${randomUUID()}`,
+    name: request.name,
+    description: request.description,
+    source_reference_ids: sourceReferenceIds,
+    source_analysis_ids: sourceAnalysisIds,
+    source_benchmark_ids: request.benchmark_card_ids,
+    compatible_video_types: request.compatible_video_types,
+    compatible_presentation_styles: request.compatible_presentation_styles,
+    compatible_story_structures: request.compatible_story_structures,
+    structure_rules: reusablePrinciples,
+    rhythm_rules: [],
+    scene_rules: [],
+    narration_rules: [],
+    dialogue_rules: [],
+    visual_rules: [],
+    ending_rules: [],
+    forbidden_patterns: avoidCopying,
+    reusable_principles: reusablePrinciples,
+    avoid_copying: avoidCopying,
+    created_by: request.created_by,
+    created_at: input.now ?? new Date().toISOString(),
+    approval: {
+      status: 'approved',
+      approved_by: request.approval.approved_by,
+      approved_at: request.approval.approved_at,
+    },
+    governance: {
+      knowledge_writeback_allowed: false,
+      production_credit_eligible: false,
+    },
+  }) as ReferenceStylePackRecord;
+  await atomicWriteJson(
+    path.join(referenceStylePacksDirectory(input.repoRoot), `${record.id}.json`),
+    record,
+  );
+  return record;
+}
+
+export async function getReferenceStylePack(input: {
+  repoRoot: string;
+  stylePackId: string;
+}): Promise<ReferenceStylePackRecord> {
+  const stylePackId = validateRecordId({
+    id: input.stylePackId,
+    pattern: STYLE_PACK_ID_PATTERN,
+    code: 'REFERENCE_STYLE_PACK_NOT_FOUND',
+    label: 'Reference style pack',
+  });
+  try {
+    return await readReferenceStylePackFile(
+      path.join(referenceStylePacksDirectory(input.repoRoot), `${stylePackId}.json`),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ReferenceLibraryError(
+        'REFERENCE_STYLE_PACK_NOT_FOUND',
+        `Reference style pack not found: ${stylePackId}`,
+      );
+    }
+    throw error;
+  }
+}
+
+export async function listReferenceStylePacks(input: {
+  repoRoot: string;
+}): Promise<ReferenceStylePackRecord[]> {
+  const records = await readJsonFiles(
+    referenceStylePacksDirectory(input.repoRoot),
+    readReferenceStylePackFile,
+  );
+  return records.sort((left, right) =>
+    right.created_at.localeCompare(left.created_at)
+    || left.id.localeCompare(right.id));
 }

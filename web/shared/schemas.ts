@@ -238,13 +238,15 @@ export const TextReferenceAnalysisCreateRequestSchema = z.object({
   approval: ReferenceAnalysisApprovalInputSchema.optional(),
 }).strict();
 
+export const ReferenceApprovedAuditSchema = z.object({
+  status: z.literal('approved'),
+  approved_by: ReferenceNonEmptyTextSchema.max(120),
+  approved_at: ReferenceTimestampSchema,
+}).strict();
+
 const ReferenceAnalysisApprovalSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('pending') }).strict(),
-  z.object({
-    status: z.literal('approved'),
-    approved_by: ReferenceNonEmptyTextSchema.max(120),
-    approved_at: ReferenceTimestampSchema,
-  }).strict(),
+  ReferenceApprovedAuditSchema,
 ]);
 
 const ReferenceAnalysisRecordBaseSchema = z.object({
@@ -270,6 +272,117 @@ export const ReferenceAnalysisRecordSchema = z.discriminatedUnion('analysis_type
   FilmReferenceAnalysisRecordSchema,
   TextReferenceAnalysisRecordSchema,
 ]);
+
+const ReferenceAnalysisIdSchema = z.string().regex(/^analysis-[a-f0-9-]+$/);
+const ReferenceBenchmarkIdSchema = z.string().regex(/^benchmark-[a-f0-9-]+$/);
+const ReferenceStylePackIdSchema = z.string().regex(/^reference-style-pack-[a-f0-9-]+$/);
+const ReferenceGovernanceBoundarySchema = z.object({
+  knowledge_writeback_allowed: z.literal(false),
+  production_credit_eligible: z.literal(false),
+}).strict();
+
+function uniqueReferenceIds(ids: string[]): boolean {
+  return new Set(ids).size === ids.length;
+}
+
+export const BenchmarkCardCreateRequestSchema = z.object({
+  analysis_ids: z.array(ReferenceAnalysisIdSchema)
+    .min(2)
+    .max(20)
+    .refine(uniqueReferenceIds, 'analysis_ids must be unique'),
+  target_video_type: VideoTypeSchema,
+  target_dimension: z.enum(['hook', 'character', 'scene', 'visual', 'audio', 'promo']),
+  principle: ReferenceNonEmptyTextSchema.max(1_000),
+  evidence_refs: z.array(ReferenceAnalysisIdSchema)
+    .min(2)
+    .max(50)
+    .refine(uniqueReferenceIds, 'evidence_refs must be unique'),
+  created_by: ReferenceNonEmptyTextSchema.max(120),
+  approval: ReferenceAnalysisApprovalInputSchema,
+}).strict();
+
+export const BenchmarkCardSchema = z.object({
+  schema_version: z.literal('reference-benchmark-card/v1'),
+  benchmark_id: ReferenceBenchmarkIdSchema,
+  reference_ids: z.array(z.string().regex(/^reference-[a-f0-9-]+$/))
+    .min(2)
+    .max(20)
+    .refine(uniqueReferenceIds, 'reference_ids must be unique'),
+  analysis_ids: z.array(ReferenceAnalysisIdSchema)
+    .min(2)
+    .max(20)
+    .refine(uniqueReferenceIds, 'analysis_ids must be unique'),
+  target_video_type: VideoTypeSchema,
+  target_dimension: z.enum(['hook', 'character', 'scene', 'visual', 'audio', 'promo']),
+  principle: ReferenceNonEmptyTextSchema.max(1_000),
+  evidence_refs: z.array(ReferenceAnalysisIdSchema)
+    .min(2)
+    .max(50)
+    .refine(uniqueReferenceIds, 'evidence_refs must be unique'),
+  created_by: ReferenceNonEmptyTextSchema.max(120),
+  created_at: ReferenceTimestampSchema,
+  approval: ReferenceApprovedAuditSchema,
+  governance: ReferenceGovernanceBoundarySchema,
+}).strict();
+
+export const ReferenceStylePackCreateRequestSchema = z.object({
+  name: ReferenceNonEmptyTextSchema.max(200),
+  description: ReferenceNonEmptyTextSchema.max(1_000),
+  benchmark_card_ids: z.array(ReferenceBenchmarkIdSchema)
+    .min(1)
+    .max(20)
+    .refine(uniqueReferenceIds, 'benchmark_card_ids must be unique'),
+  compatible_video_types: z.array(VideoTypeSchema)
+    .min(1)
+    .max(15)
+    .refine(uniqueReferenceIds, 'compatible_video_types must be unique'),
+  compatible_presentation_styles: z.array(PresentationStyleSchema)
+    .min(1)
+    .max(11)
+    .refine(uniqueReferenceIds, 'compatible_presentation_styles must be unique'),
+  compatible_story_structures: z.array(StoryStructureTypeSchema)
+    .min(1)
+    .max(8)
+    .refine(uniqueReferenceIds, 'compatible_story_structures must be unique'),
+  created_by: ReferenceNonEmptyTextSchema.max(120),
+  approval: ReferenceAnalysisApprovalInputSchema,
+}).strict();
+
+export const ReferenceStylePackRecordSchema = z.object({
+  schema_version: z.literal('reference-style-pack/v1'),
+  id: ReferenceStylePackIdSchema,
+  name: ReferenceNonEmptyTextSchema.max(200),
+  description: ReferenceNonEmptyTextSchema.max(1_000),
+  source_reference_ids: z.array(z.string().regex(/^reference-[a-f0-9-]+$/))
+    .min(2)
+    .max(100)
+    .refine(uniqueReferenceIds, 'source_reference_ids must be unique'),
+  source_analysis_ids: z.array(ReferenceAnalysisIdSchema)
+    .min(2)
+    .max(100)
+    .refine(uniqueReferenceIds, 'source_analysis_ids must be unique'),
+  source_benchmark_ids: z.array(ReferenceBenchmarkIdSchema)
+    .min(1)
+    .max(20)
+    .refine(uniqueReferenceIds, 'source_benchmark_ids must be unique'),
+  compatible_video_types: z.array(VideoTypeSchema).min(1).max(15),
+  compatible_presentation_styles: z.array(PresentationStyleSchema).min(1).max(11),
+  compatible_story_structures: z.array(StoryStructureTypeSchema).min(1).max(8),
+  structure_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  rhythm_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  scene_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  narration_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  dialogue_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  visual_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  ending_rules: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  forbidden_patterns: z.array(ReferenceNonEmptyTextSchema.max(1_000)),
+  reusable_principles: z.array(ReferenceNonEmptyTextSchema.max(1_000)).min(1),
+  avoid_copying: z.array(ReferenceNonEmptyTextSchema.max(1_000)).min(1),
+  created_by: ReferenceNonEmptyTextSchema.max(120),
+  created_at: ReferenceTimestampSchema,
+  approval: ReferenceApprovedAuditSchema,
+  governance: ReferenceGovernanceBoundarySchema,
+}).strict();
 
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
 export const GenreStrictnessSchema = z.enum(['loose', 'balanced', 'strict']);

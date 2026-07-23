@@ -605,15 +605,42 @@ export interface ReferenceLibraryDetail {
   analyses: ReferenceAnalysisRecord[];
 }
 
+export interface ReferenceGovernanceBoundary {
+  knowledge_writeback_allowed: false;
+  production_credit_eligible: false;
+}
+
+export interface ReferenceApprovedAudit {
+  status: 'approved';
+  approved_by: string;
+  approved_at: string;
+}
+
 export interface BenchmarkCard {
+  schema_version: 'reference-benchmark-card/v1';
   benchmark_id: string;
   reference_ids: string[];
-  target_video_type: string;
+  analysis_ids: string[];
+  target_video_type: VideoType;
   target_dimension: 'hook' | 'character' | 'scene' | 'visual' | 'audio' | 'promo';
   principle: string;
   evidence_refs: string[];
-  approved_by?: string;
-  approved_at?: string;
+  created_by: string;
+  created_at: string;
+  approval: ReferenceApprovedAudit;
+  governance: ReferenceGovernanceBoundary;
+}
+
+export interface ReferenceStylePackRecord extends StylePack {
+  schema_version: 'reference-style-pack/v1';
+  source_analysis_ids: string[];
+  source_benchmark_ids: string[];
+  reusable_principles: string[];
+  avoid_copying: string[];
+  created_by: string;
+  created_at: string;
+  approval: ReferenceApprovedAudit;
+  governance: ReferenceGovernanceBoundary;
 }
 
 // ---------------------------------------------------------------------------
