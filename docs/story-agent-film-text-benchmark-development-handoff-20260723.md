@@ -5,6 +5,7 @@
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 > 当前项目：`20260720-series-ujl3atax`《皮影诡戏：守灯人》
 > 本文用途：在新 Codex 对话中继续开发，不需要重新调查本轮资料。
+> **最新精简交接：** 后续开发优先阅读 `docs/story-agent-development-handoff-20260724.md`；本文继续作为研究过程与历史工程证据。
 
 ## 0. 一句话结论
 
