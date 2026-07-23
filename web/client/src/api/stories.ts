@@ -32,6 +32,7 @@ import type {
   AiComicSeriesCommercialRepairResult,
   AiComicSeriesHumanReviewSubmitRequest,
   AiComicSeriesVisualIdentityDefinitionUpdateRequest,
+  AiComicSeriesVisualSuggestionDraft,
   AiComicSeriesVisualWorldRuleDefinitionUpdateRequest,
   AiComicSeriesProjectMeta,
   AiComicSeriesProjectSaveRequest,
@@ -247,6 +248,16 @@ export function updateAiComicSeriesVisualIdentityDefinition(
   )
 }
 
+export function generateAiComicSeriesVisualIdentitySuggestionDraft(
+  seriesProjectId: string,
+  visualIdentityId: string,
+) {
+  return apiPost<AiComicSeriesVisualSuggestionDraft>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-identities/${visualIdentityId}/visual-identity-suggestion-draft`,
+    {},
+  )
+}
+
 export function updateAiComicSeriesVisualWorldRuleDefinition(
   seriesProjectId: string,
   worldRuleId: string,
@@ -255,6 +266,16 @@ export function updateAiComicSeriesVisualWorldRuleDefinition(
   return apiPost<AiComicSeriesProjectDetail>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-world-rules/${worldRuleId}/visual-world-rule-definition`,
     req,
+  )
+}
+
+export function generateAiComicSeriesVisualWorldRuleSuggestionDraft(
+  seriesProjectId: string,
+  worldRuleId: string,
+) {
+  return apiPost<AiComicSeriesVisualSuggestionDraft>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-world-rules/${worldRuleId}/visual-world-rule-suggestion-draft`,
+    {},
   )
 }
 

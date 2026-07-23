@@ -2129,6 +2129,27 @@
               <small>已批准 / 总数</small>
             </article>
           </div>
+          <div class="series-studio__visual-review-navigator" data-testid="visual-review-navigator">
+            <div>
+              <strong>待复核 {{ pendingVisualReviewTargets.length }} 项</strong>
+              <span>
+                身份 {{ pendingVisualIdentityReviewCount }} · 世界规则 {{ pendingVisualWorldRuleReviewCount }}
+              </span>
+              <small>这里只逐项打开编辑器；不会批量确认、保存或批准。</small>
+            </div>
+            <button
+              class="series-studio__primary-button"
+              type="button"
+              :disabled="pendingVisualReviewTargets.length === 0
+                || savingVisualIdentityDefinition
+                || savingVisualWorldRuleDefinition
+                || generatingVisualIdentitySuggestion
+                || generatingVisualWorldRuleSuggestion"
+              @click="openNextPendingVisualReview"
+            >
+              {{ pendingVisualReviewTargets.length ? '打开下一个待复核项' : '视觉定义均已批准' }}
+            </button>
+          </div>
           <div class="series-studio__visual-pilot-grid">
             <article
               v-for="binding in seedanceAssetReport.visual_bible.pilot_episode_bindings"
@@ -2148,7 +2169,7 @@
               </small>
             </article>
           </div>
-          <details class="series-studio__visual-bible-details">
+          <details ref="visualIdentityDetails" class="series-studio__visual-bible-details">
             <summary>查看稳定身份与待补字段</summary>
             <div class="series-studio__visual-bible-list">
               <article
@@ -2191,10 +2212,10 @@
                     <button
                       class="series-studio__ghost-button"
                       type="button"
-                      :disabled="savingVisualIdentityDefinition"
+                      :disabled="savingVisualIdentityDefinition || generatingVisualIdentitySuggestion"
                       @click="fillVisualIdentitySuggestedDraft(identity)"
                     >
-                      填入系统建议（不覆盖已填）
+                      {{ generatingVisualIdentitySuggestion ? '正在获取服务端建议...' : '填入系统建议（不覆盖已填）' }}
                     </button>
                     <small v-if="visualIdentitySuggestionNotice">{{ visualIdentitySuggestionNotice }}</small>
                   </div>
@@ -2243,6 +2264,18 @@
                     <input v-model="visualIdentityDefinitionDraft.human_confirmed" type="checkbox" />
                     <span>我确认已由真人逐项复核以上视觉定义，且没有把机器推断或 placeholder 当成已确认事实。</span>
                   </label>
+                  <div
+                    class="series-studio__visual-approval-checklist"
+                    data-testid="visual-identity-approval-checklist"
+                  >
+                    <strong>
+                      {{ visualIdentityApprovalMissingItems(identity).length ? '批准前还需完成' : '批准条件已齐' }}
+                    </strong>
+                    <ul v-if="visualIdentityApprovalMissingItems(identity).length">
+                      <li v-for="item in visualIdentityApprovalMissingItems(identity)" :key="item">{{ item }}</li>
+                    </ul>
+                    <small v-else>请真人最后核对内容，再手动点击“批准此定义”。</small>
+                  </div>
                   <p v-if="visualIdentityDefinitionError" class="series-studio__inline-error">
                     {{ visualIdentityDefinitionError }}
                   </p>
@@ -2250,7 +2283,7 @@
                     <button
                       class="series-studio__ghost-button"
                       type="button"
-                      :disabled="savingVisualIdentityDefinition"
+                      :disabled="savingVisualIdentityDefinition || generatingVisualIdentitySuggestion"
                       @click="saveVisualIdentityDefinition('save_draft')"
                     >
                       保存草稿
@@ -2258,7 +2291,7 @@
                     <button
                       class="series-studio__primary-button"
                       type="button"
-                      :disabled="!canApproveVisualIdentity(identity) || savingVisualIdentityDefinition"
+                      :disabled="!canApproveVisualIdentity(identity) || savingVisualIdentityDefinition || generatingVisualIdentitySuggestion"
                       @click="saveVisualIdentityDefinition('approve')"
                     >
                       {{ savingVisualIdentityDefinition ? '保存中...' : '批准此定义' }}
@@ -2266,7 +2299,7 @@
                     <button
                       class="series-studio__ghost-button"
                       type="button"
-                      :disabled="savingVisualIdentityDefinition"
+                      :disabled="savingVisualIdentityDefinition || generatingVisualIdentitySuggestion"
                       @click="cancelVisualIdentityDefinition"
                     >
                       取消
@@ -2276,7 +2309,11 @@
               </article>
             </div>
           </details>
-          <details v-if="seedanceAssetReport.visual_bible.world_rules.length" class="series-studio__visual-bible-details">
+          <details
+            v-if="seedanceAssetReport.visual_bible.world_rules.length"
+            ref="visualWorldRuleDetails"
+            class="series-studio__visual-bible-details"
+          >
             <summary>填写世界规则视觉映射与审批</summary>
             <div class="series-studio__visual-bible-list">
               <article
@@ -2320,10 +2357,10 @@
                     <button
                       class="series-studio__ghost-button"
                       type="button"
-                      :disabled="savingVisualWorldRuleDefinition"
+                      :disabled="savingVisualWorldRuleDefinition || generatingVisualWorldRuleSuggestion"
                       @click="fillVisualWorldRuleSuggestedDraft(rule)"
                     >
-                      填入系统建议（不覆盖已填）
+                      {{ generatingVisualWorldRuleSuggestion ? '正在获取服务端建议...' : '填入系统建议（不覆盖已填）' }}
                     </button>
                     <small v-if="visualWorldRuleSuggestionNotice">{{ visualWorldRuleSuggestionNotice }}</small>
                   </div>
@@ -2377,15 +2414,27 @@
                     <input v-model="visualWorldRuleDefinitionDraft.human_confirmed" type="checkbox" />
                     <span>我确认已由真人逐项复核规则文本、视觉符号、触发条件及 E1/E10/E20 代表目标。</span>
                   </label>
+                  <div
+                    class="series-studio__visual-approval-checklist"
+                    data-testid="visual-world-rule-approval-checklist"
+                  >
+                    <strong>
+                      {{ visualWorldRuleApprovalMissingItems(rule).length ? '批准前还需完成' : '批准条件已齐' }}
+                    </strong>
+                    <ul v-if="visualWorldRuleApprovalMissingItems(rule).length">
+                      <li v-for="item in visualWorldRuleApprovalMissingItems(rule)" :key="item">{{ item }}</li>
+                    </ul>
+                    <small v-else>请真人最后核对规则与代表目标，再手动点击“批准此映射”。</small>
+                  </div>
                   <p v-if="visualWorldRuleDefinitionError" class="series-studio__inline-error">
                     {{ visualWorldRuleDefinitionError }}
                   </p>
                   <div class="series-studio__visual-definition-actions">
-                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition" @click="saveVisualWorldRuleDefinition('save_draft')">保存草稿</button>
-                    <button class="series-studio__primary-button" type="button" :disabled="!canApproveVisualWorldRule(rule) || savingVisualWorldRuleDefinition" @click="saveVisualWorldRuleDefinition('approve')">
+                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition || generatingVisualWorldRuleSuggestion" @click="saveVisualWorldRuleDefinition('save_draft')">保存草稿</button>
+                    <button class="series-studio__primary-button" type="button" :disabled="!canApproveVisualWorldRule(rule) || savingVisualWorldRuleDefinition || generatingVisualWorldRuleSuggestion" @click="saveVisualWorldRuleDefinition('approve')">
                       {{ savingVisualWorldRuleDefinition ? '保存中...' : '批准此映射' }}
                     </button>
-                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition" @click="cancelVisualWorldRuleDefinition">取消</button>
+                    <button class="series-studio__ghost-button" type="button" :disabled="savingVisualWorldRuleDefinition || generatingVisualWorldRuleSuggestion" @click="cancelVisualWorldRuleDefinition">取消</button>
                   </div>
                 </div>
               </article>
@@ -3143,7 +3192,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   addAiComicSeriesSeedanceReview,
@@ -3172,6 +3221,8 @@ import {
   exportAiComicSeriesSeedanceThumbnailPlanPackage,
   exportAiComicSeriesSeedanceTitleCardPlanPackage,
   exportAiComicSeriesSeedanceVersionComparisonPackage,
+  generateAiComicSeriesVisualIdentitySuggestionDraft,
+  generateAiComicSeriesVisualWorldRuleSuggestionDraft,
   aiComicSeriesPlan,
   getAiComicSeriesProject,
   getAiComicSeriesProductionReadiness,
@@ -3260,6 +3311,7 @@ import type {
   AiComicSeedanceVersionComparisonShot,
   AiComicSeriesSeedanceDashboard,
   AiComicSeriesSeedanceAssetReportPackage,
+  AiComicSeriesVisualSuggestionDraft,
   AiComicSeriesSeedanceVersionComparisonPackage,
   GearsExecutionAcceptanceReport,
   GearsExecutionConfigInfo,
@@ -3420,8 +3472,16 @@ const rebuildingLedger = ref(false)
 const rebuildingVisualBible = ref(false)
 type SeriesVisualIdentity = AiComicSeriesSeedanceAssetReportPackage['visual_bible']['identities'][number]
 type SeriesVisualWorldRule = AiComicSeriesSeedanceAssetReportPackage['visual_bible']['world_rules'][number]
+type VisualReviewTarget = {
+  target_type: 'visual_identity' | 'visual_world_rule'
+  target_id: string
+  label: string
+}
+const visualIdentityDetails = ref<HTMLDetailsElement | null>(null)
+const visualWorldRuleDetails = ref<HTMLDetailsElement | null>(null)
 const editingVisualIdentityId = ref('')
 const savingVisualIdentityDefinition = ref(false)
+const generatingVisualIdentitySuggestion = ref(false)
 const visualIdentityDefinitionError = ref('')
 const visualIdentitySuggestionNotice = ref('')
 const visualIdentityDefinitionDraft = ref<{
@@ -3441,6 +3501,7 @@ const visualIdentityDefinitionDraft = ref<{
 })
 const editingVisualWorldRuleId = ref('')
 const savingVisualWorldRuleDefinition = ref(false)
+const generatingVisualWorldRuleSuggestion = ref(false)
 const visualWorldRuleDefinitionError = ref('')
 const visualWorldRuleSuggestionNotice = ref('')
 const visualWorldRuleDefinitionDraft = ref<{
@@ -3847,6 +3908,32 @@ const visualProductionReadinessSteps = computed(() => {
     return { ...step, status }
   })
 })
+const pendingVisualReviewTargets = computed<VisualReviewTarget[]>(() => {
+  const visualBible = seedanceAssetReport.value?.visual_bible
+  if (!visualBible) return []
+  return [
+    ...visualBible.identities
+      .filter(identity => identity.approval.status !== 'approved')
+      .map(identity => ({
+        target_type: 'visual_identity' as const,
+        target_id: identity.identity_id,
+        label: identity.label,
+      })),
+    ...visualBible.world_rules
+      .filter(rule => rule.approval.status !== 'approved')
+      .map(rule => ({
+        target_type: 'visual_world_rule' as const,
+        target_id: rule.rule_id,
+        label: rule.statement,
+      })),
+  ]
+})
+const pendingVisualIdentityReviewCount = computed(() => (
+  pendingVisualReviewTargets.value.filter(item => item.target_type === 'visual_identity').length
+))
+const pendingVisualWorldRuleReviewCount = computed(() => (
+  pendingVisualReviewTargets.value.filter(item => item.target_type === 'visual_world_rule').length
+))
 const selectedGearsJobTypeLabel = computed(() => gearsJobTypeLabel(selectedGearsJobType.value))
 const selectedGearsSubmitButtonLabel = computed(() =>
   selectedGearsJobType.value === 'seedance_video'
@@ -4207,7 +4294,40 @@ async function handleRebuildVisualBible() {
   rebuildingVisualBible.value = false
 }
 
+async function openNextPendingVisualReview() {
+  const targets = pendingVisualReviewTargets.value
+  if (targets.length === 0) return
+  const currentTargetIndex = targets.findIndex(item => (
+    item.target_type === 'visual_identity'
+      ? item.target_id === editingVisualIdentityId.value
+      : item.target_id === editingVisualWorldRuleId.value
+  ))
+  const target = targets[(currentTargetIndex + 1) % targets.length]
+  const visualBible = seedanceAssetReport.value?.visual_bible
+  if (!target || !visualBible) return
+  if (target.target_type === 'visual_identity') {
+    const identity = visualBible.identities.find(item => item.identity_id === target.target_id)
+    if (!identity) return
+    if (visualIdentityDetails.value) visualIdentityDetails.value.open = true
+    startVisualIdentityDefinition(identity)
+    await nextTick()
+    visualIdentityDetails.value
+      ?.querySelector<HTMLElement>('[data-testid="visual-identity-definition-editor"]')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  const rule = visualBible.world_rules.find(item => item.rule_id === target.target_id)
+  if (!rule) return
+  if (visualWorldRuleDetails.value) visualWorldRuleDetails.value.open = true
+  startVisualWorldRuleDefinition(rule)
+  await nextTick()
+  visualWorldRuleDetails.value
+    ?.querySelector<HTMLElement>('[data-testid="visual-world-rule-definition-editor"]')
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function startVisualIdentityDefinition(identity: SeriesVisualIdentity) {
+  if (editingVisualWorldRuleId.value) cancelVisualWorldRuleDefinition()
   editingVisualIdentityId.value = identity.identity_id
   visualIdentityDefinitionError.value = ''
   visualIdentitySuggestionNotice.value = ''
@@ -4221,87 +4341,83 @@ function startVisualIdentityDefinition(identity: SeriesVisualIdentity) {
   }
 }
 
-function visualIdentityFieldSuggestion(
-  identity: SeriesVisualIdentity,
-  field: SeriesVisualIdentity['definition_fields'][number],
-): string {
-  const subject = `“${identity.label}”`
-  if (identity.kind === 'character') {
-    if (field.field_id === 'age_range' || field.field_id === 'gender_pronouns') return ''
-    if (field.field_id === 'body_type') {
-      return `围绕${subject}建立与其他角色可一眼区分的身高、胖瘦、肩背轮廓，以及一项固定站姿或动作习惯；具体数值与动作需由真人结合剧本确认。`
-    }
-    if (field.field_id === 'facial_features') {
-      return `为${subject}固定脸型、眉眼、鼻唇、肤色区间和一项近景识别特征；避免与同项目其他人物重复，最终细节由真人确认。`
-    }
-    if (field.field_id === 'hairstyle') {
-      return `为${subject}固定头发长度、颜色、分缝和造型轮廓；跨集不得无剧情依据改变，最终方案由真人确认。`
-    }
+function visualSuggestionContractError(input: {
+  draft: AiComicSeriesVisualSuggestionDraft
+  targetType: AiComicSeriesVisualSuggestionDraft['target_type']
+  targetId: string
+  sourceFingerprint: string
+}): string {
+  if (input.draft.target_type !== input.targetType || input.draft.target_id !== input.targetId) {
+    return '服务端建议目标与当前编辑项不一致，草稿未更改'
   }
-  if (identity.kind === 'costume') {
-    if (field.field_id === 'garment_details') {
-      return `围绕${subject}明确外层、内搭、下装、鞋履、材质和至少一个跨镜头识别锚点；版型与锚点跨集保持稳定。`
-    }
-    if (field.field_id === 'color_palette') {
-      return `为${subject}指定主色、辅色、小面积点缀色及暗场明度关系；避免与其他主服装的主色和轮廓混淆。`
-    }
-    if (field.field_id === 'phase_changes') {
-      return `${subject}初期保持完整；中后期只允许增加有剧情依据的污损、修补或局部破损，基础版型与识别锚点不得改变。`
-    }
+  if (input.draft.source_fingerprint !== input.sourceFingerprint) {
+    return '视觉设定来源已经变化，请重新载入后再获取建议，草稿未更改'
   }
-  if (identity.kind === 'location') {
-    if (field.field_id === 'spatial_architecture') {
-      return `为${subject}固定入口、前后景、主要表演区、遮挡物和角色动线的相对位置；跨镜头保持空间方向与尺度一致。`
-    }
-    if (field.field_id === 'primary_lighting') {
-      return `为${subject}指定唯一主光源的方向、色温、硬软度与亮度层级，并明确熄灯或异常状态下可变化的范围。`
-    }
-    if (field.field_id === 'materials_palette') {
-      return `为${subject}固定三类主要材质、主辅色和老化程度；近景纹理与远景色块应能指向同一地点。`
-    }
+  if (input.draft.persisted !== false || input.draft.auto_approved !== false) {
+    return '服务端建议合同未明确只读边界，已拒绝应用，草稿未更改'
   }
-  if (identity.kind === 'prop') {
-    if (field.field_id === 'form_dimensions') {
-      return `为${subject}固定形制、比例、可动部件和与人物手部的尺寸参照；所有景别保持同一轮廓。`
-    }
-    if (field.field_id === 'materials_colors') {
-      return `为${subject}固定主体材质、表面工艺、主色、磨损位置和点亮前后的色彩差异。`
-    }
-    if (field.field_id === 'ownership_state_changes') {
-      return `明确${subject}的初始归属、交接节点和各剧情阶段的状态变化；每次变化必须能追溯到具体事件。`
-    }
-  }
-  return `围绕${subject}补充“${field.label}”的固定视觉锚点、允许变化范围和跨镜头一致性要求；最终方案由真人确认。`
+  return ''
 }
 
-function fillVisualIdentitySuggestedDraft(identity: SeriesVisualIdentity) {
+async function fillVisualIdentitySuggestedDraft(identity: SeriesVisualIdentity) {
+  if (!seriesProjectId.value || generatingVisualIdentitySuggestion.value) return
+  generatingVisualIdentitySuggestion.value = true
+  visualIdentityDefinitionError.value = ''
+  visualIdentitySuggestionNotice.value = ''
+  const requestedIdentityId = identity.identity_id
+  const res = await generateAiComicSeriesVisualIdentitySuggestionDraft(
+    seriesProjectId.value,
+    requestedIdentityId,
+  )
+  if (editingVisualIdentityId.value !== requestedIdentityId) {
+    generatingVisualIdentitySuggestion.value = false
+    return
+  }
+  if (!res.ok || !res.data) {
+    visualIdentityDefinitionError.value = res.error?.message ?? '服务端视觉身份建议获取失败'
+    visualIdentitySuggestionNotice.value = '服务端建议获取失败，当前草稿未更改。'
+    generatingVisualIdentitySuggestion.value = false
+    return
+  }
+  const contractError = visualSuggestionContractError({
+    draft: res.data,
+    targetType: 'visual_identity',
+    targetId: requestedIdentityId,
+    sourceFingerprint: visualIdentityDefinitionDraft.value.source_fingerprint,
+  })
+  if (contractError) {
+    visualIdentityDefinitionError.value = contractError
+    visualIdentitySuggestionNotice.value = '服务端建议未应用。'
+    generatingVisualIdentitySuggestion.value = false
+    return
+  }
   let filledCount = 0
-  const unresolvedLabels: string[] = []
-  for (const field of identity.definition_fields) {
-    if (visualIdentityDefinitionDraft.value.fields[field.field_id]?.trim()) continue
-    const suggestion = visualIdentityFieldSuggestion(identity, field)
-    if (!suggestion) {
-      unresolvedLabels.push(field.label)
-      continue
-    }
-    visualIdentityDefinitionDraft.value.fields[field.field_id] = suggestion.slice(0, 500)
+  const allowedFieldIds = new Set(identity.definition_fields.map(field => field.field_id))
+  for (const [fieldId, suggestion] of Object.entries(res.data.fields)) {
+    if (!allowedFieldIds.has(fieldId) || visualIdentityDefinitionDraft.value.fields[fieldId]?.trim()) continue
+    if (!suggestion.trim()) continue
+    visualIdentityDefinitionDraft.value.fields[fieldId] = suggestion.slice(0, 500)
     filledCount += 1
   }
   let noteFilled = false
-  if (!visualIdentityDefinitionDraft.value.definition_notes.trim()) {
-    visualIdentityDefinitionDraft.value.definition_notes = `【系统建议草稿，尚未人工批准】系统仅补全空白项，并依据“${identity.label}”及当前系列设定提供可编辑提案；请真人逐项核对来源、跨集不变量和允许变化后再批准。`
+  if (!visualIdentityDefinitionDraft.value.definition_notes.trim() && res.data.definition_notes?.trim()) {
+    visualIdentityDefinitionDraft.value.definition_notes = res.data.definition_notes.slice(0, 2000)
     noteFilled = true
   }
   if (filledCount > 0 || noteFilled) {
     visualIdentityDefinitionDraft.value.human_confirmed = false
     visualIdentityDefinitionDraft.value.review_note = ''
   }
+  const unresolvedLabels = res.data.unresolved_field_ids.map(fieldId => (
+    identity.definition_fields.find(field => field.field_id === fieldId)?.label ?? fieldId
+  ))
   const unresolvedMessage = unresolvedLabels.length > 0
     ? `；${unresolvedLabels.join('、')}缺少可靠依据，已保留空白等待人工填写`
     : ''
   visualIdentitySuggestionNotice.value = filledCount > 0 || noteFilled
-    ? `已填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}${unresolvedMessage}；尚未保存。`
-    : '当前字段和定义备注已有内容，系统未覆盖任何信息。'
+    ? `已从服务端建议 ${res.data.suggestion_version} 填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}${unresolvedMessage}；尚未保存。`
+    : `服务端建议 ${res.data.suggestion_version} 未覆盖任何已有信息，当前草稿未更改。`
+  generatingVisualIdentitySuggestion.value = false
 }
 
 function cancelVisualIdentityDefinition() {
@@ -4320,13 +4436,18 @@ function cancelVisualIdentityDefinition() {
 
 function canApproveVisualIdentity(identity: SeriesVisualIdentity): boolean {
   if (editingVisualIdentityId.value !== identity.identity_id) return false
-  const fieldsComplete = identity.definition_fields.every(field => (
-    !field.required || Boolean(visualIdentityDefinitionDraft.value.fields[field.field_id]?.trim())
-  ))
-  return fieldsComplete
-    && Boolean(visualIdentityDefinitionDraft.value.reviewer_id.trim())
-    && Boolean(visualIdentityDefinitionDraft.value.review_note.trim())
-    && visualIdentityDefinitionDraft.value.human_confirmed
+  return visualIdentityApprovalMissingItems(identity).length === 0
+}
+
+function visualIdentityApprovalMissingItems(identity: SeriesVisualIdentity): string[] {
+  if (editingVisualIdentityId.value !== identity.identity_id) return []
+  const missing = identity.definition_fields
+    .filter(field => field.required && !visualIdentityDefinitionDraft.value.fields[field.field_id]?.trim())
+    .map(field => `填写${field.label}`)
+  if (!visualIdentityDefinitionDraft.value.reviewer_id.trim()) missing.push('填写 Reviewer ID')
+  if (!visualIdentityDefinitionDraft.value.review_note.trim()) missing.push('填写复核说明')
+  if (!visualIdentityDefinitionDraft.value.human_confirmed) missing.push('勾选真人逐项复核确认')
+  return missing
 }
 
 async function saveVisualIdentityDefinition(action: 'save_draft' | 'approve') {
@@ -4370,6 +4491,7 @@ async function saveVisualIdentityDefinition(action: 'save_draft' | 'approve') {
 }
 
 function startVisualWorldRuleDefinition(rule: SeriesVisualWorldRule) {
+  if (editingVisualIdentityId.value) cancelVisualIdentityDefinition()
   editingVisualWorldRuleId.value = rule.rule_id
   visualWorldRuleDefinitionError.value = ''
   visualWorldRuleSuggestionNotice.value = ''
@@ -4391,31 +4513,49 @@ function startVisualWorldRuleDefinition(rule: SeriesVisualWorldRule) {
   }
 }
 
-function visualWorldRuleFieldSuggestion(
-  rule: SeriesVisualWorldRule,
-  field: SeriesVisualWorldRule['definition_fields'][number],
-): string {
-  const statement = `“${rule.statement}”`
-  if (field.field_id === 'visual_symbol') {
-    return `围绕${statement}固定一个可重复识别的主符号，明确其形状、颜色、出现位置、正常状态与异常状态；跨集保持同一视觉语法。`
+async function fillVisualWorldRuleSuggestedDraft(rule: SeriesVisualWorldRule) {
+  if (!seriesProjectId.value || generatingVisualWorldRuleSuggestion.value) return
+  generatingVisualWorldRuleSuggestion.value = true
+  visualWorldRuleDefinitionError.value = ''
+  visualWorldRuleSuggestionNotice.value = ''
+  const requestedRuleId = rule.rule_id
+  const res = await generateAiComicSeriesVisualWorldRuleSuggestionDraft(
+    seriesProjectId.value,
+    requestedRuleId,
+  )
+  if (editingVisualWorldRuleId.value !== requestedRuleId) {
+    generatingVisualWorldRuleSuggestion.value = false
+    return
   }
-  if (field.field_id === 'trigger_condition') {
-    const consequence = rule.consequence?.trim() || '规则后果显现'
-    return `当角色明确触发${statement}时，在同一动作链内按“触发动作 → 主符号变化 → ${consequence}”呈现，跨集保持顺序不变。`
+  if (!res.ok || !res.data) {
+    visualWorldRuleDefinitionError.value = res.error?.message ?? '服务端世界规则建议获取失败'
+    visualWorldRuleSuggestionNotice.value = '服务端建议获取失败，当前草稿未更改。'
+    generatingVisualWorldRuleSuggestion.value = false
+    return
   }
-  return `围绕${statement}补充“${field.label}”的固定视觉锚点、触发前后变化和跨集一致性要求；最终方案由真人确认。`
-}
-
-function fillVisualWorldRuleSuggestedDraft(rule: SeriesVisualWorldRule) {
+  const contractError = visualSuggestionContractError({
+    draft: res.data,
+    targetType: 'visual_world_rule',
+    targetId: requestedRuleId,
+    sourceFingerprint: visualWorldRuleDefinitionDraft.value.source_fingerprint,
+  })
+  if (contractError) {
+    visualWorldRuleDefinitionError.value = contractError
+    visualWorldRuleSuggestionNotice.value = '服务端建议未应用。'
+    generatingVisualWorldRuleSuggestion.value = false
+    return
+  }
   let filledCount = 0
-  for (const field of rule.definition_fields) {
-    if (visualWorldRuleDefinitionDraft.value.fields[field.field_id]?.trim()) continue
-    visualWorldRuleDefinitionDraft.value.fields[field.field_id] = visualWorldRuleFieldSuggestion(rule, field).slice(0, 500)
+  const allowedFieldIds = new Set(rule.definition_fields.map(field => field.field_id))
+  for (const [fieldId, suggestion] of Object.entries(res.data.fields)) {
+    if (!allowedFieldIds.has(fieldId) || visualWorldRuleDefinitionDraft.value.fields[fieldId]?.trim()) continue
+    if (!suggestion.trim()) continue
+    visualWorldRuleDefinitionDraft.value.fields[fieldId] = suggestion.slice(0, 500)
     filledCount += 1
   }
   let noteFilled = false
-  if (!visualWorldRuleDefinitionDraft.value.definition_notes.trim()) {
-    visualWorldRuleDefinitionDraft.value.definition_notes = `【系统建议草稿，尚未人工批准】请真人核对“${rule.statement}”的规则文本、视觉符号、触发条件及 E1/E10/E20 代表目标；系统不会创建或替换真实镜头绑定。`
+  if (!visualWorldRuleDefinitionDraft.value.definition_notes.trim() && res.data.definition_notes?.trim()) {
+    visualWorldRuleDefinitionDraft.value.definition_notes = res.data.definition_notes.slice(0, 2000)
     noteFilled = true
   }
   if (filledCount > 0 || noteFilled) {
@@ -4423,8 +4563,9 @@ function fillVisualWorldRuleSuggestedDraft(rule: SeriesVisualWorldRule) {
     visualWorldRuleDefinitionDraft.value.review_note = ''
   }
   visualWorldRuleSuggestionNotice.value = filledCount > 0 || noteFilled
-    ? `已填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}；真实代表镜头绑定仍需人工确认，尚未保存。`
-    : '当前字段和定义备注已有内容，系统未覆盖任何信息。'
+    ? `已从服务端建议 ${res.data.suggestion_version} 填入 ${filledCount} 个空白字段${noteFilled ? '及定义备注' : ''}；真实代表镜头绑定仍需人工确认，尚未保存。`
+    : `服务端建议 ${res.data.suggestion_version} 未覆盖任何已有信息，当前草稿未更改。`
+  generatingVisualWorldRuleSuggestion.value = false
 }
 
 function cancelVisualWorldRuleDefinition() {
@@ -4444,16 +4585,24 @@ function cancelVisualWorldRuleDefinition() {
 
 function canApproveVisualWorldRule(rule: SeriesVisualWorldRule): boolean {
   if (editingVisualWorldRuleId.value !== rule.rule_id) return false
-  const fieldsComplete = rule.definition_fields.every(field => (
-    !field.required || Boolean(visualWorldRuleDefinitionDraft.value.fields[field.field_id]?.trim())
-  ))
-  const bindingsComplete = visualWorldRuleDefinitionDraft.value.pilot_bindings.length === seedanceAssetReport.value?.visual_bible.pilot_episode_nos.length
-    && visualWorldRuleDefinitionDraft.value.pilot_bindings.every(binding => Boolean(binding.target_id.trim()))
-  return fieldsComplete
-    && bindingsComplete
-    && Boolean(visualWorldRuleDefinitionDraft.value.reviewer_id.trim())
-    && Boolean(visualWorldRuleDefinitionDraft.value.review_note.trim())
-    && visualWorldRuleDefinitionDraft.value.human_confirmed
+  return visualWorldRuleApprovalMissingItems(rule).length === 0
+}
+
+function visualWorldRuleApprovalMissingItems(rule: SeriesVisualWorldRule): string[] {
+  if (editingVisualWorldRuleId.value !== rule.rule_id) return []
+  const missing = rule.definition_fields
+    .filter(field => field.required && !visualWorldRuleDefinitionDraft.value.fields[field.field_id]?.trim())
+    .map(field => `填写${field.label}`)
+  const expectedPilotEpisodeNos = seedanceAssetReport.value?.visual_bible.pilot_episode_nos ?? []
+  for (const episodeNo of expectedPilotEpisodeNos) {
+    const binding = visualWorldRuleDefinitionDraft.value.pilot_bindings
+      .find(item => item.episode_no === episodeNo)
+    if (!binding?.target_id.trim()) missing.push(`绑定 E${episodeNo} 真实代表目标`)
+  }
+  if (!visualWorldRuleDefinitionDraft.value.reviewer_id.trim()) missing.push('填写 Reviewer ID')
+  if (!visualWorldRuleDefinitionDraft.value.review_note.trim()) missing.push('填写复核说明')
+  if (!visualWorldRuleDefinitionDraft.value.human_confirmed) missing.push('勾选真人逐项复核确认')
+  return missing
 }
 
 async function saveVisualWorldRuleDefinition(action: 'save_draft' | 'approve') {
@@ -8915,6 +9064,35 @@ function episodeProjectPath(episodeNo: number): string {
   font-size: 17px;
 }
 
+.series-studio__visual-review-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  border: 1px solid #d4e1dc;
+  border-radius: 10px;
+  background: #f7fbf9;
+  padding: 12px 14px;
+}
+
+.series-studio__visual-review-navigator > div {
+  display: grid;
+  gap: 3px;
+}
+
+.series-studio__visual-review-navigator strong {
+  color: #245d55;
+  font-size: 14px;
+}
+
+.series-studio__visual-review-navigator span,
+.series-studio__visual-review-navigator small {
+  color: #667986;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .series-studio__visual-pilot-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -9100,6 +9278,34 @@ function episodeProjectPath(episodeNo: number): string {
 
 .series-studio__visual-definition-confirmation input {
   margin-top: 2px;
+}
+
+.series-studio__visual-approval-checklist {
+  border: 1px solid #e3d1a7;
+  border-radius: 7px;
+  background: #fffaf0;
+  padding: 10px 12px;
+  color: #705522;
+}
+
+.series-studio__visual-approval-checklist strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.series-studio__visual-approval-checklist ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.series-studio__visual-approval-checklist small {
+  color: #2b6a60;
+  line-height: 1.45;
 }
 
 .series-studio__visual-definition-actions {
@@ -10271,6 +10477,11 @@ button.series-studio__episode-audit:hover {
 }
 
 @media (max-width: 560px) {
+  .series-studio__visual-review-navigator {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .series-studio__grid {
     grid-template-columns: 1fr;
   }

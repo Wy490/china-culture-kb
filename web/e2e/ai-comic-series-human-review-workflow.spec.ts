@@ -307,6 +307,81 @@ test('真人盲评以三步向导区分双文件发送与单 JSON 导入', async
       }),
     }),
   )
+  let identitySuggestionRequestCount = 0
+  const identitySuggestionRoutePattern =
+    `**/api/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-identities/series-character-123456789abc/visual-identity-suggestion-draft`
+  await page.route(
+    identitySuggestionRoutePattern,
+    route => {
+      identitySuggestionRequestCount += 1
+      expect(route.request().method()).toBe('POST')
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          error: null,
+          data: {
+            schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+            target_type: 'visual_identity',
+            target_id: 'series-character-123456789abc',
+            source_fingerprint: `sha256:${'c'.repeat(64)}`,
+            input_fingerprint: `sha256:${'1'.repeat(64)}`,
+            suggestion_source: 'deterministic_template',
+            suggestion_version: 'visual-definition-suggestions/v1',
+            generated_at: '2026-07-23T00:00:00.000Z',
+            fields: {
+              body_type: '服务端建议体态，不得覆盖本地人工输入',
+              facial_features: '服务端建议：固定脸型与近景识别特征。',
+              hairstyle: '服务端建议：固定发型轮廓。',
+            },
+            definition_notes: '【系统建议草稿，尚未人工批准】服务端身份建议备注。',
+            suggested_field_ids: ['body_type', 'facial_features', 'hairstyle'],
+            unresolved_field_ids: ['age_range', 'gender_pronouns'],
+            persisted: false,
+            auto_approved: false,
+          },
+        }),
+      })
+    },
+  )
+  let worldRuleSuggestionRequestCount = 0
+  const worldRuleSuggestionRoutePattern =
+    `**/api/story-outline/ai-comic-series-projects/${seriesProjectId}/visual-world-rules/midnight-lamp-screen-rule/visual-world-rule-suggestion-draft`
+  await page.route(
+    worldRuleSuggestionRoutePattern,
+    route => {
+      worldRuleSuggestionRequestCount += 1
+      expect(route.request().method()).toBe('POST')
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          error: null,
+          data: {
+            schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+            target_type: 'visual_world_rule',
+            target_id: 'midnight-lamp-screen-rule',
+            source_fingerprint: `sha256:${'d'.repeat(64)}`,
+            input_fingerprint: `sha256:${'2'.repeat(64)}`,
+            suggestion_source: 'deterministic_template',
+            suggestion_version: 'visual-definition-suggestions/v1',
+            generated_at: '2026-07-23T00:00:00.000Z',
+            fields: {
+              visual_symbol: '服务端建议符号，不得覆盖本地人工输入',
+              trigger_condition: '服务端建议：触发动作后按固定因果顺序呈现。',
+            },
+            definition_notes: '【系统建议草稿，尚未人工批准】服务端规则建议备注，不会创建真实镜头绑定。',
+            suggested_field_ids: ['visual_symbol', 'trigger_condition'],
+            unresolved_field_ids: [],
+            persisted: false,
+            auto_approved: false,
+          },
+        }),
+      })
+    },
+  )
   await page.goto(`/ai-comic-series/new?seriesProjectId=${seriesProjectId}`)
 
   const workflow = page.getByTestId('commercial-human-review-workflow')
@@ -327,23 +402,133 @@ test('真人盲评以三步向导区分双文件发送与单 JSON 导入', async
   const visualReadinessGuide = visualBible.getByTestId('visual-production-readiness-guide')
   await expect(visualReadinessGuide).toContainText('1. 填写并校验定义')
   await expect(visualReadinessGuide).toContainText('5. 生产就绪')
+  const visualReviewNavigator = visualBible.getByTestId('visual-review-navigator')
+  await expect(visualReviewNavigator).toContainText('待复核 2 项')
+  await expect(visualReviewNavigator).toContainText('身份 1 · 世界规则 1')
   await expect(page.getByText('外部授权：fixture://ui-seedance-authorization')).toBeVisible()
   await expect(page.getByText(/预算 2 CNY/)).toBeVisible()
   await expect(page.getByText(/实际费用：1.25 CNY/)).toBeVisible()
   await expect(page.getByText(/同授权累计 1.25 CNY/)).toBeVisible()
-  await visualBible.getByText('查看稳定身份与待补字段', { exact: true }).click()
-  await visualBible.getByRole('button', { name: '填写与审批' }).click()
+  await visualReviewNavigator.getByRole('button', { name: '打开下一个待复核项' }).click()
   const visualDefinitionEditor = visualBible.getByTestId('visual-identity-definition-editor')
-  await expect(visualDefinitionEditor).toContainText('只填写已经确认的视觉事实')
+  await expect(visualDefinitionEditor).toContainText('系统建议只补空白')
   await expect(visualDefinitionEditor.getByLabel('年龄区间 *')).toBeVisible()
   await expect(visualDefinitionEditor.getByRole('button', { name: '批准此定义' })).toBeDisabled()
-  await visualBible.getByText('填写世界规则视觉映射与审批', { exact: true }).click()
-  await visualBible.getByRole('button', { name: '填写与审批' }).last().click()
+  const identityApprovalChecklist = visualDefinitionEditor.getByTestId('visual-identity-approval-checklist')
+  await expect(identityApprovalChecklist).toContainText('批准前还需完成')
+  await expect(identityApprovalChecklist).toContainText('填写年龄区间')
+  await expect(identityApprovalChecklist).toContainText('填写 Reviewer ID')
+  await expect(identityApprovalChecklist).toContainText('勾选真人逐项复核确认')
+  await visualDefinitionEditor.getByLabel('体态 *').fill('人工已填写的瘦高体态')
+  await visualDefinitionEditor.getByLabel('复核说明（批准时必填）').fill('旧复核说明必须在建议改变草稿后清除')
+  await visualDefinitionEditor.getByLabel(/我确认已由真人逐项复核以上视觉定义/).check()
+  await visualDefinitionEditor.getByRole('button', { name: '填入系统建议（不覆盖已填）' }).click()
+  await expect(visualDefinitionEditor.getByLabel('体态 *')).toHaveValue('人工已填写的瘦高体态')
+  await expect(visualDefinitionEditor.getByLabel('脸部特征 *')).toHaveValue('服务端建议：固定脸型与近景识别特征。')
+  await expect(visualDefinitionEditor.getByLabel('年龄区间 *')).toHaveValue('')
+  await expect(visualDefinitionEditor.getByLabel('定义备注（可选，跨集连续性）'))
+    .toHaveValue('【系统建议草稿，尚未人工批准】服务端身份建议备注。')
+  await expect(visualDefinitionEditor.getByLabel('复核说明（批准时必填）')).toHaveValue('')
+  await expect(visualDefinitionEditor.getByLabel(/我确认已由真人逐项复核以上视觉定义/)).not.toBeChecked()
+  await expect(visualDefinitionEditor).toContainText('服务端建议 visual-definition-suggestions/v1')
+  await expect(identityApprovalChecklist).toContainText('填写年龄区间')
+  await expect(identityApprovalChecklist).toContainText('填写性别/代词')
+  await expect(identityApprovalChecklist).toContainText('填写复核说明')
+  expect(identitySuggestionRequestCount).toBe(1)
+  await visualReviewNavigator.getByRole('button', { name: '打开下一个待复核项' }).click()
   const worldRuleDefinitionEditor = visualBible.getByTestId('visual-world-rule-definition-editor')
-  await expect(worldRuleDefinitionEditor).toContainText('每个代表集必须选择一个真实存在的 Seedance 镜头或 GEARS 段')
+  await expect(worldRuleDefinitionEditor).toContainText('每个代表集仍须选择真实 Seedance 镜头或 GEARS 段')
   await expect(worldRuleDefinitionEditor.getByLabel('视觉符号 *')).toBeVisible()
   await expect(worldRuleDefinitionEditor).toContainText('E1 代表目标 *')
   await expect(worldRuleDefinitionEditor.getByRole('button', { name: '批准此映射' })).toBeDisabled()
+  const worldRuleApprovalChecklist = worldRuleDefinitionEditor.getByTestId('visual-world-rule-approval-checklist')
+  await expect(worldRuleApprovalChecklist).toContainText('批准前还需完成')
+  await expect(worldRuleApprovalChecklist).toContainText('绑定 E1 真实代表目标')
+  await expect(worldRuleApprovalChecklist).toContainText('填写 Reviewer ID')
+  await worldRuleDefinitionEditor.getByLabel('视觉符号 *').fill('人工已填写的白幕逆影符号')
+  await worldRuleDefinitionEditor.getByLabel('复核说明（批准时必填）').fill('旧规则复核说明必须清除')
+  await worldRuleDefinitionEditor.getByLabel(/我确认已由真人逐项复核规则文本/).check()
+  await worldRuleDefinitionEditor.getByRole('button', { name: '填入系统建议（不覆盖已填）' }).click()
+  await expect(worldRuleDefinitionEditor.getByLabel('视觉符号 *')).toHaveValue('人工已填写的白幕逆影符号')
+  await expect(worldRuleDefinitionEditor.getByLabel('触发条件 *'))
+    .toHaveValue('服务端建议：触发动作后按固定因果顺序呈现。')
+  await expect(worldRuleDefinitionEditor.getByLabel('定义备注（可选，规则连续性）'))
+    .toHaveValue('【系统建议草稿，尚未人工批准】服务端规则建议备注，不会创建真实镜头绑定。')
+  await expect(worldRuleDefinitionEditor.getByLabel('复核说明（批准时必填）')).toHaveValue('')
+  await expect(worldRuleDefinitionEditor.getByLabel(/我确认已由真人逐项复核规则文本/)).not.toBeChecked()
+  await expect(worldRuleDefinitionEditor).toContainText('服务端建议 visual-definition-suggestions/v1')
+  await expect(worldRuleApprovalChecklist).toContainText('绑定 E1 真实代表目标')
+  await expect(worldRuleApprovalChecklist).toContainText('填写复核说明')
+  expect(worldRuleSuggestionRequestCount).toBe(1)
+
+  await page.unroute(identitySuggestionRoutePattern)
+  let staleIdentitySuggestionRequestCount = 0
+  await page.route(identitySuggestionRoutePattern, route => {
+    staleIdentitySuggestionRequestCount += 1
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        error: null,
+        data: {
+          schema_version: 'ai-comic-series-visual-suggestion-draft/v1',
+          target_type: 'visual_identity',
+          target_id: 'series-character-123456789abc',
+          source_fingerprint: `sha256:${'e'.repeat(64)}`,
+          input_fingerprint: `sha256:${'3'.repeat(64)}`,
+          suggestion_source: 'deterministic_template',
+          suggestion_version: 'visual-definition-suggestions/v1',
+          generated_at: '2026-07-23T00:01:00.000Z',
+          fields: {
+            body_type: '过期建议不得覆盖人工体态',
+            facial_features: '过期建议不得写入空白脸部特征',
+          },
+          definition_notes: '过期建议备注不得写入',
+          suggested_field_ids: ['body_type', 'facial_features'],
+          unresolved_field_ids: [],
+          persisted: false,
+          auto_approved: false,
+        },
+      }),
+    })
+  })
+  await visualReviewNavigator.getByRole('button', { name: '打开下一个待复核项' }).click()
+  await expect(visualDefinitionEditor).toBeVisible()
+  await visualDefinitionEditor.getByLabel('体态 *').fill('源变化前的本地人工体态')
+  await visualDefinitionEditor.getByRole('button', { name: '填入系统建议（不覆盖已填）' }).click()
+  await expect(visualDefinitionEditor.getByLabel('体态 *')).toHaveValue('源变化前的本地人工体态')
+  await expect(visualDefinitionEditor.getByLabel('脸部特征 *')).toHaveValue('')
+  await expect(visualDefinitionEditor.getByLabel('定义备注（可选，跨集连续性）')).toHaveValue('')
+  await expect(visualDefinitionEditor).toContainText('视觉设定来源已经变化')
+  expect(staleIdentitySuggestionRequestCount).toBe(1)
+
+  await page.unroute(worldRuleSuggestionRoutePattern)
+  let failedWorldRuleSuggestionRequestCount = 0
+  await page.route(worldRuleSuggestionRoutePattern, route => {
+    failedWorldRuleSuggestionRequestCount += 1
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: false,
+        data: null,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: '视觉建议服务暂不可用',
+        },
+      }),
+    })
+  })
+  await visualReviewNavigator.getByRole('button', { name: '打开下一个待复核项' }).click()
+  await expect(worldRuleDefinitionEditor).toBeVisible()
+  await worldRuleDefinitionEditor.getByLabel('视觉符号 *').fill('服务失败前的本地人工符号')
+  await worldRuleDefinitionEditor.getByRole('button', { name: '填入系统建议（不覆盖已填）' }).click()
+  await expect(worldRuleDefinitionEditor.getByLabel('视觉符号 *')).toHaveValue('服务失败前的本地人工符号')
+  await expect(worldRuleDefinitionEditor.getByLabel('触发条件 *')).toHaveValue('')
+  await expect(worldRuleDefinitionEditor.getByLabel('定义备注（可选，规则连续性）')).toHaveValue('')
+  await expect(worldRuleDefinitionEditor).toContainText('视觉建议服务暂不可用')
+  expect(failedWorldRuleSuggestionRequestCount).toBe(1)
 
   await workflow.locator('input[type="file"]').setInputFiles({
     name: '候选-ABC12345-评审回执.json',

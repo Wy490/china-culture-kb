@@ -98,6 +98,21 @@ const requiredCopyChecks = [
     label: 'non-destructive system suggestion action',
     pattern: /填入系统建议（不覆盖已填）/,
   },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'server-backed visual suggestion loading state',
+    pattern: /正在获取服务端建议/,
+  },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'next pending visual review navigation',
+    pattern: /打开下一个待复核项/,
+  },
+  {
+    file: 'src/views/AiComicSeriesStudio.vue',
+    label: 'visual approval missing-item checklist',
+    pattern: /批准前还需完成/,
+  },
 ]
 
 function readVisibleFile(relativePath) {
