@@ -21,7 +21,7 @@
 
 1. 先完成 **15 种类型故事生成矩阵 + 15 种专业脚本管线 + Codex 图片资产生成/导入/预览/身份映射**；
 2. 用正式项目反复跑通故事、脚本、分镜、图片需求、图片资产和 GEARS/Seedance 包的功能测试；
-3. 再扩充场景、服装、道具图片资产和未生成分集，处理功能稳定性缺口；
+3. 图片资产和分集补齐后，在隔离测试项目中继续覆盖回调、制品导入、重试、剪辑、声音、字幕、片头和最终装配；
 4. 真人媒体审核、14/14 production credit 和正式 Provider 成片属于后续生产验收，不作为当前功能测试门禁。
 
 ## 1. 本轮研究范围、方法与证据边界
@@ -288,9 +288,9 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 | 参考资料库 | URL、版权、分析卡、证据和防照抄 | `CreativeReference` / `ReferenceAnalysis` / `StylePack` 类型 | 🟡 原型 | 服务只读取本地 JSON；无 CRUD、无 UI、无媒体分析 |
 | 影视多模态理解 | 字幕、镜头、关键帧、声音、时间码 | 无完整流水线 | 🔴 缺失 | 不能自动分析收藏视频或电影 |
 | 视觉圣经 | 稳定人物/场景/道具/规则身份 | 14/14 identity ready，2/2 world rules ready；保留 8 个旧 identity 真人批准 | ✅ 定义完成 | 当前重生成后的 world rule 真人复核延后；未获得真实 production credit |
-| 图片资产 | Provider 来源、prompt/hash、身份映射、不可变预览 | 7 个 `openai_imagegen` PNG 已写入不可变存储并通过 SHA/预览校验 | ✅ 四类资产功能闭环 | 7/14 功能测试资产；仍需 3 套服装和 4 个场景；production credit 仍为 0/14 |
+| 图片资产 | Provider 来源、prompt/hash、身份映射、不可变预览 | 14 个 `openai_imagegen` PNG 已写入不可变存储并通过 SHA/预览校验 | ✅ 14/14 四类资产功能闭环 | production credit 仍为 0/14，真人媒体复核后置 |
 | 导演与分镜 | 构图、调度、轴线、视线、动作、灯光、表演 | scene breakdown、GEARS segments、shot IDs | 🟡 部分 | 还不是完整导演引擎，缺接触表和视觉 QC |
-| 视频生成 | 已批准关键帧 → Provider → 回调 → 成片 | GEARS/Seedance 契约和账本 | 🟡 合同层 | 真实 GEARS jobs = 0，production items = 0 |
+| 视频生成 | 已批准关键帧 → Provider → 回调 → 成片 | 180 个镜头已进入本地 mocked GEARS 包和账本 | 🟡 本地执行包 | 外部 Provider、真实视频回调与成片仍未执行 |
 | 声音与后期 | 配音、对白时长、口型、音乐、音效、混音、字幕 | 有部分交付字段/规划 | 🔴 未闭环 | 无真实音频和最终剪辑成片 |
 | 宣传片适配 | 目标、CTA、多时长、多画幅、影响指标 | 有不同专业流水线服务 | 🟡 部分 | 无完整多版本成片与效果反馈 |
 | 发布反馈 | 播放、完播、留存、评论、A/B | 无平台分析闭环 | 🔴 缺失 | 无“表现 → 改写/再生成”数据循环 |
@@ -311,17 +311,18 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 | 真人盲审 | 1 人；7 维均 4/5；通过 |
 | 视觉 identity | 14/14 ready；8/14 保留旧真人批准 |
 | 世界规则 | 2/2 ready；重生成后 0/2 重新批准，真人复核延后 |
-| 图片资产库 | 7 个 PNG，全部是 `openai_imagegen` |
+| 图片资产库 | 14 个 PNG，全部是 `openai_imagegen` |
 | 图片资产类型 | character / costume / location / prop |
-| 功能测试图片资产 | 7/14 |
-| 当前身份指纹映射 | 7/14 |
+| 功能测试图片资产 | 14/14 |
+| 当前身份指纹映射 | 14/14 |
 | 真实图片资产 | 0/14 |
 | production credit | 0/14 |
-| Seedance production items | 0 |
-| GEARS jobs | 0 |
+| Seedance production items | 180，全部为本地 package smoke 状态 |
+| GEARS jobs | 180，全部为 `local-gears-*` mocked 任务 |
+| 外部授权记录 | 0 |
 | 真实 Provider 视频 | 0 |
 
-七个 AI 生成资产为：沈砚、林灯、开发商、盗谱者、沈砚主服装、午夜皮影戏台前场、便携检修灯。它们已经证明角色、服装、场景、道具四类图片生成，以及可信来源导入、不可变存储、SHA、prompt/provider 元数据、当前身份指纹映射、预览和历史账本可以闭环；它们可用于当前功能测试，但因权利状态、真人媒体复核和身份映射批准均未完成，不计正式 production credit。
+十四个 AI 生成资产覆盖：4 个角色、4 套主服装、5 个连续场景和 1 个便携检修灯。它们已经证明角色、服装、场景、道具四类图片生成，以及可信来源导入、不可变存储、SHA、prompt/provider 元数据、当前身份指纹映射、预览和历史账本可以闭环；它们可用于当前功能测试，但因权利状态、真人媒体复核和身份映射批准均未完成，不计正式 production credit。
 
 ## 8. 现在能做到什么
 
@@ -762,7 +763,8 @@ git diff --check：通过
 - **Codex 图片生成是当前图片 Provider**：资产保留 provider、model、call ID、prompt hash、内容 SHA、不可变原件和身份映射，不再用 `gears_local_test` 占位图冒充功能结果。
 - **真人审核继续有价值，但不是当前门禁**：现有真人批准不扩充；新图片不等待真人审核即可进入功能测试。
 - **production credit 语义保持严格**：功能可用不等于正式生产可用，当前仍为 0/14，不能因优先级变化而伪造权利或批准状态。
-- **下一功能里程碑**：补齐剩余 7 个 identity 图片，并把全部 180 个镜头需求跑入本地 GEARS 执行包；外部视频 Provider 提交另行授权。
+- **当前功能里程碑已完成**：14/14 identity 图片和全部 180 个镜头需求均已进入本地 GEARS 执行包；外部视频 Provider 提交另行授权。
+- **下一功能里程碑**：在隔离项目中覆盖回调、制品导入、失败重试、剪辑、声音、字幕、片头和最终装配，不用假视频污染正式系列账本。
 
 不要再用真人测试阻断当前研发，也不要为了“功能全绿”放松正式生产门禁。正确路线是：**先让全部功能稳定可运行，再在后续生产阶段补真人审片、权利确认和真实视频 Provider 验收。**
 
@@ -812,7 +814,7 @@ git diff --check：通过
 
 ### 14.3 图片资产功能闭环
 
-由 Codex 图片生成能力生成并接入 7 张 `gpt-image-2` PNG：
+由 Codex 图片生成能力生成并接入 14 张 `gpt-image-2` PNG：
 
 | 资产 | 类型 |
 |---|---|
@@ -821,26 +823,48 @@ git diff --check：通过
 | 开发商 | character |
 | 盗谱者 | character |
 | 沈砚主服装 | costume |
+| 林灯主服装 | costume |
+| 开发商主服装 | costume |
+| 盗谱者主服装 | costume |
 | 午夜皮影戏台前场 | location |
+| 戏台灯幕后 | location |
+| 戏台侧门与档案柜 | location |
+| 白幕与灯箱之间 | location |
+| 熄灯后的戏台中央 | location |
 | 便携检修灯 | prop |
 
-七张图片均已完成可信来源导入、不可变原件、SHA-256、provider/model/call ID、prompt hash、当前 identity 指纹映射和预览校验。原图及 prompt 保存在正式项目的 `imagegen-source/` 目录；正式统计报告位于 `data/reports/story-agent-full-function-smoke-20260723.json`。
+十四张图片均已完成可信来源导入、不可变原件、SHA-256、provider/model/artifact ID、prompt hash、当前 identity 指纹映射和预览校验。四个场景衍生图使用“午夜皮影戏台前场”作为同世界母图，保持木作、幕布、灯位和动线一致。原图及 prompt 保存在正式项目的 `imagegen-source/` 目录；正式统计报告位于 `data/reports/story-agent-full-function-smoke-20260723.json`。
 
-### 14.4 最终自动化证据
+### 14.4 180 镜头本地 GEARS 执行包
+
+在 `use_gears_api=false` 条件下完成本地 smoke：
+
+- 20/20 集 Seedance 提示词包；
+- 180/180 镜头，缺失分集 0；
+- 本地可提交单元 180，阻断 0；
+- mocked GEARS 提交 180，失败 0；
+- `local-gears-*` 账本任务 180；
+- Seedance production items 180；
+- 外部授权记录 0，外部视频 Provider 调用 0。
+
+这证明 Story Agent 的故事、脚本、分镜、图片需求和 GEARS 执行包可以完整串联；它不声称已经生成真实视频。
+
+### 14.5 最终自动化证据
 
 ```text
 类型与专业脚本聚焦矩阵：16 files passed，62 tests passed
 服务端全量：163 files；1405 tests passed，2 skipped，0 failed
 全仓 check：visible copy audit、server tsc、client vue-tsc 全部通过
 生产构建：server tsup、client Vite 通过；171 modules transformed
+图片与 GEARS smoke：14 个不可变预览；180 个本地 mocked 任务，0 失败，0 外部授权
 git diff --check：通过
 ```
 
-### 14.5 当前刻意不做
+### 14.6 当前刻意不做
 
 - 不扩充真人媒体审核；
 - 不启动新一轮真人盲评；
 - 不把功能测试资产伪装成 production credit；
 - 不提交外部视频 Provider 任务。
 
-这些事项被延后，不代表删除。当前下一步只聚焦剩余 7 个 identity 图片和 180 个镜头的本地 GEARS 执行包稳定性。
+这些事项被延后，不代表删除。当前下一步聚焦隔离的回调与后期全生命周期测试，以及用更多系列种子重复 15 类型、14 资产和 180 镜头链路，建立跨项目稳定性证据。

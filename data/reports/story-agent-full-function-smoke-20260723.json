@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-full-function-smoke/v1",
-  "generated_at": "2026-07-23T17:46:00+08:00",
+  "generated_at": "2026-07-23T18:24:53+08:00",
   "status": "passed",
   "priority": {
     "functional_test_first": true,
@@ -62,9 +62,9 @@
     "status": "passed",
     "provider": "openai_imagegen",
     "model": "gpt-image-2",
-    "asset_count": 7,
-    "current_identity_mapping_count": 7,
-    "immutable_preview_verified_count": 7,
+    "asset_count": 14,
+    "current_identity_mapping_count": 14,
+    "immutable_preview_verified_count": 14,
     "covered_asset_kinds": [
       "character",
       "costume",
@@ -127,8 +127,72 @@
         "provider_asset_id": "call_rIYG1bvee7pf22Brn2UqHYht",
         "content_sha256": "84b96a9ebbba4697e8c883e1427a43c68b2dfe7bd9bea734209183fac3a6b1c0",
         "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/props/portable-lamp-v1.png"
+      },
+      {
+        "label": "林灯主服装",
+        "kind": "costume",
+        "provider_asset_id": "imagegen-artifact-exec-021cc4ae-eb83-46f6-b42e-8f8593338a2a",
+        "content_sha256": "373da9ed4e06a1ad4ad74a6489bf71afb7ebf48776b4a865a9190b1567b104e1",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/costumes/lin-deng-costume-v1.png"
+      },
+      {
+        "label": "开发商主服装",
+        "kind": "costume",
+        "provider_asset_id": "imagegen-artifact-exec-208f9991-bc90-420f-9fe2-514686a09279",
+        "content_sha256": "fd3564a7b82d5865ba5db4f477d29c06e0a49ccd41ce4a3240012d36972d3a14",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/costumes/developer-costume-v1.png"
+      },
+      {
+        "label": "盗谱者主服装",
+        "kind": "costume",
+        "provider_asset_id": "imagegen-artifact-exec-edffcd38-ab11-491d-8737-8cdfdb404c57",
+        "content_sha256": "069598bcc78c3a274bd1aad68c7e88bd27427156fb0290b600dec7a82ab2b8f7",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/costumes/score-thief-costume-v1.png"
+      },
+      {
+        "label": "戏台灯幕后",
+        "kind": "location",
+        "provider_asset_id": "imagegen-artifact-exec-4f08861e-dcd7-4e25-a2fa-7c5aa5a6d397",
+        "content_sha256": "c5466f89e1790f1601a6de7a13acd01578c126c476e9d1180c8b479a6a9cbb41",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/locations/backstage-lamp-screen-v1.png"
+      },
+      {
+        "label": "戏台侧门与档案柜",
+        "kind": "location",
+        "provider_asset_id": "imagegen-artifact-exec-b2d190d4-2693-432d-a54b-4fe0a3e7ed30",
+        "content_sha256": "024e0b6f820fb0679e1f06b1ce13b8a877fcbad77e3a8f4c5cf22c2003e278e8",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/locations/side-door-archive-cabinet-v1.png"
+      },
+      {
+        "label": "白幕与灯箱之间",
+        "kind": "location",
+        "provider_asset_id": "imagegen-artifact-exec-3ebeb46c-2d76-4bf7-bdad-8f9b55f1e83b",
+        "content_sha256": "ed8073f00b3287aa5cf63229e11310a2a9fd1bf84c3fb90a344edfafc21a4fed",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/locations/between-screen-lampbox-v1.png"
+      },
+      {
+        "label": "熄灯后的戏台中央",
+        "kind": "location",
+        "provider_asset_id": "imagegen-artifact-exec-3ba082bf-7faf-4fb9-9be7-bcf2a4f643a1",
+        "content_sha256": "549a88e5d071017e9ede4cdddb5bebd53edaf22ef389b4c64760c5593d5a205d",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/locations/darkened-center-stage-v1.png"
       }
     ]
+  },
+  "local_gears_execution_package_smoke": {
+    "status": "passed",
+    "generated_episode_count": 20,
+    "total_shot_count": 180,
+    "missing_episode_count": 0,
+    "ready_local_unit_count": 180,
+    "blocked_local_unit_count": 0,
+    "provider_adapter_status": "mocked",
+    "submitted_local_job_count": 180,
+    "failed_local_job_count": 0,
+    "gears_ledger_local_job_count": 180,
+    "seedance_production_item_count": 180,
+    "external_authorization_count": 0,
+    "external_provider_called": false
   },
   "defects_found_and_fixed": [
     "openai_imagegen trusted-source assets were not accepted by immutable preview",
@@ -142,11 +206,12 @@
     "server_full_suite": "163 files, 1405 tests passed, 2 skipped, 0 failed",
     "workspace_check": "visible copy audit, server tsc, client vue-tsc passed",
     "production_build": "server tsup and client Vite build passed; 171 client modules transformed",
+    "generated_asset_and_local_gears_smoke": "14 immutable image previews verified; 180 local mocked GEARS jobs accepted, 0 failed, 0 external authorization",
     "git_diff_check": "passed"
   },
   "remaining_functional_work": [
-    "Generate and bind the remaining 7 identity images: 3 costumes and 4 locations",
-    "Run image-to-storyboard and local GEARS execution-package smoke against all 180 shot requirements",
+    "Exercise callback, artifact ingestion, retry, cut-assembly, audio, subtitle, title-card, and final-assembly lifecycles with isolated synthetic test artifacts rather than contaminating the formal series with fake ready videos",
+    "Repeat the 15-type generation and 14-asset workflow on additional series seeds to build cross-project stability evidence",
     "Keep external video Provider submission disabled until separately authorized",
     "Keep human media review and production credit deferred without weakening their strict semantics"
   ]
