@@ -5640,6 +5640,12 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
       mime_type: string;
       buffer: Buffer;
     };
+    trusted_source?: {
+      provider: 'gears_local_test';
+      provider_asset_id: string;
+      prompt_sha256: string;
+      model: 'gears-local-test-card';
+    };
   },
 ): Promise<ApiResponse<AiComicSeedanceAssetFileUploadResult>> {
   const existing = await readSeriesProject(seriesProjectId);
@@ -5702,6 +5708,8 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
   }
   const localPath = `ai-comic-series-projects/${seriesProjectId}/media/originals/${filename}`;
   const updatedAt = nextSeriesProjectUpdatedAt(existing.project.updated_at);
+  const provider = request.trusted_source?.provider ?? 'local_upload';
+  const providerAssetId = request.trusted_source?.provider_asset_id ?? fileId;
   const asset: AiComicSeedanceAssetLibraryItem = {
     asset_id: assetId,
     kind,
@@ -5713,11 +5721,11 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
     original_filename: request.file.original_filename,
     mime_type: ingest.detected_mime_type,
     size_bytes: ingest.byte_size,
-    provider: 'local_upload',
-    provider_asset_id: fileId,
+    provider,
+    provider_asset_id: providerAssetId,
     content_sha256: ingest.content_sha256,
-    prompt_sha256: previous?.prompt_sha256,
-    model: previous?.model,
+    prompt_sha256: request.trusted_source?.prompt_sha256 ?? previous?.prompt_sha256,
+    model: request.trusted_source?.model ?? previous?.model,
     rights_status: 'pending',
     authorization_reference: undefined,
     person_consent_reference: undefined,
@@ -5732,8 +5740,8 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
       event_id: `series-media-upload-${randomUUID()}`,
       event_type: 'file_upload',
       created_at: updatedAt,
-      provider: 'local_upload',
-      provider_asset_id: fileId,
+      provider,
+      provider_asset_id: providerAssetId,
       file_id: fileId,
       local_path: localPath,
       original_filename: request.file.original_filename,
@@ -5798,7 +5806,7 @@ export async function readAiComicSeriesMediaAssetPreview(
     item.content_sha256?.toLowerCase() === contentSha256
   ));
   if (!asset) return { ok: false, status: 404, message: 'verified media artifact not found' };
-  if (!asset.local_path || asset.provider !== 'local_upload') {
+  if (!asset.local_path || !['local_upload', 'gears_local_test'].includes(asset.provider ?? '')) {
     return { ok: false, status: 409, message: 'media artifact is not available from authenticated local preview' };
   }
   if (!asset.mime_type || !['image/png', 'image/jpeg', 'image/webp'].includes(asset.mime_type)) {

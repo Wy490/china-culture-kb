@@ -2453,6 +2453,14 @@
             </span>
             <button
               class="series-studio__ghost-button"
+              type="button"
+              :disabled="runningGearsCharacterAssetLocalTest || loadingSeedanceAssetReport"
+              @click="runGearsCharacterAssetLocalTest"
+            >
+              {{ runningGearsCharacterAssetLocalTest ? 'GEARS 测试生成中...' : '运行 GEARS 无 API 人物测试' }}
+            </button>
+            <button
+              class="series-studio__ghost-button"
               :disabled="loadingSeedanceAssetReport"
               @click="loadSeedanceAssetReport"
             >
@@ -2461,6 +2469,7 @@
           </div>
           <p class="series-studio__field-hint">
             人物、服装、场景、道具必须分别绑定真实文件；上传 SHA-256 校验、授权依据、真人审核和当前稳定身份映射全部齐备后，才可能获得 production credit。
+            “GEARS 无 API 人物测试”只验证 Visual Bible → GEARS → 图片回写链路，测试件会醒目标记且永不计 production credit。
           </p>
           <div class="series-studio__series-assets">
             <article
@@ -2490,6 +2499,12 @@
                 · 真人审核 {{ seriesSeedanceAssetLibraryItem(asset.asset_id)?.human_review_status ?? 'pending' }}
                 · 身份映射 {{ seriesSeedanceAssetIdentityBindingStatus(asset.asset_id) }}
                 · production credit {{ seriesSeedanceAssetProductionCredit(asset.asset_id) ? '1' : '0' }}
+              </small>
+              <small
+                v-if="seriesSeedanceAssetLibraryItem(asset.asset_id)?.provider === 'gears_local_test'"
+                class="series-studio__field-hint"
+              >
+                GEARS 本地测试件 · 未调用外部 API · 不是真实图片资产 · 永不计 production credit
               </small>
               <div
                 v-if="seriesSeedanceAssetProductionCredit(asset.asset_id)"
@@ -3241,6 +3256,7 @@ import {
   rollbackAiComicSeriesSeedanceFinalDelivery,
   resolveAiComicSeriesSeedanceReview,
   runAiComicSeriesProductionReadinessAutomation,
+  runAiComicSeriesGearsCharacterAssetLocalTest,
   saveAiComicSeriesProject,
   selectAiComicSeriesSeedanceProductionVersion,
   submitAiComicSeriesGearsJobs,
@@ -3389,6 +3405,7 @@ const seedanceReviewLedger = ref<AiComicSeedanceReviewLedger | null>(null)
 const seedanceAssetLibrary = ref<AiComicSeedanceAssetLibrary | null>(null)
 const seedanceAssetReport = ref<AiComicSeriesSeedanceAssetReportPackage | null>(null)
 const loadingSeedanceAssetReport = ref(false)
+const runningGearsCharacterAssetLocalTest = ref(false)
 const uploadingSeedanceAssetId = ref('')
 const reviewingSeedanceAssetId = ref('')
 const seedanceMediaReviewForms = ref<Record<string, {
@@ -6903,10 +6920,41 @@ function seriesSeedanceAssetLibraryItem(assetId: string) {
 
 function seriesSeedanceAssetPreviewUrl(assetId: string): string | undefined {
   const item = seriesSeedanceAssetLibraryItem(assetId)
-  if (!seriesProjectId.value || !item?.content_sha256 || !item.local_path || item.provider !== 'local_upload') {
+  if (
+    !seriesProjectId.value
+    || !item?.content_sha256
+    || !item.local_path
+    || !['local_upload', 'gears_local_test'].includes(item.provider ?? '')
+  ) {
     return undefined
   }
   return `/api/story-outline/ai-comic-series-projects/${seriesProjectId.value}/media-assets/media-sha256-${item.content_sha256}/preview`
+}
+
+async function runGearsCharacterAssetLocalTest() {
+  if (!seriesProjectId.value || runningGearsCharacterAssetLocalTest.value) return
+  runningGearsCharacterAssetLocalTest.value = true
+  errorMessage.value = ''
+  saveMessage.value = ''
+  try {
+    const res = await runAiComicSeriesGearsCharacterAssetLocalTest(seriesProjectId.value)
+    if (!res.ok || !res.data) {
+      errorMessage.value = res.error?.message ?? 'GEARS 无 API 人物测试失败'
+      return
+    }
+    seedanceAssetLibrary.value = res.data.detail.seedance_asset_library ?? null
+    lastSavedAt.value = res.data.detail.project.updated_at
+    await loadSeedanceAssetReport()
+    saveMessage.value = [
+      `GEARS 人物测试闭环 ${res.data.gears_result.characters.length}/4`,
+      `新入库 ${res.data.imported_asset_count}`,
+      `复用 ${res.data.reused_asset_count}`,
+      '外部 API 0',
+      'production credit 0',
+    ].join(' · ')
+  } finally {
+    runningGearsCharacterAssetLocalTest.value = false
+  }
 }
 
 function seriesSeedanceAssetIdentityBindingStatus(assetId: string): string {

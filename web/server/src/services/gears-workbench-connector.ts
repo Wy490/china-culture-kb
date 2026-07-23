@@ -3,8 +3,11 @@ import {
   fail,
   success,
 } from '@shared/types.js';
+import { createHash } from 'node:crypto';
 import type {
   ApiResponse,
+  GearsCharacterAssetBootstrapRequest,
+  GearsCharacterAssetBootstrapResult,
   GearsWorkbenchCapabilities,
   GearsWorkbenchConfigInfo,
   GearsWorkbenchCreditBoundary,
@@ -19,7 +22,9 @@ import { appendGearsWorkbenchImportAudit } from './gears-workbench-audit-service
 const CAPABILITY_PATH = '/integrations/story-agent/capabilities';
 const DRY_RUN_PATH = '/integrations/story-agent/imports/dry-run';
 const EXECUTE_PATH = '/integrations/story-agent/imports';
+const CHARACTER_ASSET_BOOTSTRAP_PATH = '/integrations/story-agent/character-assets/bootstrap';
 const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_MEDIA_BYTES = 20 * 1024 * 1024;
 
 const ZERO_CREDIT_BOUNDARY: GearsWorkbenchCreditBoundary = {
   workbench_data_only: true,
@@ -65,6 +70,9 @@ function isCapabilities(value: unknown): value is GearsWorkbenchCapabilities {
     && value.schema_version === 'gears-workbench-capabilities/v1'
     && value.service === 'gears-workbench'
     && value.workbench_import_supported === true
+    && value.character_asset_bootstrap_supported === true
+    && Array.isArray(value.character_asset_generation_modes)
+    && value.character_asset_generation_modes.includes('local_test')
     && value.execution_worker_supported === false
     && value.bearer_auth_required === true
     && value.atomic_execute === true
@@ -103,6 +111,40 @@ function isImportResult(value: unknown): value is GearsWorkbenchImportResult {
   return value.summary.provider_call_count === 0
     && value.summary.media_artifact_count === 0
     && value.summary.real_delivery_credit_count === 0;
+}
+
+function isCharacterAssetBootstrapResult(
+  value: unknown,
+): value is GearsCharacterAssetBootstrapResult {
+  if (!isRecord(value)
+    || value.schema_version !== 'story-agent-character-asset-bootstrap-result/v1'
+    || (value.status !== 'applied' && value.status !== 'replayed')
+    || value.generation_mode !== 'local_test'
+    || typeof value.idempotency_key !== 'string'
+    || value.external_provider_call_count !== 0
+    || value.real_delivery_credit_count !== 0
+    || !Array.isArray(value.characters)
+    || !isRecord(value.source)
+    || value.source.source_system !== 'story-agent'
+    || !isRecord(value.credit_boundary)
+    || value.credit_boundary.local_test_only !== true
+    || value.credit_boundary.external_provider_invoked !== false
+    || value.credit_boundary.counts_as_real_image_asset !== false
+    || value.credit_boundary.counts_as_production_credit !== false) return false;
+  return value.characters.every(item => (
+    isRecord(item)
+    && typeof item.identity_id === 'string'
+    && typeof item.definition_fingerprint === 'string'
+    && typeof item.name === 'string'
+    && item.provider === 'gears_local_test'
+    && item.model === 'gears-local-test-card'
+    && typeof item.media_url === 'string'
+    && item.media_url.startsWith('/media/')
+    && typeof item.content_sha256 === 'string'
+    && /^[a-f0-9]{64}$/.test(item.content_sha256)
+    && typeof item.prompt_sha256 === 'string'
+    && /^[a-f0-9]{64}$/.test(item.prompt_sha256)
+  ));
 }
 
 type WorkbenchHttpResult = {
@@ -226,6 +268,103 @@ export async function getGearsWorkbenchCapabilities(): Promise<
     );
   }
   return success(response.data.payload);
+}
+
+export async function requestGearsCharacterAssetBootstrap(
+  envelope: GearsCharacterAssetBootstrapRequest,
+): Promise<ApiResponse<GearsCharacterAssetBootstrapResult>> {
+  const response = await requestWorkbench(CHARACTER_ASSET_BOOTSTRAP_PATH, {
+    method: 'POST',
+    body: envelope,
+  });
+  if (!response.ok || !response.data) return forwardFailure(response);
+  if (!response.data.ok) {
+    return fail(
+      response.data.status === 409 || response.data.status === 422
+        ? ErrorCodes.VALIDATION_ERROR
+        : ErrorCodes.INTERNAL_ERROR,
+      `GEARS character asset bootstrap returned HTTP ${response.data.status}`,
+      response.data.payload ?? response.data.text.slice(0, 500),
+    );
+  }
+  if (!isCharacterAssetBootstrapResult(response.data.payload)) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS character asset bootstrap violated the local-test zero-credit contract',
+      response.data.payload,
+    );
+  }
+  const actual = response.data.payload;
+  if (
+    actual.idempotency_key !== envelope.idempotency_key
+    || actual.source.project_id !== envelope.source.project_id
+    || actual.source.version_id !== envelope.source.version_id
+    || actual.source.source_fingerprint !== envelope.source.source_fingerprint
+    || actual.characters.length !== envelope.characters.length
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS character asset bootstrap identity does not match the submitted envelope',
+    );
+  }
+  return success(actual);
+}
+
+export async function downloadGearsWorkbenchMedia(
+  mediaUrl: string,
+  expectedSha256: string,
+): Promise<ApiResponse<{ buffer: Buffer; mime_type: string; content_sha256: string }>> {
+  const baseUrl = configuredBaseUrl();
+  const token = configuredToken();
+  if (!baseUrl || !token) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'GEARS workbench requires GEARS_WORKBENCH_API_BASE_URL and GEARS_WORKBENCH_API_TOKEN',
+    );
+  }
+  if (!/^\/media\/[a-zA-Z0-9._-]+$/.test(mediaUrl)) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS media URL must be a local /media artifact path');
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), requestTimeoutMs());
+  try {
+    const response = await fetch(joinUrl(baseUrl, mediaUrl), {
+      method: 'GET',
+      headers: { authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `GEARS media download returned HTTP ${response.status}`,
+      );
+    }
+    const declaredSize = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declaredSize) && declaredSize > MAX_MEDIA_BYTES) {
+      return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS media exceeds the 20 MiB ingest limit');
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0 || buffer.length > MAX_MEDIA_BYTES) {
+      return fail(ErrorCodes.VALIDATION_ERROR, 'GEARS media is empty or exceeds the ingest limit');
+    }
+    const contentSha256 = createHash('sha256').update(buffer).digest('hex');
+    if (contentSha256 !== expectedSha256.toLowerCase()) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        'GEARS media SHA-256 does not match the bootstrap receipt',
+      );
+    }
+    return success({
+      buffer,
+      mime_type: response.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+      content_sha256: contentSha256,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return fail(ErrorCodes.INTERNAL_ERROR, `GEARS media download failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function buildGearsWorkbenchImportEnvelope(

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { ErrorCodes } from '@shared/types.js';
 import type {
   GearsWorkbenchCapabilities,
@@ -13,6 +14,8 @@ import {
   getGearsWorkbenchCapabilities,
   getGearsWorkbenchConfigInfo,
   importProjectToGearsWorkbench,
+  downloadGearsWorkbenchMedia,
+  requestGearsCharacterAssetBootstrap,
 } from '../services/gears-workbench-connector.js';
 import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
 
@@ -37,6 +40,8 @@ function capabilities(): GearsWorkbenchCapabilities {
     service: 'gears-workbench',
     supported_delivery_schemas: ['gears-delivery/v1'],
     workbench_import_supported: true,
+    character_asset_bootstrap_supported: true,
+    character_asset_generation_modes: ['local_test'],
     execution_worker_supported: false,
     bearer_auth_required: true,
     dry_run_default: true,
@@ -50,6 +55,10 @@ function capabilities(): GearsWorkbenchCapabilities {
       capabilities: { method: 'GET', path: '/integrations/story-agent/capabilities' },
       dry_run: { method: 'POST', path: '/integrations/story-agent/imports/dry-run' },
       execute: { method: 'POST', path: '/integrations/story-agent/imports' },
+      character_asset_bootstrap: {
+        method: 'POST',
+        path: '/integrations/story-agent/character-assets/bootstrap',
+      },
       promote_storyboard_draft: {
         method: 'POST',
         path: '/integrations/story-agent/storyboard-drafts/{draft_id}/promote',
@@ -172,6 +181,89 @@ afterEach(async () => {
 });
 
 describe('gears-workbench-connector', () => {
+  it('accepts and verifies a zero-credit local-test character artifact', async () => {
+    const png = Buffer.from('89504e470d0a1a0a00000000', 'hex');
+    const contentSha256 = createHash('sha256').update(png).digest('hex');
+    const envelope = {
+      schema_version: 'story-agent-character-asset-bootstrap/v1' as const,
+      idempotency_key: 'story-agent:series-fixture:visual-bible:test',
+      source: {
+        source_system: 'story-agent' as const,
+        project_id: 'series-fixture',
+        version_id: 'visual-bible-test',
+        source_fingerprint: `sha256:${'a'.repeat(64)}`,
+      },
+      character_style_pack_id: 'realistic',
+      generation_mode: 'local_test' as const,
+      characters: [{
+        identity_id: 'series-character-shenyan',
+        definition_fingerprint: `sha256:${'b'.repeat(64)}`,
+        name: '沈砚',
+        role_position: '主角' as const,
+        species_type: '人类' as const,
+        ethnicity: ['东亚'] as ['东亚'],
+        gender: '男' as const,
+        age_range: '青年' as const,
+        appearance_features: '稳定人物外观',
+        clothing: '稳定人物服装',
+      }],
+    };
+    const receipt = {
+      schema_version: 'story-agent-character-asset-bootstrap-result/v1',
+      status: 'applied',
+      idempotency_key: envelope.idempotency_key,
+      generation_mode: 'local_test',
+      source: envelope.source,
+      characters: [{
+        identity_id: 'series-character-shenyan',
+        definition_fingerprint: `sha256:${'b'.repeat(64)}`,
+        name: '沈砚',
+        gears_project_id: '00000000-0000-0000-0000-000000000001',
+        gears_character_id: '00000000-0000-0000-0000-000000000002',
+        base_sheet_version_id: 'v1',
+        provider: 'gears_local_test',
+        model: 'gears-local-test-card',
+        media_url: '/media/test.png',
+        content_sha256: contentSha256,
+        prompt_sha256: 'c'.repeat(64),
+      }],
+      external_provider_call_count: 0,
+      local_test_artifact_count: 1,
+      real_delivery_credit_count: 0,
+      credit_boundary: {
+        local_test_only: true,
+        external_provider_invoked: false,
+        counts_as_real_image_asset: false,
+        counts_as_production_credit: false,
+      },
+    };
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify(receipt), { status: 200 }))
+      .mockResolvedValueOnce(new Response(png, {
+        status: 200,
+        headers: { 'content-type': 'image/png' },
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const bootstrap = await requestGearsCharacterAssetBootstrap(envelope);
+    const media = await downloadGearsWorkbenchMedia('/media/test.png', contentSha256);
+
+    expect(bootstrap.ok).toBe(true);
+    expect(bootstrap.data).toMatchObject({
+      external_provider_call_count: 0,
+      real_delivery_credit_count: 0,
+      credit_boundary: { counts_as_production_credit: false },
+    });
+    expect(media).toMatchObject({
+      ok: true,
+      data: {
+        mime_type: 'image/png',
+        content_sha256: contentSha256,
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('never treats execution-worker envs as workbench configuration', () => {
     vi.stubEnv('GEARS_WORKBENCH_API_BASE_URL', '');
     vi.stubEnv('GEARS_WORKBENCH_API_TOKEN', '');

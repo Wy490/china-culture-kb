@@ -1,6 +1,6 @@
-# Story Agent 新对话继续开发交接（2026-07-23 · 审批缺项与建议失败保护版）
+# Story Agent 新对话继续开发交接（2026-07-23 · GEARS 无 API 四人物闭环版）
 
-> 用途：新对话的第一入口。当前正式项目已经从“视觉定义待填写”推进到“16/16 定义完整、等待真人批准”。
+> 用途：新对话的第一入口。当前正式项目已完成 16/16 真人视觉批准，并已跑通 Visual Bible → GEARS → 四人物测试图片 → Story Agent 不可变媒体库的无 API 闭环。
 >
 > 先读本文件，再按需查阅[上一版交接](./story-agent-new-conversation-development-handoff-20260721.md)和[完整阶段计划](./story-agent-next-stage-comprehensive-development-plan-and-handoff-20260720.md)。上一版交接中“视觉定义 0/14”的状态已经过时，不得继续沿用。
 
@@ -10,14 +10,15 @@
 
 | 口径 | 当前进度 | 说明 |
 |---|---:|---|
-| 软件工程修复 | **约 99.6%** | 视觉生产门禁、费用治理、交付 manifest、定义/批准/资产链、前后端只读建议链、待复核导航及批准缺项定位均已实现；仍缺批量建议、真实外部环境联合验收等收尾 |
-| 市场级内容与真实媒体链路 | **约 48%** | 真人商业盲评已完成，正式视觉定义已完成；真人视觉批准、真实资产、Provider 成片仍为 0 |
-| 阶段 3 视觉一致性 | **约 50% / 目标 60%** | 14 个身份与 2 条规则定义完整，试拍集绑定完整；批准、资产、production credit 和成片未完成 |
+| 软件工程修复 | **约 99.8%** | 视觉生产门禁、定义/批准/资产链、GEARS Workbench Bridge 和四人物无 API 图片回写闭环均已验证；仍缺真实图片 Provider 与真实 E1 试产 |
+| 市场级内容与真实媒体链路 | **约 60%** | 真人商业盲评、16/16 视觉批准和四人物测试闭环已完成；14 份真实资产、production credit 与 Provider 成片仍为 0 |
+| 阶段 3 视觉一致性 | **约 55% / 目标 60%** | 14 个身份、2 条规则、试拍集绑定和真人批准完整；已验证四人物链路，但测试件不计真实资产或 production credit |
 | 本轮“多行编辑＋建议草稿”开发切片 | **100%** | 实现、类型检查、生产构建和正式页面验收全部完成 |
 | 本轮“服务端视觉建议只读合同”切片 | **100%** | 身份/世界规则两个只读合同、审计元数据、非覆盖与零持久化回归均已完成 |
 | 本轮“前端改接服务端建议”切片 | **100%** | 两类编辑器均调用服务端合同，移除前端重复模板，并完成非覆盖、撤销旧确认与 E2E 验证 |
 | 本轮“下一个待复核项”切片 | **100%** | 身份与世界规则组成循环队列，逐项打开、单编辑器切换、滚动定位和零自动批准均已验证 |
 | 本轮“审批缺项与失败保护”切片 | **100%** | 两类审批共享可执行缺项清单；来源过期和服务失败均保持本地草稿不变并有 E2E 证据 |
+| 本轮“GEARS 无 API 四人物闭环”切片 | **100%** | 四人物 4/4、媒体 SHA、回写、预览、幂等重放及零生产信用均通过真实 HTTP 与浏览器验收 |
 
 正式项目的精确进度：
 
@@ -27,10 +28,11 @@
 | 世界规则视觉定义 | 2/2 | **100%** |
 | 世界规则试拍集绑定 | 6/6（2 条规则 × E1/E10/E20） | **100%** |
 | 视觉定义合计 | 16/16 | **100%** |
-| 真人视觉批准 | 0/16 | **0%** |
+| 真人视觉批准 | 16/16 | **100%** |
 | 真实图片资产 | 0/14 | **0%** |
 | Production credit | 0/14 | **0%** |
 | 可计入正式完成度的 Provider 成片 | 0 | **0%** |
+| GEARS 本地测试人物资产 | 4/4 | **100%（仅测试，不计真实资产）** |
 
 百分比纪律：代码、测试、fixture、dry-run、本地账本和建议草稿不能增加真实资产、Provider 成片或 production credit；只有正式项目中的真实证据才能增加这些计数。
 
@@ -43,7 +45,7 @@
 - 正式项目 ID：`20260720-series-ujl3atax`
 - 项目标题：《皮影诡戏：守灯人》
 - 项目数据：`web/generated/ai-comic-series-projects/20260720-series-ujl3atax/project.json`
-- 项目数据时间：`2026-07-21T11:12:20.310Z`
+- 项目数据时间：`2026-07-23T05:28:10.748Z`
 - 前端地址：<http://localhost:5173/ai-comic-series/new?seriesProjectId=20260720-series-ujl3atax>
 
 工作区包含跨多轮开发成果和用户正式数据。禁止执行 `git reset --hard`、`git checkout --`、`git clean` 或其他会清除/覆盖现有改动的操作。修改前先检查重叠文件，暂存、提交、推送均需用户明确要求。
@@ -60,7 +62,7 @@
 
 ### 2.2 视觉身份
 
-14 个稳定视觉身份均为 `definition_status=ready`、`approval.status=pending`：
+14 个稳定视觉身份均为 `definition_status=ready`、`approval.status=approved`：
 
 - 人物 4：盗谱者、开发商、林灯、沈砚。
 - 主服装 4：盗谱者主服装、开发商主服装、林灯主服装、沈砚主服装。
@@ -71,7 +73,7 @@
 
 ### 2.3 世界规则
 
-两条世界规则均为 `definition_status=ready`、`approval.status=pending`：
+两条世界规则均为 `definition_status=ready`、`approval.status=approved`：
 
 1. `midnight-shadow-play-rules`：午夜皮影戏必须遵守二十条规则。
 2. `memory-erasure-consequence`：违反规则会被抹去记忆。
@@ -80,10 +82,12 @@
 
 ### 2.4 真实媒体与外部生产
 
-- `seedance_asset_library.items=0`。
+- `seedance_asset_library.items=4`，均为 `provider=gears_local_test` 的四人物测试件。
+- 四个测试件均有本地不可变 PNG、媒体 SHA-256、prompt SHA-256、GEARS character/version provenance 和当前人物 identity pending mapping。
+- 测试件明确 `rights_status=pending`、`human_review_status=pending`，且 provider 不是 `local_upload`；因此不是真实图片资产，不能通过 production-credit 判定。
 - `seedance_production.items=0`。
 - `production_credit_identity_count=0`。
-- 视觉 Bible 仍有 2 项总阻断，核心原因是身份/规则均未真人批准，且没有真实资产链。
+- 视觉 Bible 的定义与批准阻断已清零；当前唯一核心阻断是 14 份真实图片资产、授权、真人媒体审核和当前 identity mapping 批准尚未完成。
 - 没有真实 Provider job、视频 URL、费用回执或正式 release。
 
 ## 3. 本轮完成的前端开发
@@ -188,22 +192,7 @@ git diff --cached --name-only
 
 ## 7. 下一轮优先级
 
-### P0-A：协助完成 16 项真人视觉批准
-
-这是当前正式项目的唯一首要阻断：
-
-1. 打开 14 个身份定义，逐项核对结构化内容和可选定义备注。
-2. 填写真实 Reviewer ID。
-3. 填写具体复核说明，说明核对了哪些来源和跨集约束。
-4. 勾选真人确认。
-5. 手动点击“批准此定义”。
-6. 对两条世界规则重复人工核对，并确认 E1/E10/E20 代表目标确实存在后批准。
-
-不得批量伪造 Reviewer、复核说明或确认状态。可以继续改进“上一个/下一个待批准”“批准进度”和缺项定位，但最后批准动作必须由真人逐项完成。
-
-当前页面已提供“打开下一个待复核项”：显示身份/规则待复核数量，按身份后规则的顺序循环打开编辑器。该入口不会填写 Reviewer、不会勾选真人确认，也不会保存或批准。
-
-### P0-B：批准后完成 14 份真实图片资产链
+### P0-A：完成 14 份真实图片资产链
 
 每个身份必须分别具备：
 
@@ -217,7 +206,9 @@ git diff --cached --name-only
 
 任何一项缺失时 production credit 必须保持 0。角色、服装、地点、道具不能互相冒充资产类型。
 
-### P0-C：真实 Provider 生产
+四人物的 GEARS 本地测试件已经证明接口、图片下载、SHA 校验、不可变入库和页面预览链路可用，但不得拿去登记授权或真人媒体批准。下一步应把同一合同切换到明确授权的真实图片 Provider，先完成四个人物真实资产，再依次完成四套服装、五个地点和一个道具。
+
+### P0-B：真实 Provider 生产
 
 只有 14/14 production credit 后才进入：
 
@@ -295,9 +286,9 @@ npm run dev
 3. /Users/wuyu/Desktop/china-culture-kb/.codex/skills/china-culture-story-agent/references/story-agent-contract.md
 4. /Users/wuyu/Desktop/china-culture-kb/.codex/skills/superpowers-lite/SKILL.md
 
-当前正式项目是 20260720-series-ujl3atax（《皮影诡戏：守灯人》）。14/14 个稳定身份定义和 2/2 条世界规则定义均已完整，E1/E10/E20 共 6 条规则绑定齐全；但真人视觉批准 0/16、真实资产 0/14、production credit 0/14、Provider 成片 0。
+当前正式项目是 20260720-series-ujl3atax（《皮影诡戏：守灯人》）。14/14 个稳定身份定义、2/2 条世界规则定义、16/16 真人视觉批准和 E1/E10/E20 共 6 条规则绑定均已完成。四人物已通过 GEARS 无 API 测试闭环并回写四张可预览测试 PNG，但这些测试件明确不是真实资产；真实资产 0/14、production credit 0/14、Provider 成片 0。
 
-保护现有工作区：禁止 reset、checkout、clean 或覆盖用户成果。先做只读现场核验，再优先协助完成 16 项真人视觉批准；前后端单项建议草稿链、待复核导航、审批缺项定位及失败/stale 保护均已贯通，如继续自动化则优先实现“为全部空白定义生成建议”的只读批量预览。未经明确授权不得调用付费/外部 Provider。
+保护现有工作区：禁止 reset、checkout、clean 或覆盖用户成果。先做只读现场核验，再优先把真实图片 Provider 接入已验证的 character asset bootstrap 合同，完成四人物真实资产和审核链；随后补齐服装、地点、道具，达到 14/14 production credit，再执行真实 E1 试产。未经明确授权不得调用付费/外部 Provider。
 
 每轮必须汇报：本轮完成百分比、软件工程进度、正式项目各原子计数、改动文件、验证证据、正式数据影响、外部阻断和下一步。
 ```
@@ -471,3 +462,35 @@ npm run build
 ```
 
 正式项目 JSON 未被写入，原子计数仍是：定义 16/16、真人视觉批准 0/16、真实资产 0/14、production credit 0/14、Provider 成片 0。软件工程下一切片建议实现不持久化的“全部空白定义建议预览”；业务首要阻断仍是 16 项真人逐项批准。
+
+## 16. 2026-07-23 小推进：Visual Bible → GEARS 四人物无 API 图片闭环
+
+本轮纠正了两个架构误区：旧 `/gears/jobs` 是 execution worker 合同，不适用于 GEARS v2 工作台；旧分集 `gears_delivery.character_assets` 也不是当前已批准 Visual Bible 的权威人物来源。采用独立 bootstrap 合同后，已贯通：
+
+1. Story Agent 从当前批准的四人物身份和四套主服装构建人物生成请求。
+2. GEARS 创建/复用项目与四个人物实体，复用正式画风包与人物 prompt composer。
+3. `generation_mode=local_test` 使用确定性 PNG Provider 行为，不读取或调用任何外部图片 API。
+4. GEARS 返回人物、base-sheet version、媒体 URL、媒体 SHA、prompt SHA 和明确零信用边界。
+5. Story Agent 下载图片，校验 SHA-256，再写入系列不可变媒体目录和稳定人物 identity。
+6. 页面显示四张安全预览及“本地测试件、永不计 production credit”标记。
+7. 人物定义指纹生成稳定 idempotency key；相同输入第二次返回 `replayed`，Story Agent 复用 4/4。
+8. canonical 人物资产若已有非测试真实文件，local-test 入口会失败关闭，绝不覆盖真实资产。
+
+正式项目新增四张本地测试 PNG：盗谱者、开发商、林灯、沈砚。每张均有真实字节和 SHA，但 `provider=gears_local_test`，只证明工程链路，不计“真实图片资产”。正式计数因此保持：真人视觉批准 16/16、真实图片资产 0/14、production credit 0/14、Provider 成片 0。
+
+关键验证：
+
+```text
+GEARS pytest：1 passed
+GEARS Ruff：passed
+GEARS mypy：passed
+Story Agent 聚焦 Vitest：2 files / 9 tests passed
+Story Agent server tsc：passed
+Story Agent client vue-tsc：passed
+真实 HTTP 首次：4 characters，external=0，credit=0
+真实 HTTP 重放：gears_status=replayed，imported=0，reused=4
+浏览器：按钮可见可用；消息显示 4/4、外部 API 0、production credit 0
+浏览器：4 个测试标记、4 张安全预览，人物分别为盗谱者/开发商/林灯/沈砚
+```
+
+下一步不应继续扩展假 Provider。应为同一合同增加显式授权、预算和 credential gate 下的真实图片 Provider 模式，先用四人物做小批量试产；真实图片回写后，逐个完成授权与真人媒体审核，测试件不得自动迁移任何批准状态。

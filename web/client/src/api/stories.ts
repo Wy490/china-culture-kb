@@ -12,6 +12,7 @@ import type {
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
   AiComicSeriesGearsJobCallbackResult,
+  AiComicSeriesGearsCharacterAssetLocalTestResult,
   AiComicSeriesGearsJobStatusSyncResult,
   AiComicSeriesGearsJobSubmitResult,
   SeedancePromptPackage,
@@ -377,6 +378,13 @@ export function exportAiComicSeriesSeedanceVersionComparisonPackage(seriesProjec
 export function exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId: string) {
   return apiPost<AiComicSeriesSeedanceAssetReportPackage>(
     `/story-outline/ai-comic-series-projects/${seriesProjectId}/export-seedance-asset-report`,
+    {},
+  )
+}
+
+export function runAiComicSeriesGearsCharacterAssetLocalTest(seriesProjectId: string) {
+  return apiPost<AiComicSeriesGearsCharacterAssetLocalTestResult>(
+    `/story-outline/ai-comic-series-projects/${seriesProjectId}/gears-character-assets/local-test`,
     {},
   )
 }

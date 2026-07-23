@@ -1601,6 +1601,8 @@ export interface GearsWorkbenchCapabilities {
   service: 'gears-workbench';
   supported_delivery_schemas: string[];
   workbench_import_supported: true;
+  character_asset_bootstrap_supported: true;
+  character_asset_generation_modes: ['local_test'];
   execution_worker_supported: false;
   bearer_auth_required: true;
   dry_run_default: true;
@@ -1724,6 +1726,81 @@ export interface GearsWorkbenchImportEnvelope {
   source: GearsWorkbenchImportSource;
   delivery: GearsDeliveryPackage;
   mapping: GearsWorkbenchMappingOptions;
+}
+
+export interface GearsCharacterAssetBootstrapSource {
+  source_system: 'story-agent';
+  project_id: string;
+  version_id: string;
+  source_fingerprint: string;
+}
+
+export interface GearsCharacterAssetBootstrapCharacter {
+  identity_id: string;
+  definition_fingerprint: string;
+  name: string;
+  role_position: '主角' | '反派' | '配角';
+  species_type: '人类';
+  ethnicity: ['东亚'];
+  gender: '男' | '女' | '其他' | '未指定';
+  age_range: '儿童' | '少年' | '青年' | '中年' | '老年';
+  appearance_features: string;
+  clothing: string;
+  signature_objects?: string;
+  background_oneliner?: string;
+}
+
+export interface GearsCharacterAssetBootstrapRequest {
+  schema_version: 'story-agent-character-asset-bootstrap/v1';
+  idempotency_key: string;
+  source: GearsCharacterAssetBootstrapSource;
+  character_style_pack_id: string;
+  generation_mode: 'local_test';
+  characters: GearsCharacterAssetBootstrapCharacter[];
+}
+
+export interface GearsCharacterAssetBootstrapItem {
+  identity_id: string;
+  definition_fingerprint: string;
+  name: string;
+  gears_project_id: string;
+  gears_character_id: string;
+  base_sheet_version_id: string;
+  provider: 'gears_local_test';
+  model: 'gears-local-test-card';
+  media_url: string;
+  content_sha256: string;
+  prompt_sha256: string;
+}
+
+export interface GearsCharacterAssetBootstrapResult {
+  schema_version: 'story-agent-character-asset-bootstrap-result/v1';
+  status: 'applied' | 'replayed';
+  idempotency_key: string;
+  generation_mode: 'local_test';
+  source: GearsCharacterAssetBootstrapSource;
+  characters: GearsCharacterAssetBootstrapItem[];
+  external_provider_call_count: 0;
+  local_test_artifact_count: number;
+  real_delivery_credit_count: 0;
+  credit_boundary: {
+    local_test_only: true;
+    external_provider_invoked: false;
+    counts_as_real_image_asset: false;
+    counts_as_production_credit: false;
+  };
+}
+
+export interface AiComicSeriesGearsCharacterAssetLocalTestResult {
+  schema_version: 'ai-comic-series-gears-character-assets-local-test-result/v1';
+  detail: AiComicSeriesProjectDetail;
+  gears_result: GearsCharacterAssetBootstrapResult;
+  imported_assets: AiComicSeedanceAssetLibraryItem[];
+  imported_asset_count: number;
+  reused_asset_count: number;
+  external_provider_call_count: 0;
+  production_credit_count: 0;
+  local_test_only: true;
 }
 
 export type GearsExecutionJobType =

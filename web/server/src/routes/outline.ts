@@ -111,6 +111,7 @@ import {
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
+import { runAiComicSeriesGearsCharacterAssetLocalTest } from '../services/ai-comic-series-gears-character-assets-service.js';
 import { parseMultipartAssetUpload } from '../services/multipart-asset-upload-service.js';
 import {
   filterProductResourcesForRequest,
@@ -979,6 +980,21 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await updateAiComicSeriesSeedanceAssetLibrary(seriesProjectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST .../gears-character-assets/local-test — Visual Bible → GEARS → immutable test assets
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/gears-character-assets/local-test',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await runAiComicSeriesGearsCharacterAssetLocalTest(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);
