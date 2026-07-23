@@ -1161,3 +1161,70 @@ human review required：false
 ```
 
 当前边界仍与用户优先级一致：这些是可复跑的 AI 图片功能测试资产，`rights_status`、`human_review_status` 和人工 identity 批准保持 pending，production credit 为 0。真人测试未被重新放回当前关键路径。下一功能切片应在不依赖真人审核的前提下，把这四个持久图片项目直接推进到 Seedance prompt export、镜头任务提交/回调、失败重试和后期装配的同项目证据，而不是继续增加同质母图。
+
+## 19. 2026-07-24 四个持久图片项目同项目全生命周期
+
+第 18 节所列下一切片已经完成。新增可重复运行命令：
+
+```bash
+cd web
+npm run smoke:story-agent-persistent-lifecycle
+```
+
+该命令不创建隔离替身项目，而是从图片绑定报告读取第 18 节的四个持久项目，在保留 34 个真实 AI 图片身份绑定和 126 个镜头引用的同一项目状态中继续执行：
+
+1. 导出全部 Seedance 提示词并初始化 126 条生产台账；
+2. 硬校验每个镜头都有 required 图片槽、`@图片` 提示和零缺失引用；
+3. 通过本地 mocked GEARS 适配器提交 126 个镜头任务；
+4. 每个系列主动注入一次瞬时失败，再按同一 `source_unit_id` 精确重试；
+5. 导入全部成功回调并确认 126/126 镜头 ready；
+6. 写出全系列剪辑、126 条字幕及烧录证据；
+7. 绑定音频计划建议的全部 18 类音频资产，确保 `missing_audio_count=0`；
+8. 写出混音、36 张片头片尾、最终 manifest；
+9. 为四个系列各建立一个不可变 release，并重新读取归档字节复核 output / manifest SHA-256。
+
+### 19.1 图片引用与同项目状态硬门禁
+
+新烟测不是只确认“后期函数返回成功”。运行前后都会重新导出镜头资产报告，并将以下条件设为硬失败：
+
+- 图片绑定报告必须为 passed；
+- 34/34 图片不可变预览字节必须与内容 SHA-256 一致；
+- functional identity mapping 必须匹配当前视觉定义；
+- 126/126 镜头必须有当前图片绑定，`unbound_shot_count=0`；
+- 所有 Seedance 镜头必须有 required 图片槽，且不得超载或缺少必需槽；
+- 本地模拟前必须把本轮状态显式重置为 `prompt_exported`，保证命令可重入；
+- 每个项目必须恰好恢复一次主动注入的失败；
+- 剪辑、字幕、音频、标题卡和最终交付台账必须全部为 ready；
+- 最终 release 必须 immutable，归档内容哈希必须可重新计算并一致；
+- 外部调用授权、实际 Provider 费用和 production credit 必须全部为零。
+
+### 19.2 连续复跑证据
+
+第一次完整执行通过后，先重新运行图片资产完整性烟测，确认 34 个身份全部复用、0 新建、126 个镜头仍无绑定缺口；随后再次运行同项目全生命周期命令。两次全生命周期运行均通过，第二次最终证据为：
+
+```text
+项目：4/4 persistent projects
+内容：14 episodes / 126 shots
+图片：34 assets / 126 bound shots / 473 prompt image references / 0 unbound
+任务：126 initial jobs / 4 injected failures / 4 exact retries / 126 ready
+字幕：126 cues
+音频：18 bound assets / 0 missing
+片头片尾：36 cards
+后期：4/4 cut、subtitle、audio、title cards、final delivery 全部 ready
+发布：4/4 immutable release，output 与 manifest SHA-256 全部复核通过
+边界：0 external provider call / 0 authorization / 0 actual provider cost / 0 production credit
+```
+
+结构化运行报告保存在：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260723/persistent-lifecycle-report.json
+```
+
+本轮同时完成服务端源码与 scripts 严格 TypeScript 检查、4 个直接相关测试文件的 16 项聚焦回归、服务端全量 Vitest 回归和 tsup 生产构建，全部通过。
+
+### 19.3 制品真实性边界
+
+本轮 8 张源 PNG 和由其建立的 34 个身份绑定仍是真实 `gpt-image-2` AI 图片资产；为避免外部费用和真人门禁，本轮视频、音频与字体文件是带有明确 `LOCAL SYNTHETIC` 标记的本地功能夹具。它们证明任务编排、状态恢复、引用链、后期写盘、manifest 和不可变发布机制可以在同一持久项目中稳定工作，不代表已经生成可发布的视频画面或取得图片权利授权。
+
+真人测试继续延后，且没有被烟测结果伪装成已完成。下一优先切片应是将本地合成视频夹具逐步替换为真实的视频生成结果，同时继续由机器门禁控制外呼授权、费用、回调可靠性和媒体质量；在用户明确授权真实 Provider 调用前，当前零外呼边界保持不变。

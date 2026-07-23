@@ -22,7 +22,8 @@
     "smoke:audit-crash": "npm run smoke:audit-crash -w server --",
     "smoke:story-agent-full-function": "npm run smoke:story-agent-full-function -w server --",
     "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --",
-    "smoke:story-agent-cross-seed-images": "npm run smoke:story-agent-cross-seed-images -w server --"
+    "smoke:story-agent-cross-seed-images": "npm run smoke:story-agent-cross-seed-images -w server --",
+    "smoke:story-agent-persistent-lifecycle": "npm run smoke:story-agent-persistent-lifecycle -w server --"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
