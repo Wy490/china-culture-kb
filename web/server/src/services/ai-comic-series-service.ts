@@ -119,6 +119,7 @@ import type {
   AiComicSeriesProductionReadinessReport,
   AiComicSeriesSeedanceProviderRecoveryResult,
   AiComicSeriesSeedanceAssetReportPackage,
+  AiComicSeriesSeedancePreproductionPackage,
   AiComicSeriesVisualProductionCompletionPlan,
   AiComicSeriesSeedanceEditAssetPackage,
   AiComicSeedanceEditAssetPackageEpisode,
@@ -3124,6 +3125,96 @@ function buildAiComicSeriesSeedanceAssetReportMarkdown(
       ]),
     ),
   ];
+  return lines.join('\n');
+}
+
+function buildAiComicSeriesSeedancePreproductionMarkdown(
+  pkg: Omit<AiComicSeriesSeedancePreproductionPackage, 'markdown'>,
+): string {
+  const lines = [
+    `# ${pkg.series_title} — Story Agent → Seedance 前置制作交付包`,
+    '',
+    `> schema: ${pkg.schema_version}`,
+    `> seriesProjectId: ${pkg.project.series_project_id}`,
+    `> exportedAt: ${pkg.exported_at}`,
+    `> 验收状态: ${pkg.acceptance.status}`,
+    `> 故事分集: ${pkg.acceptance.story_episode_count}/${pkg.acceptance.expected_episode_count}`,
+    `> 脚本镜头 / Seedance 提示词: ${pkg.acceptance.script_shot_count}/${pkg.acceptance.seedance_prompt_shot_count}`,
+    `> 图片资产: ${pkg.acceptance.immutable_image_asset_count}/${pkg.acceptance.image_asset_count}`,
+    `> 当前视觉身份映射: ${pkg.acceptance.current_identity_mapping_count}/${pkg.acceptance.expected_identity_count}`,
+    `> 镜头绑定 / 缺口: ${pkg.acceptance.bound_shot_count}/${pkg.acceptance.unbound_shot_count}`,
+    '',
+    '## 产品边界',
+    '',
+    '- Story Agent 交付：故事、脚本、Seedance 2.0 提示词、图片资产。',
+    '- 视频生成不在本 Agent 范围内；由用户在 Seedance 中执行。',
+    '- 功能验收不要求真人测试、权利批准或 production credit。',
+    '- 权利与真人审核只影响后续正式商用，不影响本前置制作包的机器功能验收。',
+    '',
+    '## 机器验收',
+    '',
+    ...(pkg.acceptance.blockers.length
+      ? pkg.acceptance.blockers.map(item => `- 阻塞：${item}`)
+      : ['- 通过：故事、脚本、提示词、图片和逐镜引用均完整。']),
+    ...pkg.acceptance.warnings.map(item => `- 提醒：${item}`),
+    '',
+    '## 图片资产',
+    '',
+    ...markdownTable(
+      ['资产 ID', '稳定身份', '类型', '名称', '本地文件', 'SHA-256', '来源', '使用镜头数'],
+      pkg.image_assets.map(asset => [
+        asset.asset_id,
+        asset.series_identity_id ?? '未映射',
+        seedanceAssetKindText(asset.kind),
+        asset.label,
+        asset.local_path ?? asset.file_url ?? asset.file_id ?? '缺失',
+        asset.content_sha256 ?? '缺失',
+        asset.provider ?? '未记录',
+        String(asset.required_by_shot_count),
+      ]),
+    ),
+    '',
+    '## 分集故事、脚本与 Seedance 提示词',
+  ];
+
+  for (const episode of pkg.episodes) {
+    lines.push(
+      '',
+      `### 第${episode.episode_no}集：${episode.episode_title}`,
+      '',
+      `- storyId: ${episode.story_id}`,
+      `- 主题: ${episode.story.theme}`,
+      `- 一句话故事: ${episode.story.logline}`,
+      `- 镜头数: ${episode.script.shot_count}`,
+      `- 估算时长: ${episode.script.total_duration_sec} 秒`,
+      '',
+      '#### 故事正文',
+      '',
+      episode.story.full_text,
+      '',
+      '#### 镜头脚本与可复制提示词',
+    );
+    for (const shot of episode.script.shots) {
+      const binding = episode.shot_asset_bindings.find(item => item.shot_id === shot.shot_id);
+      lines.push(
+        '',
+        `##### ${shot.shot_id} · 场景 ${shot.source_scene_id}`,
+        '',
+        `- 时长: ${shot.duration_sec} 秒`,
+        `- 人物: ${shot.characters.join('、') || '未指定'}`,
+        `- 场景: ${shot.location}`,
+        `- 剧本动作/对白: ${shot.script_text}`,
+        `- 画面: ${shot.visual_prompt}`,
+        `- 运镜: ${shot.camera_suggestion}`,
+        `- 图片引用: ${binding?.reference_slots.join('、') || '无'}`,
+        `- 图片资产 ID: ${binding?.required_asset_ids.join('、') || '无'}`,
+        '',
+        '```text',
+        shot.seedance_prompt,
+        '```',
+      );
+    }
+  }
   return lines.join('\n');
 }
 
@@ -8866,6 +8957,168 @@ export async function exportAiComicSeriesSeedanceAssetReportPackage(
   return success({
     ...basePackage,
     markdown: buildAiComicSeriesSeedanceAssetReportMarkdown(basePackage),
+  });
+}
+
+export async function exportAiComicSeriesSeedancePreproductionPackage(
+  seriesProjectId: string,
+): Promise<ApiResponse<AiComicSeriesSeedancePreproductionPackage>> {
+  const detail = await readSeriesProject(seriesProjectId);
+  if (!detail) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
+  }
+
+  const promptResult = await exportAiComicSeriesSeedancePrompts(seriesProjectId);
+  if (!promptResult.ok || !promptResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      promptResult.error?.message ?? 'Seedance prompt package export failed',
+    );
+  }
+  const assetResult = await exportAiComicSeriesSeedanceAssetReportPackage(seriesProjectId);
+  if (!assetResult.ok || !assetResult.data) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      assetResult.error?.message ?? 'Seedance image asset package export failed',
+    );
+  }
+
+  const promptPackage = promptResult.data;
+  const assetPackage = assetResult.data;
+  const episodes: AiComicSeriesSeedancePreproductionPackage['episodes'] = [];
+  for (const episode of promptPackage.episodes) {
+    const storyResult = await getStory(episode.story_id);
+    if (!storyResult.ok || !storyResult.data) continue;
+    const story = storyResult.data;
+    episodes.push({
+      episode_no: episode.episode_no,
+      episode_title: episode.episode_title,
+      story_id: episode.story_id,
+      story: {
+        title: story.title,
+        logline: story.logline,
+        theme: story.theme,
+        full_text: story.full_text,
+        scene_breakdown: story.scene_breakdown,
+        gears_segments: story.gears_segments,
+        cultural_constraints: story.cultural_constraints,
+        credibility_note: story.credibility_note,
+      },
+      script: {
+        shot_count: episode.shot_count,
+        total_duration_sec: episode.total_duration_sec,
+        shots: episode.package.shot_units,
+      },
+      seedance_prompt_package: episode.package,
+      shot_asset_bindings: assetPackage.shots.filter(item => item.episode_no === episode.episode_no),
+    });
+  }
+
+  const scriptShots = episodes.flatMap(episode => episode.script.shots.map(shot => ({
+    episode_no: episode.episode_no,
+    shot,
+  })));
+  const bindingKeys = new Set(assetPackage.shots.map(shot => `${shot.episode_no}:${shot.shot_id}`));
+  const missingBindingCount = scriptShots.filter(item => (
+    !bindingKeys.has(`${item.episode_no}:${item.shot.shot_id}`)
+  )).length;
+  const emptyScriptCount = scriptShots.filter(item => !item.shot.script_text.trim()).length;
+  const emptyPromptCount = scriptShots.filter(item => !item.shot.seedance_prompt.trim()).length;
+  const immutableImageAssets = assetPackage.assets.filter(asset => (
+    Boolean(asset.local_path)
+    && Boolean(asset.content_sha256?.match(/^[a-f0-9]{64}$/i))
+  ));
+  const currentFunctionalIdentityIds = new Set(
+    assetPackage.completion_plan.identities
+      .filter(identity => identity.functional_test_identity_mapping_current)
+      .map(identity => identity.identity_id),
+  );
+  const requiredIdentityIds = new Set(
+    assetPackage.shots.flatMap(shot => shot.required_series_identity_ids),
+  );
+  const currentRequiredIdentityMappingCount = [...requiredIdentityIds]
+    .filter(identityId => currentFunctionalIdentityIds.has(identityId))
+    .length;
+  const deliveredImageAssets = immutableImageAssets.filter(asset => (
+    Boolean(asset.series_identity_id)
+    && currentFunctionalIdentityIds.has(asset.series_identity_id!)
+  ));
+  const optionalCatalogAssetCount = assetPackage.total_asset_count - deliveredImageAssets.length;
+  const blockers = unique([
+    ...(episodes.length !== promptPackage.total_episode_count
+      ? [`故事分集不完整：${episodes.length}/${promptPackage.total_episode_count}`]
+      : []),
+    ...(promptPackage.missing_episodes.length
+      ? [`仍有 ${promptPackage.missing_episodes.length} 集未生成`]
+      : []),
+    ...(scriptShots.length === 0 ? ['没有可交付的镜头脚本'] : []),
+    ...(emptyScriptCount > 0 ? [`${emptyScriptCount} 个镜头缺少剧本动作或对白`] : []),
+    ...(emptyPromptCount > 0 ? [`${emptyPromptCount} 个镜头缺少 Seedance 提示词`] : []),
+    ...(missingBindingCount > 0 ? [`${missingBindingCount} 个提示词镜头缺少图片绑定记录`] : []),
+    ...(assetPackage.unbound_shot_count > 0
+      ? [`${assetPackage.unbound_shot_count} 个镜头存在必需图片缺口`]
+      : []),
+    ...(assetPackage.missing_reference_slot_count > 0
+      ? [`${assetPackage.missing_reference_slot_count} 个图片资产缺少 @ 引用槽位`]
+      : []),
+    ...(deliveredImageAssets.length === 0
+      ? ['没有具备本地文件、SHA-256 与当前身份映射的可交付图片资产']
+      : []),
+    ...(currentRequiredIdentityMappingCount !== requiredIdentityIds.size
+      ? [`逐镜必需视觉身份映射不完整：${currentRequiredIdentityMappingCount}/${requiredIdentityIds.size}`]
+      : []),
+  ]);
+  const warnings = unique([
+    ...(assetPackage.assets.some(asset => asset.rights_status !== 'authorized')
+      ? ['图片权利状态尚未全部授权；不影响功能验收，但正式商用前需处理。']
+      : []),
+    ...(assetPackage.assets.some(asset => asset.human_review_status !== 'approved')
+      ? ['真人媒体审核尚未全部完成；按当前产品边界不作为功能验收阻塞项。']
+      : []),
+    ...(assetPackage.completion_plan.summary.production_credit_count < deliveredImageAssets.length
+      ? ['production credit 尚未覆盖全部视觉身份；仅影响正式生产信用，不影响交付到 Seedance。']
+      : []),
+    ...(optionalCatalogAssetCount > 0
+      ? [`视觉圣经另有 ${optionalCatalogAssetCount} 个未进入当前交付包的候选资产项；未被镜头要求，不阻塞。`]
+      : []),
+  ]);
+  const exportedAt = new Date().toISOString();
+  const basePackage: Omit<AiComicSeriesSeedancePreproductionPackage, 'markdown'> = {
+    schema_version: 'ai-comic-series-seedance-preproduction-package/v1',
+    project: promptPackage.project,
+    series_title: promptPackage.series_title,
+    exported_at: exportedAt,
+    target_platform: 'seedance_2_0',
+    boundary: {
+      story_agent_delivers: ['story', 'script', 'seedance_prompt', 'image_asset'],
+      video_generation_in_scope: false,
+      video_generation_executor: 'user_in_seedance',
+      human_test_required_for_functional_acceptance: false,
+      rights_or_human_review_grants_production_credit: false,
+    },
+    acceptance: {
+      status: blockers.length === 0 ? 'ready' : 'blocked',
+      story_episode_count: episodes.length,
+      expected_episode_count: promptPackage.total_episode_count,
+      script_shot_count: scriptShots.length,
+      seedance_prompt_shot_count: scriptShots.length - emptyPromptCount,
+      image_asset_count: deliveredImageAssets.length,
+      immutable_image_asset_count: deliveredImageAssets.length,
+      current_identity_mapping_count: currentRequiredIdentityMappingCount,
+      expected_identity_count: requiredIdentityIds.size,
+      bound_shot_count: assetPackage.shot_binding_count - assetPackage.unbound_shot_count,
+      unbound_shot_count: assetPackage.unbound_shot_count,
+      blockers,
+      warnings,
+    },
+    episodes,
+    image_assets: deliveredImageAssets,
+    visual_bible: assetPackage.visual_bible,
+    missing_episodes: promptPackage.missing_episodes,
+  };
+  return success({
+    ...basePackage,
+    markdown: buildAiComicSeriesSeedancePreproductionMarkdown(basePackage),
   });
 }
 

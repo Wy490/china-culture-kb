@@ -7243,6 +7243,64 @@ export interface AiComicSeriesSeedanceAssetReportPackage {
   markdown: string;
 }
 
+export interface AiComicSeriesSeedancePreproductionEpisode {
+  episode_no: number;
+  episode_title: string;
+  story_id: string;
+  story: {
+    title: string;
+    logline: string;
+    theme: string;
+    full_text: string;
+    scene_breakdown: StoryScene[];
+    gears_segments: GearsSegment[];
+    cultural_constraints: string[];
+    credibility_note: string;
+  };
+  script: {
+    shot_count: number;
+    total_duration_sec: number;
+    shots: SeedancePromptShotUnit[];
+  };
+  seedance_prompt_package: SeedancePromptPackage;
+  shot_asset_bindings: AiComicSeedanceShotAssetBinding[];
+}
+
+export interface AiComicSeriesSeedancePreproductionPackage {
+  schema_version: 'ai-comic-series-seedance-preproduction-package/v1';
+  project: AiComicSeriesProjectMeta;
+  series_title: string;
+  exported_at: string;
+  target_platform: 'seedance_2_0';
+  boundary: {
+    story_agent_delivers: Array<'story' | 'script' | 'seedance_prompt' | 'image_asset'>;
+    video_generation_in_scope: false;
+    video_generation_executor: 'user_in_seedance';
+    human_test_required_for_functional_acceptance: false;
+    rights_or_human_review_grants_production_credit: false;
+  };
+  acceptance: {
+    status: 'ready' | 'blocked';
+    story_episode_count: number;
+    expected_episode_count: number;
+    script_shot_count: number;
+    seedance_prompt_shot_count: number;
+    image_asset_count: number;
+    immutable_image_asset_count: number;
+    current_identity_mapping_count: number;
+    expected_identity_count: number;
+    bound_shot_count: number;
+    unbound_shot_count: number;
+    blockers: string[];
+    warnings: string[];
+  };
+  episodes: AiComicSeriesSeedancePreproductionEpisode[];
+  image_assets: AiComicSeedanceAssetReferenceItem[];
+  visual_bible: AiComicSeriesVisualBible;
+  missing_episodes: AiComicSeriesSeedanceExportPackage['missing_episodes'];
+  markdown: string;
+}
+
 export interface AiComicSeedanceEditAssetPackageShot {
   production_id: string;
   episode_no: number;

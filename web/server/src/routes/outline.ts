@@ -62,6 +62,7 @@ import {
   exportAiComicSeriesBible,
   exportAiComicSeriesCommercialBlindReviewPackage,
   exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedancePreproductionPackage,
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
@@ -517,6 +518,22 @@ outlineRouter.post(
     try {
       const { seriesProjectId } = req.params as { seriesProjectId: string };
       const result = await exportAiComicSeriesSeedancePrompts(seriesProjectId);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-preproduction-package
+// Export the Story Agent boundary: story + script + Seedance prompts + image assets.
+outlineRouter.post(
+  '/ai-comic-series-projects/:seriesProjectId/export-seedance-preproduction-package',
+  validateParams(AiComicSeriesProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { seriesProjectId } = req.params as { seriesProjectId: string };
+      const result = await exportAiComicSeriesSeedancePreproductionPackage(seriesProjectId);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

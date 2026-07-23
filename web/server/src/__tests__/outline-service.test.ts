@@ -19,6 +19,7 @@ import {
   deleteAiComicSeriesProject,
   exportAiComicSeriesBible,
   exportAiComicSeriesSeedanceAssetReportPackage,
+  exportAiComicSeriesSeedancePreproductionPackage,
   exportAiComicSeriesSeedanceAudioPlanPackage,
   exportAiComicSeriesSeedanceCutPackage,
   exportAiComicSeriesSeedanceEditAssetPackage,
@@ -3593,6 +3594,38 @@ describe('outline-service', () => {
     expect(seedanceAssetReportRes.data?.shots[0].required_asset_ids.length).toBeGreaterThan(0);
     expect(seedanceAssetReportRes.data?.markdown).toContain('Seedance 素材引用完整性报告');
     expect(seedanceAssetReportRes.data?.markdown).toContain('正式生产完成计划');
+    const preproductionPackageRes = await exportAiComicSeriesSeedancePreproductionPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(preproductionPackageRes.ok).toBe(true);
+    expect(preproductionPackageRes.data?.schema_version)
+      .toBe('ai-comic-series-seedance-preproduction-package/v1');
+    expect(preproductionPackageRes.data?.boundary).toEqual({
+      story_agent_delivers: ['story', 'script', 'seedance_prompt', 'image_asset'],
+      video_generation_in_scope: false,
+      video_generation_executor: 'user_in_seedance',
+      human_test_required_for_functional_acceptance: false,
+      rights_or_human_review_grants_production_credit: false,
+    });
+    expect(preproductionPackageRes.data?.episodes[0].story.full_text)
+      .toBe(episodeRes.data?.full_text);
+    expect(preproductionPackageRes.data?.episodes[0].script.shots.length)
+      .toBe(seedanceExportRes.data?.total_shot_count);
+    expect(preproductionPackageRes.data?.episodes[0].script.shots[0].seedance_prompt)
+      .toContain('@图片');
+    expect(preproductionPackageRes.data?.image_assets).toHaveLength(0);
+    expect(preproductionPackageRes.data?.acceptance.image_asset_count).toBe(0);
+    expect(preproductionPackageRes.data?.acceptance.status).toBe('blocked');
+    expect(preproductionPackageRes.data?.acceptance.blockers.some(item =>
+      item.includes('没有具备本地文件')
+    )).toBe(true);
+    expect(preproductionPackageRes.data?.acceptance.warnings.some(item =>
+      item.includes('真人媒体审核')
+    )).toBe(true);
+    expect(preproductionPackageRes.data?.markdown)
+      .toContain('Story Agent → Seedance 前置制作交付包');
+    expect(preproductionPackageRes.data?.markdown)
+      .toContain('视频生成不在本 Agent 范围内');
     const firstShotAssetIds = seedanceAssetReportRes.data!.shots[0].required_asset_ids;
     const bindableAsset = seedanceAssetReportRes.data!.assets.find(asset =>
       asset.has_reference_slot

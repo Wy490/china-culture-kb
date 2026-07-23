@@ -15,14 +15,14 @@
 真正需要补齐的是两层：
 
 1. **上游参考理解层**：把影视、剧本、小说和宣传片资料变成有来源、有版权状态、有时间码/文本证据、可复用但不照抄的分析卡。
-2. **下游真实制作层**：真实图片 Provider、角色与场景一致性、关键帧真人审核、视频 Provider、配音/口型/音乐/剪辑和成片质检。
+2. **Story Agent 前置制作层**：稳定生成故事、专业脚本、Seedance 可执行提示词和带身份映射的真实图片资产。视频生成、配音、口型、音乐、剪辑和成片质检由用户在 Seedance 及其下游工作流完成，不属于本 Agent。
 
 当前工程优先级：
 
 1. 先完成 **15 种类型故事生成矩阵 + 15 种专业脚本管线 + Codex 图片资产生成/导入/预览/身份映射**；
 2. 用正式项目反复跑通故事、脚本、分镜、图片需求、图片资产和 GEARS/Seedance 包的功能测试；
-3. 图片资产和分集补齐后，在隔离测试项目中继续覆盖回调、制品导入、重试、剪辑、声音、字幕、片头和最终装配；
-4. 真人媒体审核、14/14 production credit 和正式 Provider 成片属于后续生产验收，不作为当前功能测试门禁。
+3. 把故事正文、镜头脚本、Seedance 提示词、图片文件与逐镜 `@图片` 引用组合成可一键导出的前置制作包；
+4. 真人媒体审核、production credit、视频 Provider、回调、剪辑和真实成片均属于下游制作，不作为 Story Agent 功能测试门禁，也不再列入当前开发完成条件。
 
 ## 1. 本轮研究范围、方法与证据边界
 
@@ -1160,7 +1160,7 @@ human review required：false
 图片资产幂等烟测：34/34 复用，0 新建，126/126 镜头无引用缺口
 ```
 
-当前边界仍与用户优先级一致：这些是可复跑的 AI 图片功能测试资产，`rights_status`、`human_review_status` 和人工 identity 批准保持 pending，production credit 为 0。真人测试未被重新放回当前关键路径。下一功能切片应在不依赖真人审核的前提下，把这四个持久图片项目直接推进到 Seedance prompt export、镜头任务提交/回调、失败重试和后期装配的同项目证据，而不是继续增加同质母图。
+当前边界仍与用户优先级一致：这些是可复跑的 AI 图片功能测试资产，`rights_status`、`human_review_status` 和人工 identity 批准保持 pending，production credit 为 0。真人测试未被重新放回当前关键路径。下一功能切片是把四个持久图片项目直接组合成“故事 + 脚本 + Seedance prompt + 图片文件 + 逐镜引用”的一键前置制作交付包。
 
 ## 19. 2026-07-24 四个持久图片项目同项目全生命周期
 
@@ -1227,4 +1227,57 @@ web/generated/story-agent-cross-seed-image-assets-20260723/persistent-lifecycle-
 
 本轮 8 张源 PNG 和由其建立的 34 个身份绑定仍是真实 `gpt-image-2` AI 图片资产；为避免外部费用和真人门禁，本轮视频、音频与字体文件是带有明确 `LOCAL SYNTHETIC` 标记的本地功能夹具。它们证明任务编排、状态恢复、引用链、后期写盘、manifest 和不可变发布机制可以在同一持久项目中稳定工作，不代表已经生成可发布的视频画面或取得图片权利授权。
 
-真人测试继续延后，且没有被烟测结果伪装成已完成。下一优先切片应是将本地合成视频夹具逐步替换为真实的视频生成结果，同时继续由机器门禁控制外呼授权、费用、回调可靠性和媒体质量；在用户明确授权真实 Provider 调用前，当前零外呼边界保持不变。
+真人测试继续延后，且没有被烟测结果伪装成已完成。根据 2026-07-24 最新产品边界，以上视频、声音、剪辑与 release 测试只保留为可选的下游集成证据，不再继续扩展，也不计入 Story Agent 完成度。真实影片由用户把本 Agent 的提示词和图片资产带入 Seedance 后完成。
+
+## 20. 2026-07-24 Story Agent → Seedance 前置制作包
+
+已新增一键导出接口：
+
+```text
+POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-preproduction-package
+schema: ai-comic-series-seedance-preproduction-package/v1
+```
+
+单个包同时包含：
+
+1. 每集完整故事正文、logline、主题、`scene_breakdown` 和 `gears_segments`；
+2. 每镜头剧本动作/对白、画面、运镜、连续性约束；
+3. 可直接复制到 Seedance 2.0 的逐镜提示词；
+4. 真实图片资产的本地不可变路径、SHA-256、Provider 和稳定视觉身份；
+5. 每个镜头所需图片资产 ID、引用槽和 `@图片` 绑定；
+6. 机器可读产品边界与 acceptance：视频生成不在范围内、执行者为用户的 Seedance 工作流、真人测试不参与功能验收。
+
+新增可重复运行命令：
+
+```bash
+cd web
+npm run smoke:story-agent-seedance-preproduction
+```
+
+四个持久项目实跑结果：
+
+```text
+status: passed
+projects: 4
+episodes: 14
+script / prompt shots: 126
+delivered immutable image assets: 34
+required shot identity mappings: 26/26
+unbound shots: 0
+video generation in Story Agent scope: false
+human test required: false
+```
+
+结构化汇总报告：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproduction-report.json
+```
+
+四个项目的完整 JSON 与 Markdown 交付包：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproduction-packages/
+```
+
+验收口径区分“视觉圣经候选资产”和“真实可交付图片”：只有同时具备本地文件、SHA-256、Provider 记录和当前身份映射的图片进入交付清单；逐镜必需身份必须全部覆盖。未被镜头要求的候选服装或道具不阻塞；权利状态、真人审核和 production credit 只作为正式商用提醒，不影响当前功能通过。

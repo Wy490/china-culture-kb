@@ -23,6 +23,7 @@
     "smoke:story-agent-full-function": "npm run smoke:story-agent-full-function -w server --",
     "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --",
     "smoke:story-agent-cross-seed-images": "npm run smoke:story-agent-cross-seed-images -w server --",
+    "smoke:story-agent-seedance-preproduction": "npm run smoke:story-agent-seedance-preproduction -w server --",
     "smoke:story-agent-persistent-lifecycle": "npm run smoke:story-agent-persistent-lifecycle -w server --"
   },
   "devDependencies": {
