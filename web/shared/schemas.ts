@@ -124,6 +124,153 @@ export const StoryStructureTypeSchema = z.enum([
   'lecture_argument',
 ]);
 
+// ---------------------------------------------------------------------------
+// Reference Intelligence
+// ---------------------------------------------------------------------------
+
+const ReferenceNonEmptyTextSchema = z.string().trim().min(1);
+const ReferenceTimestampSchema = z.string().datetime({ offset: true });
+const ReferenceContentFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const ReferenceTimecodeSchema = z.string().trim().regex(
+  /^(?:\d{1,3}:)?[0-5]\d:[0-5]\d(?:\.\d{1,3})?$/,
+  'timecode must use HH:MM:SS or MM:SS',
+);
+
+export const ReferenceSourceMediaTypeSchema = z.enum([
+  'film',
+  'episode',
+  'promo',
+  'novel',
+  'screenplay',
+  'tutorial',
+]);
+
+export const ReferenceRightsStatusSchema = z.enum([
+  'user_owned',
+  'licensed',
+  'public_domain',
+  'research_only',
+  'unknown',
+]);
+
+export const ReferenceAccessScopeSchema = z.enum([
+  'metadata_only',
+  'excerpt',
+  'full_user_supplied',
+]);
+
+export const ReferenceSourceCreateRequestSchema = z.object({
+  title: ReferenceNonEmptyTextSchema.max(200),
+  media_type: ReferenceSourceMediaTypeSchema,
+  source_url: z.string().url().max(2_000).optional(),
+  platform: ReferenceNonEmptyTextSchema.max(120).optional(),
+  creator: ReferenceNonEmptyTextSchema.max(200).optional(),
+  accessed_at: ReferenceTimestampSchema,
+  rights_status: ReferenceRightsStatusSchema,
+  access_scope: ReferenceAccessScopeSchema,
+  content_fingerprint: ReferenceContentFingerprintSchema.optional(),
+  user_reason: ReferenceNonEmptyTextSchema.max(1_000),
+}).strict();
+
+export const ReferenceSourceRecordSchema = ReferenceSourceCreateRequestSchema.extend({
+  schema_version: z.literal('reference-source-record/v1'),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  created_at: ReferenceTimestampSchema,
+  updated_at: ReferenceTimestampSchema,
+}).strict();
+
+export const FilmReferenceAnalysisSchema = z.object({
+  hook_timecode: ReferenceTimecodeSchema.optional(),
+  central_question: ReferenceNonEmptyTextSchema.max(500).optional(),
+  sequence_beats: z.array(z.object({
+    start: ReferenceTimecodeSchema,
+    end: ReferenceTimecodeSchema,
+    function: ReferenceNonEmptyTextSchema.max(500),
+  }).strict()).min(1).max(200),
+  shot_observations: z.array(z.object({
+    timecode: ReferenceTimecodeSchema,
+    framing: ReferenceNonEmptyTextSchema.max(200).optional(),
+    camera_motion: ReferenceNonEmptyTextSchema.max(300).optional(),
+    blocking: ReferenceNonEmptyTextSchema.max(500).optional(),
+    lighting: ReferenceNonEmptyTextSchema.max(300).optional(),
+    audio_function: ReferenceNonEmptyTextSchema.max(500).optional(),
+    evidence_note: ReferenceNonEmptyTextSchema.max(1_000),
+  }).strict()).min(1).max(500),
+  continuity_methods: z.array(ReferenceNonEmptyTextSchema.max(500)).max(100),
+  reusable_principles: z.array(ReferenceNonEmptyTextSchema.max(500)).min(1).max(100),
+  avoid_copying: z.array(ReferenceNonEmptyTextSchema.max(500)).min(1).max(100),
+}).strict();
+
+export const TextReferenceAnalysisSchema = z.object({
+  source_units: z.array(z.object({
+    source_unit_id: ReferenceNonEmptyTextSchema.max(120),
+    summary: ReferenceNonEmptyTextSchema.max(1_000),
+  }).strict()).min(1).max(1_000),
+  character_wants: z.array(ReferenceNonEmptyTextSchema.max(500)).max(200),
+  scene_patterns: z.array(z.object({
+    objective: ReferenceNonEmptyTextSchema.max(500),
+    opposition: ReferenceNonEmptyTextSchema.max(500),
+    turn: ReferenceNonEmptyTextSchema.max(500),
+    visible_action: ReferenceNonEmptyTextSchema.max(500),
+    subtext: ReferenceNonEmptyTextSchema.max(500).optional(),
+  }).strict()).min(1).max(500),
+  must_keep: z.array(ReferenceNonEmptyTextSchema.max(500)).max(200),
+  compression_options: z.array(ReferenceNonEmptyTextSchema.max(500)).max(200),
+  adaptation_risks: z.array(ReferenceNonEmptyTextSchema.max(500)).max(200),
+  reusable_principles: z.array(ReferenceNonEmptyTextSchema.max(500)).min(1).max(100),
+  avoid_copying: z.array(ReferenceNonEmptyTextSchema.max(500)).min(1).max(100),
+}).strict();
+
+export const ReferenceAnalysisApprovalInputSchema = z.object({
+  approved_by: ReferenceNonEmptyTextSchema.max(120),
+  approved_at: ReferenceTimestampSchema,
+}).strict();
+
+export const FilmReferenceAnalysisCreateRequestSchema = z.object({
+  analysis: FilmReferenceAnalysisSchema,
+  analyzed_by: ReferenceNonEmptyTextSchema.max(120),
+  approval: ReferenceAnalysisApprovalInputSchema.optional(),
+}).strict();
+
+export const TextReferenceAnalysisCreateRequestSchema = z.object({
+  analysis: TextReferenceAnalysisSchema,
+  analyzed_by: ReferenceNonEmptyTextSchema.max(120),
+  approval: ReferenceAnalysisApprovalInputSchema.optional(),
+}).strict();
+
+const ReferenceAnalysisApprovalSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('pending') }).strict(),
+  z.object({
+    status: z.literal('approved'),
+    approved_by: ReferenceNonEmptyTextSchema.max(120),
+    approved_at: ReferenceTimestampSchema,
+  }).strict(),
+]);
+
+const ReferenceAnalysisRecordBaseSchema = z.object({
+  schema_version: z.literal('reference-analysis-record/v1'),
+  analysis_id: z.string().regex(/^analysis-[a-f0-9-]+$/),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  analyzed_by: ReferenceNonEmptyTextSchema.max(120),
+  analyzed_at: ReferenceTimestampSchema,
+  approval: ReferenceAnalysisApprovalSchema,
+}).strict();
+
+export const FilmReferenceAnalysisRecordSchema = ReferenceAnalysisRecordBaseSchema.extend({
+  analysis_type: z.literal('film'),
+  analysis: FilmReferenceAnalysisSchema,
+}).strict();
+
+export const TextReferenceAnalysisRecordSchema = ReferenceAnalysisRecordBaseSchema.extend({
+  analysis_type: z.literal('text'),
+  analysis: TextReferenceAnalysisSchema,
+}).strict();
+
+export const ReferenceAnalysisRecordSchema = z.discriminatedUnion('analysis_type', [
+  FilmReferenceAnalysisRecordSchema,
+  TextReferenceAnalysisRecordSchema,
+]);
+
 export const ReferenceStrengthSchema = z.enum(['light', 'medium', 'strong']);
 export const GenreStrictnessSchema = z.enum(['loose', 'balanced', 'strict']);
 export const StoryGenerationPrioritySchema = z.enum(['balanced', 'plot_first', 'knowledge_first']);

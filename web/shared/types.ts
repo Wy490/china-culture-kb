@@ -480,6 +480,143 @@ export interface StylePack {
 }
 
 // ---------------------------------------------------------------------------
+// Reference Intelligence — source, evidence, rights, and analysis audit
+// ---------------------------------------------------------------------------
+
+export type ReferenceSourceMediaType =
+  | 'film'
+  | 'episode'
+  | 'promo'
+  | 'novel'
+  | 'screenplay'
+  | 'tutorial';
+
+export type ReferenceRightsStatus =
+  | 'user_owned'
+  | 'licensed'
+  | 'public_domain'
+  | 'research_only'
+  | 'unknown';
+
+export type ReferenceAccessScope =
+  | 'metadata_only'
+  | 'excerpt'
+  | 'full_user_supplied';
+
+export interface ReferenceSourceRecord {
+  schema_version: 'reference-source-record/v1';
+  reference_id: string;
+  title: string;
+  media_type: ReferenceSourceMediaType;
+  source_url?: string;
+  platform?: string;
+  creator?: string;
+  accessed_at: string;
+  rights_status: ReferenceRightsStatus;
+  access_scope: ReferenceAccessScope;
+  content_fingerprint?: string;
+  user_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FilmReferenceSequenceBeat {
+  start: string;
+  end: string;
+  function: string;
+}
+
+export interface FilmReferenceShotObservation {
+  timecode: string;
+  framing?: string;
+  camera_motion?: string;
+  blocking?: string;
+  lighting?: string;
+  audio_function?: string;
+  evidence_note: string;
+}
+
+export interface FilmReferenceAnalysis {
+  hook_timecode?: string;
+  central_question?: string;
+  sequence_beats: FilmReferenceSequenceBeat[];
+  shot_observations: FilmReferenceShotObservation[];
+  continuity_methods: string[];
+  reusable_principles: string[];
+  avoid_copying: string[];
+}
+
+export interface TextReferenceSourceUnit {
+  source_unit_id: string;
+  summary: string;
+}
+
+export interface TextReferenceScenePattern {
+  objective: string;
+  opposition: string;
+  turn: string;
+  visible_action: string;
+  subtext?: string;
+}
+
+export interface TextReferenceAnalysis {
+  source_units: TextReferenceSourceUnit[];
+  character_wants: string[];
+  scene_patterns: TextReferenceScenePattern[];
+  must_keep: string[];
+  compression_options: string[];
+  adaptation_risks: string[];
+  reusable_principles: string[];
+  avoid_copying: string[];
+}
+
+export type ReferenceAnalysisApproval =
+  | { status: 'pending' }
+  | { status: 'approved'; approved_by: string; approved_at: string };
+
+export interface FilmReferenceAnalysisRecord {
+  schema_version: 'reference-analysis-record/v1';
+  analysis_id: string;
+  reference_id: string;
+  analysis_type: 'film';
+  analysis: FilmReferenceAnalysis;
+  analyzed_by: string;
+  analyzed_at: string;
+  approval: ReferenceAnalysisApproval;
+}
+
+export interface TextReferenceAnalysisRecord {
+  schema_version: 'reference-analysis-record/v1';
+  analysis_id: string;
+  reference_id: string;
+  analysis_type: 'text';
+  analysis: TextReferenceAnalysis;
+  analyzed_by: string;
+  analyzed_at: string;
+  approval: ReferenceAnalysisApproval;
+}
+
+export type ReferenceAnalysisRecord =
+  | FilmReferenceAnalysisRecord
+  | TextReferenceAnalysisRecord;
+
+export interface ReferenceLibraryDetail {
+  source: ReferenceSourceRecord;
+  analyses: ReferenceAnalysisRecord[];
+}
+
+export interface BenchmarkCard {
+  benchmark_id: string;
+  reference_ids: string[];
+  target_video_type: string;
+  target_dimension: 'hook' | 'character' | 'scene' | 'visual' | 'audio' | 'promo';
+  principle: string;
+  evidence_refs: string[];
+  approved_by?: string;
+  approved_at?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Generation mode — structured status for model adapter results
 // ---------------------------------------------------------------------------
 
