@@ -28,6 +28,32 @@ const ANTAGONISTIC_FORCE_LABELS = [
   '反派势力',
 ];
 
+const NAMED_CHARACTER_ROLE_LABELS = [
+  '记忆修理师',
+  '青年绣娘',
+  '少年药童',
+  '非遗传承人',
+  '巡检员',
+  '调查记者',
+  '修复师',
+  '调查者',
+  '守灯人',
+  '传承人',
+  '绣娘',
+  '药童',
+  '画师',
+  '工匠',
+  '学徒',
+  '记者',
+  '医生',
+  '主角',
+  '搭档',
+  '同伴',
+  '少年',
+  '少女',
+  '青年',
+];
+
 export function buildSeriesPremiseContract(input: {
   outline: string;
   detectedCharacters?: StoryDetectedCharacter[];
@@ -171,7 +197,10 @@ function extractLockedCharacters(
     }
   }
 
-  const singlePattern = /(?:主角|搭档|同伴|调查者|守灯人|少年|少女|青年|修复师)\s*[“"「『]?([\u4e00-\u9fff]{2,4}?)[”"」』]?(?=与|和|、|共同|一起|联手|在|从|要|为|，|。|；|：|$)/g;
+  const singlePattern = new RegExp(
+    `(?:${NAMED_CHARACTER_ROLE_LABELS.join('|')})\\s*[“"「『]?([\\u4e00-\\u9fff]{2,4}?)[”"」』]?(?=与|和|、|共同|一起|联手|必须|需要|面对|在|从|要|为|，|。|；|：|$)`,
+    'g',
+  );
   for (const match of outline.matchAll(singlePattern)) add(match[1], names.length === 0 ? '主角' : '核心人物');
 
   return uniqueBy(names, item => item.name).map((item, index) => ({

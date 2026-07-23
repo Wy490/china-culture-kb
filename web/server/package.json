@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:audit-crash": "tsx scripts/story-generation-attempt-audit-crash-smoke.mts",
-    "smoke:story-agent-full-function": "tsx scripts/story-agent-full-function-smoke.mts"
+    "smoke:story-agent-full-function": "tsx scripts/story-agent-full-function-smoke.mts",
+    "smoke:story-agent-cross-seed": "tsx scripts/story-agent-full-function-smoke.mts --matrix"
   },
   "dependencies": {
     "cors": "^2.8.5",

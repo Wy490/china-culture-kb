@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-full-function-smoke/v1",
-  "generated_at": "2026-07-23T18:24:53+08:00",
+  "generated_at": "2026-07-23T19:48:44+08:00",
   "status": "passed",
   "priority": {
     "functional_test_first": true,
@@ -245,26 +245,109 @@
     },
     "evidence_boundary": "Synthetic artifact bytes exercise repository, callback, retry, assembly, manifest, immutable-release, and cleanup contracts; they are not playable Provider video or production media."
   },
+  "cross_seed_stability_smoke": {
+    "schema_version": "story-agent-cross-seed-stability-smoke/v1",
+    "status": "passed",
+    "mode": "isolated_synthetic_artifacts",
+    "repeat_run_count": 2,
+    "seed_count": 4,
+    "pacing_profiles": [
+      "mystery_cliffhanger",
+      "slow_burn",
+      "balanced_drama",
+      "fast_hook"
+    ],
+    "truth_modes": [
+      "fictional_original",
+      "source_adaptation"
+    ],
+    "total_episode_count_per_run": 14,
+    "total_shot_count_per_run": 126,
+    "total_retry_job_count_per_run": 4,
+    "total_title_card_count_per_run": 36,
+    "immutable_release_count_per_run": 4,
+    "seeds": [
+      {
+        "seed_id": "original-mystery",
+        "title": "潮汐失忆局",
+        "episode_count": 3,
+        "shot_count": 27,
+        "series_quality_score": 100,
+        "premise_fidelity_score": 100,
+        "commercial_machine_gate_passed": true
+      },
+      {
+        "seed_id": "historical-ethics",
+        "title": "告身不署",
+        "episode_count": 4,
+        "shot_count": 36,
+        "series_quality_score": 100,
+        "premise_fidelity_score": 100,
+        "commercial_machine_gate_passed": true
+      },
+      {
+        "seed_id": "heritage-craft",
+        "title": "一线醒狮",
+        "episode_count": 5,
+        "shot_count": 45,
+        "series_quality_score": 100,
+        "premise_fidelity_score": 100,
+        "commercial_machine_gate_passed": true
+      },
+      {
+        "seed_id": "children-legend",
+        "title": "白鹿送药记",
+        "episode_count": 2,
+        "shot_count": 18,
+        "series_quality_score": 100,
+        "premise_fidelity_score": 100,
+        "commercial_machine_gate_passed": true
+      }
+    ],
+    "hard_invariants": {
+      "every_seed_completed": true,
+      "every_truth_mode_matched": true,
+      "every_series_quality_passed": true,
+      "every_premise_fidelity_passed": true,
+      "every_commercial_machine_gate_passed": true,
+      "every_shot_ready": true,
+      "every_retry_recovered": true,
+      "every_post_stage_ready": true,
+      "every_release_immutable": true
+    },
+    "external_provider_called": false,
+    "external_authorization_used": false,
+    "human_review_required": false,
+    "formal_project_contaminated": false,
+    "evidence_boundary": "Each seed traverses story planning, every episode, prompt export, mocked GEARS failure/retry/callback, cut, subtitles, audio, title cards, manifest, immutable release, and cleanup. Media bytes remain synthetic and do not claim real Provider output."
+  },
   "defects_found_and_fixed": [
     "openai_imagegen trusted-source assets were not accepted by immutable preview",
     "first real file replacing a placeholder was incorrectly marked stale solely because the placeholder record existed",
     "rule-mystery scene functions did not map climax and ending semantics into the common narrative quality gate",
     "generic foreshadowing repeated every seven episodes and created seven duplicate long-thread groups",
-    "continuity-ledger rebuild discarded saved scene memory events and replaced real locations with plan focus labels"
+    "continuity-ledger rebuild discarded saved scene memory events and replaced real locations with plan focus labels",
+    "fully covered cultural knowledge matches in supporting roles were incorrectly downgraded to fictional_original instead of source_adaptation",
+    "automatic premise contracts missed named protagonists expressed through common profession-role phrases",
+    "broad character-state keywords falsely treated ordinary actions and a missing passenger as character resurrection",
+    "explicit historical caution language was falsely treated as a contradiction between tentative and verified knowledge",
+    "refusal-case foreshadowing did not carry a planned thread title and was reported as orphaned"
   ],
   "verification": {
     "focused_type_and_script_matrix": "16 files passed, 62 tests passed",
-    "server_full_suite": "163 files, 1405 tests passed, 2 skipped, 0 failed",
+    "server_full_suite": "163 files, 1408 tests passed, 2 skipped, 0 failed",
     "workspace_check": "visible copy audit, server tsc, client vue-tsc passed",
     "production_build": "server tsup and client Vite build passed; 171 client modules transformed",
     "generated_asset_and_local_gears_smoke": "14 immutable image previews verified; 180 local mocked GEARS jobs accepted, 0 failed, 0 external authorization",
     "isolated_postproduction_smoke": "4 consecutive runs passed; 3 episodes, 27 shots, 1 synthetic failure and retry, cut/subtitle/audio/title-card/final delivery ready",
+    "cross_seed_stability_smoke": "2 consecutive runs passed; 4 seeds, 4 pacing profiles, 2 truth modes, 14 episodes, 126 shots, 4 injected failures recovered, 36 title cards, 4 immutable releases per run",
+    "cross_seed_quality_gates": "all 4 seeds scored 100 for series quality and premise fidelity; all commercial machine gates passed; 0 blocking memory conflicts and 0 thread-closure issues",
     "postproduction_regression": "outline-service.test.ts: 1 file, 37 tests passed",
     "server_and_script_typecheck": "server source and scripts strict TypeScript checks passed",
     "git_diff_check": "passed"
   },
   "remaining_functional_work": [
-    "Repeat the 15-type generation and 14-asset workflow on additional series seeds to build cross-project stability evidence",
+    "Generate and bind a real Codex image asset set for each cross-seed series, then repeat immutable preview and identity-mapping checks across projects",
     "Exercise the same callback and post-production contract against a separately authorized real video Provider when credentials, budget, and explicit external-call authorization are available",
     "Keep external video Provider submission disabled until separately authorized",
     "Keep human media review and production credit deferred without weakening their strict semantics"

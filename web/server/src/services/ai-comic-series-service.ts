@@ -643,9 +643,7 @@ export async function generateAiComicEpisodeFromPlan(
   // registered knowledge entry. In that case, let the normal story source
   // resolver materialize the outline as user-owned fictional source material
   // instead of making every episode permanently un-generatable.
-  const knowledgePack = matchedKnowledgePack.primary_entries.length > 0
-    ? matchedKnowledgePack
-    : undefined;
+  const knowledgePack = resolveAiComicSeriesGroundedKnowledgePack(matchedKnowledgePack);
 
   const narrativePatternIds = resolveAiComicNarrativePatternIds(plan, request.narrative_pattern_ids);
   const memoryRecallControls = mergeMemoryRecallControls(
@@ -11943,7 +11941,9 @@ function buildAiComicMemoryConflictReport(params: {
   for (const item of memory ? allSeriesMemoryItems(memory) : []) {
     const text = [item.status, ...item.continuity_notes, item.knowledge_boundary ?? ''].join('；');
     const relatedEpisodeNos = item.related_episode_nos;
-    if (item.category === 'character' && /死亡|牺牲|失踪|离开|不能行动/.test(text) && /出现|行动|带领|再次|恢复/.test(text)) {
+    const hasExplicitUnavailableCharacterState = /(?:已经|已|确认|最终|状态为|变为)?(?:死亡|牺牲|失踪|离开|不能行动)(?:[，。；、]|$)/.test(text);
+    const hasExplicitCharacterReturn = /再次出现|重新出现|恢复行动|重新行动|归来|回归|复出|死而复生/.test(text);
+    if (item.category === 'character' && hasExplicitUnavailableCharacterState && hasExplicitCharacterReturn) {
       items.push(makeMemoryConflictItem({
         category: 'character_state',
         severity: 'blocking',
@@ -11979,10 +11979,9 @@ function buildAiComicMemoryConflictReport(params: {
         repairSuggestions: [`给${item.label}增加关系转折场景，或把当前关系标注为“表面合作/暂时和解”。`],
       }));
     }
-    const isKnowledgeBoundaryCaution = /不得写成确证史实|不可把.+写成已核实史实|事实边界和可信度口径/.test(text);
     if (
       item.category === 'knowledge_boundary'
-      && !isKnowledgeBoundaryCaution
+      && !isExplicitKnowledgeBoundaryCaution(text)
       && /待核|未核|创作补足|传说|推测/.test(text)
       && /确证|史实|真实|一定|明确/.test(text)
     ) {
@@ -18414,11 +18413,21 @@ function detectSeriesMemoryConflicts(
   }
   for (const event of memoryEvents.filter(item => item.category === 'knowledge_boundary')) {
     const text = [...event.continuity_notes, event.status].join('；');
-    if (/虚构|戏剧化|补足|待核|未核实/.test(text) && /确证|史实|真实发生|明确记载/.test(text)) {
+    if (
+      !isExplicitKnowledgeBoundaryCaution(text)
+      && /虚构|戏剧化|补足|待核|未核实/.test(text)
+      && /确证|史实|真实发生|明确记载/.test(text)
+    ) {
       conflicts.push(`第${episode.episode_no}集知识边界“${event.label}”同时出现待核与确证表述，需要人工复核。`);
     }
   }
   return conflicts;
+}
+
+function isExplicitKnowledgeBoundaryCaution(text: string): boolean {
+  return /(?:不得|不可|不能|禁止|避免).{0,32}(?:确证|史实|真实|明确记载|已核实)/.test(text)
+    || /(?:传说|待核|未核|创作补足|戏剧化).{0,32}(?:不等于|并非|不得|不可|不能)/.test(text)
+    || /事实边界|可信度口径|文化约束/.test(text);
 }
 
 function isDestroyedOrLost(text: string): boolean {
@@ -18470,6 +18479,31 @@ async function buildKnowledgePackForSeries(plan: AiComicSeriesPlan): Promise<Kno
     };
   }
   return match.data.matched_knowledge_pack;
+}
+
+function resolveAiComicSeriesGroundedKnowledgePack(
+  knowledgePack: KnowledgePack,
+): KnowledgePack | undefined {
+  if (knowledgePack.primary_entries.length > 0) return knowledgePack;
+  // Cultural crafts, regional heritage, landscapes, and customs legitimately
+  // enter multi-match as supporting roles because they are not historical
+  // people or events. Keep them as source adaptation only when every required
+  // need is covered and at least one source reaches the same medium-high
+  // confidence floor that promotes person/event matches to primary material.
+  const eligible = knowledgePack.missing_needs.length === 0
+    && knowledgePack.overall_confidence === 1
+    ? knowledgePack.supporting_entries
+      .filter(entry => entry.score >= 0.65)
+      .sort((left, right) => right.score - left.score)
+    : [];
+  const promoted = eligible[0];
+  if (!promoted) return undefined;
+  return {
+    ...knowledgePack,
+    primary_entries: [promoted],
+    supporting_entries: knowledgePack.supporting_entries
+      .filter(entry => entry.entry_name !== promoted.entry_name),
+  };
 }
 
 function buildFallbackKnowledgeNeeds(plan: AiComicSeriesPlan, detectedSubjects: string[]): KnowledgeNeed[] {
@@ -19248,6 +19282,11 @@ function buildRefusalCaseEpisodeOverride(input: {
   const activeThread = input.plotThreads.find(thread =>
     thread.setup_episode < input.episodeNo && thread.payoff_episode > input.episodeNo
   );
+  const continuingThread = activeThread
+    ?? input.threadSetups[0]
+    ?? input.plotThreads.find(thread => thread.payoff_episode > input.episodeNo)
+    ?? input.plotThreads[0];
+  const continuingThreadTitle = continuingThread?.title ?? '拒签主线';
 
   if (input.episodeNo === 1) {
     return {
@@ -19259,7 +19298,7 @@ function buildRefusalCaseEpisodeOverride(input: {
         '死刑文书里的证词前后不合，封泥时间也对不上。',
         setupThreads ? `开启线索：${setupThreads}` : '开启线索：死刑文书疑点和催签压力',
       ],
-      foreshadowing: ['被遮住姓名的旧案号指向下一集的上官召见。'],
+      foreshadowing: [`${continuingThreadTitle}推进：被遮住姓名的旧案号指向下一集的上官召见。`],
       payoff: [],
       endingHook: `${protagonist}暂缓行刑并拒绝签字，门外却传来上官连夜召见。`,
       endingHookType: 'danger',
@@ -19307,7 +19346,7 @@ function buildRefusalCaseEpisodeOverride(input: {
         '上官催签背后还有旧案号和文书链漏洞。',
         `拒签带来的官场代价落到${protagonist}身上，囚犯暂缓处决但仍未脱险。`,
       ],
-      foreshadowing: ['旧案号上的名字被遮住，只露出能指向更高层施压者的一角。'],
+      foreshadowing: [`${continuingThreadTitle}推进：旧案号上的名字被遮住，只露出能指向更高层施压者的一角。`],
       payoff: ['回收上集未签文书：囚犯暂缓处决，复核正式开始。'],
       endingHook: `${protagonist}可能因此丢官，仍把复核文书递出；旧案号上的名字露出一角。`,
       endingHookType: 'danger',
@@ -19330,7 +19369,7 @@ function buildRefusalCaseEpisodeOverride(input: {
       `${input.focus || '旧案号'}牵出新的文书关联，${protagonist}原有判断必须升级。`,
       `推进${input.phase.phase_id}的阶段目标`,
     ],
-    foreshadowing: [`${input.focus || '旧案号'}中留下未解释细节，指向下一集的选择。`],
+    foreshadowing: [`${continuingThreadTitle}推进：${input.focus || '旧案号'}中留下未解释细节，指向下一集的选择。`],
     payoff: input.threadPayoffs.length > 0
       ? input.threadPayoffs.map(thread => `回收${thread.title}：${thread.description}`)
       : [],

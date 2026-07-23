@@ -355,6 +355,42 @@ describe('outline-service', () => {
     expect(yueyan?.asset_split?.character_props.some(prop => prop.includes('书卷'))).toBe(true);
   });
 
+  it('keeps a grounded required cultural match as series source adaptation', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '长沙湘绣工作室面临代表作修复期限，青年绣娘必须重新学习鬅毛针、掺针和劈丝。',
+      series_title: '一线醒狮知识边界测试',
+      episode_count: 1,
+      episode_duration_range_sec: { min: 60, max: 90 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      series_project_id: saveRes.data!.project.series_project_id,
+      episode_no: 1,
+      output_gears_segments: true,
+    });
+
+    expect(episodeRes.ok).toBe(true);
+    expect(episodeRes.data?.truth_mode).toBe('source_adaptation');
+    expect(episodeRes.data?.creation_use_case).toBe('adapted_ai_comic');
+    const groundedEntries = [
+      ...(episodeRes.data?.knowledge_pack?.primary_entries ?? []),
+      ...(episodeRes.data?.knowledge_pack?.supporting_entries ?? []),
+    ];
+    expect(groundedEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entry_name: expect.stringContaining('湘绣'),
+          score: expect.any(Number),
+        }),
+      ]),
+    );
+    expect(episodeRes.data?.knowledge_pack?.missing_needs).toHaveLength(0);
+  });
+
   it('detects unnamed supporting, crowd, and supernatural characters from outlines', async () => {
     const res = await analyzeOutline({
       outline: '周敦颐在月岩洞读书时，一个老奶奶在洞口点灯。村民围过来听她讲狐仙显灵的传说，书童递上书卷。',

@@ -33,6 +33,57 @@ afterAll(async () => {
 });
 
 describe('AI comic series premise contract regression', () => {
+  it('extracts named protagonists from common profession-role phrases', async () => {
+    const cases = [
+      {
+        outline: '近未来海上城市停电后，记忆修理师顾弦与巡检员陆潮必须在三次潮汐前找出篡改航行记录的人。',
+        title: '潮汐失忆局',
+        expectedNames: ['顾弦', '陆潮'],
+      },
+      {
+        outline: '长沙湘绣工作室面临修复期限，青年绣娘苏翎必须重新学习鬅毛针、掺针和劈丝。',
+        title: '一线醒狮',
+        expectedNames: ['苏翎'],
+      },
+      {
+        outline: '少年药童小禾必须在日落前辨清草药并送回洗药池。',
+        title: '白鹿送药记',
+        expectedNames: ['小禾'],
+      },
+    ];
+
+    for (const item of cases) {
+      const result = await generateAiComicSeriesPlan({
+        outline: item.outline,
+        series_title: item.title,
+        episode_count: 2,
+        episode_duration_range_sec: { min: 60, max: 90 },
+      });
+      expect(result.ok).toBe(true);
+      expect(result.data?.premise_contract?.locked_characters.map(character => character.name))
+        .toEqual(expect.arrayContaining(item.expectedNames));
+      expect(auditAiComicSeriesPremiseFidelity(result.data!).hard_gate_passed).toBe(true);
+    }
+  });
+
+  it('binds refusal-case foreshadowing to a planned long-running thread', async () => {
+    const result = await generateAiComicSeriesPlan({
+      outline: '北宋南安军司理参军周敦颐面对一桩按律不该判死的案件，拒绝迎合上官王逵，甚至取出告身准备辞官。',
+      series_title: '告身不署',
+      episode_count: 4,
+      episode_duration_range_sec: { min: 75, max: 120 },
+      pacing_profile: 'slow_burn',
+    });
+
+    expect(result.ok).toBe(true);
+    const plan = result.data!;
+    for (const episode of plan.episodes.filter(item => item.foreshadowing.length > 0)) {
+      expect(episode.foreshadowing.every(text =>
+        plan.plot_threads.some(thread => text.includes(thread.title))
+      )).toBe(true);
+    }
+  });
+
   it('keeps the locked characters, rules, cost, and antagonistic forces in the 20-episode plan', async () => {
     const result = await generateAiComicSeriesPlan(SHADOW_PUPPETRY_KEEPER_SERIES_FIXTURE);
 
