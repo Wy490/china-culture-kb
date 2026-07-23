@@ -10,16 +10,19 @@
 
 当前系统已经是一套较强的“文化知识 → 结构化故事 → 连续分集 → 分镜与 GEARS/Seedance 交付契约”的前期生产 Agent，但还不是完整的 AI 漫剧生产工厂。
 
+> **2026-07-23 用户优先级覆盖：** 当前先尽快跑通全流程、全功能和全部 15 种故事/脚本类型；图片资产由 Codex 内置图片生成能力直接生成并接入功能测试。真人媒体审核、真人盲评扩展和正式 production credit 明确延后，不得继续作为当前功能测试的前置阻塞。
+
 真正需要补齐的是两层：
 
 1. **上游参考理解层**：把影视、剧本、小说和宣传片资料变成有来源、有版权状态、有时间码/文本证据、可复用但不照抄的分析卡。
 2. **下游真实制作层**：真实图片 Provider、角色与场景一致性、关键帧真人审核、视频 Provider、配音/口型/音乐/剪辑和成片质检。
 
-工程优先级不能倒置：
+当前工程优先级：
 
-1. 先完成 **4 个核心人物真实资产 → 14/14 production credit → 真实 Provider 试产 E1**；
-2. 同时把本轮研究固化为 **Reference Intelligence / 参考理解层 v1**；
-3. 再升级长文本改编、导演引擎、视听后期和投放反馈闭环。
+1. 先完成 **15 种类型故事生成矩阵 + 15 种专业脚本管线 + Codex 图片资产生成/导入/预览/身份映射**；
+2. 用正式项目反复跑通故事、脚本、分镜、图片需求、图片资产和 GEARS/Seedance 包的功能测试；
+3. 再扩充场景、服装、道具图片资产和未生成分集，处理功能稳定性缺口；
+4. 真人媒体审核、14/14 production credit 和正式 Provider 成片属于后续生产验收，不作为当前功能测试门禁。
 
 ## 1. 本轮研究范围、方法与证据边界
 
@@ -278,14 +281,14 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 | 环节 | 标杆要求 | 当前证据 | 状态 | 主要缺口 |
 |---|---|---|---|---|
 | 文化知识与事实边界 | 事实、来源、虚构边界可追踪 | KB 检索、`factual_basis`、`fictionalized_elements`、文化边界 | ✅ 较强 | 参考影视不能未经审核写回知识库 |
-| 故事与系列规划 | premise、人物、世界规则、分集、长线 | StoryBlueprint、20 集计划、thread/continuity ledger | ✅ 较强 | 当前只生成 E1/E10/E20 |
+| 故事与系列规划 | premise、人物、世界规则、分集、长线 | StoryBlueprint、20 集完整故事、thread/continuity ledger | ✅ 较强 | 仍需更多项目和长篇输入的稳定性样本 |
 | 专业文本包 | brief、研究、结构、分场、对白、导演文本 | `web/server/src/services/professional-ai-comic-drama-pipeline-service.ts` | ✅ 合同齐全 | 需要真实模型输出和更多真人评审证明 |
 | 文本质量门 | 钩子、人物选择、场景动作、对白、反转、文化边界 | 专业质量服务、商业质量门、盲审 | ✅/🟡 | 机器不能判定原创或真正电影感 |
 | 小说改编 | 长篇语义、事件回链、保真与重排 | `web/server/src/services/adaptation-analysis-service.ts` | 🟡 部分 | 当前主要是启发式，不足以处理长篇复杂小说 |
 | 参考资料库 | URL、版权、分析卡、证据和防照抄 | `CreativeReference` / `ReferenceAnalysis` / `StylePack` 类型 | 🟡 原型 | 服务只读取本地 JSON；无 CRUD、无 UI、无媒体分析 |
 | 影视多模态理解 | 字幕、镜头、关键帧、声音、时间码 | 无完整流水线 | 🔴 缺失 | 不能自动分析收藏视频或电影 |
-| 视觉圣经 | 稳定人物/场景/道具/规则身份 | 14 identity + 2 world rules，16/16 真人批准 | ✅ 前期完成 | 仍是文字定义，未获得真实 production credit |
-| 图片资产 | 真实 Provider、来源、hash、权利、真人审核 | 4 个 `gears_local_test` PNG | 🟡 测试闭环 | 0/14 真实资产，4 个测试件权利与审核均 pending |
+| 视觉圣经 | 稳定人物/场景/道具/规则身份 | 14/14 identity ready，2/2 world rules ready；保留 8 个旧 identity 真人批准 | ✅ 定义完成 | 当前重生成后的 world rule 真人复核延后；未获得真实 production credit |
+| 图片资产 | Provider 来源、prompt/hash、身份映射、不可变预览 | 7 个 `openai_imagegen` PNG 已写入不可变存储并通过 SHA/预览校验 | ✅ 四类资产功能闭环 | 7/14 功能测试资产；仍需 3 套服装和 4 个场景；production credit 仍为 0/14 |
 | 导演与分镜 | 构图、调度、轴线、视线、动作、灯光、表演 | scene breakdown、GEARS segments、shot IDs | 🟡 部分 | 还不是完整导演引擎，缺接触表和视觉 QC |
 | 视频生成 | 已批准关键帧 → Provider → 回调 → 成片 | GEARS/Seedance 契约和账本 | 🟡 合同层 | 真实 GEARS jobs = 0，production items = 0 |
 | 声音与后期 | 配音、对白时长、口型、音乐、音效、混音、字幕 | 有部分交付字段/规划 | 🔴 未闭环 | 无真实音频和最终剪辑成片 |
@@ -299,24 +302,26 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 | 指标 | 当前值 |
 |---|---:|
 | 规划集数 | 20 |
-| 已生成完整故事 | 3（E1 / E10 / E20） |
-| 未生成 | 17 |
-| 已生成集机器质量通过率 | 100% |
-| 系列质量 | 54，未通过 |
-| 主要系列问题 | 17 集缺失；1 条情绪线超过计划回收点 |
+| 已生成完整故事 | 20/20 |
+| 未生成 | 0 |
+| 分集功能报告通过率 | 20/20，100% |
+| 系列质量 | 100，通过 |
+| 重复长期线 | 0 |
 | 商业机器质量门 | 100，通过 |
 | 真人盲审 | 1 人；7 维均 4/5；通过 |
-| 视觉 identity | 14/14 ready；14/14 approved |
-| 世界规则 | 2/2 ready；2/2 approved |
-| 真人批准合计 | 16/16 |
-| 图片资产库 | 4 个 PNG，全部是 `gears_local_test` |
+| 视觉 identity | 14/14 ready；8/14 保留旧真人批准 |
+| 世界规则 | 2/2 ready；重生成后 0/2 重新批准，真人复核延后 |
+| 图片资产库 | 7 个 PNG，全部是 `openai_imagegen` |
+| 图片资产类型 | character / costume / location / prop |
+| 功能测试图片资产 | 7/14 |
+| 当前身份指纹映射 | 7/14 |
 | 真实图片资产 | 0/14 |
 | production credit | 0/14 |
 | Seedance production items | 0 |
 | GEARS jobs | 0 |
 | 真实 Provider 视频 | 0 |
 
-四个本地测试人物为：沈砚、林灯、开发商、盗谱者。它们只证明了文件上传、SHA、provider 元数据、身份绑定和历史账本可以闭环；不是可用于正式生产的角色资产。
+七个 AI 生成资产为：沈砚、林灯、开发商、盗谱者、沈砚主服装、午夜皮影戏台前场、便携检修灯。它们已经证明角色、服装、场景、道具四类图片生成，以及可信来源导入、不可变存储、SHA、prompt/provider 元数据、当前身份指纹映射、预览和历史账本可以闭环；它们可用于当前功能测试，但因权利状态、真人媒体复核和身份映射批准均未完成，不计正式 production credit。
 
 ## 8. 现在能做到什么
 
@@ -328,7 +333,8 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 - 对钩子、冲突、可见动作、人物选择、反转、结尾追问、文化边界和连续性做机器检查。
 - 生成视觉圣经文字定义并由真人批准。
 - 记录项目版本、指纹、审计、上传历史、成本/Provider 字段和 production readiness。
-- 在不调用外部 API 时跑通本地测试闭环。
+- 由 Codex 图片生成能力生成角色、服装、场景、道具，并以可信 `openai_imagegen` 来源接入不可变资产、身份映射和预览闭环。
+- 在不提交真人审核或外部视频 Provider 任务时跑通故事、脚本、分镜、图片需求和 GEARS/Seedance 交付合同。
 
 ### 只能部分做到
 
@@ -349,7 +355,9 @@ GEARS 不应承担上游剧本理解；Story Agent 也不能把“生成了 prom
 
 ## 9. 开发路线
 
-### P0：真实生产证明，不能被参考研究延误
+### P0：真实生产证明（当前延后）
+
+> 本节保留为后续正式生产验收路线。按 2026-07-23 用户指令，当前不执行真人媒体审核优先策略；先完成全功能测试与 AI 图片资产功能闭环。
 
 ### P0-A：4 个核心人物真实图片试产
 
@@ -665,6 +673,8 @@ git diff --check：通过
 
 ### 12.4 正式项目影响与下一步
 
+> 本小节是 Reference Intelligence 切片完成时的历史快照，已被第 7 节和第 14 节的全功能结果取代。
+
 《皮影诡戏：守灯人》正式项目 JSON 未被修改，原子计数仍为：
 
 - 规划 20 集，已生成 E1 / E10 / E20 共 3 集；
@@ -742,16 +752,95 @@ git diff --check：通过
 - 重复 analysis 不能冒充两个来源；
 - 片型兼容范围遗漏时失败关闭。
 
-本切片完成度 100%。正式《皮影诡戏：守灯人》项目仍未修改，production credit 仍为 0/14。下一工程边界是把**已批准 audited style pack**接入生成 prompt package、`reference_trace` 和 reference quality report；在此之前，创建 style pack 不会自动影响任何故事生成。
+本小节记录的是 Reference Intelligence 切片完成时的历史快照；正式项目随后已由本轮全功能测试更新，现状以第 7 节和第 14 节为准。Reference Intelligence 的下一工程边界仍是把**已批准 audited style pack**接入生成 prompt package、`reference_trace` 和 reference quality report；在此之前，创建 style pack 不会自动影响任何故事生成。
 
 ## 13. 最终判断
 
-本轮研究没有改变此前的生产结论，反而强化了它：
+此前“先完成真人批准和 production credit 再推进”的执行顺序，已经被用户在 2026-07-23 明确调整。当前结论是：
 
-- **16/16 真人批准**说明前期定义已经足够进入真实资产生产；
-- **4 个 local_test PNG**只说明通路，不说明成片能力；
-- **14/14 production credit**是从“Agent 会规划”跨到“系统能制作”的关键门；
-- **E1 真实 Provider 试产**是验证 Story Agent 与 GEARS 是否真正结合的第一份硬证据；
-- **Reference Intelligence v1**是让系统以后能系统吸收影视、小说、剧本和宣传片方法，而不是依赖一次性人工调研的关键产品层。
+- **全功能链已经可以先于真人验收推进**：15 种故事类型、15 种专业脚本管线、20 集连续故事、分镜、GEARS/Seedance 交付合同和四类图片资产均已有自动化证据。
+- **Codex 图片生成是当前图片 Provider**：资产保留 provider、model、call ID、prompt hash、内容 SHA、不可变原件和身份映射，不再用 `gears_local_test` 占位图冒充功能结果。
+- **真人审核继续有价值，但不是当前门禁**：现有真人批准不扩充；新图片不等待真人审核即可进入功能测试。
+- **production credit 语义保持严格**：功能可用不等于正式生产可用，当前仍为 0/14，不能因优先级变化而伪造权利或批准状态。
+- **下一功能里程碑**：补齐剩余 7 个 identity 图片，并把全部 180 个镜头需求跑入本地 GEARS 执行包；外部视频 Provider 提交另行授权。
 
-不要继续堆抽象“专业能力”字段来回避真实生产，也不要用一次真实 Provider 调用来掩盖上游参考理解的缺失。正确路线是：**一条生产证据链 + 一条参考理解链，最终在 E1 汇合。**
+不要再用真人测试阻断当前研发，也不要为了“功能全绿”放松正式生产门禁。正确路线是：**先让全部功能稳定可运行，再在后续生产阶段补真人审片、权利确认和真实视频 Provider 验收。**
+
+## 14. 2026-07-23 全功能优先覆盖结果
+
+### 14.1 故事与脚本类型
+
+全量视频类型生成矩阵已扩展到 15/15：
+
+- `character_story`
+- `historical_drama`
+- `legend_story`
+- `children_story`
+- `ai_comic_drama`
+- `culture_promo`
+- `heritage_promo`
+- `city_brand_promo`
+- `social_short`
+- `documentary_short`
+- `explainer_video`
+- `lecture_video`
+- `education_training`
+- `scene_short`
+- `landscape_mood`
+
+每种类型均检查 `full_text`、`scene_breakdown`、`gears_segments`、GEARS delivery、类型必填字段、题材分数和模板串线边界。对应的 15 条专业脚本管线测试也全部通过。
+
+### 14.2 正式 20 集系列
+
+《皮影诡戏：守灯人》已经完整生成 20/20 集：
+
+- 分集功能报告：20/20 通过；
+- 连续性审计：20/20 通过；
+- 单集题材分数：88；
+- 系列质量：100，通过；
+- 重复长期线：0；
+- 连续性账本：20 集；
+- Provider 所需镜头：180。
+
+本轮修复了会直接影响稳定性的五类缺陷：
+
+1. `openai_imagegen` 可信资产不能进入不可变预览；
+2. 真实文件首次替换空占位记录时被错误标记为 stale；
+3. 规则悬疑类型的高潮与收束语义不能进入公共叙事质量门；
+4. 每七集重复一次的伏笔造成七组重复长期线；
+5. 连续性账本重建丢弃已保存的场景记忆，把真实地点替换成计划标签。
+
+### 14.3 图片资产功能闭环
+
+由 Codex 图片生成能力生成并接入 7 张 `gpt-image-2` PNG：
+
+| 资产 | 类型 |
+|---|---|
+| 沈砚 | character |
+| 林灯 | character |
+| 开发商 | character |
+| 盗谱者 | character |
+| 沈砚主服装 | costume |
+| 午夜皮影戏台前场 | location |
+| 便携检修灯 | prop |
+
+七张图片均已完成可信来源导入、不可变原件、SHA-256、provider/model/call ID、prompt hash、当前 identity 指纹映射和预览校验。原图及 prompt 保存在正式项目的 `imagegen-source/` 目录；正式统计报告位于 `data/reports/story-agent-full-function-smoke-20260723.json`。
+
+### 14.4 最终自动化证据
+
+```text
+类型与专业脚本聚焦矩阵：16 files passed，62 tests passed
+服务端全量：163 files；1405 tests passed，2 skipped，0 failed
+全仓 check：visible copy audit、server tsc、client vue-tsc 全部通过
+生产构建：server tsup、client Vite 通过；171 modules transformed
+git diff --check：通过
+```
+
+### 14.5 当前刻意不做
+
+- 不扩充真人媒体审核；
+- 不启动新一轮真人盲评；
+- 不把功能测试资产伪装成 production credit；
+- 不提交外部视频 Provider 任务。
+
+这些事项被延后，不代表删除。当前下一步只聚焦剩余 7 个 identity 图片和 180 个镜头的本地 GEARS 执行包稳定性。

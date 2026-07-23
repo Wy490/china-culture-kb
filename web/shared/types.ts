@@ -7190,6 +7190,8 @@ export interface AiComicSeriesVisualProductionCompletionIdentity {
   definition_ready: boolean;
   definition_approved: boolean;
   asset_id?: string;
+  functional_test_asset_ready: boolean;
+  functional_test_identity_mapping_current: boolean;
   immutable_local_file_ready: boolean;
   rights_authorized: boolean;
   human_media_review_approved: boolean;
@@ -7208,6 +7210,8 @@ export interface AiComicSeriesVisualProductionCompletionPlan {
     world_rule_definition_ready_count: number;
     world_rule_approved_count: number;
     pilot_binding_blocker_count: number;
+    functional_test_asset_count: number;
+    functional_test_identity_mapping_count: number;
     immutable_local_file_count: number;
     rights_authorized_count: number;
     human_media_review_approved_count: number;

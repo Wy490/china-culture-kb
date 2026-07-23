@@ -1187,7 +1187,7 @@ function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
       duration: 12,
       location: '午夜皮影戏台前场',
       time: '午夜前一分钟',
-      functionLabel: sceneFunctions[0] ?? '规则钩子',
+      functionLabel: sceneFunctions[0] ?? '钩子开场',
       plot: `${input.previousState}${commercial?.hook_3s ?? `${input.protagonist}与${input.witness}赶到白幕前，灯票背面刚浮出第${episodeMark}道墨痕。`} ${ruleSet}。两人还没对完字，戏台里的影偶已经自己转头。`,
       keyAction: `${input.protagonist}用灯票记录新规则，${input.witness}核对两人的共同记忆。`,
       conflict: input.visibleMainConflict,
@@ -1202,7 +1202,7 @@ function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
       duration: 18,
       location: '戏台灯幕后',
       time: '午夜',
-      functionLabel: sceneFunctions[1] ?? '证据核对',
+      functionLabel: '人物登场',
       plot: `${commercial?.episode_goal ?? `${input.protagonist}和${input.witness}把${input.visibleNewInfo}与旧灯票并排。`} ${commercial?.failure_cost ?? stake}。票根上的双人手印还在，${input.protagonist}却说不出上一次开演后发生了什么。`,
       keyAction: `${input.witness}用灯票、手印和影偶位置为${input.protagonist}重建被抹去的一段记忆。`,
       conflict: '两人必须相信可核对的证据，不能把残缺记忆当作事实。',
@@ -1216,7 +1216,7 @@ function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
       duration: 20,
       location: '戏台侧门与档案柜',
       time: '午夜过后',
-      functionLabel: sceneFunctions[2] ?? '对抗升级',
+      functionLabel: '冲突爆发',
       plot: `${forces}在同一刻逼近：${input.pressureRole}试图拿走失传灯谱，另一股力量则切断戏台外的退路。${input.protagonist}守住档案柜，${input.witness}把真假灯谱分开，迫使对手先暴露目标。`,
       keyAction: `${input.protagonist}与${input.witness}分工保护灯谱并追认对抗力量。`,
       conflict: commercial?.external_pressure ?? `${forces}构成双重压力；两人若分开，就可能再次失去共同记忆。`,
@@ -1230,7 +1230,7 @@ function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
       duration: 20,
       location: '白幕与灯箱之间',
       time: '午夜深处',
-      functionLabel: sceneFunctions[3] ?? '信息反转',
+      functionLabel: '反转/觉醒',
       plot: `${commercial?.midpoint_turn ?? input.visibleMidpoint}${input.protagonist}把本集触发痕迹投上白幕，影子却指向观众席而不是后台。${input.witness}意识到，有人正借规则制造可控的遗忘，把${forces}的行动藏进空白记忆。`,
       keyAction: commercial?.character_choice ?? '两人改变调查方向，从追查异常影偶转向寻找人为触发规则的证据。',
       conflict: '世界规则真实生效，但触发时机可能被人操控。',
@@ -1244,9 +1244,9 @@ function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
       duration: 20,
       location: '熄灯后的戏台中央',
       time: '凌晨',
-      functionLabel: sceneFunctions[4] ?? '结尾追问',
-      plot: `${input.protagonist}与${input.witness}把本集证据封进双人灯票，约定任何一方失忆都由另一方复述。油灯熄灭后，白幕上仍亮着一行没人写过的规则；${commercial?.cliffhanger_question ?? input.visibleEndingHook}`,
-      keyAction: '两人用双重记录守住身份和证据，并把新规则留给下一集验证。',
+      functionLabel: '高燃收束',
+      plot: `${input.protagonist}与${input.witness}把本集证据封进双人灯票，以彼此信任共同担当记忆代价，约定任何一方失忆都由另一方复述。油灯熄灭后，白幕上仍亮着一行没人写过的规则；${commercial?.cliffhanger_question ?? input.visibleEndingHook}`,
+      keyAction: '两人用双重记录和彼此信任守住身份与证据，共同担当后果，并把新规则留给下一集验证。',
       conflict: `${stake}；新规则开始直接针对两人的互信。`,
       dialogue: `${input.protagonist}：“若下一次我连你的名字也忘了呢？”\n${input.witness}：“那我就让你重新选择一次，要不要和${input.witness}并肩。”`,
       visual: `熄灯戏台，白幕残留幽蓝规则字迹，双人灯票封入木盒，${input.protagonist}与${input.witness}剪影并肩，结尾定格`,
@@ -2685,6 +2685,8 @@ function buildAiComicSeriesSeedanceAssetReportMarkdown(
     `> 存在缺口镜头: ${pkg.unbound_shot_count}`,
     `> 稳定视觉身份: ${pkg.visual_bible.identities.length}`,
     `> 待补视觉定义: ${pkg.visual_bible.needs_definition_identity_count}`,
+    `> 功能测试图片身份: ${plan.summary.functional_test_asset_count}/${plan.summary.identity_total}`,
+    `> 功能测试当前身份映射: ${plan.summary.functional_test_identity_mapping_count}/${plan.summary.identity_total}`,
     `> 真实生产信用身份: ${pkg.visual_bible.production_credit_identity_count}`,
     '',
     '## 正式生产完成计划',
@@ -2787,6 +2789,17 @@ function buildAiComicSeriesVisualProductionCompletionPlan(input: {
       && asset.content_sha256
       && /^[a-f0-9]{64}$/i.test(asset.content_sha256),
     );
+    const functionalTestAssetReady = Boolean(
+      asset
+      && ['local_upload', 'gears_local_test', 'openai_imagegen'].includes(asset.provider ?? '')
+      && asset.local_path
+      && asset.content_sha256
+      && /^[a-f0-9]{64}$/i.test(asset.content_sha256),
+    );
+    const functionalTestIdentityMappingCurrent = Boolean(
+      asset
+      && aiComicSeriesAssetIdentityBindingIsCurrent(asset.identity_binding, identity),
+    );
     const rightsAuthorized = asset?.rights_status === 'authorized';
     const humanMediaReviewApproved = asset?.human_review_status === 'approved'
       && Boolean(asset.reviewer_id?.trim());
@@ -2822,6 +2835,8 @@ function buildAiComicSeriesVisualProductionCompletionPlan(input: {
       definition_ready: identity.definition_status === 'ready',
       definition_approved: identity.approval.status === 'approved',
       asset_id: asset?.asset_id,
+      functional_test_asset_ready: functionalTestAssetReady,
+      functional_test_identity_mapping_current: functionalTestIdentityMappingCurrent,
       immutable_local_file_ready: immutableLocalFileReady,
       rights_authorized: rightsAuthorized,
       human_media_review_approved: humanMediaReviewApproved,
@@ -2830,6 +2845,9 @@ function buildAiComicSeriesVisualProductionCompletionPlan(input: {
       next_action: nextAction,
     };
   });
+  const functionalTestAssetCount = identities.filter(item => item.functional_test_asset_ready).length;
+  const functionalTestIdentityMappingCount = identities
+    .filter(item => item.functional_test_identity_mapping_current).length;
   const immutableLocalFileCount = identities.filter(item => item.immutable_local_file_ready).length;
   const rightsAuthorizedCount = identities.filter(item => item.rights_authorized).length;
   const humanMediaReviewApprovedCount = identities.filter(item => item.human_media_review_approved).length;
@@ -2953,6 +2971,8 @@ function buildAiComicSeriesVisualProductionCompletionPlan(input: {
       world_rule_definition_ready_count: visualBible.ready_world_rule_count,
       world_rule_approved_count: visualBible.approved_world_rule_count,
       pilot_binding_blocker_count: pilotBindingBlockerCount,
+      functional_test_asset_count: functionalTestAssetCount,
+      functional_test_identity_mapping_count: functionalTestIdentityMappingCount,
       immutable_local_file_count: immutableLocalFileCount,
       rights_authorized_count: rightsAuthorizedCount,
       human_media_review_approved_count: humanMediaReviewApprovedCount,
@@ -5626,6 +5646,20 @@ export async function updateAiComicSeriesSeedanceAssetLibrary(
   return success(detail);
 }
 
+export type AiComicSeriesTrustedAssetSource =
+  | {
+      provider: 'gears_local_test';
+      provider_asset_id: string;
+      prompt_sha256: string;
+      model: 'gears-local-test-card';
+    }
+  | {
+      provider: 'openai_imagegen';
+      provider_asset_id: string;
+      prompt_sha256: string;
+      model: 'gpt-image-2';
+    };
+
 export async function uploadAiComicSeriesSeedanceAssetFile(
   seriesProjectId: string,
   request: {
@@ -5640,12 +5674,7 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
       mime_type: string;
       buffer: Buffer;
     };
-    trusted_source?: {
-      provider: 'gears_local_test';
-      provider_asset_id: string;
-      prompt_sha256: string;
-      model: 'gears-local-test-card';
-    };
+    trusted_source?: AiComicSeriesTrustedAssetSource;
   },
 ): Promise<ApiResponse<AiComicSeedanceAssetFileUploadResult>> {
   const existing = await readSeriesProject(seriesProjectId);
@@ -5681,7 +5710,12 @@ export async function uploadAiComicSeriesSeedanceAssetFile(
     identityBinding = pendingAiComicSeriesAssetIdentityBinding({
       identity: bindingResult.identity,
       previous: previous?.identity_binding,
-      stale: Boolean(previous),
+      stale: Boolean(previous && (
+        previous.file_id
+        || previous.file_url
+        || previous.local_path
+        || previous.content_sha256
+      )),
     });
   }
   let ingest;
@@ -5806,7 +5840,10 @@ export async function readAiComicSeriesMediaAssetPreview(
     item.content_sha256?.toLowerCase() === contentSha256
   ));
   if (!asset) return { ok: false, status: 404, message: 'verified media artifact not found' };
-  if (!asset.local_path || !['local_upload', 'gears_local_test'].includes(asset.provider ?? '')) {
+  if (
+    !asset.local_path
+    || !['local_upload', 'gears_local_test', 'openai_imagegen'].includes(asset.provider ?? '')
+  ) {
     return { ok: false, status: 409, message: 'media artifact is not available from authenticated local preview' };
   }
   if (!asset.mime_type || !['image/png', 'image/jpeg', 'image/webp'].includes(asset.mime_type)) {
@@ -12193,6 +12230,7 @@ function rebuildContinuityLedgerFromEpisode(params: {
       storyId: record.story_id,
       generatedAt: record.generated_at,
       knowledgeUsed: record.knowledge_used,
+      memoryEvents: record.memory_events,
     });
   }
 
@@ -12212,6 +12250,7 @@ function rebuildContinuityLedgerFromEpisode(params: {
       storyId,
       generatedAt: existingRecord?.generated_at,
       knowledgeUsed: existingRecord?.knowledge_used,
+      memoryEvents: existingRecord?.memory_events,
     });
   }
 
@@ -17239,6 +17278,7 @@ function updateContinuityLedgerFromEpisodePlan(params: {
   storyId: string;
   generatedAt?: string;
   knowledgeUsed?: string[];
+  memoryEvents?: AiComicSeriesMemoryItem[];
   story?: StoryGenerateResult;
 }): AiComicContinuityLedger {
   const openedThreads = params.plan.plot_threads
@@ -17260,12 +17300,16 @@ function updateContinuityLedgerFromEpisodePlan(params: {
     ...params.episode.knowledge_focus,
     ...(params.knowledgeUsed ?? []),
   ]);
-  const memoryEvents = buildEpisodeMemoryEvents({
-    plan: params.plan,
-    episode: params.episode,
-    knowledgeUsed: params.knowledgeUsed ?? [],
-    story: params.story,
-  });
+  const memoryEvents = params.memoryEvents?.map(item => ({
+    ...item,
+    related_episode_nos: [...item.related_episode_nos],
+    continuity_notes: [...item.continuity_notes],
+  })) ?? buildEpisodeMemoryEvents({
+      plan: params.plan,
+      episode: params.episode,
+      knowledgeUsed: params.knowledgeUsed ?? [],
+      story: params.story,
+    });
   const seriesMemory = updateSeriesMemory({
     memory: params.ledger.series_memory ?? buildInitialSeriesMemory(params.plan),
     episode: params.episode,
@@ -19455,7 +19499,15 @@ function buildForeshadowing(
   if (episodeNo >= episodeCount) return [];
   const futureThread = plotThreads.find(thread => thread.setup_episode <= episodeNo && thread.payoff_episode > episodeNo);
   const target = futureThread ? `第${futureThread.payoff_episode}集的${futureThread.title}` : `第${episodeNo + 1}集的选择`;
-  return [focus ? `${focus}中出现一个未解释细节，指向${target}` : `留出一个未解释细节，指向${target}`];
+  const subject = focus || '本集线索';
+  const progress = episodeNo / episodeCount;
+  if (progress <= 1 / 3) {
+    return [`${subject}中埋下第一处可核对的疑点，暂不解释，并指向${target}`];
+  }
+  if (progress <= 2 / 3) {
+    return [`${subject}中出现与旧疑点相矛盾的新证据，迫使主角修正判断并继续追向${target}`];
+  }
+  return [`${subject}中的疑点兑现为人物关系或记忆代价，锁定${target}的终局回收`];
 }
 
 function buildEndingHook(

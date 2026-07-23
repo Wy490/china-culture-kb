@@ -47,6 +47,16 @@ interface MatrixCase {
 
 const cases: MatrixCase[] = [
   {
+    videoType: 'character_story', generationType: 'character_story', presentationStyle: 'cinematic',
+    entryName: '周敦颐——理学开山鼻祖', selectedEvent: '周敦颐拒签冤案并以辞官相争',
+    expectedFirst: '钩子开场', expectedLast: '结尾', requiredFields: ['characters', 'protagonist_arc'],
+  },
+  {
+    videoType: 'historical_drama', generationType: 'scene_short', presentationStyle: 'cinematic',
+    entryName: '武昌起义——辛亥革命的第一声枪响', selectedEvent: '武昌起义提前发动并争夺楚望台军械库',
+    expectedFirst: '时代危机', expectedLast: '历史余响', requiredFields: ['characters', 'protagonist_arc'],
+  },
+  {
     videoType: 'legend_story', generationType: 'character_story', presentationStyle: 'ink_style',
     entryName: '刘海砍樵——人仙之恋的湖南民间传说', selectedEvent: '刘海砍樵与人仙相恋的考验',
     expectedFirst: '远古传说', expectedLast: '传说永恒', requiredFields: ['characters'],
@@ -119,7 +129,7 @@ function valueAtPath(value: Record<string, unknown>, path: string): unknown {
   ), value);
 }
 
-describe('other video type API generation matrix', () => {
+describe('all video type API generation matrix', () => {
   it('keeps every representative type aligned with its source, structure, fields, and delivery', async () => {
     const diagnostics: Array<Record<string, unknown>> = [];
     const templateLeakPattern = /3秒记住|5秒讲清|画面推情绪|结构化、分步骤|你是否达到了学习目标|要点归纳\+延伸方向|操作流程。|素材待补|模板待补/;
@@ -172,7 +182,7 @@ describe('other video type API generation matrix', () => {
       expect(story.scene_breakdown.length).toBeGreaterThanOrEqual(3);
       expect(story.gears_segments.length).toBe(story.scene_breakdown.length);
       expect(story.gears_delivery.units.length).toBeGreaterThanOrEqual(story.scene_breakdown.length);
-      if (!['legend_story', 'children_story', 'ai_comic_drama'].includes(item.videoType)) {
+      if (!['character_story', 'historical_drama', 'legend_story', 'children_story', 'ai_comic_drama'].includes(item.videoType)) {
         expect(story.gears_delivery.character_assets, `${item.videoType} should not turn a place/craft/event into a person`)
           .toEqual([]);
       }
@@ -181,8 +191,10 @@ describe('other video type API generation matrix', () => {
         expect(value, `${item.videoType} missing ${field}`).toBeTruthy();
         if (Array.isArray(value)) expect(value.length, `${item.videoType} empty ${field}`).toBeGreaterThan(0);
       }
-      expect(audienceAndDeliveryText, `${item.videoType} leaked unrelated case material`)
-        .not.toMatch(/周敦颐|案卷|拒签|画押|上官催签|死刑文书|出淤泥而不染|不畏权势的公正/);
+      if (item.videoType !== 'character_story') {
+        expect(audienceAndDeliveryText, `${item.videoType} leaked unrelated case material`)
+          .not.toMatch(/周敦颐|案卷|拒签|画押|上官催签|死刑文书|出淤泥而不染|不畏权势的公正/);
+      }
     }
 
     const genreFailures = diagnostics.filter(item =>

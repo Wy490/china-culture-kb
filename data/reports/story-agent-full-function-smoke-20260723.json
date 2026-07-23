@@ -1,0 +1,153 @@
+{
+  "schema_version": "story-agent-full-function-smoke/v1",
+  "generated_at": "2026-07-23T17:46:00+08:00",
+  "status": "passed",
+  "priority": {
+    "functional_test_first": true,
+    "human_media_review_deferred": true,
+    "human_blind_review_expansion_deferred": true,
+    "production_credit_semantics_unchanged": true
+  },
+  "video_type_generation_matrix": {
+    "status": "passed",
+    "video_type_count": 15,
+    "video_types": [
+      "character_story",
+      "historical_drama",
+      "legend_story",
+      "children_story",
+      "ai_comic_drama",
+      "culture_promo",
+      "heritage_promo",
+      "city_brand_promo",
+      "social_short",
+      "documentary_short",
+      "explainer_video",
+      "lecture_video",
+      "education_training",
+      "scene_short",
+      "landscape_mood"
+    ],
+    "asserted_outputs": [
+      "full_text",
+      "scene_breakdown",
+      "gears_segments",
+      "gears_delivery",
+      "type_specific_required_fields",
+      "genre_score",
+      "template_leak_boundary"
+    ]
+  },
+  "professional_script_matrix": {
+    "status": "passed",
+    "video_type_count": 15,
+    "test_file_count": 15,
+    "test_count": 60
+  },
+  "series_project": {
+    "series_project_id": "20260720-series-ujl3atax",
+    "title": "皮影诡戏：守灯人",
+    "planned_episode_count": 20,
+    "generated_episode_count": 20,
+    "episode_functional_report_passed_count": 20,
+    "continuity_audit_passed_count": 20,
+    "episode_genre_score": 88,
+    "series_quality_score": 100,
+    "series_quality_passed": true,
+    "duplicate_thread_count": 0,
+    "continuity_ledger_episode_count": 20,
+    "provider_required_shot_count": 180
+  },
+  "visual_functional_test": {
+    "status": "passed",
+    "provider": "openai_imagegen",
+    "model": "gpt-image-2",
+    "asset_count": 7,
+    "current_identity_mapping_count": 7,
+    "immutable_preview_verified_count": 7,
+    "covered_asset_kinds": [
+      "character",
+      "costume",
+      "location",
+      "prop"
+    ],
+    "identity_total": 14,
+    "identity_definition_ready_count": 14,
+    "identity_human_approved_count": 8,
+    "world_rule_total": 2,
+    "world_rule_definition_ready_count": 2,
+    "world_rule_human_approved_count": 0,
+    "production_credit_count": 0,
+    "assets": [
+      {
+        "label": "沈砚",
+        "kind": "character",
+        "provider_asset_id": "call_iaS6hRiAuHiWiTfXuEnqISJR",
+        "content_sha256": "de795018c81372e1e09394a91afa15d40c95deaaa313d0c6228a89f0850190b8",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/characters/shen-yan-v1.png"
+      },
+      {
+        "label": "林灯",
+        "kind": "character",
+        "provider_asset_id": "call_VTaFfGbt5Z2qqLtZpVzwHGnh",
+        "content_sha256": "1c9628a3d3338d436e9276547b3270d6967b9d2b20f2b5f428b01f5a4841d20f",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/characters/lin-deng-v1.png"
+      },
+      {
+        "label": "开发商",
+        "kind": "character",
+        "provider_asset_id": "call_oqTE80NMqiDDehTiZFZTtlHn",
+        "content_sha256": "42e2a0ad3bce83d9569031cf97fd5a0e7d57593d53281102c65eae86f99b6b05",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/characters/developer-v1.png"
+      },
+      {
+        "label": "盗谱者",
+        "kind": "character",
+        "provider_asset_id": "call_JX4O6UnnFZpRIxNk3ncbMVpl",
+        "content_sha256": "b06fde53cffa84252a364eac6ca0ceb152bba94abf1fdd3350d90f1ee2cdfb79",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/characters/score-thief-v1.png"
+      },
+      {
+        "label": "沈砚主服装",
+        "kind": "costume",
+        "provider_asset_id": "call_0vO5PjeTHUMvoQ6otu6zY7Nf",
+        "content_sha256": "c72c17d0990272e4a6ca4d2cdd6dcd16e6108430144fce4cd0c6374637f6a630",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/costumes/shen-yan-costume-v1.png"
+      },
+      {
+        "label": "午夜皮影戏台前场",
+        "kind": "location",
+        "provider_asset_id": "call_Zv0Kf8p8ksjbn06YEqgnzl3n",
+        "content_sha256": "2fb5f646817647914fd3d39b7f1253515edd0ce4718f0cc0bffc5486e5797873",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/locations/midnight-shadow-theater-v1.png"
+      },
+      {
+        "label": "灯",
+        "kind": "prop",
+        "provider_asset_id": "call_rIYG1bvee7pf22Brn2UqHYht",
+        "content_sha256": "84b96a9ebbba4697e8c883e1427a43c68b2dfe7bd9bea734209183fac3a6b1c0",
+        "source_path": "web/generated/ai-comic-series-projects/20260720-series-ujl3atax/imagegen-source/props/portable-lamp-v1.png"
+      }
+    ]
+  },
+  "defects_found_and_fixed": [
+    "openai_imagegen trusted-source assets were not accepted by immutable preview",
+    "first real file replacing a placeholder was incorrectly marked stale solely because the placeholder record existed",
+    "rule-mystery scene functions did not map climax and ending semantics into the common narrative quality gate",
+    "generic foreshadowing repeated every seven episodes and created seven duplicate long-thread groups",
+    "continuity-ledger rebuild discarded saved scene memory events and replaced real locations with plan focus labels"
+  ],
+  "verification": {
+    "focused_type_and_script_matrix": "16 files passed, 62 tests passed",
+    "server_full_suite": "163 files, 1405 tests passed, 2 skipped, 0 failed",
+    "workspace_check": "visible copy audit, server tsc, client vue-tsc passed",
+    "production_build": "server tsup and client Vite build passed; 171 client modules transformed",
+    "git_diff_check": "passed"
+  },
+  "remaining_functional_work": [
+    "Generate and bind the remaining 7 identity images: 3 costumes and 4 locations",
+    "Run image-to-storyboard and local GEARS execution-package smoke against all 180 shot requirements",
+    "Keep external video Provider submission disabled until separately authorized",
+    "Keep human media review and production credit deferred without weakening their strict semantics"
+  ]
+}

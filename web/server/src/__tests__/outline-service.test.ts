@@ -6,6 +6,7 @@ import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import { getStory } from '../services/story-service.js';
 import { getProject } from '../services/project-service.js';
+import { SHADOW_PUPPETRY_KEEPER_SERIES_FIXTURE } from './fixtures/shadow-puppetry-keeper-series-fixture.js';
 import {
   addAiComicSeriesSeedanceReview,
   archiveAiComicSeriesProject,
@@ -157,6 +158,50 @@ afterAll(async () => {
 });
 
 describe('outline-service', () => {
+  it('keeps rule-mystery AI comic episodes above narrative and continuity functional gates', async () => {
+    const planRes = await generateAiComicSeriesPlan(SHADOW_PUPPETRY_KEEPER_SERIES_FIXTURE);
+    expect(planRes.ok).toBe(true);
+    const normalizedForeshadowing = planRes.data!.episodes
+      .flatMap(episode => episode.foreshadowing)
+      .map(text => text
+        .replace(/[第\d一二三四五六七八九十百千万集]/g, '')
+        .replace(/[，。；：！？、,.!?:;\s"'“”‘’（）()【】\[\]-]/g, '')
+        .trim());
+    expect(new Set(normalizedForeshadowing).size).toBe(normalizedForeshadowing.length);
+
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 2,
+      output_gears_segments: true,
+      auto_audit_continuity: true,
+      auto_repair_episode: true,
+    });
+
+    expect(episodeRes.ok).toBe(true);
+    expect(episodeRes.data?.quality_report).toMatchObject({
+      hasClimax: true,
+      hasEndingTheme: true,
+    });
+    expect(episodeRes.data?.quality_report?.genre_score).toBeGreaterThanOrEqual(80);
+    expect(episodeRes.data?.ai_comic_episode_quality).toMatchObject({
+      score: 100,
+      passed: true,
+      issues: [],
+    });
+    expect(episodeRes.data?.continuity_audit).toMatchObject({
+      passed: true,
+      issues: [],
+    });
+    expect(episodeRes.data?.scene_breakdown[0].dramatic_function)
+      .toBe(planRes.data!.episodes[1].commercial_beats!.scene_function_sequence[0]);
+    expect(episodeRes.data?.scene_breakdown.slice(1).map(scene => scene.dramatic_function)).toEqual([
+      '人物登场',
+      '冲突爆发',
+      '反转/觉醒',
+      '高燃收束',
+    ]);
+  });
+
   it('recognizes the protagonist from KB aliases instead of short sliding-window fragments', async () => {
     const res = await analyzeOutline({
       outline: '我想做一个毛泽东少年求学走向革命的故事',
@@ -3521,6 +3566,27 @@ describe('outline-service', () => {
       asset.has_reference_slot && Boolean(asset.series_identity_id)
     ));
     expect(bindableAsset).toBeTruthy();
+    const placeholderAsset = seedanceAssetReportRes.data!.assets.find(asset => (
+      asset.asset_id !== bindableAsset!.asset_id
+      && Boolean(asset.series_identity_id)
+    ));
+    expect(placeholderAsset).toBeTruthy();
+    const placeholderUploadRes = await uploadAiComicSeriesSeedanceAssetFile(
+      saveRes.data!.project.series_project_id,
+      {
+        asset_id: placeholderAsset!.asset_id,
+        label: placeholderAsset!.label,
+        kind: placeholderAsset!.kind,
+        series_identity_id: placeholderAsset!.series_identity_id,
+        file: {
+          original_filename: 'placeholder-first-real-file.png',
+          mime_type: 'image/png',
+          buffer: ONE_PIXEL_PNG,
+        },
+      },
+    );
+    expect(placeholderUploadRes.ok).toBe(true);
+    expect(placeholderUploadRes.data?.asset.identity_binding?.status).toBe('pending');
     const assetLibraryRes = await updateAiComicSeriesSeedanceAssetLibrary(
       saveRes.data!.project.series_project_id,
       {
@@ -3561,12 +3627,21 @@ describe('outline-service', () => {
           mime_type: 'image/png',
           buffer: ONE_PIXEL_PNG,
         },
+        trusted_source: {
+          provider: 'openai_imagegen',
+          provider_asset_id: 'imagegen-call-fixture-001',
+          prompt_sha256: 'a'.repeat(64),
+          model: 'gpt-image-2',
+        },
       },
     );
     expect(immutableUploadRes.ok).toBe(true);
     expect(immutableUploadRes.data?.asset).toMatchObject({
       asset_id: bindableAsset!.asset_id,
-      provider: 'local_upload',
+      provider: 'openai_imagegen',
+      provider_asset_id: 'imagegen-call-fixture-001',
+      prompt_sha256: 'a'.repeat(64),
+      model: 'gpt-image-2',
       mime_type: 'image/png',
       size_bytes: ONE_PIXEL_PNG.length,
       rights_status: 'pending',
@@ -3587,6 +3662,19 @@ describe('outline-service', () => {
     );
     expect(previewRes.ok).toBe(true);
     if (previewRes.ok) expect(previewRes.data.buffer).toEqual(ONE_PIXEL_PNG);
+    const functionalAssetReportRes = await exportAiComicSeriesSeedanceAssetReportPackage(
+      saveRes.data!.project.series_project_id,
+    );
+    expect(functionalAssetReportRes.ok).toBe(true);
+    expect(functionalAssetReportRes.data?.completion_plan.summary.functional_test_asset_count)
+      .toBeGreaterThanOrEqual(2);
+    expect(functionalAssetReportRes.data?.completion_plan.identities.find(identity =>
+      identity.asset_id === bindableAsset!.asset_id
+    )).toMatchObject({
+      functional_test_asset_ready: true,
+      functional_test_identity_mapping_current: true,
+      production_credit: false,
+    });
 
     const mismatchedReviewRes = await updateAiComicSeriesMediaAssetReview(
       saveRes.data!.project.series_project_id,
@@ -4985,6 +5073,12 @@ describe('outline-service', () => {
     });
     expect(rebuildRes.ok).toBe(true);
     expect(rebuildRes.data?.continuity_ledger.episode_records[0].ending_hook).toContain('改为新的承接点');
+    expect(rebuildRes.data?.continuity_ledger.series_memory?.locations.some(location =>
+      location.label === episodeRes.data!.scene_breakdown[0].location
+    )).toBe(true);
+    expect(rebuildRes.data?.continuity_ledger.episode_records[0].memory_events?.some(event =>
+      event.category === 'location' && event.label === episodeRes.data!.scene_breakdown[0].location
+    )).toBe(true);
     expect(rebuildRes.data?.series_quality_audit?.episode_reports[0]).toMatchObject({
       episode_no: 1,
       plan_changed_after_generation: false,
