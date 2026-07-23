@@ -991,3 +991,85 @@ npm run smoke:story-agent-cross-seed
 ```
 
 本轮证明了故事、脚本、镜头任务、失败恢复和后期发布合同可以跨原创悬疑、历史伦理、非遗工艺和儿童传说稳定复跑。下一功能切片是为这四个跨种子系列分别生成并绑定真实 Codex 图片资产，再跨项目复核可信来源导入、不可变预览、identity 指纹映射和图片到镜头的引用链。真人测试继续延后，正式 production credit 语义不变。
+
+## 17. 2026-07-23 四系列真实图片资产绑定
+
+第 16 节的“分别生成并绑定真实 Codex 图片资产”已经完成。使用内置 imagegen 能力，以 `gpt-image-2` 为四个跨种子系列各生成一张 1672×941 PNG 人物/世界观母图：
+
+| 系列 | 主身份 | 图片内容 | 持久项目 |
+|---|---|---|---|
+| 《潮汐失忆局》 | 顾弦 | 海上广播维修平台、潮汐城市与主角工作装 | `20260723-series-55ltnmue` |
+| 《告身不署》 | 周敦颐 | 北宋案房、未签判词与拒签动作 | `20260723-series-tdwrvmj1` |
+| 《一线醒狮》 | 苏翎 | 湘绣修复工位、绣架与狮虎毛针质感 | `20260723-series-s67kt8wx` |
+| 《白鹿送药记》 | 小禾 | 白鹿、药篮、山谷洗药池与儿童安全边界 | `20260723-series-wais3cey` |
+
+源图、完整 prompt、Provider 调用 ID 和源 manifest 保存在：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260723/
+```
+
+结构化绑定报告：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260723/binding-report.json
+```
+
+### 17.1 可重复绑定命令
+
+新增：
+
+```bash
+cd web
+npm run smoke:story-agent-cross-seed-images
+```
+
+命令执行以下硬校验：
+
+1. 源 PNG 内容 SHA-256 与 manifest 一致；
+2. 完整 prompt SHA-256 与 manifest 一致；
+3. 角色名称必须存在于系列 visual bible，禁止把图片静默绑定到相似或错误身份；
+4. 图片以 `openai_imagegen / gpt-image-2` 可信来源写入项目不可变原件仓；
+5. authenticated preview 返回的字节必须与源 PNG 完全一致；
+6. functional test asset 必须 ready；
+7. identity mapping 必须匹配当前 source / visual-definition fingerprint；
+8. production credit 必须保持 false。
+
+第一次完整运行创建四个系列并完成 14 集生成与四张图片绑定。第二次运行读取成功报告作为检查点，重新校验四个项目和全部不可变字节，结果：
+
+```text
+asset_count=4
+immutable_preview_verified_count=4
+identity_mapping_current_count=4
+reused_existing_project_count=4
+created_project_count=0
+production_credit_count=0
+```
+
+复跑前后 `web/generated/ai-comic-series-projects/` 目录数均为 939，证明命令不会为相同 source / prompt / Provider ID 重复创建系列。
+
+### 17.2 图片链暴露的角色传播缺陷
+
+真实图片绑定不能只看前提忠实度分数，还要求图片标签能解析到 visual bible 的精确身份。第一轮因此发现：
+
+- “记忆修理师顾弦发现……”中的姓名后接动作动词，旧角色正则只识别了后面的陆潮；
+- “司理参军周敦颐面对……”中的历史官职不在职业角色词表，visual bible 错误建立了“百姓”而没有周敦颐；
+- 已成功图片绑定的命令复跑会新建重复系列。
+
+修复后，角色提取按大纲出现顺序确定主角，并覆盖常见动作谓词与 `司理参军` 等历史职务；聚焦回归确认顾弦、陆潮、苏翎、小禾和周敦颐全部进入前提合同，其中顾弦和周敦颐成为正确主身份。图片命令同时增加检查点复用。
+
+### 17.3 最终证据与边界
+
+```text
+图片：4 张真实 gpt-image-2 PNG，4/4 不可变预览，4/4 当前 identity 映射
+图片复跑：复用 4，新增项目 0
+角色前提回归：1 file / 6 tests passed
+跨种子完整矩阵：角色修复后连续 2 次 passed
+服务端全量：162 files passed，1 skipped；1408 tests passed，2 skipped
+全仓 check：visible copy、server source/scripts tsc、client vue-tsc 全部通过
+生产构建：server tsup、client Vite 通过；171 modules transformed
+```
+
+imagegen 技能使本轮采用“每个独立资产一次内置生成调用、完整 prompt 落盘、最终图片复制进项目工作区”的方式，而不是生成拼图后切割或留下 `$CODEX_HOME` 临时引用。四张图是真实图片资产，但其 `rights_status`、`human_review_status` 和 identity 人工批准仍为 pending；功能验证不等于权利授权，production credit 仍为 0/4。
+
+当前下一功能切片是把四系列从“一张主角/世界观母图”扩展到完整的常驻角色、服装、地点和关键道具集合，并把这些真实 identity 绑定到代表性镜头的 `@图片` 引用需求。真人测试仍不是当前研发门禁。

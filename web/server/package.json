@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "smoke:audit-crash": "tsx scripts/story-generation-attempt-audit-crash-smoke.mts",
     "smoke:story-agent-full-function": "tsx scripts/story-agent-full-function-smoke.mts",
-    "smoke:story-agent-cross-seed": "tsx scripts/story-agent-full-function-smoke.mts --matrix"
+    "smoke:story-agent-cross-seed": "tsx scripts/story-agent-full-function-smoke.mts --matrix",
+    "smoke:story-agent-cross-seed-images": "tsx scripts/story-agent-cross-seed-image-assets.mts"
   },
   "dependencies": {
     "cors": "^2.8.5",

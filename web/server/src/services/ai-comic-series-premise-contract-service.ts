@@ -33,6 +33,7 @@ const NAMED_CHARACTER_ROLE_LABELS = [
   '青年绣娘',
   '少年药童',
   '非遗传承人',
+  '司理参军',
   '巡检员',
   '调查记者',
   '修复师',
@@ -46,6 +47,9 @@ const NAMED_CHARACTER_ROLE_LABELS = [
   '学徒',
   '记者',
   '医生',
+  '县令',
+  '太守',
+  '官员',
   '主角',
   '搭档',
   '同伴',
@@ -198,17 +202,19 @@ function extractLockedCharacters(
   }
 
   const singlePattern = new RegExp(
-    `(?:${NAMED_CHARACTER_ROLE_LABELS.join('|')})\\s*[“"「『]?([\\u4e00-\\u9fff]{2,4}?)[”"」』]?(?=与|和|、|共同|一起|联手|必须|需要|面对|在|从|要|为|，|。|；|：|$)`,
+    `(?:${NAMED_CHARACTER_ROLE_LABELS.join('|')})\\s*[“"「『]?([\\u4e00-\\u9fff]{2,4}?)[”"」』]?(?=与|和|、|共同|一起|联手|必须|需要|面对|发现|试图|决定|正在|负责|带着|希望|寻找|阻止|拒绝|重新|继续|在|从|要|为|，|。|；|：|$)`,
     'g',
   );
   for (const match of outline.matchAll(singlePattern)) add(match[1], names.length === 0 ? '主角' : '核心人物');
 
-  return uniqueBy(names, item => item.name).map((item, index) => ({
-    name: item.name,
-    role: item.role ?? (index === 0 ? '主角' : '核心人物'),
-    required: true,
-    evidence_span: item.evidence,
-  }));
+  return uniqueBy(names, item => item.name)
+    .sort((left, right) => outline.indexOf(left.name) - outline.indexOf(right.name))
+    .map((item, index) => ({
+      name: item.name,
+      role: item.role ?? (index === 0 ? '主角' : '核心人物'),
+      required: true,
+      evidence_span: item.evidence,
+    }));
 }
 
 function extractWorldRules(outline: string): SeriesPremiseContractWorldRule[] {

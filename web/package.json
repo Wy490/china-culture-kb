@@ -21,7 +21,8 @@
     "e2e:track-a": "playwright test --config playwright.config.ts",
     "smoke:audit-crash": "npm run smoke:audit-crash -w server --",
     "smoke:story-agent-full-function": "npm run smoke:story-agent-full-function -w server --",
-    "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --"
+    "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --",
+    "smoke:story-agent-cross-seed-images": "npm run smoke:story-agent-cross-seed-images -w server --"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

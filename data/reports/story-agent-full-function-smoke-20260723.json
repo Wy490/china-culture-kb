@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-full-function-smoke/v1",
-  "generated_at": "2026-07-23T19:48:44+08:00",
+  "generated_at": "2026-07-23T22:37:14+08:00",
   "status": "passed",
   "priority": {
     "functional_test_first": true,
@@ -321,6 +321,69 @@
     "formal_project_contaminated": false,
     "evidence_boundary": "Each seed traverses story planning, every episode, prompt export, mocked GEARS failure/retry/callback, cut, subtitles, audio, title cards, manifest, immutable release, and cleanup. Media bytes remain synthetic and do not claim real Provider output."
   },
+  "cross_seed_image_asset_binding": {
+    "schema_version": "story-agent-cross-seed-image-asset-binding-report/v1",
+    "status": "passed",
+    "provider": "openai_imagegen",
+    "model": "gpt-image-2",
+    "asset_count": 4,
+    "immutable_preview_verified_count": 4,
+    "identity_mapping_current_count": 4,
+    "repeat_run_reused_existing_project_count": 4,
+    "repeat_run_created_project_count": 0,
+    "production_credit_count": 0,
+    "human_review_required": false,
+    "human_review_deferred": true,
+    "manifest_path": "web/generated/story-agent-cross-seed-image-assets-20260723/manifest.json",
+    "binding_report_path": "web/generated/story-agent-cross-seed-image-assets-20260723/binding-report.json",
+    "assets": [
+      {
+        "seed_id": "original-mystery",
+        "series_project_id": "20260723-series-55ltnmue",
+        "series_title": "潮汐失忆局",
+        "label": "顾弦",
+        "kind": "character",
+        "provider_asset_id": "call_o9Qg5hjEXKtYlQ4mHRqg98U7",
+        "content_sha256": "2eb229ded8348fdfa71f950a355dc4a21ff4abfdf9407b083bc9fad83e55dde3",
+        "prompt_sha256": "703a80f672a4cdf7338acab9bab37e9b3b513e60d476baf2ca799a9359e71e3e",
+        "source_path": "web/generated/story-agent-cross-seed-image-assets-20260723/sources/tidal-memory-gu-xian-v1.png"
+      },
+      {
+        "seed_id": "historical-ethics",
+        "series_project_id": "20260723-series-tdwrvmj1",
+        "series_title": "告身不署",
+        "label": "周敦颐",
+        "kind": "character",
+        "provider_asset_id": "call_GBIqW5ySbshPIWutTS3GU4C2",
+        "content_sha256": "4c0d0fb1ae4dd6bccd5a9729b4f428c10fefaa54d0957e0a3cb7a0a5f15bee66",
+        "prompt_sha256": "740826e0d2e6a8e7795e0bd878ccd0828f43b7e800061641b2cd2556a45732ae",
+        "source_path": "web/generated/story-agent-cross-seed-image-assets-20260723/sources/refusal-case-zhou-dunyi-v1.png"
+      },
+      {
+        "seed_id": "heritage-craft",
+        "series_project_id": "20260723-series-s67kt8wx",
+        "series_title": "一线醒狮",
+        "label": "苏翎",
+        "kind": "character",
+        "provider_asset_id": "call_LiRIii1JpgADrYO2OErEknEl",
+        "content_sha256": "110ba27e1b0f53ff4a050f94763068517d8af96676c7bb94a47b4aae0ef88670",
+        "prompt_sha256": "30511c0e051731cdb802db591b1d788f36165003f353b8f27fbfe9078445a83d",
+        "source_path": "web/generated/story-agent-cross-seed-image-assets-20260723/sources/xiang-embroidery-su-ling-v1.png"
+      },
+      {
+        "seed_id": "children-legend",
+        "series_project_id": "20260723-series-wais3cey",
+        "series_title": "白鹿送药记",
+        "label": "小禾",
+        "kind": "character",
+        "provider_asset_id": "call_Xjutyy3fLgwkheAwS2N6vehU",
+        "content_sha256": "61e89adda70263dd89f1217b459ee611aed1f356dd3dfda22d1e8ac9369a542d",
+        "prompt_sha256": "7053842837ac19b42f915d2d49f779b8011c4fbbde9ab41a464da6602de3d9fb",
+        "source_path": "web/generated/story-agent-cross-seed-image-assets-20260723/sources/white-deer-xiao-he-v1.png"
+      }
+    ],
+    "evidence_boundary": "These are real Codex-generated PNG assets with immutable bytes and current series identity mappings. Human review, rights authorization, and production credit remain pending and are not inferred from functional readiness."
+  },
   "defects_found_and_fixed": [
     "openai_imagegen trusted-source assets were not accepted by immutable preview",
     "first real file replacing a placeholder was incorrectly marked stale solely because the placeholder record existed",
@@ -331,7 +394,10 @@
     "automatic premise contracts missed named protagonists expressed through common profession-role phrases",
     "broad character-state keywords falsely treated ordinary actions and a missing passenger as character resurrection",
     "explicit historical caution language was falsely treated as a contradiction between tentative and verified knowledge",
-    "refusal-case foreshadowing did not carry a planned thread title and was reported as orphaned"
+    "refusal-case foreshadowing did not carry a planned thread title and was reported as orphaned",
+    "role-first character extraction missed protagonists when their names were followed by action verbs such as 发现",
+    "historical office phrases such as 司理参军周敦颐 did not propagate the named protagonist into the visual bible",
+    "cross-seed image binding reruns created duplicate series projects instead of verifying and reusing successful immutable bindings"
   ],
   "verification": {
     "focused_type_and_script_matrix": "16 files passed, 62 tests passed",
@@ -342,12 +408,15 @@
     "isolated_postproduction_smoke": "4 consecutive runs passed; 3 episodes, 27 shots, 1 synthetic failure and retry, cut/subtitle/audio/title-card/final delivery ready",
     "cross_seed_stability_smoke": "2 consecutive runs passed; 4 seeds, 4 pacing profiles, 2 truth modes, 14 episodes, 126 shots, 4 injected failures recovered, 36 title cards, 4 immutable releases per run",
     "cross_seed_quality_gates": "all 4 seeds scored 100 for series quality and premise fidelity; all commercial machine gates passed; 0 blocking memory conflicts and 0 thread-closure issues",
+    "cross_seed_image_assets": "4 real gpt-image-2 PNG assets generated and bound; 4 immutable previews verified; 4 current identity mappings; repeat run reused 4 projects and created 0",
+    "premise_contract_regression": "ai-comic-series-premise-contract.test.ts: 1 file, 6 tests passed",
     "postproduction_regression": "outline-service.test.ts: 1 file, 37 tests passed",
     "server_and_script_typecheck": "server source and scripts strict TypeScript checks passed",
     "git_diff_check": "passed"
   },
   "remaining_functional_work": [
-    "Generate and bind a real Codex image asset set for each cross-seed series, then repeat immutable preview and identity-mapping checks across projects",
+    "Expand each cross-seed series from one protagonist/world keyframe to the full recurring character, costume, location, and prop identity set",
+    "Bind the expanded real image identity sets into representative shot reference requirements and verify cross-shot reuse without stale mappings",
     "Exercise the same callback and post-production contract against a separately authorized real video Provider when credentials, budget, and explicit external-call authorization are available",
     "Keep external video Provider submission disabled until separately authorized",
     "Keep human media review and production credit deferred without weakening their strict semantics"
