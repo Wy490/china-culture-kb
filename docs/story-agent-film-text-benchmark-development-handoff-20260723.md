@@ -1073,3 +1073,91 @@ production_credit_count=0
 imagegen 技能使本轮采用“每个独立资产一次内置生成调用、完整 prompt 落盘、最终图片复制进项目工作区”的方式，而不是生成拼图后切割或留下 `$CODEX_HOME` 临时引用。四张图是真实图片资产，但其 `rights_status`、`human_review_status` 和 identity 人工批准仍为 pending；功能验证不等于权利授权，production credit 仍为 0/4。
 
 当前下一功能切片是把四系列从“一张主角/世界观母图”扩展到完整的常驻角色、服装、地点和关键道具集合，并把这些真实 identity 绑定到代表性镜头的 `@图片` 引用需求。真人测试仍不是当前研发门禁。
+
+## 18. 2026-07-24 跨题材视觉语义修复与完整镜头图片引用
+
+第 17 节所列下一切片已经完成，而且不只覆盖代表性镜头：四个系列全部 126 个镜头的稳定角色与场景图片引用缺口均已清零。
+
+### 18.1 修复跨题材视觉模板污染
+
+对四个持久项目进行视觉圣经审计时发现：计划层的题材、前提和质量门禁虽然通过，但通用分集成稿仍默认使用“宋代拒签案”分场模板，导致《潮汐失忆局》《一线醒狮》《白鹿送药记》出现案房、档房、判词、案卷和封泥等错误视觉身份。
+
+本轮将分集成稿明确拆为：
+
+- 规则悬疑；
+- 皮影守台；
+- 历史拒签案；
+- 近未来海上悬疑；
+- 湘绣修复；
+- 儿童药谷传奇；
+- 无专用模板时的原创兜底。
+
+非历史分支同时拥有独立的场景、道具、连续性文本、文化说明、事实边界和 GEARS 文化约束。新增回归测试会生成三类非历史项目，硬性要求出现各自题材锚点，并禁止拒签案资产进入成稿、GEARS 或 visual bible。
+
+图片绑定命令也增加视觉语义门禁：旧项目只要缺少必需视觉锚点或含有污染锚点，就不能被检查点复用，必须按当前代码重建。首次运行因此自动淘汰并替换了三个受污染项目。
+
+### 18.2 四张视觉圣经板与 34 个身份绑定
+
+在第 17 节四张主角母图基础上，使用主角母图作为 imagegen 参考，新增四张 16:9 视觉圣经板：
+
+| 系列 | 视觉圣经板覆盖 | 当前持久项目 |
+|---|---|---|
+| 《潮汐失忆局》 | 陆潮、顾弦/陆潮工作装、广播维修平台、航行记录机房、控制台/终端/录音带 | `20260724-series-b58lfu1f` |
+| 《告身不署》 | 周敦颐官服正背面、案房/档房、案卷/文书/油灯 | `20260724-series-j9476buf` |
+| 《一线醒狮》 | 苏翎服装、湘绣工作室、绣架、劈丝线板、醒狮绣屏 | `20260724-series-6lz0d8hf` |
+| 《白鹿送药记》 | 小禾服装、白鹿正侧面、采药小径/洗药池、药篮/辨识牌/木盆 | `20260724-series-t54xz7ia` |
+
+四张母图加四张视觉圣经板，共 8 个真实 `gpt-image-2` PNG 源制品；它们按视觉身份用途形成 34 个 character / costume / location / prop 绑定项。每个绑定项都有 Provider 调用 ID、model、完整 prompt SHA-256、内容 SHA-256、不可变预览和当前 visual identity 指纹映射。
+
+视觉圣经现在还会从成稿记忆中吸收实际出镜且非占位的支持角色，例如陆潮、老师傅、白鹿、催签差役、上官和见证人。与此同时，“百姓命运”不再被误提取为名叫“百姓”的稳定人物。
+
+imagegen 技能直接影响了资产策略：先检查已有母图，再以母图作为参考生成同系列视觉圣经板，从而让角色、服装、场景、材质和光色共享同一视觉语言；未切割拼图，也未把临时目录当作正式来源。
+
+### 18.3 自动展开到全部镜头引用
+
+`smoke:story-agent-cross-seed-images` 不再只绑定 manifest 中显式列出的主身份。视觉圣经板可声明自动覆盖该系列剩余的稳定 character / location 身份，命令会：
+
+1. 重建当前 visual bible；
+2. 找出全部稳定角色与场景；
+3. 对每个身份建立可信来源和不可变文件绑定；
+4. 复核 source / visual-definition fingerprint；
+5. 导出 Seedance 镜头资产报告；
+6. 若任何镜头仍有 `missing_reference_asset_ids`，立即硬失败。
+
+最终幂等复跑结果：
+
+```text
+source PNG：8
+identity binding：34/34
+immutable preview：34/34
+current functional identity mapping：34/34
+visual semantic gate：34/34
+reused existing project：34
+created project：0
+shot binding：126
+unbound shot：0
+production credit：0
+human review required：false
+```
+
+逐系列镜头引用：
+
+```text
+潮汐失忆局：27 shots / 0 unbound
+告身不署：36 shots / 0 unbound
+一线醒狮：45 shots / 0 unbound
+白鹿送药记：18 shots / 0 unbound
+```
+
+### 18.4 最终工程证据
+
+```text
+前提与视觉污染聚焦回归：1 file / 7 tests passed
+服务端全量：162 files passed，1 skipped；1409 tests passed，2 skipped
+服务端 source/scripts TypeScript：通过
+服务端生产构建：tsup 通过
+跨种子硬矩阵：4 seeds / 14 episodes / 126 shots 全部 passed
+图片资产幂等烟测：34/34 复用，0 新建，126/126 镜头无引用缺口
+```
+
+当前边界仍与用户优先级一致：这些是可复跑的 AI 图片功能测试资产，`rights_status`、`human_review_status` 和人工 identity 批准保持 pending，production credit 为 0。真人测试未被重新放回当前关键路径。下一功能切片应在不依赖真人审核的前提下，把这四个持久图片项目直接推进到 Seedance prompt export、镜头任务提交/回调、失败重试和后期装配的同项目证据，而不是继续增加同质母图。

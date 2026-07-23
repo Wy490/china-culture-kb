@@ -932,6 +932,26 @@ interface AiComicEpisodeSceneDraft {
   chars: string[];
 }
 
+interface AiComicGenericVisualContext {
+  mode: 'maritime_mystery' | 'xiang_embroidery' | 'herbal_legend' | 'generic';
+  supportingCharacter: string;
+  pressureLabel: string;
+  locations: {
+    primary: string;
+    threshold: string;
+    workroom: string;
+    exterior: string;
+  };
+  props: [string, string, string];
+  openingTitle: string;
+  taskTitle: string;
+  conflictTitle: string;
+  turnTitle: string;
+  endingTitle: string;
+  atmosphere: string;
+  culturalConstraints: string[];
+}
+
 function buildAiComicEpisodeAudienceScenes(
   plan: AiComicSeriesPlan,
   episode: AiComicEpisodePlan,
@@ -953,16 +973,34 @@ function buildAiComicEpisodeAudienceScenes(
     episode.title,
     episode.main_conflict,
   ].join('\n'));
+  const isRefusalCase = isAiComicRefusalCaseText([
+    plan.premise,
+    plan.core_theme,
+    episode.title,
+    episode.main_conflict,
+  ].join('\n'));
+  const genericContext = inferAiComicGenericVisualContext(plan, episode);
   const lockedCharacterNames = plan.premise_contract?.locked_characters
     .filter(character => character.required)
     .map(character => character.name) ?? [];
   const witnessCandidate = isRuleMystery
     ? lockedCharacterNames.find(name => name !== protagonist) ?? characters[1]
+    : !isHeritageStageRescue && !isRefusalCase
+    ? lockedCharacterNames.find(name => name !== protagonist)
+      ?? characters.find(name => name !== protagonist)
+      ?? genericContext.supportingCharacter
     : characters.find(name => name !== protagonist && /见证|少年|同伴|关键/.test(name))
       ?? characters[1];
   const witness = isHeritageStageRescue && /^(少年|关键见证者|对照角色|配角)$/.test(witnessCandidate ?? '')
     ? '戏班同伴'
-    : naturalizeAiComicCharacterLabel(witnessCandidate, isHeritageStageRescue ? '戏班同伴' : '见证人');
+    : naturalizeAiComicCharacterLabel(
+        witnessCandidate,
+        isHeritageStageRescue
+          ? '戏班同伴'
+          : isRefusalCase
+            ? '见证人'
+            : genericContext.supportingCharacter,
+      );
   const premisePressureRoles = plan.premise_contract?.antagonistic_forces
     .filter(force => force.required)
     .map(force => force.label) ?? [];
@@ -970,37 +1008,53 @@ function buildAiComicEpisodeAudienceScenes(
     ? premisePressureRoles[(episode.episode_no - 1) % Math.max(1, premisePressureRoles.length)] ?? '盗谱者'
     : isHeritageStageRescue
     ? chooseAiComicHeritagePressureRole(characters, protagonist, witness)
-    : chooseAiComicPressureRole(characters, protagonist, witness);
+    : isRefusalCase
+      ? chooseAiComicPressureRole(characters, protagonist, witness)
+      : genericContext.pressureLabel;
   const locations = inferAiComicEpisodeLocations(plan, episode);
   const newInfo = isRuleMystery
     ? episode.new_information.find(item => /规则|记忆|灯谱|开发商|盗谱者/.test(item))
       ?? episode.new_information[0]
       ?? '一条新的规则痕迹'
     : episode.new_information[0] ?? episode.knowledge_focus[0] ?? '一条新的证词';
-  const visibleNewInfo = naturalizeAiComicNewInformationForScene(newInfo);
+  const visibleNewInfo = isRuleMystery || isHeritageStageRescue || isRefusalCase
+    ? naturalizeAiComicNewInformationForScene(newInfo)
+    : naturalizeAiComicGenericText(newInfo, genericContext.props[0]);
   const foreshadowing = episode.foreshadowing[0] ?? '案卷边角的旧墨痕';
   const visibleForeshadowing = isHeritageStageRescue
     ? foreshadowing
         .replace(/^.+?主线推进[:：]\s*/, '')
         .replace(/[。！？!?]+$/, '')
-    : naturalizeAiComicForeshadowing(foreshadowing);
+    : isRuleMystery || isRefusalCase
+      ? naturalizeAiComicForeshadowing(foreshadowing)
+      : naturalizeAiComicGenericText(foreshadowing, genericContext.props[1]);
   const payoff = episode.payoff[0] ?? blueprint.thread_action;
   const visiblePayoff = naturalizeAiComicPlanningSubject(
     isHeritageStageRescue && /(打开线索|推进|后续必须承接|回收线索)/.test(payoff)
       ? `本集${episode.knowledge_focus[0] ?? '守艺任务'}的可复演成果`
       : isHeritageStageRescue
         ? payoff.replace(/[。！？!?]+$/, '')
+        : !isRefusalCase && !isRuleMystery
+          ? naturalizeAiComicGenericText(payoff, genericContext.props[2])
         : naturalizeAiComicPayoff(payoff),
     protagonist,
   );
-  const visibleMidpoint = naturalizeAiComicMidpointTurn(blueprint.midpoint_turn, plan.core_theme, protagonist);
+  const visibleMidpoint = isRuleMystery || isHeritageStageRescue || isRefusalCase
+    ? naturalizeAiComicMidpointTurn(blueprint.midpoint_turn, plan.core_theme, protagonist)
+    : naturalizeAiComicGenericMidpointTurn(blueprint.midpoint_turn, plan.core_theme, protagonist, genericContext);
   const visibleMainConflict = naturalizeAiComicPlanningSubject(episode.main_conflict, protagonist);
   const visibleEndingHook = naturalizeAiComicPlanningSubject(blueprint.ending_hook, protagonist);
   const previousState = isRuleMystery
     ? `${protagonist}与${witness}带着双人灯票和上一集留下的记忆记录进入本集。`
     : isHeritageStageRescue
     ? naturalizeAiComicHeritageContinuityState(episode.continuity_from_previous[0], protagonist)
-    : naturalizeAiComicContinuityState(episode.continuity_from_previous[0], protagonist);
+    : isRefusalCase
+      ? naturalizeAiComicContinuityState(episode.continuity_from_previous[0], protagonist)
+      : naturalizeAiComicGenericContinuityState(
+          episode.continuity_from_previous[0],
+          protagonist,
+          genericContext,
+        );
 
   const baseSceneDrafts: AiComicEpisodeSceneDraft[] = [
     {
@@ -1106,6 +1160,20 @@ function buildAiComicEpisodeAudienceScenes(
         visibleEndingHook,
         previousState,
       })
+    : !isRefusalCase
+      ? buildAiComicGenericEpisodeSceneDrafts({
+          episode,
+          protagonist,
+          witness,
+          context: genericContext,
+          visibleNewInfo,
+          visibleForeshadowing,
+          visiblePayoff,
+          visibleMidpoint,
+          visibleMainConflict,
+          visibleEndingHook,
+          previousState,
+        })
     : episode.episode_no === 1
       ? baseSceneDrafts
       : buildAiComicFollowupEpisodeSceneDrafts({
@@ -1140,6 +1208,8 @@ function buildAiComicEpisodeAudienceScenes(
       ? `本场以${sourceEntry}为用户原创悬疑故事依据；皮影制作、灯幕和操偶细节按非遗事实复核，午夜规则与记忆抹除只作为虚构机制。`
       : isHeritageStageRescue
       ? `本场以${sourceEntry}为原创故事依据；皮影制作、灯幕、戏台与戏班协作细节需要后续由非遗从业者复核。`
+      : !isRefusalCase
+      ? `本场以${sourceEntry}为原创故事依据；${genericContext.culturalConstraints[0]}`
       : `本场以${sourceEntry}和宋代士人/衙署器物边界为依据，案件细节属于影视化虚构。`,
     conflict: draft.conflict,
     dialogue_or_narration: draft.dialogue,
@@ -1148,13 +1218,228 @@ function buildAiComicEpisodeAudienceScenes(
       ? `皮影器物与表演流程需要依据${sourceEntry}复核；角色、午夜规则、记忆代价和盗谱调查均为原创剧情。`
       : isHeritageStageRescue
       ? `人物、拆迁倒计时和祖父机关谱来自${sourceEntry}；具体修复动作、商谈与演出调度为原创剧情。`
+      : !isRefusalCase
+      ? `人物、世界与核心任务来自${sourceEntry}；具体对白、障碍和分场节奏为原创影视化处理。`
       : `人物与文化背景参考${sourceEntry}；本集案情和见证细节为系列创作。`,
     fictionalized_elements: isRuleMystery
       ? ['午夜皮影规则、记忆抹除、失传灯谱、开发商与盗谱者对抗为原创悬疑机制']
       : isHeritageStageRescue
       ? ['角色对白、机关谱线索、修复难题和分场节奏为原创影视化处理']
+      : !isRefusalCase
+      ? ['角色对白、阶段障碍、视觉线索和分场节奏为原创影视化处理']
       : ['案卷调度、对白、证物和分场节奏为影视化创作处理'],
   }));
+}
+
+function inferAiComicGenericVisualContext(
+  plan: AiComicSeriesPlan,
+  episode: AiComicEpisodePlan,
+): AiComicGenericVisualContext {
+  const text = [
+    plan.series_title,
+    plan.premise,
+    plan.core_theme,
+    episode.title,
+    episode.main_conflict,
+    ...episode.knowledge_focus,
+  ].join(' ');
+  if (/海上|潮汐|广播|航行记录|记忆修理/.test(text)) {
+    return {
+      mode: 'maritime_mystery',
+      supportingCharacter: '陆潮',
+      pressureLabel: '潮汐倒计时',
+      locations: {
+        primary: '潮汐城广播维修平台',
+        threshold: '海上城市潮位通道',
+        workroom: '航行记录机房',
+        exterior: '潮汐城防波堤',
+      },
+      props: ['广播控制台', '航行记录终端', '记忆录音带'],
+      openingTitle: '停电后的幽灵频段',
+      taskTitle: '广播里的失踪声音',
+      conflictTitle: '航行记录被改写',
+      turnTitle: '潮声中的第二层信号',
+      endingTitle: '下一次潮汐逼近',
+      atmosphere: '近未来海上城市、青蓝应急灯、潮雾和锈蚀金属',
+      culturalConstraints: [
+        '近未来海上城市与记忆修理机制属于原创世界观，不得混入其他时代或题材模板。',
+        '广播设备、航行记录终端和潮位设施的空间关系必须跨镜头连续。',
+      ],
+    };
+  }
+  if (/湘绣|绣娘|鬅毛针|掺针|劈丝|绣屏|醒狮/.test(text)) {
+    return {
+      mode: 'xiang_embroidery',
+      supportingCharacter: '老师傅',
+      pressureLabel: '修复期限',
+      locations: {
+        primary: '长沙湘绣修复工作室',
+        threshold: '湘绣工作室采光窗前',
+        workroom: '醒狮绣屏修复台',
+        exterior: '长沙老街工作室门外',
+      },
+      props: ['醒狮绣屏', '木制绣架', '劈丝线板'],
+      openingTitle: '断线落在狮眼上',
+      taskTitle: '重新劈出第一缕丝',
+      conflictTitle: '针法与期限对撞',
+      turnTitle: '狮毛在针下醒来',
+      endingTitle: '最后一针尚未落下',
+      atmosphere: '当代长沙湘绣工作室、自然侧光、丝线微光和木质绣架',
+      culturalConstraints: [
+        '湘绣针法、劈丝和绣屏修复按可核实技艺边界呈现，不得混入其他时代或题材模板。',
+        '鬅毛针、掺针等具体手法需要从业者复核；人物与修复危机属于原创剧情。',
+      ],
+    };
+  }
+  if (/白鹿|药童|草药|洗药池|神农|药篮/.test(text)) {
+    return {
+      mode: 'herbal_legend',
+      supportingCharacter: '白鹿',
+      pressureLabel: '日落时限',
+      locations: {
+        primary: '山谷采药小径',
+        threshold: '白鹿停步的林间岔路',
+        workroom: '山谷洗药池',
+        exterior: '晚霞中的药谷坡地',
+      },
+      props: ['竹编药篮', '草药辨识牌', '洗药木盆'],
+      openingTitle: '药篮里混进陌生叶片',
+      taskTitle: '白鹿在岔路停步',
+      conflictTitle: '日落前辨清草药',
+      turnTitle: '洗药池映出叶脉',
+      endingTitle: '白鹿回望下一座山',
+      atmosphere: '温暖儿童绘本式山谷、清澈洗药池、草叶逆光和白鹿柔光',
+      culturalConstraints: [
+        '药草辨识只呈现剧情中的观察与求证过程，不提供医疗处方或采食建议，也不得混入其他题材模板。',
+        '白鹿引路属于儿童传奇的虚构机制；地域药俗与药材知识需要可靠资料复核。',
+      ],
+    };
+  }
+  return {
+    mode: 'generic',
+    supportingCharacter: '同行者',
+    pressureLabel: '任务倒计时',
+    locations: {
+      primary: `${plan.series_title}核心场景`,
+      threshold: `${plan.series_title}转折空间`,
+      workroom: `${plan.series_title}行动现场`,
+      exterior: `${plan.series_title}外景`,
+    },
+    props: ['核心任务物件', '阶段线索物件', '连续性信物'],
+    openingTitle: '异常首先出现',
+    taskTitle: '线索进入行动',
+    conflictTitle: '代价开始逼近',
+    turnTitle: '判断必须改向',
+    endingTitle: '新问题留下',
+    atmosphere: `${plan.series_title}原创世界、统一材质和连续光色`,
+    culturalConstraints: [
+      '严格沿用用户提供的时代、地点、人物与类型边界，不得自动套用其他题材模板。',
+      '事实性文化细节需依据项目知识来源复核，原创机制不得写成确证史实。',
+    ],
+  };
+}
+
+function buildAiComicGenericEpisodeSceneDrafts(input: {
+  episode: AiComicEpisodePlan;
+  protagonist: string;
+  witness: string;
+  context: AiComicGenericVisualContext;
+  visibleNewInfo: string;
+  visibleForeshadowing: string;
+  visiblePayoff: string;
+  visibleMidpoint: string;
+  visibleMainConflict: string;
+  visibleEndingHook: string;
+  previousState: string;
+}): AiComicEpisodeSceneDraft[] {
+  const {
+    episode,
+    protagonist,
+    witness,
+    context,
+    visibleNewInfo,
+    visibleForeshadowing,
+    visiblePayoff,
+    visibleMidpoint,
+    visibleMainConflict,
+    visibleEndingHook,
+    previousState,
+  } = input;
+  const [primaryProp, clueProp, continuityProp] = context.props;
+  const companionPhrase = witness === context.pressureLabel ? '' : `，${witness}在旁协助`;
+  const commercial = episode.commercial_beats;
+  return [
+    {
+      title: context.openingTitle,
+      duration: 12,
+      location: context.locations.primary,
+      time: '任务开始时',
+      functionLabel: commercial?.scene_function_sequence?.[0] ?? '钩子开场',
+      plot: `${previousState}${primaryProp}突然出现不合常理的变化。${protagonist}立刻停下原计划${companionPhrase}，把异常和本集任务放在同一画面里。`,
+      keyAction: `${protagonist}先固定${primaryProp}的异常状态，拒绝凭直觉跳过。`,
+      conflict: visibleMainConflict,
+      dialogue: `${witness}：“它刚才不是这样。”\n${protagonist}：“先记住变化，再决定往哪走。”`,
+      visual: `${context.locations.primary}，${context.atmosphere}，${primaryProp}占据前景，${protagonist}与${witness}共同确认异常，9:16竖屏近景`,
+      camera: `从${primaryProp}极近特写切到两人反应，前三秒建立异常`,
+      chars: [protagonist, witness],
+    },
+    {
+      title: context.taskTitle,
+      duration: 18,
+      location: context.locations.threshold,
+      time: '同一时段',
+      functionLabel: '任务展开',
+      plot: `${protagonist}把${visibleNewInfo}与${clueProp}逐项核对。${context.pressureLabel}已经开始逼近，但${witness}发现${visibleForeshadowing}，让两人不能直接采用最省时间的答案。`,
+      keyAction: `${protagonist}把新信息转成可观察、可复核的动作。`,
+      conflict: `快速完成任务与查清${clueProp}的真实含义互相冲突。`,
+      dialogue: `${protagonist}：“不要替线索说话，让它自己对得上。”\n${witness}：“若它对不上，我们就换一条路。”`,
+      visual: `${context.locations.threshold}，${context.atmosphere}，${clueProp}、${primaryProp}与环境标记形成清晰证据链`,
+      camera: `横移扫过${clueProp}的三个细节，停在${witness}指出差异的手势`,
+      chars: [protagonist, witness],
+    },
+    {
+      title: context.conflictTitle,
+      duration: 20,
+      location: context.locations.workroom,
+      time: '压力上升时',
+      functionLabel: '冲突爆发',
+      plot: `${context.pressureLabel}迫使${protagonist}立刻选择。${protagonist}没有牺牲关键步骤，而是和${witness}重排任务：一人守住${primaryProp}，一人验证${clueProp}。`,
+      keyAction: `${protagonist}在倒计时中做出可见选择，并承担延误或失败的代价。`,
+      conflict: `${visibleMainConflict}；捷径会破坏本集最重要的连续性。`,
+      dialogue: `${witness}：“时间不够了。”\n${protagonist}：“所以每一步都更不能错。”`,
+      visual: `${context.locations.workroom}，${context.atmosphere}，${primaryProp}与${clueProp}分列两侧，人物交叉协作，倒计时以环境变化呈现`,
+      camera: '交叉剪辑两条行动线，最终汇合到主角的决定',
+      chars: [protagonist, witness],
+    },
+    {
+      title: context.turnTitle,
+      duration: 20,
+      location: context.locations.workroom,
+      time: '转折时刻',
+      functionLabel: '反转/觉醒',
+      plot: `${visibleMidpoint}。${protagonist}把${primaryProp}、${clueProp}与${continuityProp}放在一起，发现原先的判断遗漏了一个可见关系；${visibleForeshadowing}不再只是提示，而成为改向的依据。`,
+      keyAction: `${protagonist}根据可见证据改变行动方向，而不是机械执行原计划。`,
+      conflict: '承认判断有误会损失时间，但继续走错会失去完成任务的机会。',
+      dialogue: `${protagonist}：“不是线索消失了，是我们一直把它放错位置。”\n${witness}：“那就趁还来得及，重新摆对。”`,
+      visual: `${context.locations.workroom}，${context.atmosphere}，${primaryProp}、${clueProp}、${continuityProp}形成明确三点关系，光线随认知转折变化`,
+      camera: '俯拍三件物件的空间关系，再推近主角确认新方向的眼神',
+      chars: [protagonist, witness],
+    },
+    {
+      title: context.endingTitle,
+      duration: 20,
+      location: context.locations.exterior,
+      time: '阶段结束时',
+      functionLabel: '高燃收束',
+      plot: `${protagonist}与${witness}完成本集可验证的阶段成果：${visiblePayoff}。${continuityProp}被保留下来作为下一集的连续性锚点，环境中的新变化却提醒他们任务尚未结束；${visibleEndingHook}`,
+      keyAction: `${protagonist}保存本集成果和${continuityProp}状态，明确下一步必须回应的问题。`,
+      conflict: '阶段目标已经推进，但更大的代价和未知仍在逼近。',
+      dialogue: `${witness}：“至少这一步留下来了。”\n${protagonist}：“留下来的不是答案，是我们还能继续找答案的凭据。”`,
+      visual: `${context.locations.exterior}，${context.atmosphere}，${continuityProp}作为结尾视觉锚点，${protagonist}与${witness}面向下一段路`,
+      camera: `从${continuityProp}慢推到远景中的新目标，定格集末钩子`,
+      chars: [protagonist, witness],
+    },
+  ];
 }
 
 function buildAiComicRuleMysteryEpisodeSceneDrafts(input: {
@@ -1608,6 +1893,54 @@ function naturalizeAiComicHeritageContinuityState(raw: string | undefined, prota
   return personalized.endsWith('。') ? personalized : `${personalized}。`;
 }
 
+function naturalizeAiComicGenericContinuityState(
+  raw: string | undefined,
+  protagonist: string,
+  context: AiComicGenericVisualContext,
+): string {
+  const text = raw?.trim();
+  if (!text || /建立主角初始状态|核心问题|第一条长期线索/.test(text)) {
+    return `${protagonist}带着未完成的任务进入${context.locations.primary}。`;
+  }
+  const previousHook = text.match(/^承接第\d+集结尾[:：](.+)$/);
+  if (previousHook?.[1]) {
+    return `上一集留下的变化仍在继续：${naturalizeAiComicPlanningSubject(previousHook[1], protagonist).replace(/[。！？!?]+$/, '')}。`;
+  }
+  const previousState = text.match(/^延续第\d+集后的状态[:：](.+)$/);
+  if (previousState?.[1]) {
+    return `${naturalizeAiComicPlanningSubject(previousState[1], protagonist).replace(/[。！？!?]+$/, '')}。`;
+  }
+  const personalized = naturalizeAiComicPlanningSubject(text, protagonist);
+  return personalized.endsWith('。') ? personalized : `${personalized}。`;
+}
+
+function naturalizeAiComicGenericText(raw: string, fallback: string): string {
+  const text = raw.trim()
+    .replace(/[。！？!?]+$/, '')
+    .replace(/^(?:新增知识焦点|新增素材焦点|新增剧情信息|本集新增信息|新增信息|知识焦点|素材焦点|计划知识焦点|计划素材焦点|阶段转折落地|打开线索|开启线索|回收线索|回收上集线索|后续必须承接)[:：]\s*/, '')
+    .replace(/^.+?主线推进[:：]\s*/, '')
+    .replace(/^(.+?)相关的第一条可见线索进入案卷$/, '$1相关的第一条可见线索')
+    .trim();
+  if (!text || /^(?:阶段|phase|长期线索|主线|剧情推进|知识依据|可视化线索)$/i.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function naturalizeAiComicGenericMidpointTurn(
+  raw: string,
+  coreTheme: string,
+  protagonist: string,
+  context: AiComicGenericVisualContext,
+): string {
+  const text = naturalizeAiComicGenericText(raw, '');
+  if (!text || /被迫做出第一次选择|表面目标背后还有更深层原因|不是旁观问题/.test(text)) {
+    return `${protagonist}发现${context.props[0]}与${context.props[1]}之间出现新的可见关系，原计划必须改向`;
+  }
+  return naturalizeAiComicPlanningSubject(text, protagonist)
+    .replace(/“[^”]{1,80}”不是旁观者能绕开的题/g, `“${coreTheme}”已经变成本集必须解决的行动`);
+}
+
 function naturalizeAiComicPlanningSubject(raw: string, protagonist: string): string {
   return raw.trim().replace(/主角/g, protagonist);
 }
@@ -1632,7 +1965,7 @@ function chooseAiComicHeritagePressureRole(characters: string[], protagonist: st
 
 function naturalizeAiComicCharacterLabel(name: string | undefined, fallback: string): string {
   const value = name?.trim();
-  if (!value || /^(关键见证者|对照角色|配角|反派|主角)$/.test(value)) return fallback;
+  if (!value || /^(关键见证者|对照角色|配角|反派|主角|少年)$/.test(value)) return fallback;
   return value;
 }
 
@@ -1745,6 +2078,24 @@ function buildAiComicEpisodeAudienceGearsSegments(scenes: StoryScene[], sourceEn
     scene.plot,
     scene.visual_prompt,
   ].join(' ')));
+  const isMaritimeMystery = scenes.some(scene => /潮汐城|广播维修|航行记录|记忆录音带/.test([
+    scene.title,
+    scene.location,
+    scene.plot,
+    scene.visual_prompt,
+  ].join(' ')));
+  const isXiangEmbroidery = scenes.some(scene => /湘绣|绣架|绣屏|劈丝|鬅毛针|掺针/.test([
+    scene.title,
+    scene.location,
+    scene.plot,
+    scene.visual_prompt,
+  ].join(' ')));
+  const isHerbalLegend = scenes.some(scene => /白鹿|草药|洗药池|药篮/.test([
+    scene.title,
+    scene.location,
+    scene.plot,
+    scene.visual_prompt,
+  ].join(' ')));
   return scenes.map(scene => ({
     segment_id: scene.scene_id,
     source_scene_id: scene.scene_id,
@@ -1770,6 +2121,21 @@ function buildAiComicEpisodeAudienceGearsSegments(scenes: StoryScene[], sourceEn
       ? [
           '当代长沙老街语境；皮影、影偶、白幕、灯架、锣鼓和木构戏台的结构关系必须前后连续。',
           '非遗技艺动作需要从业者复核；不得把原创机关谱、戏班人物和拆迁情节写成真实传承史实。',
+        ]
+      : isMaritimeMystery
+      ? [
+          '近未来海上城市语境；广播设备、航行记录终端、潮位设施和记忆录音带的状态必须前后连续。',
+          '记忆修理与潮汐倒计时属于原创机制；科技界面保持同一设计语言，不混入其他时代或题材模板。',
+        ]
+      : isXiangEmbroidery
+      ? [
+          '当代长沙湘绣工作室语境；醒狮绣屏、木制绣架、丝线色号和修复进度必须前后连续。',
+          '鬅毛针、掺针、劈丝等技艺动作需要可靠资料或从业者复核；人物与修复期限属于原创剧情。',
+        ]
+      : isHerbalLegend
+      ? [
+          '儿童传奇山谷语境；白鹿、竹编药篮、草药辨识牌和洗药池的空间关系必须前后连续。',
+          '药草内容不得当作医疗或采食建议；白鹿引路属于原创传奇机制，地域药俗需要可靠资料复核。',
         ]
       : [
           '宋代语境，素色交领长衫、圆领袍、布履、束发；不得出现现代器物。',
@@ -17830,7 +18196,9 @@ function extractVisualAssetAnchor(visualPrompt: string): { label: string; status
 function extractPropAnchor(text: string): string | null {
   const normalized = text.trim();
   if (!normalized) return null;
-  const match = normalized.match(/(?:信物|玉佩|玉扣|佩剑|剑|书卷|竹简|卷宗|图卷|灯笼|石碑|印章|符牌|钥匙|帛书|器物|道具)[^，。；,.]{0,18}/);
+  const productionProp = normalized.match(/广播控制台|航行记录终端|记忆录音带|醒狮绣屏|木制绣架|劈丝线板|竹编药篮|草药辨识牌|洗药木盆/)?.[0];
+  if (productionProp) return productionProp;
+  const match = normalized.match(/(?:广播控制台|航行记录终端|记忆录音带|醒狮绣屏|木制绣架|劈丝线板|竹编药篮|草药辨识牌|洗药木盆|信物|玉佩|玉扣|佩剑|剑|书卷|竹简|卷宗|图卷|灯笼|石碑|印章|符牌|钥匙|帛书|器物|道具)[^，。；,.]{0,18}/);
   return match?.[0] ? summarizeText(match[0], 18) : null;
 }
 

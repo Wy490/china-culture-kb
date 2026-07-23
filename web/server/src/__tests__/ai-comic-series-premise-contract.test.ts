@@ -56,6 +56,7 @@ describe('AI comic series premise contract regression', () => {
         title: '告身不署',
         expectedNames: ['周敦颐'],
         expectedLead: '周敦颐',
+        forbiddenNames: ['百姓'],
       },
     ];
 
@@ -69,8 +70,64 @@ describe('AI comic series premise contract regression', () => {
       expect(result.ok).toBe(true);
       expect(result.data?.premise_contract?.locked_characters.map(character => character.name))
         .toEqual(expect.arrayContaining(item.expectedNames));
+      for (const forbiddenName of item.forbiddenNames ?? []) {
+        expect(result.data?.premise_contract?.locked_characters.map(character => character.name))
+          .not.toContain(forbiddenName);
+      }
       if (item.expectedLead) expect(result.data?.main_characters[0]?.name).toBe(item.expectedLead);
       expect(auditAiComicSeriesPremiseFidelity(result.data!).hard_gate_passed).toBe(true);
+    }
+  });
+
+  it('keeps non-historical cross-seed episodes and visual bibles free of refusal-case assets', async () => {
+    const cases = [
+      {
+        outline: '近未来海上城市停电后，记忆修理师顾弦发现失踪乘客的声音藏在废弃广播频段中。她与巡检员陆潮必须在三次潮汐前找出篡改航行记录的人。',
+        title: '潮汐失忆局',
+        expected: /潮汐|广播|航行记录/,
+      },
+      {
+        outline: '长沙湘绣工作室面临修复期限，青年绣娘苏翎必须重新学习鬅毛针、掺针和劈丝，完成一幅醒狮绣屏。',
+        title: '一线醒狮',
+        expected: /湘绣|绣架|绣屏|丝线/,
+      },
+      {
+        outline: '少年药童小禾必须在日落前辨清草药并送回山谷洗药池，途中得到白鹿引路。',
+        title: '白鹿送药记',
+        expected: /白鹿|草药|洗药池|药篮/,
+      },
+    ];
+    const refusalCasePollution = /宋代|衙署|案房|档房|判词|案卷|拒签|催签|上官|封泥/;
+
+    for (const item of cases) {
+      const planResult = await generateAiComicSeriesPlan({
+        outline: item.outline,
+        series_title: item.title,
+        episode_count: 2,
+        episode_duration_range_sec: { min: 60, max: 90 },
+      });
+      const saved = await saveAiComicSeriesProject({ plan: planResult.data! });
+      const episode = await generateAiComicEpisodeFromPlan({
+        series_project_id: saved.data!.project.series_project_id,
+        series_plan: planResult.data!,
+        episode_no: 1,
+        output_gears_segments: true,
+      });
+
+      expect(episode.ok, JSON.stringify(episode.error)).toBe(true);
+      const audienceText = JSON.stringify([
+        episode.data?.scene_breakdown,
+        episode.data?.gears_segments,
+      ]);
+      expect(audienceText).toMatch(item.expected);
+      expect(audienceText).not.toMatch(refusalCasePollution);
+
+      const project = await getAiComicSeriesProject(saved.data!.project.series_project_id);
+      const identityText = project.data?.visual_bible?.identities
+        .map(identity => `${identity.kind}:${identity.label}`)
+        .join('\n') ?? '';
+      expect(identityText).toMatch(item.expected);
+      expect(identityText).not.toMatch(refusalCasePollution);
     }
   });
 

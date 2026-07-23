@@ -16,6 +16,7 @@ const GENERIC_CHARACTER_LABELS = new Set([
   '见证者',
   '关键见证者',
   '对照角色',
+  '百姓',
 ]);
 
 const ANTAGONISTIC_FORCE_LABELS = [

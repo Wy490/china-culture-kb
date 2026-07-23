@@ -3638,7 +3638,9 @@ describe('outline-service', () => {
       },
     );
     expect(assetLibraryRes.ok).toBe(true);
-    expect(assetLibraryRes.data?.seedance_asset_library?.items[0]).toMatchObject({
+    expect(assetLibraryRes.data?.seedance_asset_library?.items.find(item =>
+      item.asset_id === bindableAsset!.asset_id
+    )).toMatchObject({
       asset_id: bindableAsset!.asset_id,
       file_url: 'https://example.com/seedance-assets/asset-001.png',
     });

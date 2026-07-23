@@ -120,6 +120,45 @@ export function buildAiComicSeriesVisualBible(input: {
   }
 
   const memory = input.ledger.series_memory
+  const genericMemoryCharacterLabels = new Set([
+    '主角',
+    '配角',
+    '反派',
+    '少年',
+    '百姓',
+    '关键见证者',
+    '对照角色',
+    '同行者',
+  ])
+  for (const character of memory?.characters ?? []) {
+    const label = character.label.trim()
+    const relatedEpisodeNos = sortedEpisodeNos(character.related_episode_nos)
+    if (
+      !label
+      || genericMemoryCharacterLabels.has(label)
+      || productionCharacterNames.has(label)
+      || relatedEpisodeNos.length < 1
+    ) {
+      continue
+    }
+    appendCharacterAndCostumeIdentities({
+      identities,
+      previousIdentities,
+      characterName: label,
+      canonicalDescription: character.visual_anchor?.trim()
+        || character.status.trim()
+        || `${label}是跨集连续出现的视觉主体`,
+      costumeDescription: character.visual_anchor?.trim()
+        || `${label}的主服装需与其跨集状态保持一致`,
+      source: 'series_memory',
+      allEpisodeNos: relatedEpisodeNos,
+      pilotEpisodeNos: intersectEpisodes(relatedEpisodeNos, pilotEpisodeNos),
+      forbiddenSubstitutions: input.plan.premise_contract?.forbidden_substitutions ?? [],
+      assetLibrary: input.assetLibrary,
+    })
+    productionCharacterNames.add(label)
+  }
+
   for (const location of meaningfulLocations(memory?.locations ?? [])) {
     const locationIdentityId = aiComicSeriesVisualIdentityId('location', location.label)
     identities.push(finalizeIdentity({
@@ -309,7 +348,7 @@ function appendCharacterAndCostumeIdentities(input: {
   characterName: string
   canonicalDescription: string
   costumeDescription: string
-  source: Extract<AiComicSeriesVisualIdentity['source'], 'plan_character' | 'premise_antagonist'>
+  source: Extract<AiComicSeriesVisualIdentity['source'], 'plan_character' | 'premise_antagonist' | 'series_memory'>
   allEpisodeNos: number[]
   pilotEpisodeNos: number[]
   forbiddenSubstitutions: string[]
@@ -459,7 +498,11 @@ function meaningfulLocations(items: NonNullable<AiComicContinuityLedger['series_
 }
 
 function meaningfulProps(items: NonNullable<AiComicContinuityLedger['series_memory']>['props']) {
-  return items.filter(item => /^道具「[^」]{1,40}」外观参考$/.test(item.label.trim()))
+  return items.filter(item => {
+    const label = item.label.trim()
+    return /^道具「[^」]{1,40}」外观参考$/.test(label)
+      || /^(?:广播控制台|航行记录终端|记忆录音带|醒狮绣屏|木制绣架|劈丝线板|竹编药篮|草药辨识牌|洗药木盆|案卷|灯|判词|文书)$/.test(label)
+  })
 }
 
 function extractPropLabel(label: string): string {
