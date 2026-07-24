@@ -206,7 +206,7 @@ export const PROFESSIONAL_TEXT_TYPE_CONTRACTS: Record<VideoType, ProfessionalTex
     primary_text_form: '竖屏钩子、节拍和字幕一体的社交短视频文本',
     architecture_mode: 'information_architecture',
     required_deliverables: ['三秒钩子', '节拍表', '反差', '字幕', '竖屏画面', '互动问题'],
-    exclusive_quality_gate: '60 至 90 秒内持续有新信息；事实边界不能被钩子牺牲',
+    exclusive_quality_gate: '在创意简报目标时长内持续有新信息；事实边界不能被钩子牺牲',
     quality_dimension_weights: { ...PROMO_WEIGHTS, structure_causality_and_pacing: 17, dialogue_narration_and_subtext: 13, character_agency_and_relationship_change: 3, emotional_curve_and_aftertaste: 8, originality_and_distinctiveness: 4 },
     hard_gates: ['强钩子不得扭曲事实、身份、地域或机构口径'],
     repair_focus: ['重写前三秒观看理由', '压缩无新信息节拍', '让字幕、画面和旁白分工'],

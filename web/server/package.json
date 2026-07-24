@@ -19,6 +19,8 @@
     "smoke:story-agent-seedance-preproduction": "tsx scripts/story-agent-seedance-preproduction-smoke.mts",
     "smoke:story-agent-15-type-preproduction": "tsx scripts/story-agent-15-type-preproduction-matrix.mts",
     "smoke:story-agent-15-type-import-images": "tsx scripts/story-agent-15-type-image-import.mts",
+    "smoke:story-agent-15x3-stability": "tsx scripts/story-agent-15x3-stability-matrix.mts",
+    "smoke:story-agent-15x3-image-recovery": "tsx scripts/story-agent-15x3-image-recovery.mts",
     "smoke:story-agent-persistent-lifecycle": "tsx scripts/story-agent-persistent-lifecycle-smoke.mts"
   },
   "dependencies": {

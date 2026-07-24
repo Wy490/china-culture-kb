@@ -3,6 +3,7 @@ import type {
   ProfessionalQualityDimensionId,
   ProfessionalTextPackage,
   ProfessionalTextQualityReport,
+  SupportedDuration,
 } from '@shared/types.js';
 import { getProfessionalTextTypeContract } from './professional-text-contracts.js';
 
@@ -40,7 +41,7 @@ export interface SocialShortEvaluation {
 const repairs: Record<string, string> = {
   brief_missing: '补齐受众、平台、时长和传播目标。',
   full_text_not_final: '把提纲或素材列表改为可直接发布的完整短视频文本。',
-  duration_out_of_range: '把专业版本控制在60至90秒，并同步节拍时间码。',
+  duration_out_of_range: '让专业版本时长与创意简报目标一致，并同步节拍时间码。',
   hook_missing: '前三秒给出具体反差、问题或动作观看理由。',
   hook_fact_boundary_missing: '钩子绑定已知证据，不得扭曲事实、身份、地域或机构口径。',
   beat_plan_missing: '建立至少五段、顺序连续且覆盖全片的时间码节拍。',
@@ -58,6 +59,31 @@ const repairs: Record<string, string> = {
 const nonEmpty = (value: string | undefined) => Boolean(value?.trim());
 const ratio = (value: number, total: number) => Math.round(value / Math.max(1, total) * 100);
 const isFinalText = (text: string) => text.trim().length >= 90 && !/^(?:大纲|摘要|资料|节拍表)[:：]/u.test(text.trim());
+const SOCIAL_SHORT_DURATION_SECONDS: Record<SupportedDuration, number> = {
+  '30秒': 30,
+  '1分钟': 60,
+  '3分钟': 180,
+  '5分钟': 300,
+  '8分钟': 480,
+  '10分钟': 600,
+  '15分钟': 900,
+  '20分钟': 1200,
+};
+
+export function socialShortTargetDurationSeconds(duration: SupportedDuration): number {
+  return SOCIAL_SHORT_DURATION_SECONDS[duration];
+}
+
+function socialShortDurationWindow(duration: SupportedDuration): {
+  min: number;
+  max: number;
+} {
+  const min = socialShortTargetDurationSeconds(duration);
+  return {
+    min,
+    max: Math.min(1200, Math.round(min * 1.5)),
+  };
+}
 
 export function evaluateSocialShortProfessionalText(input: {
   package: ProfessionalTextPackage;
@@ -74,7 +100,11 @@ export function evaluateSocialShortProfessionalText(input: {
     professionalPackage.creative_brief.target_duration,
     professionalPackage.creative_brief.communication_goal,
   ].filter(nonEmpty).length;
-  const durationReady = evidence.target_duration_sec >= 60 && evidence.target_duration_sec <= 90;
+  const durationWindow = socialShortDurationWindow(
+    professionalPackage.creative_brief.target_duration,
+  );
+  const durationReady = evidence.target_duration_sec >= durationWindow.min
+    && evidence.target_duration_sec <= durationWindow.max;
   const hookReady = nonEmpty(evidence.hook_0_3s) && evidence.beat_plan[0]?.start_sec === 0 && evidence.beat_plan[0]?.end_sec <= 3;
   const hookBoundaryReady = evidence.hook_fact_evidence_ids.length > 0
     && evidence.hook_fact_evidence_ids.every(id => evidenceIds.has(id));
@@ -158,7 +188,9 @@ export function evaluateSocialShortProfessionalText(input: {
       character_or_information_notes: [],
       scene_notes: [],
       dialogue_or_narration_notes: dimensions.dialogue_narration_and_subtext.issues,
-      pacing_notes: beatsReady ? [] : ['60至90秒内必须持续产生新信息。'],
+      pacing_notes: beatsReady ? [] : [
+        `${durationWindow.min}至${durationWindow.max}秒内必须持续产生新信息。`,
+      ],
       fact_and_culture_notes: dimensions.cultural_fact_and_adaptation_boundary.issues,
       production_notes: verticalVisualsReady ? [] : ['竖屏画面不可执行。'],
       action_items: gateIds.map(gateId => `${gateId}: ${repairs[gateId]}`),

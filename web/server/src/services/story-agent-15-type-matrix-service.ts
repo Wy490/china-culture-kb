@@ -22,11 +22,16 @@ import {
 import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
 
 export interface StoryAgent15TypeMatrixCase {
+  case_id?: string;
   video_type: VideoType;
   generation_type: GenerationType;
   presentation_style: PresentationStyle;
   entry_name: string;
   selected_event: string;
+  request_overrides?: Omit<
+    Partial<StoryGenerateRequest>,
+    'entry_name' | 'generation_type' | 'video_type'
+  >;
 }
 
 export type StoryAgent15TypeMatrixStageStatus = 'ready' | 'awaiting_imagegen' | 'blocked';
@@ -36,6 +41,8 @@ export type StoryAgent15TypeMatrixFallbackStatus =
   | 'hidden_fallback';
 
 export interface StoryAgent15TypeMatrixItem {
+  case_id?: string;
+  request_fingerprint?: string;
   video_type: VideoType;
   story_id: string;
   project_id: string;
@@ -109,6 +116,14 @@ export interface StoryAgent15TypeCompositeBoardExecution {
   run_id: string;
   output_path: string;
   provider_asset_id?: string;
+  task_ids?: string[];
+}
+
+export interface StoryAgentCompositeBoardImportSummary {
+  execution_count: number;
+  processed_task_count: number;
+  verified_task_count: number;
+  skipped_idempotent_task_count: number;
 }
 
 export interface StoryAgent15TypeCompositeBoardImportReport {
@@ -236,7 +251,9 @@ function normalizeErrorCode(code?: string): ErrorCode {
     : ErrorCodes.INTERNAL_ERROR;
 }
 
-function generationRequest(item: StoryAgent15TypeMatrixCase): StoryGenerateRequest {
+export function storyAgentMatrixGenerationRequest(
+  item: StoryAgent15TypeMatrixCase,
+): StoryGenerateRequest {
   return {
     entry_name: item.entry_name,
     generation_type: item.generation_type,
@@ -247,6 +264,7 @@ function generationRequest(item: StoryAgent15TypeMatrixCase): StoryGenerateReque
     output_gears_segments: true,
     auto_repair: true,
     source_material_mode: 'generate_from_knowledge',
+    ...item.request_overrides,
   };
 }
 
@@ -281,6 +299,7 @@ function professionalScriptReady(story: StoryGenerateResult): boolean {
 async function resolveStory(input: {
   item: StoryAgent15TypeMatrixCase;
   previous?: StoryAgent15TypeMatrixItem;
+  requestFingerprint: string;
 }): Promise<ApiResponse<{ story: StoryGenerateResult; reused: boolean }>> {
   if (input.previous?.project_id) {
     const previousProject = await getProject(input.previous.project_id);
@@ -289,6 +308,10 @@ async function resolveStory(input: {
       && previousProject.data
       && previousProject.data.current_story.video_type === input.item.video_type
       && previousProject.data.current_story.source_entry === input.item.entry_name
+      && (
+        !input.previous.request_fingerprint
+        || input.previous.request_fingerprint === input.requestFingerprint
+      )
     ) {
       return success({
         story: previousProject.data.current_story,
@@ -298,7 +321,7 @@ async function resolveStory(input: {
   }
   const generated = await storyAgentDomainRegistry
     .require('china_culture')
-    .generateStory(generationRequest(input.item));
+    .generateStory(storyAgentMatrixGenerationRequest(input.item));
   if (!generated.ok || !generated.data) {
     return fail(
       normalizeErrorCode(generated.error?.code),
@@ -307,6 +330,106 @@ async function resolveStory(input: {
     );
   }
   return success({ story: generated.data, reused: false });
+}
+
+export async function prepareStoryAgentMatrixCase(input: {
+  matrix_case: StoryAgent15TypeMatrixCase;
+  previous?: StoryAgent15TypeMatrixItem;
+}): Promise<ApiResponse<StoryAgent15TypeMatrixItem>> {
+  const generationRequest = storyAgentMatrixGenerationRequest(input.matrix_case);
+  const requestFingerprint = createHash('sha256')
+    .update(JSON.stringify(generationRequest))
+    .digest('hex');
+  const storyResult = await resolveStory({
+    item: input.matrix_case,
+    previous: input.previous,
+    requestFingerprint,
+  });
+  if (!storyResult.ok || !storyResult.data) {
+    return fail(
+      normalizeErrorCode(storyResult.error?.code),
+      storyResult.error?.message ?? `Failed to resolve ${input.matrix_case.video_type}`,
+      storyResult.error?.details,
+    );
+  }
+  const { story, reused } = storyResult.data;
+  if (!story.project_id) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `${input.matrix_case.video_type} generation did not persist a project_id`,
+    );
+  }
+  const imageRunResult = await exportStoryAgentImageGenerationRequest({
+    project_id: story.project_id,
+  });
+  if (!imageRunResult.ok || !imageRunResult.data) {
+    return fail(
+      normalizeErrorCode(imageRunResult.error?.code),
+      imageRunResult.error?.message
+        ?? `${input.matrix_case.video_type} image request export failed`,
+      imageRunResult.error?.details,
+    );
+  }
+  const preproductionResult = await exportStoryAgentSeedancePreproductionPackage({
+    project_id: story.project_id,
+  });
+  if (!preproductionResult.ok || !preproductionResult.data) {
+    return fail(
+      normalizeErrorCode(preproductionResult.error?.code),
+      preproductionResult.error?.message
+        ?? `${input.matrix_case.video_type} preproduction export failed`,
+      preproductionResult.error?.details,
+    );
+  }
+  const imageRun = imageRunResult.data;
+  const preproduction = preproductionResult.data;
+  const allShots = preproduction.story_units.flatMap(unit => unit.script.shots);
+  const readyStory = storyReady(story);
+  const readyProfessional = professionalScriptReady(story);
+  const readyPrompts = allShots.length > 0 && allShots.every(shot => (
+    shot.script_text.trim() && shot.seedance_prompt.trim()
+  ));
+  const blockers = [
+    ...(readyStory ? [] : ['story_not_ready']),
+    ...(readyProfessional ? [] : ['professional_script_not_ready']),
+    ...(readyPrompts ? [] : ['seedance_prompt_not_ready']),
+    ...(imageRun.request.task_count > 0 ? [] : ['image_request_empty']),
+    ...(fallbackStatus(story) === 'hidden_fallback' ? ['hidden_generation_fallback'] : []),
+  ];
+  return success({
+    case_id: input.matrix_case.case_id,
+    request_fingerprint: requestFingerprint,
+    video_type: input.matrix_case.video_type,
+    story_id: story.storyId,
+    project_id: story.project_id,
+    story_title: story.title,
+    image_run_id: imageRun.run_id,
+    image_request_path: imageRun.request_path,
+    image_result_path: imageRun.result_path,
+    image_run_directory: imageRun.request.run_directory,
+    generation_mode: story.generation_mode,
+    effective_engine: story.effective_engine,
+    story_status: readyStory ? 'ready' : 'blocked',
+    professional_script_status: readyProfessional ? 'ready' : 'blocked',
+    prompt_status: readyPrompts ? 'ready' : 'blocked',
+    image_status: imageRun.status === 'complete'
+      ? 'ready'
+      : imageRun.status === 'blocked'
+        ? 'blocked'
+        : 'awaiting_imagegen',
+    preproduction_status: preproduction.acceptance.status,
+    fallback_status: fallbackStatus(story),
+    shot_count: allShots.length,
+    image_task_count: imageRun.request.task_count,
+    pending_image_task_count: imageRun.summary.awaiting_imagegen_count
+      + imageRun.summary.failed_retryable_count,
+    delivered_image_count: preproduction.acceptance.image_asset_count,
+    expected_image_count: preproduction.acceptance.expected_image_asset_count,
+    image_request_provider_invoked: imageRun.request.provider_invoked,
+    project_reused: reused,
+    blockers,
+    preproduction_blockers: preproduction.acceptance.blockers,
+  });
 }
 
 function reportStatus(input: {
@@ -330,93 +453,18 @@ export async function prepareStoryAgent15TypePreproductionMatrix(
   const items: StoryAgent15TypeMatrixItem[] = [];
 
   for (const matrixCase of STORY_AGENT_15_TYPE_MATRIX_CASES) {
-    const storyResult = await resolveStory({
-      item: matrixCase,
+    const itemResult = await prepareStoryAgentMatrixCase({
+      matrix_case: matrixCase,
       previous: previousByType.get(matrixCase.video_type),
     });
-    if (!storyResult.ok || !storyResult.data) {
+    if (!itemResult.ok || !itemResult.data) {
       return fail(
-        normalizeErrorCode(storyResult.error?.code),
-        storyResult.error?.message ?? `Failed to resolve ${matrixCase.video_type}`,
-        storyResult.error?.details,
+        normalizeErrorCode(itemResult.error?.code),
+        itemResult.error?.message ?? `Failed to prepare ${matrixCase.video_type}`,
+        itemResult.error?.details,
       );
     }
-    const { story, reused } = storyResult.data;
-    if (!story.project_id) {
-      return fail(
-        ErrorCodes.INTERNAL_ERROR,
-        `${matrixCase.video_type} generation did not persist a project_id`,
-      );
-    }
-    const imageRunResult = await exportStoryAgentImageGenerationRequest({
-      project_id: story.project_id,
-    });
-    if (!imageRunResult.ok || !imageRunResult.data) {
-      return fail(
-        normalizeErrorCode(imageRunResult.error?.code),
-        imageRunResult.error?.message
-          ?? `${matrixCase.video_type} image request export failed`,
-        imageRunResult.error?.details,
-      );
-    }
-    const preproductionResult = await exportStoryAgentSeedancePreproductionPackage({
-      project_id: story.project_id,
-    });
-    if (!preproductionResult.ok || !preproductionResult.data) {
-      return fail(
-        normalizeErrorCode(preproductionResult.error?.code),
-        preproductionResult.error?.message
-          ?? `${matrixCase.video_type} preproduction export failed`,
-        preproductionResult.error?.details,
-      );
-    }
-    const imageRun = imageRunResult.data;
-    const preproduction = preproductionResult.data;
-    const allShots = preproduction.story_units.flatMap(unit => unit.script.shots);
-    const readyStory = storyReady(story);
-    const readyProfessional = professionalScriptReady(story);
-    const readyPrompts = allShots.length > 0 && allShots.every(shot => (
-      shot.script_text.trim() && shot.seedance_prompt.trim()
-    ));
-    const blockers = [
-      ...(readyStory ? [] : ['story_not_ready']),
-      ...(readyProfessional ? [] : ['professional_script_not_ready']),
-      ...(readyPrompts ? [] : ['seedance_prompt_not_ready']),
-      ...(imageRun.request.task_count > 0 ? [] : ['image_request_empty']),
-      ...(fallbackStatus(story) === 'hidden_fallback' ? ['hidden_generation_fallback'] : []),
-    ];
-    items.push({
-      video_type: matrixCase.video_type,
-      story_id: story.storyId,
-      project_id: story.project_id,
-      story_title: story.title,
-      image_run_id: imageRun.run_id,
-      image_request_path: imageRun.request_path,
-      image_result_path: imageRun.result_path,
-      image_run_directory: imageRun.request.run_directory,
-      generation_mode: story.generation_mode,
-      effective_engine: story.effective_engine,
-      story_status: readyStory ? 'ready' : 'blocked',
-      professional_script_status: readyProfessional ? 'ready' : 'blocked',
-      prompt_status: readyPrompts ? 'ready' : 'blocked',
-      image_status: imageRun.status === 'complete'
-        ? 'ready'
-        : imageRun.status === 'blocked'
-          ? 'blocked'
-          : 'awaiting_imagegen',
-      preproduction_status: preproduction.acceptance.status,
-      fallback_status: fallbackStatus(story),
-      shot_count: allShots.length,
-      image_task_count: imageRun.request.task_count,
-      pending_image_task_count: imageRun.summary.awaiting_imagegen_count
-        + imageRun.summary.failed_retryable_count,
-      delivered_image_count: preproduction.acceptance.image_asset_count,
-      expected_image_count: preproduction.acceptance.expected_image_asset_count,
-      image_request_provider_invoked: imageRun.request.provider_invoked,
-      project_reused: reused,
-      blockers,
-      preproduction_blockers: preproduction.acceptance.blockers,
-    });
+    items.push(itemResult.data);
   }
 
   const videoTypes = new Set(items.map(item => item.video_type));
@@ -480,20 +528,16 @@ export async function prepareStoryAgent15TypePreproductionMatrix(
   });
 }
 
-export async function importStoryAgent15TypeCompositeBoards(input: {
-  matrix: StoryAgent15TypePreproductionMatrixReport;
+export async function importStoryAgentCompositeBoardExecutions(input: {
+  items: StoryAgent15TypeMatrixItem[];
   executions: StoryAgent15TypeCompositeBoardExecution[];
-}): Promise<ApiResponse<StoryAgent15TypeCompositeBoardImportReport>> {
-  const executionByRunId = new Map(
-    input.executions.map(execution => [execution.run_id, execution]),
-  );
-  if (
-    input.executions.length !== input.matrix.items.length
-    || executionByRunId.size !== input.matrix.items.length
-  ) {
+}): Promise<ApiResponse<StoryAgentCompositeBoardImportSummary>> {
+  const itemByRunId = new Map(input.items.map(item => [item.image_run_id, item]));
+  const executionRunIds = new Set(input.executions.map(execution => execution.run_id));
+  if (executionRunIds.size !== input.executions.length) {
     return fail(
       ErrorCodes.VALIDATION_ERROR,
-      'Exactly one composite board execution is required for every matrix image run',
+      'Composite board executions must contain unique run_id values',
     );
   }
 
@@ -501,12 +545,12 @@ export async function importStoryAgent15TypeCompositeBoards(input: {
   let verifiedTaskCount = 0;
   let skippedIdempotentTaskCount = 0;
   const importedAt = new Date().toISOString();
-  for (const matrixItem of input.matrix.items) {
-    const execution = executionByRunId.get(matrixItem.image_run_id);
-    if (!execution) {
+  for (const execution of input.executions) {
+    const matrixItem = itemByRunId.get(execution.run_id);
+    if (!matrixItem) {
       return fail(
         ErrorCodes.VALIDATION_ERROR,
-        `Composite board execution is missing for "${matrixItem.image_run_id}"`,
+        `Composite board execution references unknown run "${execution.run_id}"`,
       );
     }
     const runResult = await getStoryAgentImageRun(matrixItem.image_run_id);
@@ -543,19 +587,39 @@ export async function importStoryAgent15TypeCompositeBoards(input: {
         `Composite board output does not exist for "${matrixItem.image_run_id}"`,
       );
     }
+    const taskIds = execution.task_ids
+      ? [...new Set(execution.task_ids)]
+      : run.request.tasks.map(task => task.task_id);
+    if (
+      taskIds.length === 0
+      || taskIds.length !== (execution.task_ids?.length ?? taskIds.length)
+    ) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        `Composite board execution must contain unique non-empty task_ids for "${run.run_id}"`,
+      );
+    }
+    const requestTaskById = new Map(run.request.tasks.map(task => [task.task_id, task]));
+    const requestTasks = taskIds.map(taskId => requestTaskById.get(taskId));
+    if (requestTasks.some(task => !task)) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        `Composite board execution references an unknown task for "${run.run_id}"`,
+      );
+    }
     const contentSha256 = createHash('sha256').update(bytes).digest('hex');
     const result: StoryAgentImageGenerationResult = {
       schema_version: 'image-generation-result/v1',
       run_id: run.run_id,
       request_sha256: run.request.request_sha256,
       completed_at: importedAt,
-      items: run.request.tasks.map(task => ({
-        task_id: task.task_id,
+      items: requestTasks.map(task => ({
+        task_id: task!.task_id,
         status: 'generated',
         output_path: execution.output_path,
         mime_type: 'image/png',
         content_sha256: contentSha256,
-        prompt_sha256: task.prompt_sha256,
+        prompt_sha256: task!.prompt_sha256,
         provider: 'openai_imagegen',
         provider_asset_id: execution.provider_asset_id,
         model: 'gpt-image-2',
@@ -584,6 +648,43 @@ export async function importStoryAgent15TypeCompositeBoards(input: {
     processedTaskCount += imported.data.processed_item_count;
     verifiedTaskCount += imported.data.verified_task_count;
     skippedIdempotentTaskCount += imported.data.skipped_idempotent_task_count;
+  }
+  return success({
+    execution_count: input.executions.length,
+    processed_task_count: processedTaskCount,
+    verified_task_count: verifiedTaskCount,
+    skipped_idempotent_task_count: skippedIdempotentTaskCount,
+  });
+}
+
+export async function importStoryAgent15TypeCompositeBoards(input: {
+  matrix: StoryAgent15TypePreproductionMatrixReport;
+  executions: StoryAgent15TypeCompositeBoardExecution[];
+}): Promise<ApiResponse<StoryAgent15TypeCompositeBoardImportReport>> {
+  const executionByRunId = new Map(
+    input.executions.map(execution => [execution.run_id, execution]),
+  );
+  if (
+    input.executions.length !== input.matrix.items.length
+    || executionByRunId.size !== input.matrix.items.length
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Exactly one composite board execution is required for every matrix image run',
+    );
+  }
+
+  const importedAt = new Date().toISOString();
+  const imported = await importStoryAgentCompositeBoardExecutions({
+    items: input.matrix.items,
+    executions: input.executions,
+  });
+  if (!imported.ok || !imported.data) {
+    return fail(
+      normalizeErrorCode(imported.error?.code),
+      imported.error?.message ?? 'Failed to import 15-type composite boards',
+      imported.error?.details,
+    );
   }
 
   const refreshed = await prepareStoryAgent15TypePreproductionMatrix({
@@ -616,9 +717,9 @@ export async function importStoryAgent15TypeCompositeBoards(input: {
     status: 'ready',
     imported_at: importedAt,
     board_count: input.executions.length,
-    processed_task_count: processedTaskCount,
-    verified_task_count: verifiedTaskCount,
-    skipped_idempotent_task_count: skippedIdempotentTaskCount,
+    processed_task_count: imported.data.processed_task_count,
+    verified_task_count: imported.data.verified_task_count,
+    skipped_idempotent_task_count: imported.data.skipped_idempotent_task_count,
     matrix: refreshed.data,
   });
 }

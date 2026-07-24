@@ -19,7 +19,10 @@ import type { LandscapeMoodEvidence } from './professional-landscape-mood-qualit
 import type { LectureVideoEvidence } from './professional-lecture-video-quality-service.js';
 import type { LegendStoryProfessionalEvidence } from './professional-legend-story-quality-service.js';
 import type { SceneShortEvidence } from './professional-scene-short-quality-service.js';
-import type { SocialShortEvidence } from './professional-social-short-quality-service.js';
+import {
+  socialShortTargetDurationSeconds,
+  type SocialShortEvidence,
+} from './professional-social-short-quality-service.js';
 import type { CharacterStoryProfessionalEvidence } from './professional-text-quality-service.js';
 
 export type ProfessionalEvidencePayload =
@@ -518,7 +521,9 @@ function cityEvidence(context: ResolutionContext): CityBrandPromoEvidence {
 }
 
 function socialEvidence(context: ResolutionContext): SocialShortEvidence {
-  const duration = Math.max(30, context.story.story_blueprint?.target_duration === '30秒' ? 30 : 60);
+  const duration = socialShortTargetDurationSeconds(
+    context.story.story_blueprint?.target_duration ?? '1分钟',
+  );
   const beatScenes = minimumSceneSequence(context.scenes, 5);
   const tailBeatDuration = (duration - 3) / Math.max(1, beatScenes.length - 1);
   return {

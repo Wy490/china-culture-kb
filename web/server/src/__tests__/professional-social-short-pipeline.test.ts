@@ -130,6 +130,23 @@ describe('social short professional pipeline', () => {
     expect(professionalPackage.quality_report.professional_passed).toBe(false);
   });
 
+  it('accepts a 30-second brief when evidence and beat timecodes match it', () => {
+    const candidate = input();
+    candidate.target_duration = '30秒';
+    candidate.social_evidence.target_duration_sec = 30;
+    const timing = [[0, 3], [3, 8], [8, 15], [15, 23], [23, 30]];
+    candidate.social_evidence.beat_plan.forEach((beat: SocialShortEvidence['beat_plan'][number], index: number) => {
+      beat.start_sec = timing[index][0];
+      beat.end_sec = timing[index][1];
+    });
+
+    const professionalPackage = buildSocialShortProfessionalTextPackage(candidate);
+
+    expect(ProfessionalTextPackageSchema.safeParse(professionalPackage).success).toBe(true);
+    expect(gates(professionalPackage)).not.toContain('duration_out_of_range');
+    expect(gates(professionalPackage)).not.toContain('beat_plan_missing');
+  });
+
   it('detects registered failure fixtures and routes revisions', () => {
     const registry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'data/professional-benchmarks/social-short-stage3-iteration4-benchmark-specs.json'), 'utf8'));
     for (const fixture of registry.failure_fixtures) {
