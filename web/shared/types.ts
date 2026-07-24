@@ -13134,7 +13134,16 @@ export interface StoryDomainSafetyValidationInput {
 
 export interface ReferenceTrace {
   style_pack_id?: string;
+  application_status?:
+    | 'external_prompt_injected'
+    | 'local_engine_not_applied'
+    | 'local_fallback_not_applied';
   applied_rules: string[];
+  requested_rules?: string[];
+  avoid_copying_rules?: string[];
+  source_reference_ids?: string[];
+  source_analysis_ids?: string[];
+  source_benchmark_ids?: string[];
   source_story_structure: StoryStructureType;
 }
 

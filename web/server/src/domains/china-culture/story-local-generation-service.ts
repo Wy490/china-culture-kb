@@ -42,7 +42,6 @@ export function generateChinaCultureLocalStoryAssembly(input: {
   tone: string;
   knowledgePack?: KnowledgePack;
   originalUserQuery?: string;
-  stylePackIds?: string[];
 }): ChinaCultureLocalStoryGenerationResult {
   if (input.storyStructure === 'memory_mosaic_biography') {
     const memoryMosaicSeed = buildMemoryMosaicSeed(
@@ -74,16 +73,10 @@ export function generateChinaCultureLocalStoryAssembly(input: {
       '结尾呼应物件',
       `${input.storyStructure}结构规则`,
     ];
-    const referenceTrace = input.stylePackIds?.length
-      ? input.stylePackIds.map(stylePackId => ({
-          style_pack_id: stylePackId,
-          applied_rules: appliedRules,
-          source_story_structure: input.storyStructure,
-        }))
-      : [{
-          applied_rules: appliedRules,
-          source_story_structure: input.storyStructure,
-        }];
+    const referenceTrace = [{
+      applied_rules: appliedRules,
+      source_story_structure: input.storyStructure,
+    }];
 
     return { ok: true, storyResult, memoryMosaicSeed, referenceTrace };
   }
@@ -98,15 +91,5 @@ export function generateChinaCultureLocalStoryAssembly(input: {
     knowledgePack: input.knowledgePack,
     originalUserQuery: input.originalUserQuery,
   });
-  const referenceTrace = input.stylePackIds?.length
-    ? input.stylePackIds.map(stylePackId => ({
-        style_pack_id: stylePackId,
-        applied_rules: [
-          `Using ${input.storyStructure} structure with ${input.videoType}/${input.presentationStyle}`,
-        ],
-        source_story_structure: input.storyStructure,
-      }))
-    : undefined;
-
-  return { ok: true, storyResult, referenceTrace };
+  return { ok: true, storyResult };
 }

@@ -708,7 +708,10 @@ export const StoryGenerateRequestSchema = z.object({
   // New fields for story structure and creative reference (Phase 5)
   story_structure: StoryStructureTypeSchema.optional(),
   creative_reference_ids: z.array(z.string()).optional(),
-  style_pack_ids: z.array(z.string()).optional(),
+  style_pack_ids: z.array(z.string().trim().min(1))
+    .max(20)
+    .refine(uniqueReferenceIds, 'style_pack_ids must be unique')
+    .optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),

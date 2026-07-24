@@ -162,6 +162,9 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       adaptation_analysis: adaptationAnalysis,
       localized_target_region: input.request.localized_target_region ?? null,
       localization_mode: input.request.localization_mode ?? 'allow_related_influence',
+      style_pack_ids: input.request.style_pack_ids ?? [],
+      reference_generation_context_schema_version:
+        input.preparation.referenceGenerationContext?.schema_version ?? null,
     },
   };
 }

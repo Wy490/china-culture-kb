@@ -31,6 +31,9 @@ import type {
   WitnessMemory,
 } from '@shared/types.js';
 import type { GenreStoryMatrixResolution } from './genre-story-profiles.js';
+import type {
+  ReferenceGenerationContext,
+} from './reference-generation-bridge-service.js';
 import {
   VIDEO_TYPE_CONFIG,
   PRESENTATION_STYLE_CONFIG,
@@ -101,6 +104,7 @@ export interface StoryGenerationPromptPackage {
     ending_image: string;
   };
   story_blueprint?: StoryBlueprint;
+  reference_style_context?: ReferenceGenerationContext;
   output_contract: {
     must_provide: string[];
     should_respect: string[];
@@ -186,6 +190,7 @@ function buildSystemPrompt(
   creationContract?: CreationContract,
   genreMatrix?: GenreStoryMatrixResolution,
   productionMaterialPack?: ProductionMaterialPack,
+  referenceGenerationContext?: ReferenceGenerationContext,
 ): string {
   const vtMeta = VIDEO_TYPE_CONFIG[videoType];
   const psMeta = PRESENTATION_STYLE_CONFIG[presentationStyle];
@@ -237,6 +242,15 @@ function buildSystemPrompt(
     lines.push(
       `当前成片类型生产模板：${productionMaterialPack.video_type}/${productionMaterialPack.label}`,
       '生产模板边界：只使用当前成片类型模板；其他类型样片、爆款拆解或提示词方法不得跨类型套用为本片规则。',
+    );
+  }
+
+  if (referenceGenerationContext) {
+    lines.push(
+      '参考风格包边界：只应用已批准参考中的抽象原则，不复刻来源角色、情节、台词、镜头顺序或独特表达。',
+      `参考抽象原则：${referenceGenerationContext.reusable_principles.join('；')}`,
+      `防照抄硬约束：${referenceGenerationContext.avoid_copying.join('；')}`,
+      '参考治理边界：不得将参考内容写回知识库，不得授予 production credit。',
     );
   }
 
@@ -492,6 +506,23 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     }
   }
 
+  if (pkg.reference_style_context) {
+    lines.push('', '=== 已批准参考风格包 ===');
+    for (const pack of pkg.reference_style_context.style_packs) {
+      lines.push(`风格包：${pack.style_pack_id} / ${pack.name}`);
+      lines.push(`批准审计：${pack.approved_by} @ ${pack.approved_at}`);
+      for (const rule of pack.abstract_rules) {
+        lines.push(`- 抽象原则：${rule}`);
+      }
+      for (const boundary of pack.avoid_copying) {
+        lines.push(`- 防照抄：${boundary}`);
+      }
+    }
+    lines.push(
+      '参考使用规则：只学习上述抽象结构、节奏、场景、旁白、对白、视觉或结尾原则；不得尝试还原未提供的参考正文。',
+    );
+  }
+
   if (pkg.character_hints?.length) {
     lines.push('', '=== 大纲角色识别 ===');
     for (const character of pkg.character_hints) {
@@ -701,6 +732,7 @@ export function buildStoryGenerationPromptPackage(input: {
   storyBlueprint?: StoryBlueprint;
   adaptationAnalysis?: StoryAdaptationAnalysis;
   genreMatrix?: GenreStoryMatrixResolution;
+  referenceGenerationContext?: ReferenceGenerationContext;
 }): StoryGenerationPromptPackage {
   const isMemoryMosaic = input.storyStructure === 'memory_mosaic_biography';
 
@@ -781,6 +813,7 @@ export function buildStoryGenerationPromptPackage(input: {
         }
       : undefined,
     story_blueprint: input.storyBlueprint,
+    reference_style_context: input.referenceGenerationContext,
     output_contract: {
       must_provide: ['title', 'logline', 'theme', 'full_text', 'scene_breakdown'],
       should_respect: [
@@ -826,6 +859,10 @@ export function buildStoryGenerationPromptPackage(input: {
             ]
           : []),
         ...(input.storyBlueprint?.type_specific_requirements ?? []),
+        ...(input.referenceGenerationContext?.reusable_principles ?? [])
+          .map(rule => `参考原则：${rule}`),
+        ...(input.referenceGenerationContext?.avoid_copying ?? [])
+          .map(rule => `防照抄：${rule}`),
       ],
       return_json_fields: getGenreReturnJsonFields(input.videoType),
     },
@@ -843,6 +880,7 @@ export function buildStoryGenerationPromptPackage(input: {
       input.creationContract,
       input.genreMatrix,
       input.productionMaterialPack,
+      input.referenceGenerationContext,
     ),
     user_prompt: buildUserPrompt(base),
   };

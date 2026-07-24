@@ -2,6 +2,7 @@ import { ErrorCodes, type StoryGenerateRequest } from '@shared/types.js';
 import { mergeCharacterHintsIntoStoryResult, resolveStoryGenerationResult } from '../../platform/story-model-output-merge.js';
 import { generateStoryWithAdapter } from '../../services/story-generation-model.js';
 import { buildStoryGenerationPromptPackage } from '../../services/story-generation-prompt.js';
+import { buildReferenceGenerationTrace } from '../../services/reference-generation-bridge-service.js';
 import type { PreparedChinaCultureStoryGeneration } from './story-generation-preparation-service.js';
 import { generateChinaCultureLocalStoryAssembly } from './story-local-generation-service.js';
 
@@ -20,7 +21,6 @@ export async function executeChinaCultureStoryGeneration(input: {
     tone: preparation.localTone,
     knowledgePack: preparation.knowledgePackToUse,
     originalUserQuery: request.original_user_query ?? request.outline,
-    stylePackIds: request.style_pack_ids,
   });
   if (!localGeneration.ok) {
     return {
@@ -56,6 +56,7 @@ export async function executeChinaCultureStoryGeneration(input: {
     memoryMosaicSeed: localGeneration.memoryMosaicSeed,
     storyBlueprint: preparation.preliminaryStoryBlueprint,
     adaptationAnalysis: preparation.adaptationAnalysis,
+    referenceGenerationContext: preparation.referenceGenerationContext,
   });
   const adapterResult = await generateStoryWithAdapter({
     pkg: promptPackage,
@@ -89,10 +90,22 @@ export async function executeChinaCultureStoryGeneration(input: {
       },
     };
   }
-  let referenceTrace = localGeneration.referenceTrace;
+  const referenceApplicationStatus = generationResolution.generationMode === 'external_model'
+    ? 'external_prompt_injected' as const
+    : generationResolution.generationMode === 'local_fallback'
+      ? 'local_fallback_not_applied' as const
+      : 'local_engine_not_applied' as const;
+  let referenceTrace = [
+    ...(localGeneration.referenceTrace ?? []),
+    ...buildReferenceGenerationTrace({
+      context: preparation.referenceGenerationContext,
+      storyStructure: preparation.storyStructure,
+      applicationStatus: referenceApplicationStatus,
+    }),
+  ];
   if (generationResolution.adapterTrace) {
     referenceTrace = [
-      ...(referenceTrace ?? []),
+      ...referenceTrace,
       {
         applied_rules: [generationResolution.adapterTrace],
         source_story_structure: preparation.storyStructure,

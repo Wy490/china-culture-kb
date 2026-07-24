@@ -384,7 +384,6 @@ try {
       tone: preparation.localTone,
       knowledgePack: preparation.knowledgePackToUse,
       originalUserQuery: request.original_user_query ?? request.outline,
-      stylePackIds: request.style_pack_ids,
     });
     if (!local.ok) {
       throw new Error(

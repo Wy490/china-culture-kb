@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { ErrorCodes, VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import type {
   KnowledgePack,
@@ -5,6 +6,7 @@ import type {
   StoryGenerateRequest,
 } from '@shared/types.js';
 import { buildStoryPriorityInstruction, resolveLegacyGenerationType, resolveStoryNarrativePatternIds, resolveStoryStructureType, resolveStoryVideoType } from '../../platform/story-generation-policy.js';
+import { storyRepositoryRoot } from '../../platform/story-storage-root.js';
 import { buildAdaptationAnalysis } from '../../services/adaptation-analysis-service.js';
 import {
   buildCreationContract,
@@ -19,6 +21,7 @@ import { resolveGenreStoryMatrix } from '../../services/genre-story-profiles.js'
 import { resolveStoryGenerationModelProfile } from '../../services/model-catalog.js';
 import { getProductionMaterialPack } from '../../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../../services/production-material-readiness-service.js';
+import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
 import { extractChinaCultureBoldEvents } from './story-planning-service.js';
@@ -68,6 +71,23 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const storyStructure = resolveStoryStructureType(request, videoType, {
     historical_person_entry: entry.type === '历史人物',
   });
+  const referenceGenerationResolution = await resolveReferenceGenerationContext({
+    repoRoot: process.env.REFERENCE_LIBRARY_REPO_ROOT?.trim()
+      ? resolve(process.env.REFERENCE_LIBRARY_REPO_ROOT)
+      : storyRepositoryRoot(),
+    stylePackIds: request.style_pack_ids,
+    videoType,
+    presentationStyle,
+    storyStructure,
+  });
+  if (!referenceGenerationResolution.ok) {
+    return {
+      ok: false as const,
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: referenceGenerationResolution.message,
+      details: referenceGenerationResolution.details,
+    };
+  }
   const requestedNarrativePatternIds = resolveStoryNarrativePatternIds(request);
   const creationUseCase = resolveCreationUseCase(request, videoType);
   const truthMode = resolveTruthMode(request, creationUseCase, videoType);
@@ -177,6 +197,7 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     knowledgePackToUse,
     materialPackToUse,
     storyStructure,
+    referenceGenerationContext: referenceGenerationResolution.context,
     narrativePatternIds,
     creationUseCase,
     truthMode,

@@ -328,7 +328,11 @@ server.tool(
       'lecture_argument',
     ]).optional().describe('叙事结构'),
     creative_reference_ids: z.array(z.string()).optional().describe('创意参考 ID'),
-    style_pack_ids: z.array(z.string()).optional().describe('风格包 ID'),
+    style_pack_ids: z.array(z.string().trim().min(1))
+      .max(20)
+      .refine(ids => new Set(ids).size === ids.length, 'style_pack_ids must be unique')
+      .optional()
+      .describe('已批准 Reference Library 风格包 ID；最多 20 个且不可重复'),
     narrative_pattern_ids: z.array(z.string()).max(6).optional().describe('叙事模式 ID'),
     reference_strength: z.enum(['light', 'medium', 'strong']).optional().describe('参考强度'),
     genre_strictness: z.enum(['loose', 'balanced', 'strict']).optional().describe('流派严格度'),

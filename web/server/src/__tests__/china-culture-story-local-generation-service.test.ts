@@ -19,7 +19,7 @@ const entry: EntryDetail = {
 };
 
 describe('china_culture local story generation dispatch', () => {
-  it('runs the dramatic engine and preserves style-pack trace semantics', () => {
+  it('runs the dramatic engine without claiming unresolved style-pack influence', () => {
     const result = generateChinaCultureLocalStoryAssembly({
       entry,
       centralEvent: '梦溪园反复验证磁针',
@@ -28,18 +28,13 @@ describe('china_culture local story generation dispatch', () => {
       storyStructure: 'single_event_drama',
       targetDuration: '1分钟',
       tone: '克制',
-      stylePackIds: ['cinematic-a'],
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.message);
     expect(result.storyResult.scene_breakdown.length).toBeGreaterThanOrEqual(3);
     expect(result.memoryMosaicSeed).toBeUndefined();
-    expect(result.referenceTrace).toEqual([{
-      style_pack_id: 'cinematic-a',
-      applied_rules: ['Using single_event_drama structure with character_story/cinematic'],
-      source_story_structure: 'single_event_drama',
-    }]);
+    expect(result.referenceTrace).toBeUndefined();
   });
 
   it('runs memory mosaic with a seed and a default trace when no style pack is selected', () => {

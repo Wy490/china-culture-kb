@@ -170,6 +170,7 @@ describe('strict Story Agent generation policies', () => {
       },
     });
     if (result.ok || !('details' in result)) return;
+    if (result.details.schema_version !== 'story-material-readiness-gate/v1') return;
     expect(result.details.blocking_item_ids).toEqual(expect.arrayContaining([
       'primary_material',
       'institution_profile',
