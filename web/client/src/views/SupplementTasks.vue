@@ -257,6 +257,7 @@ const SOURCE_FILTERS: KnowledgeSupplementTaskSource[] = [
   'knowledge_pack_missing_need',
   'material_sufficiency_missing_item',
   'production_material_missing_field',
+  'professional_evidence_missing',
 ]
 const WRITEBACK_FILTERS: KnowledgeWritebackStatus[] = ['draft_ready', 'queued', 'written_back', 'needs_revision']
 
@@ -359,6 +360,7 @@ function sourceLabel(source: KnowledgeSupplementTaskSource): string {
     knowledge_pack_missing_need: '旧项目素材包缺口',
     material_sufficiency_missing_item: '素材 Gate 缺口',
     production_material_missing_field: '生产素材模板缺口',
+    professional_evidence_missing: '专业脚本证据缺口',
   }
   return map[source]
 }

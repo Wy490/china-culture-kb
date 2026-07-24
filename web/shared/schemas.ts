@@ -682,6 +682,14 @@ export const StoryGenerateRequestSchema = z.object({
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),
   model_profile_id: StoryGenerationModelProfileIdSchema.optional(),
+  generation_fallback_policy: z.enum([
+    'allow_local_fallback',
+    'forbid_local_fallback',
+  ]).optional(),
+  material_readiness_policy: z.enum([
+    'allow_draft_with_risks',
+    'require_script_ready',
+  ]).optional(),
   selected_event: z.string().optional(),
   target_video_duration: DurationSchema.optional(),
   tone: z.string().optional(),

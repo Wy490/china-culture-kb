@@ -38,7 +38,11 @@ export async function generateAndStoreChinaCultureStory(
   const { output_gears_segments } = request;
   const preparation = await prepareChinaCultureStoryGeneration(request);
   if (!preparation.ok) {
-    return fail(preparation.code, preparation.message);
+    return fail(
+      preparation.code,
+      preparation.message,
+      'details' in preparation ? preparation.details : undefined,
+    );
   }
   const {
     primaryEntryName,
@@ -56,7 +60,7 @@ export async function generateAndStoreChinaCultureStory(
 
   const generation = await executeChinaCultureStoryGeneration({ request, preparation });
   if (!generation.ok) {
-    return fail(ErrorCodes.VALIDATION_ERROR, generation.message);
+    return fail(generation.code, generation.message, generation.details);
   }
   const {
     adapterResult,

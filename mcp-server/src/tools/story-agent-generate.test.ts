@@ -41,6 +41,8 @@ describe('storyAgentGenerate', () => {
       target_video_duration: '3分钟',
       output_gears_segments: true,
       auto_repair: true,
+      generation_fallback_policy: 'forbid_local_fallback',
+      material_readiness_policy: 'require_script_ready',
     } as const;
     const result = await storyAgentGenerate(request);
 

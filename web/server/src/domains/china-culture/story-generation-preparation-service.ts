@@ -1,4 +1,4 @@
-import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
+import { ErrorCodes, VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import type {
   KnowledgePack,
   MaterialPack,
@@ -84,6 +84,38 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     creationUseCase,
     truthMode,
   });
+  const scriptReadiness = materialSufficiency.stage_reports?.find(
+    report => report.stage === 'script_ready',
+  );
+  if (
+    request.material_readiness_policy === 'require_script_ready'
+    && scriptReadiness?.status !== 'ready'
+  ) {
+    const unresolvedConflictNeedIds = materialPackToUse.missing_needs
+      .filter(need => /(?:冲突|矛盾|互斥|conflict)/iu.test(
+        `${need.need_id} ${need.label} ${need.message}`,
+      ))
+      .map(need => need.need_id);
+    return {
+      ok: false as const,
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: 'Story material is not script-ready under the strict material policy',
+      details: {
+        schema_version: 'story-material-readiness-gate/v1' as const,
+        policy: request.material_readiness_policy,
+        stage: 'script_ready' as const,
+        status: scriptReadiness?.status ?? 'blocked',
+        blocking_item_ids: scriptReadiness?.missing_items
+          .filter(item => item.blocking_level === 'blocking')
+          .map(item => item.item_id) ?? [],
+        risk_item_ids: scriptReadiness?.missing_items
+          .filter(item => item.blocking_level === 'risk')
+          .map(item => item.item_id) ?? [],
+        unresolved_conflict_need_ids: unresolvedConflictNeedIds,
+        recommended_next_questions: materialSufficiency.recommended_next_questions,
+      },
+    };
+  }
   const creationContract = buildCreationContract({
     request,
     materialSufficiency,

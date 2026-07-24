@@ -283,6 +283,14 @@ server.tool(
       'claude_opus',
       'codex_gpt55',
     ]).optional().describe('请求的模型 profile ID；不传时使用本地故事引擎，实际引擎以返回的 effective_engine/generation_mode 为准'),
+    generation_fallback_policy: z.enum([
+      'allow_local_fallback',
+      'forbid_local_fallback',
+    ]).optional().describe('外部模型失败时是否允许回退本地引擎；严格验收使用 forbid_local_fallback'),
+    material_readiness_policy: z.enum([
+      'allow_draft_with_risks',
+      'require_script_ready',
+    ]).optional().describe('素材不足或冲突时是否允许风险草稿；严格验收使用 require_script_ready'),
     selected_event: z.string().optional().describe('选定的故事事件'),
     target_video_duration: z.enum(['30秒', '1分钟', '3分钟', '5分钟', '8分钟', '10分钟', '15分钟', '20分钟']).optional().describe('目标时长'),
     tone: z.string().optional().describe('叙事语气'),

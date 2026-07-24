@@ -70,6 +70,7 @@ export interface StoryGenerationModelResult {
   output: StoryGenerationModelOutput | null;
   used_fallback: boolean;
   reason?: string;
+  execution_evidence?: 'local_only' | 'live_external_command' | 'record_replay_fixture';
 }
 
 // ---------------------------------------------------------------------------
@@ -140,11 +141,15 @@ async function runCommandAdapter(input: {
       output: null,
       used_fallback: false,
       reason: 'STORY_GEN_COMMAND is not configured',
+      execution_evidence: 'local_only',
     };
   }
 
   const args = parseArgs(process.env.STORY_GEN_COMMAND_ARGS);
   const timeoutMs = Number(process.env.STORY_GEN_COMMAND_TIMEOUT_MS ?? 330000);
+  const executionEvidence = process.env.STORY_GEN_EXECUTION_EVIDENCE === 'record_replay_fixture'
+    ? 'record_replay_fixture' as const
+    : 'live_external_command' as const;
 
   // Build child env — inject the selected model's runtime + model name
   // This is the correct approach: child env inherits from process.env plus model overrides
@@ -186,6 +191,10 @@ async function runCommandAdapter(input: {
 
     child.stdout.on('data', chunk => { stdout += String(chunk); });
     child.stderr.on('data', chunk => { stderr += String(chunk); });
+    // A timed-out child may close stdin while the prompt is still being
+    // flushed. The timeout/close paths below own the result; suppress EPIPE so
+    // it cannot escape as an unhandled process error.
+    child.stdin.on('error', () => {});
     child.on('error', err => {
       if (settled) return;
       settled = true;
@@ -219,6 +228,7 @@ async function runCommandAdapter(input: {
           provider: 'command_json',
           output: sanitizeOutput(validated),
           used_fallback: false,
+          execution_evidence: executionEvidence,
         });
       } catch (err) {
         resolve({
@@ -253,6 +263,7 @@ export async function generateStoryWithAdapter(input: {
       output: null,
       used_fallback: false,
       reason: '已显式选择本地故事引擎',
+      execution_evidence: 'local_only',
     };
   }
 

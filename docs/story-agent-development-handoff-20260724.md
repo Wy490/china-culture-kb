@@ -3,7 +3,7 @@
 > 日期：2026-07-24
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 > 分支：`codex/story-agent-manifest-integrity-20260718`
-> 上一功能基线提交：`a16ad8b3 feat(story-agent): complete 15-type preproduction matrix`
+> 上一功能基线提交：`13749a56 feat(story-agent): add 15x3 recovery matrix`
 > 上一份研究与长周期开发记录：`docs/story-agent-film-text-benchmark-development-handoff-20260723.md`
 
 ## 0. 下一对话先读这里
@@ -36,14 +36,14 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 当前系统已经具备较完整的结构化 Story Agent 内核，并且 AI 漫剧系列的“故事—脚本镜头—Seedance 提示词—真实图片—逐镜引用—交付包”已经跑通。
 
-15×1 canonical 与 15×3 本地稳定性/恢复矩阵均已跑通：15 类共 45 个唯一持久项目和 image run，全部形成专业文本、Seedance 提示词、真实图片绑定和 ready 前置制作包。当前最大问题已经转为资料缺失/冲突压力、外部模型同等级 record-replay / fallback-forbidden 证据，以及更高层统一 StoryAgentRun。
+15×1 canonical、15×3 本地稳定性/恢复矩阵和 P0-E2 外部 command adapter record-replay 可靠性矩阵均已跑通。P0-E2 对 15 类完成了故事、专业脚本、Seedance 提示词、图片绑定和前置制作包的同等级全链路验收，并证明资料缺失、资料冲突、外部超时和无效输出会在严格策略下硬失败。当前最大问题已经转为真实外部 Provider 凭据验收、不同素材视觉资产压力，以及更高层统一 StoryAgentRun。
 
 可用两个口径理解当前距离：
 
 | 口径 | 主观完成度 | 判断 |
 |---|---:|---|
 | 展示结构化生成与前置制作交付 | 94%–97% | 普通项目、系列项目、15×1 和本地 15×3 类型矩阵均有真实图片与统一交付证据 |
-| 全部 15 类型无人值守稳定交付 | 88%–92% | 本地 15×3 与图片恢复全绿；仍缺资料冲突、外部模型同等级矩阵和统一顶层 run |
+| 全部 15 类型无人值守稳定交付 | 91%–94% | 本地 15×3、图片恢复、资料严格门禁和外部 record-replay 矩阵全绿；仍缺真实外部 Provider 验收和统一顶层 run |
 
 这个百分比是工程判断，不是测试自动计算值。后续应以第 6 节的退出条件替代主观百分比。
 
@@ -51,12 +51,12 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 | 用户所需能力 | 当前状态 | 已有证据 | 主要不足 |
 |---|---|---|---|
-| 15 类结构化故事 | 本地 15×3 已通过 | 45/45 唯一项目，覆盖 1/3 分钟、30 秒压力输入和 5 类素材改编 | 正式矩阵仍强制 `STORY_GEN_LOCAL_ONLY=1`；缺外部模型同等级证据 |
+| 15 类结构化故事 | 本地 15×3 + 外部 record-replay 已通过 | 45/45 本地唯一项目；外部 command adapter 15/15 合约项目 ready | record-replay 不等于真实外部 Provider；仍需凭据化实跑 |
 | 15 类专业脚本 | canonical 接入完成 | 15/15 dispatcher、evidence resolver、generation/project version 派生状态矩阵 | 纪录片真实采访/授权仍会正确转为补证任务 |
 | 连续分集故事 | 较强 | 20 集正式系列；4 个系列共 14 集稳定复跑 | 主要集中在 `ai_comic_drama` 系列形态 |
-| Seedance 提示词 | 本地 15×3 已通过 | 45 项目、351 镜头、45/45 prompt ready | 仍需验证外部模型路径 |
+| Seedance 提示词 | 本地 15×3 + 外部 record-replay 已通过 | 本地 45/45；外部 record-replay 15/15 prompt ready | 仍需真实外部 Provider 路径 |
 | 图片资产 | 15×3 可恢复闭环已完成 | 15 张已验证 canonical 视觉板明确复用于 30 个同源变体；69/69 任务 verified；部分导入后续跑通过 | 仍需缺图/替换失败压力与不同素材视觉资产 |
-| 一键交付包 | 本地 15×3 已全绿 | story / ordinary project / series 共用 `story-agent-seedance-preproduction-package/v1`；45/45 ready | 仍需外部模型矩阵与顶层 StoryAgentRun |
+| 一键交付包 | 本地与外部 record-replay 均全绿 | 本地 45/45、record-replay 15/15 ready，共用 `story-agent-seedance-preproduction-package/v1` | 仍需真实外部 Provider 与顶层 StoryAgentRun |
 | 版本与持久化 | 图片阶段已闭环 | story snapshot、project/version、series project、asset history、`story-agent-image-run/v1` | 缺少跨故事/脚本/图片/交付包的更高层统一 StoryAgentRun |
 | 机器质量与修复 | 已有多层门禁 | genre、premise fidelity、commercial machine gate、repair | 专业脚本管线的自动选择、补证、修复和 derived-state 重建尚未统一 |
 | 影视/文字 benchmark | 基础设施已建 | Reference Library、analysis、benchmark、audited style pack | 已批准 style pack 尚未真正进入 canonical generation prompt 和 `reference_trace` |
@@ -275,17 +275,20 @@ web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproductio
 
 ### 2.6 当前自动化基线
 
-截至 P0-E1 本地 15×3 全链路矩阵工作树：
+截至 P0-E2 外部 record-replay 可靠性矩阵工作树：
 
 ```text
-服务端全量：165 files passed，1 skipped
-测试：1423 passed，2 skipped
+服务端全量：166 files passed，1 skipped
+测试：1429 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
 通用前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 15×1 正式矩阵：15 projects / 77 shots / 23 required images / 15 ready packages
 图片导入幂等复跑：23/23 skipped idempotently
+P0-E2 record-replay：15/15 projects / professional scripts / prompts / images / preproduction ready
+P0-E2 strict gates：missing / conflict / invalid output / timeout 全部 blocked
+P0-E2 provenance：15/15 fixture truthfully labeled，0 real external provider calls
 ```
 
 ## 3. 距离用户目标的真实不足
@@ -494,32 +497,53 @@ web/generated/story-agent-15x3-stability-matrix/image-idempotency-report.json
 
 本轮还修复了 social short 时长合同漂移：专业门禁不再硬编码 60–90 秒，而是按创意简报的 30 秒、1 分钟、3 分钟等目标校验；evidence resolver 同步生成匹配目标的节拍时间码。原有“1 分钟请求却只有 45 秒”的失败基准仍然失败。
 
-### 3.6 P0：外部模型路径尚无同等级稳定证据
+### 3.6 P0-E2：外部 record-replay 与严格策略门禁已完成
 
-15 类当前权威矩阵明确设置：
+已新增两个显式请求策略：
 
 ```text
-STORY_GEN_LOCAL_ONLY=1
+generation_fallback_policy:
+  allow_local_fallback | forbid_local_fallback
+
+material_readiness_policy:
+  allow_draft_with_risks | require_script_ready
 ```
 
-默认 `model_profile_id` 也是本地故事引擎。外部 command adapter 已有超时、JSON schema 校验和 fallback，但尚无与本地引擎同等级的 15 类持续验收。
+Web schema、canonical service 和 MCP `kb_story_agent_generate` 均传递同一合同。
 
-需要明确区分：
+严格资料策略会在生成前检查 `material_sufficiency_report`。缺少核心资料时返回 `blocked`，存在未裁定冲突时返回 `needs_input`，并以 `story-material-readiness-gate/v1` 提供阻塞项、冲突 need ID 和建议问题。严格 fallback 策略在外部 adapter 超时、输出无效或未形成被接受的外部结果时，以 `story-generation-fallback-gate/v1` 硬失败，不会持久化本地 fallback 项目。
 
-- 用户主动选择 local：本地生成是预期路径；
-- 用户选择 external model：外部失败后是否允许 fallback 必须由请求策略决定；
-- 如果允许 fallback，最终结果必须显式标记；
-- 如果要求真实外部模型，隐藏 fallback 必须是硬失败。
+P0-E2 正式矩阵结果：
 
-需要增加：
+```text
+video types: 15/15
+record-replay pipeline acceptance: 15/15
+truthful record-replay provenance: 15/15
+story / professional script / prompt / image / preproduction ready: 15/15
+required image tasks: 23/23 verified
+repeat image imports: 23/23 skipped idempotently
+stable project IDs / image run IDs: true / true
+missing material / conflict / invalid output / timeout: all blocked
+hidden fallback: 0
+```
 
-- record/replay adapter fixtures；
-- external requested / fallback forbidden 测试；
-- prompt package 版本与模型输出 schema 兼容测试；
-- 15 类 local/external derived-state parity；
-- 超时、无效 JSON、部分字段和修复失败的恢复测试。
+实现与证据：
 
-### 3.6 P1：影视 × 文字 benchmark 尚未影响生成结果
+```text
+web/server/src/__tests__/story-generation-strict-policies.test.ts
+web/server/scripts/story-agent-p0e2-reliability-matrix.mts
+web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
+```
+
+证据边界必须保持真实：矩阵通过 command adapter 执行确定性 record-replay fixture，只证明外部 adapter 合同和下游派生状态兼容；持久故事明确记录 `model_execution_evidence=record_replay_fixture`、`external_model_call_performed=false`。报告明确给出 `real_external_provider_invoked=false`，因此 P0-E2 不能作为真实 Claude/OpenAI/其他外部 Provider 的生产成功证明。
+
+仍需增加：
+
+- 使用真实凭据和真实网络 Provider 的 15 类或分层代表矩阵；
+- 部分字段但可修复输出、repair 失败和 Provider 限流压力；
+- 真实 Provider 的成本、速率限制和可重复性审计。
+
+### 3.7 P1：影视 × 文字 benchmark 尚未影响生成结果
 
 这项工作的准确状态是：
 
@@ -568,7 +592,7 @@ approved audited style pack
 5. 检查长句、角色、情节和镜头序列相似性；
 6. 做有/无 style pack 的可解释对照测试。
 
-### 3.7 P1：缺少面向 Agent 的统一 run 与 MCP 操作面
+### 3.8 P1：缺少面向 Agent 的统一 run 与 MCP 操作面
 
 当前能力分散在：
 
@@ -614,7 +638,7 @@ kb_export_story_agent_preproduction
 
 不要继续扩展 legacy `kb_generate_script`；应让它继续明确指向 canonical 工具或最终废弃。
 
-### 3.8 P1：现有机器质量分仍需要更强外部校准
+### 3.9 P1：现有机器质量分仍需要更强外部校准
 
 当前 genre、premise fidelity、commercial machine gate 能抓住结构缺陷，并已真实暴露多项 bug；但它们仍主要是本项目规则对本项目输出的检查。
 
@@ -783,7 +807,7 @@ npm run smoke:story-agent-15-type-preproduction
 npm run smoke:story-agent-15-type-import-images
 ```
 
-### 4.5 P0-E：15×3 稳定性和恢复
+### 4.5 P0-E：15×3 稳定性、恢复与严格外部合约
 
 本地输入和图片恢复子阶段已完成：
 
@@ -792,9 +816,9 @@ npm run smoke:story-agent-15-type-import-images
 - [x] 原创与素材改编；
 - [x] imagegen 中断、部分导入与恢复；
 - [x] 重复导出与幂等；
-- [ ] 资料充分、资料不足与资料冲突；
-- [ ] 外部模型 record-replay 成功、超时、无效输出；
-- [ ] fallback-forbidden 的正式全链路门禁；
+- [x] 资料充分、资料不足与资料冲突；
+- [x] 外部模型 record-replay 成功、超时、无效输出；
+- [x] fallback-forbidden 的正式全链路门禁；
 
 正式复跑：
 
@@ -802,16 +826,17 @@ npm run smoke:story-agent-15-type-import-images
 cd web
 npm run smoke:story-agent-15x3-stability
 npm run smoke:story-agent-15x3-image-recovery
+npm run smoke:story-agent-p0e2-reliability
 ```
 
-仍需扩展：
+P0-E3 仍需扩展：
 
-- 外部模型成功、超时、无效输出；
-- 资料不足/冲突不能靠本地模板隐式补齐；
-- fallback-forbidden 必须硬失败并留下可审计原因；
-- 外部路径至少形成 record-replay 矩阵，不能把 fixture 或本地 fallback 算成真实外部成功。
+- 真实外部 Provider 成功、限流和修复失败；
+- 用不同原作/条目素材验证视觉资产差异，不再复用同源 canonical 视觉板；
+- 在凭据可用时形成可归档的真实 Provider 报告；
+- 继续禁止把 fixture 或本地 fallback 算成真实外部成功。
 
-最终用一个汇总报告给出每类：
+当前 P0-E2 汇总报告已给出每类：
 
 ```text
 story_status
@@ -888,7 +913,8 @@ web/server/src/__tests__/reference-generation-bridge-service.test.ts
 9. 15×3 稳定性矩阵全绿；
 10. 重复运行不会重复创建项目、图片或破坏版本；
 11. 外部模型请求不允许隐藏 fallback；
-12. 视频生成与真人测试始终不参与当前 acceptance。
+12. 配置真实外部 Provider 时，能留下与 fixture 分离的凭据化验收证据；
+13. 视频生成与真人测试始终不参与当前 acceptance。
 
 ## 7. 下一对话建议先执行
 
@@ -904,7 +930,7 @@ git log -5 --oneline
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-history includes: 679a3f4a feat(story-agent): dispatch professional text packages
+history includes: 13749a56 feat(story-agent): add 15x3 recovery matrix
 ```
 
 ### 7.2 先读这些文件
@@ -934,18 +960,21 @@ mcp-server/src/tools/story-agent-image-runs.ts
 mcp-server/src/tools/generate-script.ts
 ```
 
-### 7.3 从 P0-E2 开始
+### 7.3 从 P0-E3 或 P1-A 开始
 
-P0-A、P0-B、P0-C、P0-D、P0-E1 已完成。下一对话不要再调查视频、后期或真人测试，也不要重跑已经证明的本地 15×3 图片恢复开发。直接在现有 15×3 编排器上增加资料异常与外部模型证据：
+P0-A、P0-B、P0-C、P0-D、P0-E1 和 P0-E2 已完成。不要再调查视频、后期或真人测试，也不要重复开发已经证明的本地恢复、record-replay 或 strict fallback 门禁。
+
+若当前环境具备真实外部 Provider 凭据，优先执行 P0-E3：
 
 ```text
-15 video types × representative reliability cases
-  → missing / conflicting materials
-  → external record-replay success
-  → external timeout / invalid output
-  → fallback-forbidden hard failure with audit reason
-  → no fixture or local fallback counted as external success
+real external provider
+  → representative 15-type or stratified matrix
+  → success / rate limit / repair failure
+  → explicit live_external_command provenance
+  → no fixture or local fallback counted as real provider success
 ```
+
+若没有凭据，不要伪造实跑，可直接进入 P1-A Reference Intelligence 生成闭环：将 approved/audited style pack 接入 canonical prompt、写入 `reference_trace`，并增加 avoid-copying 与有/无参考对照。
 
 ### 7.4 验证命令
 
@@ -960,6 +989,7 @@ npx vitest run server/src/__tests__/outline-service.test.ts \
 npm run smoke:story-agent-seedance-preproduction
 npm run smoke:story-agent-15-type-preproduction
 npm run smoke:story-agent-15-type-import-images
+npm run smoke:story-agent-p0e2-reliability
 npm run lint -w server
 npm run build -w server
 npm test -w server
@@ -978,13 +1008,13 @@ smoke:story-agent-persistent-lifecycle
 任何视频 Provider / playable media / postproduction smoke
 ```
 
-### 7.5 P0-A + P0-B + P0-C + P0-D + P0-E1 最新验证基线
+### 7.5 P0-A + P0-B + P0-C + P0-D + P0-E1 + P0-E2 最新验证基线
 
 ```text
 15 类型 dispatcher / canonical generation / project persistence：通过
 professional dispatcher 聚焦测试：3 项通过
-服务端全量：164 files passed，1 skipped
-测试：1421 passed，2 skipped
+服务端全量：166 files passed，1 skipped
+测试：1429 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
@@ -997,6 +1027,10 @@ MCP canonical bridge 与 TypeScript build：通过
 15×3 本地矩阵：45 unique projects / 351 shots / 69 delivered images / 45 ready packages
 15×3 部分恢复：1 task verified 后保留 2 pending，再续跑到 69/69 verified
 15×3 图片导入幂等复跑：69/69 skipped；project/run IDs 全部稳定
+P0-E2 record-replay：15/15 full pipeline ready；23/23 images verified
+P0-E2 strict gates：missing / conflict / invalid output / timeout 全部 blocked
+P0-E2 provenance：15/15 record_replay_fixture；external_model_call_performed=false
+P0-E2 幂等：15/15 projects/runs stable；23/23 repeat imports skipped
 ```
 
 ## 8. 当前权威数据与注意事项
@@ -1020,6 +1054,7 @@ web/generated/story-agent-15-type-preproduction-matrix/image-import-report.json
 web/generated/story-agent-15x3-stability-matrix/matrix-report.json
 web/generated/story-agent-15x3-stability-matrix/image-recovery-report.json
 web/generated/story-agent-15x3-stability-matrix/image-idempotency-report.json
+web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 web/generated/story-agent-cross-seed-image-assets-20260723/binding-report.json
 web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproduction-report.json
 ```
@@ -1064,5 +1099,7 @@ Codex imagegen 是对话工具，不是仓库服务器依赖。下一开发者�
 故事 → 专业脚本 → Seedance 提示词 → Codex 图片资产 → 前置制作交付包。
 不要生成视频，不要推进回调、剪辑、声音、字幕或成片，不要把真人测试和 production credit 当作当前阻塞项。
 
-P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等均已完成。从交接文档 P0-E2 开始：在现有 15×3 编排器上补资料缺失/冲突、外部 record-replay 成功/超时/无效输出，以及 fallback-forbidden 的正式全链路门禁。不要把 fixture 或 local fallback 算成真实外部成功。
+P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等、P0-E2 资料严格门禁和外部 record-replay/fallback-forbidden 矩阵均已完成。
+
+若具备真实外部 Provider 凭据，从 P0-E3 开始做分层真实 Provider 验收，并把 live external、record-replay fixture 和 local fallback 三种 provenance 严格分开。若没有凭据，不要伪造实跑，直接进入 P1-A Reference Intelligence：桥接 approved/audited style pack 到 canonical generation、写入 reference_trace、执行 avoid-copying 和有/无参考对照。
 ```

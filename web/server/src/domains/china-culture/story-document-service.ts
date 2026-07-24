@@ -74,10 +74,17 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       : input.generationMode === 'local_fallback'
         ? 'local_fallback'
         : 'local_story_engine',
-    external_model_call_performed: input.generationMode === 'external_model',
+    external_model_call_performed: input.generationMode === 'external_model'
+      && input.adapterResult.execution_evidence !== 'record_replay_fixture',
+    model_execution_evidence: input.adapterResult.execution_evidence
+      ?? (input.generationMode === 'external_model'
+        ? 'live_external_command'
+        : 'local_only'),
     generation_reason: input.adapterResult.reason,
-    generation_source: input.generationMode === 'external_model'
-      ? selectedModelProfile.label
+    generation_source: input.adapterResult.execution_evidence === 'record_replay_fixture'
+      ? `Record replay fixture (${selectedModelProfile.label} contract)`
+      : input.generationMode === 'external_model'
+        ? selectedModelProfile.label
       : input.generationMode === 'local_fallback'
         ? '本地引擎 (未使用所选模型)'
         : '本地引擎',
@@ -136,6 +143,10 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       model_provider: input.adapterResult.provider,
       model_used_fallback: input.adapterResult.used_fallback,
       model_fallback_reason: input.adapterResult.reason,
+      generation_fallback_policy: input.request.generation_fallback_policy
+        ?? 'allow_local_fallback',
+      material_readiness_policy: input.request.material_readiness_policy
+        ?? 'allow_draft_with_risks',
       genre_strictness: input.request.genre_strictness ?? 'balanced',
       auto_repair: input.request.auto_repair ?? false,
       story_priority: input.request.story_priority ?? 'balanced',

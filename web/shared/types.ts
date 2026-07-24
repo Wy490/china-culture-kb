@@ -822,12 +822,22 @@ export interface StoryDetectedCharacter {
 // Story generate
 // ---------------------------------------------------------------------------
 
+export type StoryGenerationFallbackPolicy =
+  | 'allow_local_fallback'
+  | 'forbid_local_fallback';
+
+export type StoryMaterialReadinessPolicy =
+  | 'allow_draft_with_risks'
+  | 'require_script_ready';
+
 export interface StoryGenerateRequest {
   entry_name?: string;
   original_user_query?: string;
   generation_type?: GenerationType;
   video_type?: VideoType;
   model_profile_id?: string;
+  generation_fallback_policy?: StoryGenerationFallbackPolicy;
+  material_readiness_policy?: StoryMaterialReadinessPolicy;
   selected_event?: string;
   target_video_duration?: SupportedDuration;
   tone?: string;
@@ -13142,6 +13152,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   requested_model_profile_id?: string;
   effective_engine?: 'local_story_engine' | 'external_model' | 'local_fallback';
   external_model_call_performed?: boolean;
+  model_execution_evidence?: 'local_only' | 'live_external_command' | 'record_replay_fixture';
   generation_reason?: string;
   generation_source?: string;
   generation_mode?: GenerationMode;

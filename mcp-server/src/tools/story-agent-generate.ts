@@ -15,6 +15,12 @@ type GenreStrictness = 'loose' | 'balanced' | 'strict';
 type StoryGenerationPriority = 'balanced' | 'plot_first' | 'knowledge_first';
 type SourceMaterialMode = 'generate_from_knowledge' | 'adapt_user_novel';
 type LocalizationMode = 'allow_related_influence' | 'strict_direct_events';
+type StoryGenerationFallbackPolicy =
+  | 'allow_local_fallback'
+  | 'forbid_local_fallback';
+type StoryMaterialReadinessPolicy =
+  | 'allow_draft_with_risks'
+  | 'require_script_ready';
 
 export interface StoryAgentGenerateInput {
   domain?: string;
@@ -23,6 +29,8 @@ export interface StoryAgentGenerateInput {
   generation_type?: GenerationType;
   video_type?: VideoType;
   model_profile_id?: string;
+  generation_fallback_policy?: StoryGenerationFallbackPolicy;
+  material_readiness_policy?: StoryMaterialReadinessPolicy;
   selected_event?: string;
   target_video_duration?: string;
   tone?: string;

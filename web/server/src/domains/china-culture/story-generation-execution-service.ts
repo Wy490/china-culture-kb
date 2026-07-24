@@ -1,4 +1,4 @@
-import type { StoryGenerateRequest } from '@shared/types.js';
+import { ErrorCodes, type StoryGenerateRequest } from '@shared/types.js';
 import { mergeCharacterHintsIntoStoryResult, resolveStoryGenerationResult } from '../../platform/story-model-output-merge.js';
 import { generateStoryWithAdapter } from '../../services/story-generation-model.js';
 import { buildStoryGenerationPromptPackage } from '../../services/story-generation-prompt.js';
@@ -22,7 +22,17 @@ export async function executeChinaCultureStoryGeneration(input: {
     originalUserQuery: request.original_user_query ?? request.outline,
     stylePackIds: request.style_pack_ids,
   });
-  if (!localGeneration.ok) return localGeneration;
+  if (!localGeneration.ok) {
+    return {
+      ok: false as const,
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: localGeneration.message,
+      details: {
+        schema_version: 'story-local-generation-gate/v1' as const,
+        reason: localGeneration.reason,
+      },
+    };
+  }
 
   const promptPackage = buildStoryGenerationPromptPackage({
     entry: preparation.entry,
@@ -57,6 +67,28 @@ export async function executeChinaCultureStoryGeneration(input: {
     videoType: preparation.videoType,
     presentationStyle: preparation.presentationStyle,
   });
+  if (
+    request.generation_fallback_policy === 'forbid_local_fallback'
+    && preparation.selectedModelProfile.runtime !== 'local'
+    && generationResolution.generationMode !== 'external_model'
+  ) {
+    return {
+      ok: false as const,
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: 'External story generation was required, but the adapter did not produce an accepted external result',
+      details: {
+        schema_version: 'story-generation-fallback-gate/v1' as const,
+        policy: request.generation_fallback_policy,
+        requested_model_profile_id: preparation.selectedModelProfile.id,
+        adapter_provider: adapterResult.provider,
+        generation_mode: generationResolution.generationMode,
+        generation_used_fallback: generationResolution.generationUsedFallback,
+        reason: adapterResult.reason
+          ?? generationResolution.adapterTrace
+          ?? 'external_model_result_unavailable',
+      },
+    };
+  }
   let referenceTrace = localGeneration.referenceTrace;
   if (generationResolution.adapterTrace) {
     referenceTrace = [
