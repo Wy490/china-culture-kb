@@ -64,4 +64,42 @@ describe('derived-story-state-service', () => {
     expect(rebuilt.gears_delivery?.units.map(unit => unit.script_text).join('\n')).toContain('摊开案卷指出疑点');
     expect(rebuilt.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
   });
+
+  it('revalidates approved-reference safety before rebuilding downstream artifacts', async () => {
+    const story = makeStoryWithStaleLegacySegment();
+    story.full_text += '\n本故事改编自某部著名电影。';
+    story.reference_trace = [{
+      style_pack_id: 'reference-style-pack-approved',
+      application_status: 'external_prompt_injected',
+      applied_rules: ['用可见行动建立人物选择'],
+      requested_rules: ['用可见行动建立人物选择'],
+      avoid_copying_rules: ['不得复制具体角色、情节与镜头顺序'],
+      source_reference_ids: ['reference-approved'],
+      source_analysis_ids: ['analysis-approved'],
+      source_benchmark_ids: ['benchmark-approved'],
+      source_references: [{
+        reference_id: 'reference-approved',
+        rights_status: 'research_only',
+        access_scope: 'metadata_only',
+      }],
+      source_story_structure: 'single_event_drama',
+    }];
+
+    await expect(rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+    })).rejects.toMatchObject({
+      name: 'StoryDerivedStateValidationError',
+      story: {
+        reference_safety_report: {
+          status: 'blocked',
+          passed: false,
+          issues: [
+            expect.objectContaining({
+              issue_code: 'unauthorized_adaptation_claim',
+            }),
+          ],
+        },
+      },
+    });
+  });
 });

@@ -13,10 +13,14 @@ import {
   buildReferenceGenerationTrace,
   resolveReferenceGenerationContext,
 } from '../services/reference-generation-bridge-service.js';
+import {
+  evaluateReferenceGenerationSafety,
+} from '../services/reference-quality-service.js';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 import { prepareChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-preparation-service.js';
 import { executeChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-execution-service.js';
 import { generateChinaCultureLocalStoryAssembly } from '../domains/china-culture/story-local-generation-service.js';
+import { generateAndStoreChinaCultureStory } from '../domains/china-culture/story-generation-service.js';
 
 const temporaryRoots: string[] = [];
 const approvedAt = '2026-07-24T14:00:00.000Z';
@@ -27,6 +31,7 @@ const originalEnv = {
   STORY_GEN_COMMAND: process.env.STORY_GEN_COMMAND,
   STORY_GEN_COMMAND_ARGS: process.env.STORY_GEN_COMMAND_ARGS,
   STORY_GEN_EXECUTION_EVIDENCE: process.env.STORY_GEN_EXECUTION_EVIDENCE,
+  WEB_GENERATED_ROOT: process.env.WEB_GENERATED_ROOT,
 };
 
 afterEach(async () => {
@@ -156,6 +161,18 @@ describe('Reference Generation Bridge', () => {
       schema_version: 'reference-generation-context/v1',
       style_pack_ids: [stylePack.id],
       reusable_principles: ['用不可撤回的可见行动表现人物选择'],
+      source_references: [
+        expect.objectContaining({
+          reference_id: stylePack.source_reference_ids[0],
+          rights_status: 'research_only',
+          access_scope: 'metadata_only',
+        }),
+        expect.objectContaining({
+          reference_id: stylePack.source_reference_ids[1],
+          rights_status: 'research_only',
+          access_scope: 'metadata_only',
+        }),
+      ],
     });
     expect(resolution.context.avoid_copying).toEqual(expect.arrayContaining([
       '不得复制具体角色和镜头顺序 a',
@@ -201,6 +218,89 @@ describe('Reference Generation Bridge', () => {
       source_analysis_ids: stylePack.source_analysis_ids,
       source_benchmark_ids: stylePack.source_benchmark_ids,
       applied_rules: ['用不可撤回的可见行动表现人物选择'],
+    });
+    expect(trace[0].source_references).toEqual(
+      resolution.context.source_references,
+    );
+
+    const safety = evaluateReferenceGenerationSafety({
+      generated_text: '周敦颐拒绝在疑案判词上署名，并承担辞官后果。',
+      reference_trace: trace,
+      reference_strength: 'medium',
+    });
+    expect(safety).toMatchObject({
+      schema_version: 'story-reference-generation-safety/v1',
+      status: 'passed_with_limits',
+      passed: true,
+      style_pack_ids: [stylePack.id],
+      application: {
+        applied_to_generation: true,
+        statuses: ['external_prompt_injected'],
+      },
+      checks: {
+        provenance_complete: true,
+        avoid_copying_constraints_present: true,
+        unauthorized_adaptation_claim_absent: true,
+        forbidden_imitation_language_absent: true,
+      },
+      similarity: {
+        status: 'not_run_no_authorized_source_material',
+        exact_long_sentence: { status: 'not_run', match_count: null },
+        near_character_overlap: { status: 'not_run', match_count: null },
+        character_design: { status: 'not_run', match_count: null },
+        plot_structure: { status: 'not_run', match_count: null },
+        shot_sequence: { status: 'not_run', match_count: null },
+        similarity_pass_credit_granted: false,
+      },
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_similarity_check_completed: false,
+      real_credit_granted: false,
+    });
+
+    const copied = evaluateReferenceGenerationSafety({
+      generated_text: '风吹过空院，他终于摊开案卷，拒绝在未核清的判词上落笔。',
+      reference_trace: trace,
+      reference_strength: 'medium',
+      reference_original_sentences: [
+        '他终于摊开案卷，拒绝在未核清的判词上落笔。',
+      ],
+    });
+    expect(copied).toMatchObject({
+      status: 'blocked',
+      passed: false,
+      similarity: {
+        status: 'partially_completed',
+        exact_long_sentence: { status: 'completed', match_count: 1 },
+        near_character_overlap: { status: 'completed', match_count: 0 },
+        character_design: { status: 'not_run', match_count: null },
+        plot_structure: { status: 'not_run', match_count: null },
+        shot_sequence: { status: 'not_run', match_count: null },
+        similarity_pass_credit_granted: false,
+      },
+      issues: [
+        expect.objectContaining({
+          issue_code: 'exact_long_sentence_match',
+        }),
+      ],
+      real_similarity_check_completed: false,
+    });
+
+    const missingTrace = evaluateReferenceGenerationSafety({
+      generated_text: '这是最终生成文本。',
+      reference_trace: [],
+      expected_style_pack_ids: [stylePack.id],
+    });
+    expect(missingTrace).toMatchObject({
+      status: 'blocked',
+      passed: false,
+      style_pack_ids: [stylePack.id],
+      checks: { provenance_complete: false },
+      issues: [
+        expect.objectContaining({
+          issue_code: 'reference_provenance_incomplete',
+        }),
+      ],
     });
   });
 
@@ -416,5 +516,98 @@ describe('Reference Generation Bridge', () => {
         source_benchmark_ids: stylePack.source_benchmark_ids,
       }),
     ]));
+  });
+
+  it('blocks an unsafe consumer-finalized referenced story before persistence', async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'reference-generation-'));
+    const generatedRoot = await mkdtemp(path.join(os.tmpdir(), 'reference-generation-output-'));
+    temporaryRoots.push(repoRoot, generatedRoot);
+    const stylePack = await createApprovedStylePack(repoRoot);
+    process.env.REFERENCE_LIBRARY_REPO_ROOT = repoRoot;
+    process.env.WEB_GENERATED_ROOT = generatedRoot;
+    process.env.KB_ROOT = path.resolve(
+      import.meta.dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      'data',
+    );
+    const request = {
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story' as const,
+      presentation_style: 'cinematic' as const,
+      story_structure: 'single_event_drama' as const,
+      model_profile_id: 'claude_sonnet',
+      generation_fallback_policy: 'forbid_local_fallback' as const,
+      style_pack_ids: [stylePack.id],
+      auto_repair: false,
+    };
+    const preparation = await prepareChinaCultureStoryGeneration(request);
+    expect(preparation.ok).toBe(true);
+    if (!preparation.ok) return;
+    const local = generateChinaCultureLocalStoryAssembly({
+      entry: preparation.entry,
+      centralEvent: preparation.centralEvent,
+      videoType: preparation.videoType,
+      presentationStyle: preparation.presentationStyle,
+      storyStructure: preparation.storyStructure,
+      targetDuration: preparation.targetDuration,
+      tone: preparation.localTone,
+      knowledgePack: preparation.knowledgePackToUse,
+    });
+    expect(local.ok).toBe(true);
+    if (!local.ok) return;
+
+    process.env.STORY_GEN_PROVIDER = 'command_json';
+    process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
+    process.env.STORY_GEN_COMMAND = process.execPath;
+    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
+      '-e',
+      'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
+      JSON.stringify({
+        title: local.storyResult.title,
+        logline: local.storyResult.logline,
+        theme: local.storyResult.theme,
+        full_text: local.storyResult.full_text,
+        scene_breakdown: local.storyResult.scene_breakdown,
+        cultural_constraints: local.storyResult.cultural_constraints,
+        credibility_note: local.storyResult.credibility_note,
+      }),
+    ]);
+
+    const result = await generateAndStoreChinaCultureStory(request, {
+      transform_story_before_validation_and_persistence: story => ({
+        ...story,
+        full_text: `${story.full_text}\n本故事改编自某部著名电影。`,
+        reference_trace: [],
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({
+      code: 'REFERENCE_SAFETY_VALIDATION_FAILED',
+      details: {
+        schema_version: 'story-reference-generation-safety/v1',
+        status: 'blocked',
+        passed: false,
+        issues: [
+          expect.objectContaining({
+            issue_code: 'unauthorized_adaptation_claim',
+          }),
+        ],
+        machine_validation_only: true,
+        human_review_complete: false,
+        real_credit_granted: false,
+      },
+    });
+    await expect(
+      import('node:fs/promises').then(({ readdir }) =>
+        readdir(path.join(generatedRoot, 'stories'))),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(
+      import('node:fs/promises').then(({ readdir }) =>
+        readdir(path.join(generatedRoot, 'projects'))),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

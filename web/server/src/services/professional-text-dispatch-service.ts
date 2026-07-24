@@ -165,6 +165,35 @@ export function dispatchProfessionalTextPackageForStory(
     created_at: story.professional_text_package?.created_at ?? now,
     updated_at: now,
   };
+  if (story.reference_safety_report) {
+    const referenceBoundary = story.reference_safety_report.status === 'not_applicable'
+      ? 'reference_safety:not_applicable'
+      : `reference_safety:${story.reference_safety_report.status};similarity:${story.reference_safety_report.similarity.status};real_similarity_credit=false`;
+    professionalPackage = {
+      ...professionalPackage,
+      research_and_evidence_dossier: {
+        ...professionalPackage.research_and_evidence_dossier,
+        authorization_notes: [
+          ...professionalPackage.research_and_evidence_dossier.authorization_notes,
+          referenceBoundary,
+        ],
+      },
+      quality_report: {
+        ...professionalPackage.quality_report,
+        evaluator_notes: [
+          ...professionalPackage.quality_report.evaluator_notes,
+          referenceBoundary,
+        ],
+      },
+      delivery_text_package: {
+        ...professionalPackage.delivery_text_package,
+        validation_notes: [
+          ...professionalPackage.delivery_text_package.validation_notes,
+          referenceBoundary,
+        ],
+      },
+    };
+  }
   ProfessionalTextPackageSchema.parse(professionalPackage);
 
   return {

@@ -23,6 +23,11 @@ import { validateChinaCultureStoryContent } from './story-safety.js';
 import {
   applyChinaCultureStoryAssemblyToStoryData,
 } from './story-type-specific-fields-service.js';
+import {
+  buildReferenceSafetyText,
+  combineQualityReports,
+  evaluateReferenceGenerationSafety,
+} from '../../services/reference-quality-service.js';
 
 export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {}
 
@@ -147,7 +152,35 @@ export async function generateAndStoreChinaCultureStory(
     storyData = {
       ...transformedStory,
       _request_meta: storyData._request_meta,
+      reference_trace: storyData.reference_trace,
     };
+  }
+
+  const referenceSafety = evaluateReferenceGenerationSafety({
+    generated_text: buildReferenceSafetyText(storyData),
+    reference_strength: request.reference_strength,
+    reference_trace: storyData.reference_trace,
+    expected_style_pack_ids:
+      preparation.referenceGenerationContext?.style_pack_ids,
+  });
+  storyData.reference_safety_report = referenceSafety;
+  if (storyData.quality_report) {
+    storyData.quality_report = combineQualityReports(
+      storyData.quality_report,
+      {
+        safe: referenceSafety.passed,
+        issues: referenceSafety.issues.map(issue => issue.message),
+        warnings: referenceSafety.warnings.map(warning => warning.message),
+        blocked_references: referenceSafety.blocked_reference_ids,
+      },
+    );
+  }
+  if (!referenceSafety.passed) {
+    return fail(
+      ErrorCodes.REFERENCE_SAFETY_VALIDATION_FAILED,
+      'Generated story failed the approved-reference safety boundary',
+      referenceSafety,
+    );
   }
 
   const domainSafety = validateChinaCultureStoryContent({ story: storyData, source_entry: entry });

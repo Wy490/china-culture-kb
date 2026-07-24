@@ -1,5 +1,6 @@
 import type {
   PresentationStyle,
+  ReferenceGenerationSourceTrace,
   ReferenceStylePackRecord,
   ReferenceTrace,
   StoryStructureType,
@@ -18,6 +19,7 @@ export interface ReferenceGenerationStylePackContext {
   source_reference_ids: string[];
   source_analysis_ids: string[];
   source_benchmark_ids: string[];
+  source_references: ReferenceGenerationSourceTrace[];
   abstract_rules: string[];
   avoid_copying: string[];
   approved_by: string;
@@ -28,6 +30,7 @@ export interface ReferenceGenerationContext {
   schema_version: 'reference-generation-context/v1';
   style_pack_ids: string[];
   style_packs: ReferenceGenerationStylePackContext[];
+  source_references: ReferenceGenerationSourceTrace[];
   reusable_principles: string[];
   avoid_copying: string[];
   knowledge_writeback_allowed: false;
@@ -243,12 +246,29 @@ export async function resolveReferenceGenerationContext(input: {
       );
     }
 
+    const sourceReferences = await Promise.all(
+      pack.source_reference_ids.map(async (referenceId) => {
+        const source = await getReferenceSource({
+          repoRoot: input.repoRoot,
+          referenceId,
+        });
+        return {
+          reference_id: source.reference_id,
+          rights_status: source.rights_status,
+          access_scope: source.access_scope,
+          ...(source.content_fingerprint
+            ? { content_fingerprint: source.content_fingerprint }
+            : {}),
+        } satisfies ReferenceGenerationSourceTrace;
+      }),
+    );
     resolvedPacks.push({
       style_pack_id: pack.id,
       name: pack.name,
       source_reference_ids: [...pack.source_reference_ids],
       source_analysis_ids: [...pack.source_analysis_ids],
       source_benchmark_ids: [...pack.source_benchmark_ids],
+      source_references: sourceReferences,
       abstract_rules: abstractRules(pack),
       avoid_copying: copyingBoundaries(pack),
       approved_by: pack.approval.approved_by,
@@ -262,6 +282,9 @@ export async function resolveReferenceGenerationContext(input: {
       schema_version: 'reference-generation-context/v1',
       style_pack_ids: resolvedPacks.map(pack => pack.style_pack_id),
       style_packs: resolvedPacks,
+      source_references: uniqueByReferenceId(
+        resolvedPacks.flatMap(pack => pack.source_references),
+      ),
       reusable_principles: unique(
         resolvedPacks.flatMap(pack => pack.abstract_rules),
       ),
@@ -290,6 +313,15 @@ export function buildReferenceGenerationTrace(input: {
     source_reference_ids: [...pack.source_reference_ids],
     source_analysis_ids: [...pack.source_analysis_ids],
     source_benchmark_ids: [...pack.source_benchmark_ids],
+    source_references: pack.source_references.map(source => ({ ...source })),
     source_story_structure: input.storyStructure,
   }));
+}
+
+function uniqueByReferenceId(
+  sources: ReferenceGenerationSourceTrace[],
+): ReferenceGenerationSourceTrace[] {
+  const byId = new Map<string, ReferenceGenerationSourceTrace>();
+  for (const source of sources) byId.set(source.reference_id, source);
+  return [...byId.values()];
 }

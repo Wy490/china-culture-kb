@@ -8,6 +8,7 @@ import {
 } from '@shared/types.js';
 import { resolveProfessionalEvidenceForStory } from '../services/professional-evidence-resolver-service.js';
 import { dispatchProfessionalTextPackageForStory } from '../services/professional-text-dispatch-service.js';
+import { evaluateReferenceGenerationSafety } from '../services/reference-quality-service.js';
 
 const videoTypes = Object.keys(VIDEO_TYPE_CONFIG) as VideoType[];
 
@@ -138,6 +139,40 @@ describe('professional text dispatcher', () => {
       blocking_level: 'blocking',
       affects: expect.arrayContaining(['professional_text_package']),
     }));
+  });
+
+  it('carries the no-similarity-credit boundary into professional and preproduction-facing notes', () => {
+    const sourceStory = story('character_story');
+    sourceStory.reference_trace = [{
+      style_pack_id: 'reference-style-pack-approved',
+      application_status: 'external_prompt_injected',
+      applied_rules: ['用可见行动建立人物选择'],
+      requested_rules: ['用可见行动建立人物选择'],
+      avoid_copying_rules: ['不得复制具体角色、情节与镜头顺序'],
+      source_reference_ids: ['reference-approved'],
+      source_analysis_ids: ['analysis-approved'],
+      source_benchmark_ids: ['benchmark-approved'],
+      source_references: [{
+        reference_id: 'reference-approved',
+        rights_status: 'research_only',
+        access_scope: 'metadata_only',
+      }],
+      source_story_structure: 'single_event_drama',
+    }];
+    sourceStory.reference_safety_report = evaluateReferenceGenerationSafety({
+      generated_text: sourceStory.full_text,
+      reference_trace: sourceStory.reference_trace,
+    });
+
+    const result = dispatchProfessionalTextPackageForStory(sourceStory);
+
+    const expectedBoundary =
+      'reference_safety:passed_with_limits;similarity:not_run_no_authorized_source_material;real_similarity_credit=false';
+    expect(result.package.research_and_evidence_dossier.authorization_notes)
+      .toContain(expectedBoundary);
+    expect(result.package.quality_report.evaluator_notes).toContain(expectedBoundary);
+    expect(result.package.delivery_text_package.validation_notes).toContain(expectedBoundary);
+    expect(ProfessionalTextPackageSchema.safeParse(result.package).success).toBe(true);
   });
 
   it('keeps documentary interview consent pending until a resolved supplement supplies it', () => {

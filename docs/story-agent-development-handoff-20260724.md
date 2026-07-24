@@ -3,7 +3,8 @@
 > 日期：2026-07-24
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 > 分支：`codex/story-agent-manifest-integrity-20260718`
-> 上一功能基线提交：`5bd406b9 feat(story-agent): enforce strict generation policies`
+> P0-E2 功能基线提交：`5bd406b9 feat(story-agent): enforce strict generation policies`
+> P1-A1 功能基线提交：`226e5e34 feat(story-agent): bridge approved reference styles`
 > 上一份研究与长周期开发记录：`docs/story-agent-film-text-benchmark-development-handoff-20260723.md`
 
 ## 0. 下一对话先读这里
@@ -36,7 +37,7 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 当前系统已经具备较完整的结构化 Story Agent 内核，并且 AI 漫剧系列的“故事—脚本镜头—Seedance 提示词—真实图片—逐镜引用—交付包”已经跑通。
 
-15×1 canonical、15×3 本地稳定性/恢复矩阵和 P0-E2 外部 command adapter record-replay 可靠性矩阵均已跑通。P0-E2 对 15 类完成了故事、专业脚本、Seedance 提示词、图片绑定和前置制作包的同等级全链路验收，并证明资料缺失、资料冲突、外部超时和无效输出会在严格策略下硬失败。P1-A1 已将 approved/audited Reference Library style pack 接入 canonical 外部 prompt，并形成 source/analysis/benchmark/style-pack 全链路 trace。当前最大问题已经转为真实外部 Provider 凭据验收、参考输出安全/有无参考对照、不同素材视觉资产压力，以及更高层统一 StoryAgentRun。
+15×1 canonical、15×3 本地稳定性/恢复矩阵和 P0-E2 外部 command adapter record-replay 可靠性矩阵均已跑通。P0-E2 对 15 类完成了故事、专业脚本、Seedance 提示词、图片绑定和前置制作包的同等级全链路验收，并证明资料缺失、资料冲突、外部超时和无效输出会在严格策略下硬失败。P1-A1 已将 approved/audited Reference Library style pack 接入 canonical 外部 prompt，并形成 source/analysis/benchmark/style-pack 全链路 trace。P1-A2a 已在最终输出持久化前和 derived-state rebuild 接入机器可读引用安全报告与 fail-closed 门禁。当前最大问题已经转为真实外部 Provider 凭据验收、合法参考正文下的完整多维相似度检测、有/无参考对照、不同素材视觉资产压力，以及更高层统一 StoryAgentRun。
 
 可用两个口径理解当前距离：
 
@@ -59,7 +60,7 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 | 一键交付包 | 本地与外部 record-replay 均全绿 | 本地 45/45、record-replay 15/15 ready，共用 `story-agent-seedance-preproduction-package/v1` | 仍需真实外部 Provider 与顶层 StoryAgentRun |
 | 版本与持久化 | 图片阶段已闭环 | story snapshot、project/version、series project、asset history、`story-agent-image-run/v1` | 缺少跨故事/脚本/图片/交付包的更高层统一 StoryAgentRun |
 | 机器质量与修复 | 已有多层门禁 | genre、premise fidelity、commercial machine gate、repair | 专业脚本管线的自动选择、补证、修复和 derived-state 重建尚未统一 |
-| 影视/文字 benchmark | P1-A1 prompt/trace 桥接已完成 | approved style pack 逐次重验 provenance、注入抽象原则和防照抄规则、记录完整 `reference_trace` | 仍缺输出安全报告、相似性证据和有/无参考对照 |
+| 影视/文字 benchmark | P1-A1 + P1-A2a 已完成 | approved style pack 逐次重验 provenance；最终输出安全报告；未授权改编/仿写、provenance、avoid-copying fail-closed；专业文本包继承结论 | 合法原文未提供时相似度明确 `not_run`；仍缺角色/情节/镜头完整检测和有/无参考对照 |
 
 ## 2. 已完成工作总结
 
@@ -275,11 +276,11 @@ web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproductio
 
 ### 2.6 当前自动化基线
 
-截至 P0-E2 外部 record-replay 可靠性矩阵工作树：
+截至 P1-A2a 引用输出安全门禁工作树：
 
 ```text
 服务端全量：167 files passed，1 skipped
-测试：1435 passed，2 skipped
+测试：1438 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
@@ -289,7 +290,7 @@ MCP 全量：93 files / 495 tests passed
 P0-E2 record-replay：15/15 projects / professional scripts / prompts / images / preproduction ready
 P0-E2 strict gates：missing / conflict / invalid output / timeout 全部 blocked
 P0-E2 provenance：15/15 fixture truthfully labeled，0 real external provider calls
-P1-A1 Reference Generation Bridge：6 focused tests / approved-only / compatibility / provenance drift / unknown ID / local truthfulness / external prompt injection
+P1-A1/A2 focused：approved-only / compatibility / provenance drift / unknown ID / local truthfulness / external prompt injection / final-output block / derived-state revalidation / professional boundary
 ```
 
 ## 3. 距离用户目标的真实不足
@@ -544,7 +545,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 - 部分字段但可修复输出、repair 失败和 Provider 限流压力；
 - 真实 Provider 的成本、速率限制和可重复性审计。
 
-### 3.7 P1-A1：approved reference style pack 已进入 canonical prompt 与 trace
+### 3.7 P1-A1 + P1-A2a：approved reference 已进入生成、最终输出门禁与专业文本
 
 这项工作的准确状态是：
 
@@ -560,7 +561,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 | Reference Library UI | 未完成 | 目前主要是服务端 API，没有可用的完整录入、审核和组合工作台 |
 | audited style pack 接入生成 | P1-A1 已完成 | canonical preparation 逐次读取 `references/creative/library/style-packs/`，只接受 approved、compatible 且 provenance 完整的 style pack |
 | 生成可追溯性 | P1-A1 已完成 | `reference_trace` 记录 source/analysis/benchmark/style-pack ID、requested/applied rules、avoid-copying 和 application status |
-| 参考质量与相似性门禁 | 部分完成 | prompt 已注入防照抄硬约束；仍缺生成输出级安全报告、长句/角色/情节/镜头近似和对照矩阵 |
+| 参考质量与相似性门禁 | P1-A2a 已完成基础闭环 | 最终输出与 derived-state rebuild 均生成 `story-reference-generation-safety/v1`；未授权改编、禁用仿写、provenance、avoid-copying 和合法传入原句的长句/高重叠检查会阻断；角色/情节/镜头与对照仍待完成 |
 
 因此，如果把“结构化参考理解层”拆成“资料治理”和“真正驱动生成”两部分：
 
@@ -592,13 +593,28 @@ approved audited style pack
 - prompt 只包含抽象原则、ID 和防照抄边界，不包含参考正文、URL、独特台词或镜头原文；
 - 服务器仍不会擅自下载或读取完整受版权保护作品。
 
-P1-A2 下一步：
+P1-A2a 已完成：
 
-1. 将 `reference-quality-service` 接入 canonical post-generation；
-2. 输出机器可读的 avoid-copying / provenance / similarity 报告；
-3. 在合法提供 source excerpt/fingerprint 时检查长句、角色、情节和镜头序列近似；
-4. 对同一输入做 baseline 与 reference-assisted 的可解释对照；
-5. 将 reference 质量结论传入 professional package 和 preproduction acceptance。
+1. `reference-quality-service` 在自动修复和 consumer finalization 之后、持久化之前运行；
+2. `reference_trace` 新增来源 rights/access-scope/fingerprint 元数据，报告输出 avoid-copying、provenance、应用状态和相似度各维状态；
+3. 未授权“改编自”、禁用仿写表达、缺失 provenance、缺失 avoid-copying 约束会返回 `REFERENCE_SAFETY_VALIDATION_FAILED`，不会创建 Story/Project；
+4. derived-state rebuild 会复验同一门禁，避免后续修订绕过；
+5. professional package 的 authorization/evaluator/delivery notes 会携带引用结论，preproduction 通过专业文本包继承；
+6. 合法调用方显式提供参考原句时，长句精确复制和高字符重叠可阻断。
+
+真实边界：
+
+- Reference Library 不保存来源正文，因此 canonical 报告当前会如实标记 `not_run_no_authorized_source_material`；
+- `character_design`、`plot_structure`、`shot_sequence` 仍为 `not_run`，不会获得 similarity pass credit；
+- `baseline_comparison.status=not_run_single_generation`，不会把单次生成冒充有/无参考对照；
+- record-replay fixture 只验证调用合同与门禁，不算真实 Provider 或真实相似度证据。
+
+P1-A2b 下一步：
+
+1. 建立用户合法提供 excerpt/角色/情节/镜头观察的不可变输入合同与 fingerprint 校验；
+2. 完成角色设计、情节结构、镜头序列多维相似度算法与阈值回归；
+3. 对同一输入执行 baseline 与 reference-assisted 的可解释对照；
+4. 将结构化引用结论提升为 preproduction acceptance 的独立字段，而不只存在于 professional package notes。
 
 ### 3.8 P1：缺少面向 Agent 的统一 run 与 MCP 操作面
 
@@ -856,7 +872,7 @@ fallback_status
 repeat_run_status
 ```
 
-### 4.6 P1-A：完成 Reference Intelligence 生成闭环（A1 已完成）
+### 4.6 P1-A：完成 Reference Intelligence 生成闭环（A1 + A2a 已完成）
 
 在 P0-A 到 P0-D 跑通后，立即补这条质量链：
 
@@ -887,9 +903,11 @@ web/server/src/__tests__/reference-generation-bridge.test.ts
 3. [x] 只注入抽象原则，不把来源正文、独特台词或镜头序列塞进 prompt；
 4. [x] 将 source/analysis/benchmark/style-pack ID 写入 `reference_trace`；
 5. [x] 参考层失败时以 `story-reference-style-pack-gate/v1` 硬失败；
-6. [ ] `reference-quality-service` 检查 `avoid_copying`、长句相似度、角色/情节/镜头序列近似；
-7. [ ] 对同一输入做 baseline 与 reference-assisted 对照；
-8. [ ] 新增 `reference-analysis-task-service.ts`，让 Codex/operator 可按 manifest 提交结构化观察。
+6. [x] `reference-quality-service` 在最终输出与 derived-state rebuild 检查 `avoid_copying`、provenance、未授权改编/仿写，并对显式合法原句检查长句复制；
+7. [x] 输出机器可读报告，并把 `not_run` / no-credit 边界传入 professional package；
+8. [ ] 对同一输入做 baseline 与 reference-assisted 对照；
+9. [ ] 完成角色/情节/镜头序列相似度与合法输入 manifest；
+10. [ ] 新增 `reference-analysis-task-service.ts`，让 Codex/operator 可按 manifest 提交结构化观察。
 
 原始视频、小说和剧本不应由服务器擅自下载。可以像图片生成一样建立 Codex 可执行的分析任务 manifest：Codex 通过用户有权访问的文件或页面完成观察，再提交符合 schema 的结构化分析结果。
 
@@ -968,9 +986,9 @@ mcp-server/src/tools/story-agent-image-runs.ts
 mcp-server/src/tools/generate-script.ts
 ```
 
-### 7.3 从 P0-E3 或 P1-A2 开始
+### 7.3 从 P0-E3 或 P1-A2b 开始
 
-P0-A、P0-B、P0-C、P0-D、P0-E1、P0-E2 和 P1-A1 已完成。不要再调查视频、后期或真人测试，也不要重复开发已经证明的本地恢复、record-replay、strict fallback 或 approved style-pack prompt/trace 桥接。
+P0-A、P0-B、P0-C、P0-D、P0-E1、P0-E2、P1-A1 和 P1-A2a 已完成。不要再调查视频、后期或真人测试，也不要重复开发已经证明的本地恢复、record-replay、strict fallback、approved style-pack prompt/trace 桥接或最终输出基础安全门禁。
 
 若当前环境具备真实外部 Provider 凭据，优先执行 P0-E3：
 
@@ -982,7 +1000,7 @@ real external provider
   → no fixture or local fallback counted as real provider success
 ```
 
-若没有凭据，不要伪造实跑，直接进入 P1-A2：将 `reference-quality-service` 接入 canonical post-generation，形成机器可读的输出安全/相似性报告，并完成同一输入的 baseline 与 reference-assisted 对照。
+若没有凭据，不要伪造实跑，直接进入 P1-A2b：建立合法参考观察输入合同，完成角色/情节/镜头相似度，并执行同一输入的 baseline 与 reference-assisted 对照。
 
 ### 7.4 验证命令
 
@@ -1016,13 +1034,13 @@ smoke:story-agent-persistent-lifecycle
 任何视频 Provider / playable media / postproduction smoke
 ```
 
-### 7.5 P0-A 至 P0-E2 + P1-A1 最新验证基线
+### 7.5 P0-A 至 P0-E2 + P1-A1 + P1-A2a 最新验证基线
 
 ```text
 15 类型 dispatcher / canonical generation / project persistence：通过
-professional dispatcher 聚焦测试：3 项通过
+professional dispatcher 聚焦测试：4 项通过
 服务端全量：167 files passed，1 skipped
-测试：1435 passed，2 skipped
+测试：1438 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
@@ -1043,6 +1061,9 @@ P1-A1 bridge：approved-only / compatibility / provenance drift / unknown ID 均
 P1-A1 prompt：只注入抽象原则与 avoid_copying，不含参考正文或 URL
 P1-A1 trace：source / analysis / benchmark / style-pack ID 全链路
 P1-A1 truthfulness：external_prompt_injected；local/local fallback 明确 not_applied
+P1-A2a report：`story-reference-generation-safety/v1`；无合法来源正文时 similarity 明确 not_run / no credit
+P1-A2a gates：最终输出与 derived-state rebuild 均 fail closed；未授权改编在持久化前 blocked
+P1-A2a downstream：professional authorization/evaluator/delivery notes 继承引用结论
 ```
 
 ## 8. 当前权威数据与注意事项
@@ -1111,7 +1132,7 @@ Codex imagegen 是对话工具，不是仓库服务器依赖。下一开发者�
 故事 → 专业脚本 → Seedance 提示词 → Codex 图片资产 → 前置制作交付包。
 不要生成视频，不要推进回调、剪辑、声音、字幕或成片，不要把真人测试和 production credit 当作当前阻塞项。
 
-P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等、P0-E2 资料严格门禁和外部 record-replay/fallback-forbidden 矩阵、P1-A1 approved Reference Library style-pack → canonical prompt → complete reference_trace 桥接均已完成。
+P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等、P0-E2 资料严格门禁和外部 record-replay/fallback-forbidden 矩阵、P1-A1 approved Reference Library style-pack → canonical prompt → complete reference_trace 桥接、P1-A2a 最终输出机器引用安全报告/门禁/专业文本结论传递均已完成。
 
-若具备真实外部 Provider 凭据，从 P0-E3 开始做分层真实 Provider 验收，并把 live external、record-replay fixture 和 local fallback 三种 provenance 严格分开。若没有凭据，不要伪造实跑，直接进入 P1-A2：把 reference-quality-service 接入 canonical post-generation，输出 avoid-copying/provenance/similarity 报告，并完成有/无参考对照。
+若具备真实外部 Provider 凭据，从 P0-E3 开始做分层真实 Provider 验收，并把 live external、record-replay fixture 和 local fallback 三种 provenance 严格分开。若没有凭据，不要伪造实跑，直接进入 P1-A2b：建立合法参考观察输入合同，完成角色/情节/镜头相似度，并执行有/无参考对照。不得把当前 not_run 相似度维度写成通过。
 ```

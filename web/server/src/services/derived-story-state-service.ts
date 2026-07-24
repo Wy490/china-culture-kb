@@ -8,7 +8,11 @@ import type {
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
-import { combineQualityReports, validateReferenceSafety } from './reference-quality-service.js';
+import {
+  buildReferenceSafetyText,
+  combineQualityReports,
+  evaluateReferenceGenerationSafety,
+} from './reference-quality-service.js';
 import { validateStoryFamilyBaseQuality } from './story-family-quality-service.js';
 import { attachBlueprintScenes } from './story-blueprint-service.js';
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
@@ -59,6 +63,25 @@ export async function rebuildDerivedStoryState(
     }
   }
 
+  const referenceSafety = evaluateReferenceGenerationSafety({
+    generated_text: buildReferenceSafetyText(canonicalStory),
+    reference_strength:
+      canonicalStory.reference_safety_report?.reference_strength ?? undefined,
+    reference_trace: canonicalStory.reference_trace ?? [],
+    expected_style_pack_ids:
+      canonicalStory.reference_safety_report?.style_pack_ids,
+  });
+  canonicalStory = {
+    ...canonicalStory,
+    reference_safety_report: referenceSafety,
+  };
+  if (!referenceSafety.passed) {
+    throw new StoryDerivedStateValidationError(
+      'Story failed the approved-reference safety boundary while rebuilding derived state',
+      canonicalStory,
+    );
+  }
+
   const gearsDelivery = ensureGearsDeliveryPackage(canonicalStory);
   canonicalStory = {
     ...canonicalStory,
@@ -85,11 +108,12 @@ export async function rebuildDerivedStoryState(
   const structuralQuality = validateStoryFamilyBaseQuality(canonicalStory, {
     selectedEvent: canonicalStory.story_blueprint?.central_event ?? canonicalStory.title,
   });
-  const referenceSafety = validateReferenceSafety({
-    generated_text: canonicalStory.full_text,
-    reference_trace: canonicalStory.reference_trace ?? [],
+  const baseQuality = combineQualityReports(structuralQuality, {
+    safe: referenceSafety.passed,
+    issues: referenceSafety.issues.map(issue => issue.message),
+    warnings: referenceSafety.warnings.map(warning => warning.message),
+    blocked_references: referenceSafety.blocked_reference_ids,
   });
-  const baseQuality = combineQualityReports(structuralQuality, referenceSafety);
   const narrativePatternIds = options.narrativePatternIds
     ?? canonicalStory.creation_contract?.narrative_pattern_ids
     ?? [];

@@ -6923,6 +6923,8 @@ const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
   'material_pack',
   'credibility_note',
   'domain_safety',
+  'reference_trace',
+  'reference_safety_report',
 ];
 
 const QUALITY_REPAIR_PROMPT_REQUIRED_FIELDS = [
@@ -7258,6 +7260,8 @@ const QUALITY_REPAIR_PROTECTED_SUMMARY_FIELDS = [
   'creation_contract',
   'material_sufficiency',
   'domain_safety',
+  'reference_trace',
+  'reference_safety_report',
 ] as const satisfies readonly (keyof StoryGenerateResult)[];
 
 function sameJsonValue(left: unknown, right: unknown): boolean {
@@ -7691,6 +7695,8 @@ function normalizeRepairedStoryCandidate(
     material_sufficiency: current.material_sufficiency,
     credibility_note: current.credibility_note,
     domain_safety: current.domain_safety,
+    reference_trace: current.reference_trace,
+    reference_safety_report: current.reference_safety_report,
     generation_source: current.generation_source,
     generation_mode: current.generation_mode,
     generation_used_fallback: current.generation_used_fallback,

@@ -703,6 +703,7 @@ export const ErrorCodes = {
   DOMAIN_PACK_NOT_FOUND: 'DOMAIN_PACK_NOT_FOUND',
   DOMAIN_PACK_REGISTRY_INVALID: 'DOMAIN_PACK_REGISTRY_INVALID',
   DOMAIN_SAFETY_VALIDATION_FAILED: 'DOMAIN_SAFETY_VALIDATION_FAILED',
+  REFERENCE_SAFETY_VALIDATION_FAILED: 'REFERENCE_SAFETY_VALIDATION_FAILED',
   DOMAIN_SAFETY_MIGRATION_BLOCKED: 'DOMAIN_SAFETY_MIGRATION_BLOCKED',
   ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
   INVALID_GENERATION_TYPE: 'INVALID_GENERATION_TYPE',
@@ -13144,7 +13145,82 @@ export interface ReferenceTrace {
   source_reference_ids?: string[];
   source_analysis_ids?: string[];
   source_benchmark_ids?: string[];
+  source_references?: ReferenceGenerationSourceTrace[];
   source_story_structure: StoryStructureType;
+}
+
+export interface ReferenceGenerationSourceTrace {
+  reference_id: string;
+  rights_status: ReferenceRightsStatus;
+  access_scope: ReferenceAccessScope;
+  content_fingerprint?: string;
+}
+
+export type ReferenceGenerationSimilarityStatus =
+  | 'not_run_no_reference'
+  | 'not_run_reference_not_applied'
+  | 'not_run_no_authorized_source_material'
+  | 'partially_completed';
+
+export interface ReferenceGenerationSimilarityDimension {
+  status: 'not_run' | 'completed';
+  match_count: number | null;
+}
+
+export interface ReferenceGenerationSafetyFinding {
+  issue_code:
+    | 'reference_provenance_incomplete'
+    | 'avoid_copying_constraints_missing'
+    | 'unknown_rights_strong_reference'
+    | 'unauthorized_adaptation_claim'
+    | 'forbidden_imitation_language'
+    | 'exact_long_sentence_match'
+    | 'near_character_overlap';
+  severity: 'blocker' | 'warning';
+  message: string;
+  reference_ids: string[];
+}
+
+export interface ReferenceGenerationSafetyReport {
+  schema_version: 'story-reference-generation-safety/v1';
+  status: 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';
+  passed: boolean;
+  reference_strength: ReferenceStrength | null;
+  style_pack_ids: string[];
+  source_references: ReferenceGenerationSourceTrace[];
+  application: {
+    applied_to_generation: boolean;
+    statuses: NonNullable<ReferenceTrace['application_status']>[];
+  };
+  checks: {
+    provenance_complete: boolean;
+    avoid_copying_constraints_present: boolean;
+    unauthorized_adaptation_claim_absent: boolean;
+    forbidden_imitation_language_absent: boolean;
+  };
+  similarity: {
+    status: ReferenceGenerationSimilarityStatus;
+    exact_long_sentence: ReferenceGenerationSimilarityDimension;
+    near_character_overlap: ReferenceGenerationSimilarityDimension;
+    character_design: ReferenceGenerationSimilarityDimension;
+    plot_structure: ReferenceGenerationSimilarityDimension;
+    shot_sequence: ReferenceGenerationSimilarityDimension;
+    similarity_pass_credit_granted: false;
+  };
+  baseline_comparison: {
+    status: 'not_run_single_generation';
+    baseline_story_id: null;
+    reference_assisted_story_id: null;
+    quality_delta: null;
+    comparison_credit_granted: false;
+  };
+  issues: ReferenceGenerationSafetyFinding[];
+  warnings: ReferenceGenerationSafetyFinding[];
+  blocked_reference_ids: string[];
+  machine_validation_only: true;
+  human_review_complete: false;
+  real_similarity_check_completed: false;
+  real_credit_granted: false;
 }
 
 // ---------------------------------------------------------------------------
@@ -13207,6 +13283,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   story_structure?: StoryStructureType;
   story_blueprint?: StoryBlueprint;
   reference_trace?: ReferenceTrace[];
+  reference_safety_report?: ReferenceGenerationSafetyReport;
   repair_trace?: StoryRepairTrace[];
   production_board_repair_trace?: StoryProductionBoardRepairTrace[];
   professional_text_package?: ProfessionalTextPackage;

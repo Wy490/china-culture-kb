@@ -6,6 +6,9 @@
 //   - Reference trace records only abstract rules, not original passages
 
 import type {
+  ReferenceGenerationSafetyFinding,
+  ReferenceGenerationSafetyReport,
+  StoryGenerateResult,
   StoryQualityReport,
   ReferenceTrace,
   StoryStructureType,
@@ -32,8 +35,265 @@ export interface ReferenceSafetyInput {
   reference_strength?: 'light' | 'medium' | 'strong';
   reference_trace?: ReferenceTrace[];
   style_pack_ids?: string[];
+  expected_style_pack_ids?: string[];
   claimed_authorization?: boolean;    // user claims they have rights to "adapt from" a work
   reference_original_sentences?: string[]; // sentences from reference samples (for similarity check)
+}
+
+export function buildReferenceSafetyText(
+  story: Pick<
+    StoryGenerateResult,
+    'full_text' | 'logline' | 'theme' | 'scene_breakdown'
+  >,
+): string {
+  return [
+    story.full_text,
+    story.logline,
+    story.theme,
+    ...story.scene_breakdown.flatMap(scene => [
+      scene.plot,
+      scene.key_action,
+      scene.conflict,
+      scene.dialogue_or_narration,
+      scene.visual_prompt,
+      scene.camera_suggestion,
+    ]),
+  ].filter((value): value is string => Boolean(value)).join('\n');
+}
+
+function unique<T>(values: T[]): T[] {
+  return [...new Set(values)];
+}
+
+function finding(
+  issue_code: ReferenceGenerationSafetyFinding['issue_code'],
+  severity: ReferenceGenerationSafetyFinding['severity'],
+  message: string,
+  reference_ids: string[] = [],
+): ReferenceGenerationSafetyFinding {
+  return { issue_code, severity, message, reference_ids };
+}
+
+/**
+ * Canonical post-generation audit for approved reference-style influence.
+ * The reference library intentionally stores no source body, so similarity
+ * dimensions remain explicitly not-run unless lawful excerpts are supplied.
+ */
+export function evaluateReferenceGenerationSafety(input: ReferenceSafetyInput):
+ReferenceGenerationSafetyReport {
+  const trace = input.reference_trace ?? [];
+  const referenceTraces = trace.filter(item => Boolean(item.style_pack_id));
+  const tracedStylePackIds = unique(
+    referenceTraces.map(item => item.style_pack_id).filter((id): id is string => Boolean(id)),
+  );
+  const expectedStylePackIds = unique(input.expected_style_pack_ids ?? []);
+  const stylePackIds = expectedStylePackIds.length > 0
+    ? expectedStylePackIds
+    : tracedStylePackIds;
+  const sourceReferences = uniqueSourceReferences(
+    referenceTraces.flatMap(item => item.source_references ?? []),
+  );
+  const sourceReferenceIds = sourceReferences.map(source => source.reference_id);
+  const statuses = unique(
+    referenceTraces
+      .map(item => item.application_status)
+      .filter((status): status is NonNullable<ReferenceTrace['application_status']> =>
+        Boolean(status)),
+  );
+  const appliedToGeneration = statuses.includes('external_prompt_injected');
+  const hasReferences = stylePackIds.length > 0;
+  const expectedTraceSetComplete = expectedStylePackIds.length === 0
+    || (
+      expectedStylePackIds.length === tracedStylePackIds.length
+      && expectedStylePackIds.every(stylePackId => tracedStylePackIds.includes(stylePackId))
+    );
+  const provenanceComplete = !hasReferences || (
+    expectedTraceSetComplete
+    && referenceTraces.every(item =>
+      Boolean(item.style_pack_id)
+      && (item.source_reference_ids?.length ?? 0) > 0
+      && (item.source_analysis_ids?.length ?? 0) > 0
+      && (item.source_benchmark_ids?.length ?? 0) > 0
+      && (item.source_references?.length ?? 0) > 0
+      && item.source_reference_ids?.every(referenceId =>
+        item.source_references?.some(source => source.reference_id === referenceId))
+    )
+  );
+  const avoidCopyingConstraintsPresent = !appliedToGeneration || referenceTraces.every(item =>
+    item.application_status !== 'external_prompt_injected'
+    || (item.avoid_copying_rules?.length ?? 0) > 0
+  );
+  const issues: ReferenceGenerationSafetyFinding[] = [];
+  const warnings: ReferenceGenerationSafetyFinding[] = [];
+
+  if (!provenanceComplete) {
+    issues.push(finding(
+      'reference_provenance_incomplete',
+      'blocker',
+      'Reference trace is missing style-pack source, analysis, benchmark, or rights provenance.',
+      sourceReferenceIds,
+    ));
+  }
+  if (!avoidCopyingConstraintsPresent) {
+    issues.push(finding(
+      'avoid_copying_constraints_missing',
+      'blocker',
+      'An applied reference style pack has no recorded avoid-copying constraints.',
+      sourceReferenceIds,
+    ));
+  }
+  if (
+    appliedToGeneration
+    && input.reference_strength === 'strong'
+    && sourceReferences.some(source => source.rights_status === 'unknown')
+  ) {
+    const unknownIds = sourceReferences
+      .filter(source => source.rights_status === 'unknown')
+      .map(source => source.reference_id);
+    issues.push(finding(
+      'unknown_rights_strong_reference',
+      'blocker',
+      'Strong reference influence cannot use unknown-rights sources.',
+      unknownIds,
+    ));
+  }
+
+  const adaptedFromPatterns = [
+    /改编自[^，。\n]{2,30}/gu,
+    /根据[^，。\n]{2,30}改编/gu,
+  ];
+  const adaptedClaim = adaptedFromPatterns
+    .flatMap(pattern => input.generated_text.match(pattern) ?? [])[0];
+  if (appliedToGeneration && adaptedClaim && !input.claimed_authorization) {
+    issues.push(finding(
+      'unauthorized_adaptation_claim',
+      'blocker',
+      `Generated story contains an unauthorized adaptation claim: ${adaptedClaim}`,
+      sourceReferenceIds,
+    ));
+  }
+
+  const forbiddenImitation = [
+    '完全仿写',
+    '仿写某作品',
+    '写得像某位',
+    '复刻某作品',
+  ].find(value => input.generated_text.includes(value));
+  if (appliedToGeneration && forbiddenImitation) {
+    issues.push(finding(
+      'forbidden_imitation_language',
+      'blocker',
+      `Generated story contains forbidden imitation language: ${forbiddenImitation}`,
+      sourceReferenceIds,
+    ));
+  }
+
+  let exactMatchCount: number | null = null;
+  let nearMatchCount: number | null = null;
+  if (
+    appliedToGeneration
+    && input.reference_original_sentences
+    && input.reference_original_sentences.length > 0
+  ) {
+    exactMatchCount = 0;
+    nearMatchCount = 0;
+    for (const sentence of input.reference_original_sentences) {
+      if (sentence.length >= 15 && input.generated_text.includes(sentence)) {
+        exactMatchCount += 1;
+      } else if (
+        sentence.length >= 20
+        && computeCharacterOverlap(sentence, input.generated_text) > 0.8
+      ) {
+        nearMatchCount += 1;
+      }
+    }
+    if (exactMatchCount > 0) {
+      issues.push(finding(
+        'exact_long_sentence_match',
+        'blocker',
+        `Generated story contains ${exactMatchCount} exact long-sentence reference match(es).`,
+        sourceReferenceIds,
+      ));
+    }
+    if (nearMatchCount > 0) {
+      issues.push(finding(
+        'near_character_overlap',
+        'blocker',
+        `Generated story contains ${nearMatchCount} high-overlap reference sentence match(es).`,
+        sourceReferenceIds,
+      ));
+    }
+  }
+
+  const similarityStatus = !hasReferences
+    ? 'not_run_no_reference' as const
+    : !appliedToGeneration
+      ? 'not_run_reference_not_applied' as const
+      : exactMatchCount === null
+        ? 'not_run_no_authorized_source_material' as const
+        : 'partially_completed' as const;
+  const sentenceStatus = exactMatchCount === null ? 'not_run' as const : 'completed' as const;
+  const blockedReferenceIds = unique(
+    issues.flatMap(issue => issue.reference_ids),
+  );
+  const status = !hasReferences
+    ? 'not_applicable' as const
+    : issues.length > 0
+      ? 'blocked' as const
+      : appliedToGeneration
+        ? 'passed_with_limits' as const
+        : 'passed' as const;
+
+  return {
+    schema_version: 'story-reference-generation-safety/v1',
+    status,
+    passed: issues.length === 0,
+    reference_strength: input.reference_strength ?? null,
+    style_pack_ids: stylePackIds,
+    source_references: sourceReferences,
+    application: {
+      applied_to_generation: appliedToGeneration,
+      statuses,
+    },
+    checks: {
+      provenance_complete: provenanceComplete,
+      avoid_copying_constraints_present: avoidCopyingConstraintsPresent,
+      unauthorized_adaptation_claim_absent:
+        !issues.some(issue => issue.issue_code === 'unauthorized_adaptation_claim'),
+      forbidden_imitation_language_absent:
+        !issues.some(issue => issue.issue_code === 'forbidden_imitation_language'),
+    },
+    similarity: {
+      status: similarityStatus,
+      exact_long_sentence: { status: sentenceStatus, match_count: exactMatchCount },
+      near_character_overlap: { status: sentenceStatus, match_count: nearMatchCount },
+      character_design: { status: 'not_run', match_count: null },
+      plot_structure: { status: 'not_run', match_count: null },
+      shot_sequence: { status: 'not_run', match_count: null },
+      similarity_pass_credit_granted: false,
+    },
+    baseline_comparison: {
+      status: 'not_run_single_generation',
+      baseline_story_id: null,
+      reference_assisted_story_id: null,
+      quality_delta: null,
+      comparison_credit_granted: false,
+    },
+    issues,
+    warnings,
+    blocked_reference_ids: blockedReferenceIds,
+    machine_validation_only: true,
+    human_review_complete: false,
+    real_similarity_check_completed: false,
+    real_credit_granted: false,
+  };
+}
+
+function uniqueSourceReferences(
+  sources: NonNullable<ReferenceTrace['source_references']>,
+): NonNullable<ReferenceTrace['source_references']> {
+  const byId = new Map(sources.map(source => [source.reference_id, source]));
+  return [...byId.values()].map(source => ({ ...source }));
 }
 
 export function validateReferenceSafety(input: ReferenceSafetyInput): ReferenceSafetyReport {
