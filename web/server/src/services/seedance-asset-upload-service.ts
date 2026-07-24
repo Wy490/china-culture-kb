@@ -27,6 +27,12 @@ export interface SeedanceAssetUploadTargetRequest {
   role?: SeedanceAssetLibraryItem['role'];
   reference_slot?: string;
   description?: string;
+  trusted_source?: {
+    provider: 'openai_imagegen';
+    provider_asset_id?: string;
+    prompt_sha256: string;
+    model: string;
+  };
 }
 
 export interface SeedanceAssetUploadTarget {
@@ -133,10 +139,12 @@ export function buildSeedanceAssetUploadMaterialization(input: {
     mime_type: input.ingest.detected_mime_type,
     size_bytes: input.ingest.byte_size,
     content_sha256: input.ingest.content_sha256,
+    prompt_sha256: input.request.trusted_source?.prompt_sha256,
+    model: input.request.trusted_source?.model,
     rights_status: 'pending',
     human_review_status: 'pending',
-    provider: 'local_upload',
-    provider_asset_id: input.plan.fileId,
+    provider: input.request.trusted_source?.provider ?? 'local_upload',
+    provider_asset_id: input.request.trusted_source?.provider_asset_id ?? input.plan.fileId,
     upload_status: 'uploaded',
     upload_error: undefined,
     description: input.request.description?.trim()

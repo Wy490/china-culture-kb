@@ -17,6 +17,10 @@ import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
 import { exportStoryAgentPreproduction } from './tools/export-story-agent-preproduction.js';
+import {
+  exportStoryAgentImageRequest,
+  importStoryAgentImageResult,
+} from './tools/story-agent-image-runs.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
@@ -343,6 +347,53 @@ server.tool(
   },
   async (input) => {
     const result = await exportStoryAgentPreproduction(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_export_story_agent_image_request — durable Codex imagegen request manifest
+server.tool(
+  'kb_export_story_agent_image_request',
+  '为普通故事项目或 AI 漫剧系列导出可恢复、可重放的 image-generation-request/v1。服务端不调用图片供应商；Codex 按任务调用 imagegen，并把文件写入 run 输出目录。',
+  {
+    project_id: z.string().regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/).optional().describe('普通故事项目 ID；与 series_project_id 二选一'),
+    series_project_id: z.string().regex(/^\d{8}-series-[0-9a-z]+$/).optional().describe('AI 漫剧系列项目 ID；与 project_id 二选一'),
+  },
+  async (input) => {
+    const result = await exportStoryAgentImageRequest(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_import_story_agent_image_result — idempotent image result ingestion
+server.tool(
+  'kb_import_story_agent_image_result',
+  '把 Codex imagegen 产出的 image-generation-result/v1 导入 canonical Story Agent 运行账本；校验路径与文件哈希，幂等写入项目图片资产库并刷新前置制作验收。',
+  {
+    run_id: z.string().regex(/^image-run-[a-f0-9]{24}$/),
+    result: z.object({
+      schema_version: z.literal('image-generation-result/v1'),
+      run_id: z.string().regex(/^image-run-[a-f0-9]{24}$/),
+      request_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      completed_at: z.string().datetime(),
+      items: z.array(z.object({
+        task_id: z.string().min(1),
+        covers_task_ids: z.array(z.string().min(1)).optional(),
+        status: z.enum(['generated', 'failed_retryable', 'blocked']),
+        output_path: z.string().optional(),
+        mime_type: z.string().optional(),
+        content_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+        prompt_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        provider: z.string().optional(),
+        provider_asset_id: z.string().optional(),
+        model: z.string().optional(),
+        failure_reason: z.string().optional(),
+        retryable: z.boolean().optional(),
+      })).min(1).max(500),
+    }),
+  },
+  async (input) => {
+    const result = await importStoryAgentImageResult(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

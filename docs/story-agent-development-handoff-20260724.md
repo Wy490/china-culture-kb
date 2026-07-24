@@ -3,7 +3,7 @@
 > 日期：2026-07-24
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 > 分支：`codex/story-agent-manifest-integrity-20260718`
-> 上一功能基线提交：`679a3f4a feat(story-agent): dispatch professional text packages`
+> 上一功能基线提交：`f626f28d feat(story-agent): export generic preproduction packages`
 > 上一份研究与长周期开发记录：`docs/story-agent-film-text-benchmark-development-handoff-20260723.md`
 
 ## 0. 下一对话先读这里
@@ -36,14 +36,14 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 当前系统已经具备较完整的结构化 Story Agent 内核，并且 AI 漫剧系列的“故事—脚本镜头—Seedance 提示词—真实图片—逐镜引用—交付包”已经跑通。
 
-但它还不能称为“全部 15 类型都能无人值守稳定交付”的完整 Agent。专业文本 dispatcher 和通用前置制作包已经收敛；当前最大问题是 Codex 图片生成仍依赖对话内人工编排，尚未形成可恢复、可重复执行的 request/result manifest 工作流。
+但它还不能称为“全部 15 类型都能无人值守稳定交付”的完整 Agent。专业文本 dispatcher、通用前置制作包和 Codex 图片 request/result/run 握手已经收敛；当前最大问题已经转为 15 类持久项目的端到端图片矩阵与更高层统一 StoryAgentRun。
 
 可用两个口径理解当前距离：
 
 | 口径 | 主观完成度 | 判断 |
 |---|---:|---|
 | 展示结构化生成与前置制作交付 | 85%–90% | 普通项目与系列项目已有统一导出合同和机器证据 |
-| 全部 15 类型无人值守稳定交付 | 65%–72% | 可恢复图片任务和全类型端到端矩阵仍未完成 |
+| 全部 15 类型无人值守稳定交付 | 72%–78% | 图片任务可恢复合同已完成，全类型端到端矩阵仍未完成 |
 
 这个百分比是工程判断，不是测试自动计算值。后续应以第 6 节的退出条件替代主观百分比。
 
@@ -55,9 +55,9 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 | 15 类专业脚本 | canonical 接入完成 | 15/15 dispatcher、evidence resolver、generation/project version 派生状态矩阵 | 纪录片真实采访/授权仍会正确转为补证任务 |
 | 连续分集故事 | 较强 | 20 集正式系列；4 个系列共 14 集稳定复跑 | 主要集中在 `ai_comic_drama` 系列形态 |
 | Seedance 提示词 | 较强 | 4 个持久项目、126 镜头、全部含图片引用 | 15 类通用项目尚未全部做图片绑定后的提示词验收 |
-| 图片资产 | 已有真实闭环 | `gpt-image-2` 图片、不可变文件、SHA-256、Provider、prompt hash、身份映射 | 图片生成仍由 Codex 在仓库外调用 imagegen，再由脚本导入；Agent 本身没有可恢复图片任务 |
+| 图片资产 | canonical 可恢复闭环已完成 | `image-generation-request/result`、运行账本、`gpt-image-2`、不可变文件、SHA-256、Provider、prompt hash、身份映射 | 仍需把 15 类全部跑进同一矩阵 |
 | 一键交付包 | 通用合同已完成 | story / ordinary project / series 共用 `story-agent-seedance-preproduction-package/v1` | 仍需 15×1 持久项目逐类图片闭环 |
-| 版本与持久化 | 已有 | story snapshot、project/version、series project、asset history | 缺少跨故事/脚本/图片/交付包统一 run manifest |
+| 版本与持久化 | 图片阶段已闭环 | story snapshot、project/version、series project、asset history、`story-agent-image-run/v1` | 缺少跨故事/脚本/图片/交付包的更高层统一 StoryAgentRun |
 | 机器质量与修复 | 已有多层门禁 | genre、premise fidelity、commercial machine gate、repair | 专业脚本管线的自动选择、补证、修复和 derived-state 重建尚未统一 |
 | 影视/文字 benchmark | 基础设施已建 | Reference Library、analysis、benchmark、audited style pack | 已批准 style pack 尚未真正进入 canonical generation prompt 和 `reference_trace` |
 
@@ -192,17 +192,19 @@ human review required = false
 
 ### 2.5 Story Agent → Seedance 前置制作包
 
-最新实现接口：
+canonical 实现接口：
 
 ```text
-POST /api/story-outline/ai-comic-series-projects/:seriesProjectId/export-seedance-preproduction-package
+POST /api/story-agent/preproduction/export
 ```
 
 Schema：
 
 ```text
-ai-comic-series-seedance-preproduction-package/v1
+story-agent-seedance-preproduction-package/v1
 ```
+
+`story_id`、普通 `project_id` 和 `series_project_id` 共用合同；旧系列接口继续保留为兼容入口。
 
 单包包含：
 
@@ -252,14 +254,14 @@ web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproductio
 
 ### 2.6 当前自动化基线
 
-截至 P0-B 通用前置制作包工作树：
+截至 P0-C 图片运行合同工作树：
 
 ```text
 服务端全量：163 files passed，1 skipped
-测试：1416 passed，2 skipped
+测试：1420 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
-MCP 全量：91 files / 489 tests passed
+MCP 全量：93 files / 495 tests passed
 通用前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 ```
 
@@ -306,30 +308,28 @@ series_project_id
 - professional package、逐镜脚本、提示词或图片映射不完整时 acceptance 为 blocked；
 - 视频生成、真人测试、rights/human review 和 production credit 边界保持不变。
 
-### 3.3 P0：图片生成不是 Agent 内部可恢复步骤
+### 3.3 P0-C：图片生成已成为 Agent 可恢复步骤
 
-当前真实图片是由 Codex imagegen 生成，这是符合用户要求的；但执行方式仍是人工编排：
-
-```text
-visual bible
-  → Codex 读取需求
-  → Codex 调用 imagegen
-  → 保存源图和 prompt
-  → 构造 manifest
-  → 脚本导入、绑定、复核
-```
-
-服务器不能直接调用 Codex 的 imagegen 工具，因此不能简单把图片调用塞进 Express service。正确做法是建立 Agent 与 Codex 之间的可恢复握手：
+真实图片仍由 Codex imagegen 生成，服务器不直接调用 Provider。现在执行方式已由人工脚本升级为 canonical 握手：
 
 ```text
-Story Agent 输出 image-generation-request manifest
-  → Codex 逐项 imagegen
-  → Codex 写 image-generation-result manifest
-  → Story Agent 导入、校验、绑定
-  → 缺失项可继续，成功项幂等复用
+Story Agent 输出稳定 request manifest
+  → Codex 调用 imagegen 并写入 run/outputs
+  → Codex 返回 result manifest
+  → Story Agent 校验路径、prompt hash、内容 hash
+  → 幂等导入普通/系列资产库
+  → 刷新 preproduction acceptance
 ```
 
-需要的状态至少包括：
+已实现合同：
+
+```text
+image-generation-request/v1
+image-generation-result/v1
+story-agent-image-run/v1
+```
+
+运行状态包括：
 
 ```text
 planned
@@ -342,15 +342,37 @@ failed_retryable
 blocked
 ```
 
-必须保留：
+已保留：
 
 - prompt；
 - Provider/model/call ID；
-- source image references；
+- target asset / series identity / source story / scene / shot references；
 - content/prompt hash；
-- identity fingerprint；
 - attempt/retry history；
 - 可重复执行和断点续跑。
+
+canonical Web/MCP 操作面：
+
+```text
+POST /api/story-agent/image-runs/export-request
+GET  /api/story-agent/image-runs/:runId
+POST /api/story-agent/image-runs/:runId/import-result
+
+kb_export_story_agent_image_request
+kb_import_story_agent_image_result
+```
+
+run 文件位于：
+
+```text
+web/generated/story-agent-image-runs/<run_id>/
+  request.json
+  result.json
+  run.json
+  outputs/
+```
+
+直接 `story_id` 没有持久资产库，因此图片 run 明确要求 `project_id` 或 `series_project_id`。
 
 ### 3.4 P0：15 类测试还不是 15 类端到端稳定性矩阵
 
@@ -597,9 +619,9 @@ web/shared/schemas.ts
 
 ### 4.3 P0-C：Codex 图片任务 manifest 与断点续跑
 
-先实现请求/结果合同，不要尝试让服务器直接调用 Codex imagegen。
+状态：已完成。
 
-建议产物：
+实现产物：
 
 ```text
 image-generation-request/v1
@@ -607,14 +629,28 @@ image-generation-result/v1
 story-agent-image-run/v1
 ```
 
-验收：
+已验收：
 
-- Codex 可以只读 request manifest 逐项生成图片；
-- 中断后继续未完成项；
-- 已成功图片不重复生成；
-- 替换图片会使旧 identity mapping stale；
-- 导入后自动刷新 preproduction acceptance；
-- 一张世界观板可覆盖多个 identity，但逐镜必需身份不能漏。
+- request 具有稳定 run/task ID、prompt hash、目标资产和预期输出路径；
+- 服务端 `provider_invoked=false`，只由 Codex 执行 imagegen；
+- result 只允许导入 run `outputs/` 内文件，并复算 SHA-256；
+- 普通项目和 AI 漫剧系列共用导出/导入合同；
+- 中断可只提交未完成项，已成功同 hash 结果幂等跳过；
+- 即使资产已写入而 run ledger 尚未落盘，恢复时也按资产内容 hash 复用，不重复追加上传历史；
+- 不同 hash 替换图片会触发系列 identity mapping `stale`；
+- 每次导入后自动刷新通用 preproduction acceptance；
+- Web API 和 MCP 都只桥接 canonical application service；
+- MCP 不直接写资产库，也不调用图片或视频 Provider。
+
+核心文件：
+
+```text
+web/server/src/services/story-agent-image-run-service.ts
+web/server/src/routes/story-agent.ts
+web/shared/types.ts
+web/shared/schemas.ts
+mcp-server/src/tools/story-agent-image-runs.ts
+```
 
 ### 4.4 P0-D：15×1 全链路矩阵
 
@@ -768,26 +804,30 @@ web/server/src/services/genre-story-profiles.ts
 web/server/src/services/professional-text-contracts.ts
 web/server/src/services/professional-*-pipeline-service.ts
 web/server/src/services/ai-comic-series-service.ts
+web/server/src/services/story-agent-preproduction-package-service.ts
+web/server/src/services/story-agent-image-run-service.ts
 web/server/scripts/story-agent-seedance-preproduction-smoke.mts
 mcp-server/src/tools/story-agent-generate.ts
+mcp-server/src/tools/export-story-agent-preproduction.ts
+mcp-server/src/tools/story-agent-image-runs.ts
 mcp-server/src/tools/generate-script.ts
 ```
 
-### 7.3 从 P0-C 开始
+### 7.3 从 P0-D 开始
 
-P0-A、P0-B 已完成。下一对话不要再调查视频、后期或真人测试，直接做：
+P0-A、P0-B、P0-C 已完成。下一对话不要再调查视频、后期或真人测试，直接做 15×1 全链路矩阵：
 
 ```text
-image-generation-request/v1
-  → Story Agent 输出稳定图片任务、prompt 和 identity fingerprint
-image-generation-result/v1
-  → Codex 写回 provider/model/call ID、源文件与 hashes
-story-agent-image-run/v1
-  → 幂等导入、绑定、失败重试与断点续跑
-  → 自动刷新通用 preproduction acceptance
+15 stories
+  → 15 professional text packages
+  → 15 Seedance prompt packages
+  → 15 image request/result/run manifests
+  → 最小充分图片生成与绑定
+  → 15 preproduction packages
+  → 0 required image gaps
 ```
 
-完成 P0-C 后，再做 P0-D 15×1 全链路矩阵。
+P0-D 通过后，再扩展 P0-E 15×3 稳定性与恢复矩阵。
 
 ### 7.4 验证命令
 
@@ -818,18 +858,19 @@ smoke:story-agent-persistent-lifecycle
 任何视频 Provider / playable media / postproduction smoke
 ```
 
-### 7.5 P0-A + P0-B 最新验证基线
+### 7.5 P0-A + P0-B + P0-C 最新验证基线
 
 ```text
 15 类型 dispatcher / canonical generation / project persistence：通过
 professional dispatcher 聚焦测试：3 项通过
 服务端全量：163 files passed，1 skipped
-测试：1416 passed，2 skipped
+测试：1420 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
-MCP 全量：91 files / 489 tests passed
+MCP 全量：93 files / 495 tests passed
 MCP canonical bridge 与 TypeScript build：通过
 通用 schema Web / service 聚焦测试：通过
+图片 run 普通项目幂等导入、路径逃逸、系列替换 stale 测试：通过
 通用前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 ```
 
@@ -893,5 +934,5 @@ Codex imagegen 是对话工具，不是仓库服务器依赖。下一开发者�
 故事 → 专业脚本 → Seedance 提示词 → Codex 图片资产 → 前置制作交付包。
 不要生成视频，不要推进回调、剪辑、声音、字幕或成片，不要把真人测试和 production credit 当作当前阻塞项。
 
-P0-A professional dispatcher/evidence resolver 和 P0-B 通用 preproduction package 已完成。从交接文档 P0-C 开始：实现 image-generation request/result/run manifest 与断点续跑，不要让 Express 直接调用 Codex imagegen。先写合同与失败恢复测试，再实现幂等导入、当前 identity mapping 刷新和 acceptance 重算；完成后推进 P0-D 15×1 全链路矩阵。
+P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑已完成。从交接文档 P0-D 开始：为 15 类各建立一个 canonical 持久项目，自动导出图片任务，按最小充分资产生成/导入/绑定，并导出统一 preproduction package。先完成 15×1，再推进 15×3 稳定性与恢复矩阵。
 ```

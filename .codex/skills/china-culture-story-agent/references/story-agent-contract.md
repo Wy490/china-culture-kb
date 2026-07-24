@@ -21,6 +21,9 @@
 - Delivery:
   - `web/server/src/services/gears-delivery-service.ts`
   - `web/server/src/services/gears-webhook-service.ts`
+  - `web/server/src/services/story-agent-preproduction-package-service.ts`
+  - `web/server/src/services/story-agent-image-run-service.ts`
+  - `web/server/src/routes/story-agent.ts`
 - MCP:
   - `mcp-server/src/tools/generate-story.ts`
   - `mcp-server/src/tools/generate-script.ts`
@@ -28,6 +31,8 @@
   - `mcp-server/src/tools/get-project-context.ts`
   - `mcp-server/src/tools/generate-story-blueprint.ts`
   - `mcp-server/src/tools/validate-genre-story.ts`
+  - `mcp-server/src/tools/export-story-agent-preproduction.ts`
+  - `mcp-server/src/tools/story-agent-image-runs.ts`
 
 ## Generation Contract
 
@@ -55,6 +60,17 @@ EntryDetail / user material
 - `scene_breakdown` should be structured enough to edit or regenerate a single scene.
 - `gears_segments` should be delivery-ready, with script text and prompt hints that do not depend on hidden context.
 - Project files represent editable story state. Generated story files can remain immutable snapshots.
+- The Story Agent server never imports or calls Codex `imagegen`. It persists
+  `image-generation-request/v1`; Codex writes generated files under the declared
+  run `outputs/` directory and returns `image-generation-result/v1`.
+- Image result import must match the persisted run/request/prompt hashes, resolve
+  to a real file beneath `outputs/`, recompute content SHA-256, and then use the
+  existing ordinary-project or series asset upload service.
+- Replaying the same task and content hash is idempotent, including recovery when
+  the asset write succeeded before the image-run ledger write. Replacing bytes in
+  a series asset must leave its identity mapping `stale`.
+- Direct story snapshots have no durable asset library. Image runs therefore
+  require `project_id` or `series_project_id`.
 
 ## Validation Targets
 
@@ -66,6 +82,8 @@ Check the smallest relevant layer:
 - Story output shape: story service or dramatic story tests.
 - Repair loop: story repair and quality workflow tests.
 - Project/version behavior: project service tests.
+- Image run behavior: request stability, partial resume, ledger crash recovery,
+  path/hash fail-closed checks, and series replacement tests.
 - Frontend display: component or browser smoke check when UI changes.
 
 ## Common Failure Modes

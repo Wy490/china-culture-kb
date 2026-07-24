@@ -338,6 +338,80 @@ describe('POST /api/story-agent/preproduction/export', () => {
   });
 });
 
+describe('Story Agent image run API', () => {
+  it('exports and reads a stable provider-free image generation request', async () => {
+    const story: StoryGenerateResult = {
+      ...makeApiStory(),
+      storyId: '20260724-story-img01',
+      title: '图片运行 API 测试',
+      gears_segments_url: '/api/stories/20260724-story-img01/gears-segments',
+    };
+    const project = await createProjectFromGeneratedStory(story, '2026-07-24T10:00:00.000Z');
+
+    const exported = await request
+      .post('/api/story-agent/image-runs/export-request')
+      .send({ project_id: project.project_id });
+
+    expect(exported.status).toBe(200);
+    expectSuccess(exported.body);
+    expect(exported.body.data).toMatchObject({
+      schema_version: 'story-agent-image-run/v1',
+      source: {
+        kind: 'story_project',
+        source_id: project.project_id,
+      },
+      request: {
+        schema_version: 'image-generation-request/v1',
+        provider_invoked: false,
+        executor: 'codex_imagegen',
+      },
+    });
+
+    const fetched = await request.get(
+      `/api/story-agent/image-runs/${exported.body.data.run_id}`,
+    );
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.data.run_id).toBe(exported.body.data.run_id);
+  });
+
+  it('rejects output paths that escape the image run outputs directory', async () => {
+    const story: StoryGenerateResult = {
+      ...makeApiStory(),
+      storyId: '20260724-story-img02',
+      title: '图片运行路径边界测试',
+      gears_segments_url: '/api/stories/20260724-story-img02/gears-segments',
+    };
+    const project = await createProjectFromGeneratedStory(story, '2026-07-24T10:10:00.000Z');
+    const exported = await request
+      .post('/api/story-agent/image-runs/export-request')
+      .send({ project_id: project.project_id });
+    const task = exported.body.data.request.tasks[0];
+
+    const imported = await request
+      .post(`/api/story-agent/image-runs/${exported.body.data.run_id}/import-result`)
+      .send({
+        schema_version: 'image-generation-result/v1',
+        run_id: exported.body.data.run_id,
+        request_sha256: exported.body.data.request.request_sha256,
+        completed_at: '2026-07-24T10:12:00.000Z',
+        items: [{
+          task_id: task.task_id,
+          status: 'generated',
+          output_path: 'outputs/../escape.png',
+          mime_type: 'image/png',
+          content_sha256: 'a'.repeat(64),
+          prompt_sha256: task.prompt_sha256,
+          provider: 'openai_imagegen',
+          model: 'gpt-image-2',
+        }],
+      });
+
+    expect(imported.status).toBe(400);
+    expect(imported.body.ok).toBe(false);
+    expect(imported.body.error.message).toContain('outputs directory');
+  });
+});
+
 describe('GET /api/system/story-generation-capabilities', () => {
   it('returns the non-executing model availability and engine boundary contract', async () => {
     const res = await request.get('/api/system/story-generation-capabilities');

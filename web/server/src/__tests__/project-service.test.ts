@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import {
   GEARS_CALLBACK_BATCH_ITEM_LIMIT,
   type StoryGenerateResult,
@@ -78,6 +78,11 @@ import { getProductionMaterialPack } from '../services/production-material-pack-
 import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
 import { exportStoryAgentSeedancePreproductionPackage } from '../services/story-agent-preproduction-package-service.js';
 import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
+import {
+  exportStoryAgentImageGenerationRequest,
+  getStoryAgentImageRun,
+  importStoryAgentImageGenerationResult,
+} from '../services/story-agent-image-run-service.js';
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
@@ -1352,6 +1357,123 @@ describe('project-service', () => {
       human_test_required_for_functional_acceptance: false,
       rights_or_human_review_grants_production_credit: false,
     });
+  });
+
+  it('exports a resumable image request and imports generated results idempotently', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-image-run-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const project = await createProjectFromGeneratedStory(story, '2026-07-24T11:00:00.000Z');
+    const first = await exportStoryAgentImageGenerationRequest({
+      project_id: project.project_id,
+    });
+    expect(first.ok).toBe(true);
+    expect(first.data?.schema_version).toBe('story-agent-image-run/v1');
+    expect(first.data?.request.schema_version).toBe('image-generation-request/v1');
+    expect(first.data?.request.provider_invoked).toBe(false);
+    expect(first.data?.request.pending_task_count).toBeGreaterThan(0);
+    expect(first.data?.tasks.every(task => task.status === 'awaiting_imagegen')).toBe(true);
+
+    const repeatedExport = await exportStoryAgentImageGenerationRequest({
+      project_id: project.project_id,
+    });
+    expect(repeatedExport.data?.run_id).toBe(first.data?.run_id);
+    expect(repeatedExport.data?.tasks).toEqual(first.data?.tasks);
+
+    const task = first.data!.request.tasks[0];
+    const outputPath = resolve(first.data!.request.run_directory, task.expected_output_path);
+    await mkdir(resolve(outputPath, '..'), { recursive: true });
+    await writeFile(outputPath, ONE_PIXEL_PNG);
+    const contentSha256 = createHash('sha256').update(ONE_PIXEL_PNG).digest('hex');
+    const resultManifest = {
+      schema_version: 'image-generation-result/v1' as const,
+      run_id: first.data!.run_id,
+      request_sha256: first.data!.request.request_sha256,
+      completed_at: '2026-07-24T11:05:00.000Z',
+      items: [{
+        task_id: task.task_id,
+        status: 'generated' as const,
+        output_path: task.expected_output_path,
+        mime_type: 'image/png',
+        content_sha256: contentSha256,
+        prompt_sha256: task.prompt_sha256,
+        provider: 'openai_imagegen',
+        provider_asset_id: 'imagegen-resume-test-001',
+        model: 'gpt-image-2',
+      }],
+    };
+    const imported = await importStoryAgentImageGenerationResult(
+      first.data!.run_id,
+      resultManifest,
+    );
+    expect(imported.ok).toBe(true);
+    expect(imported.data).toMatchObject({
+      schema_version: 'story-agent-image-result-import/v1',
+      processed_item_count: 1,
+      ingested_task_count: 1,
+      verified_task_count: 1,
+      skipped_idempotent_task_count: 0,
+      failed_task_count: 0,
+    });
+    expect(imported.data?.run.tasks.find(item => item.task_id === task.task_id)).toMatchObject({
+      status: 'verified',
+      content_sha256: contentSha256,
+      attempts: [expect.objectContaining({
+        provider: 'openai_imagegen',
+        provider_asset_id: 'imagegen-resume-test-001',
+      })],
+    });
+    expect(imported.data?.preproduction_package.acceptance.status).toBe('blocked');
+    const resumedExport = await exportStoryAgentImageGenerationRequest({
+      project_id: project.project_id,
+    });
+    expect(resumedExport.data?.run_id).toBe(first.data?.run_id);
+    expect(resumedExport.data?.tasks.find(item => item.task_id === task.task_id)?.status)
+      .toBe('verified');
+    expect(resumedExport.data?.summary.awaiting_imagegen_count).toBeGreaterThan(0);
+
+    const projectAfterImport = await getProject(project.project_id!);
+    const historyLengthAfterImport = projectAfterImport.data?.project.seedance_asset_library?.items
+      .find(item => item.asset_id === task.target_asset_ids[0])?.history?.length;
+    const simulatedPreLedgerCrash = {
+      ...imported.data!.run,
+      tasks: imported.data!.run.tasks.map(item => item.task_id === task.task_id
+        ? {
+            ...item,
+            status: 'awaiting_imagegen' as const,
+            content_sha256: undefined,
+            local_paths: [],
+            attempts: [],
+          }
+        : item),
+    };
+    await writeFile(
+      resolve(first.data!.request.run_directory, 'run.json'),
+      `${JSON.stringify(simulatedPreLedgerCrash, null, 2)}\n`,
+    );
+    const crashRecovered = await importStoryAgentImageGenerationResult(
+      first.data!.run_id,
+      resultManifest,
+    );
+    expect(crashRecovered.ok).toBe(true);
+    expect(crashRecovered.data?.run.tasks.find(item => item.task_id === task.task_id)?.status)
+      .toBe('verified');
+    const projectAfterRecovery = await getProject(project.project_id!);
+    expect(projectAfterRecovery.data?.project.seedance_asset_library?.items
+      .find(item => item.asset_id === task.target_asset_ids[0])?.history)
+      .toHaveLength(historyLengthAfterImport!);
+
+    const repeatedImport = await importStoryAgentImageGenerationResult(
+      first.data!.run_id,
+      resultManifest,
+    );
+    expect(repeatedImport.data?.skipped_idempotent_task_count).toBe(1);
+    expect(repeatedImport.data?.run.tasks.find(item => item.task_id === task.task_id)?.attempts)
+      .toHaveLength(1);
+    const persisted = await getStoryAgentImageRun(first.data!.run_id);
+    expect(persisted.data).toEqual(repeatedImport.data?.run);
   });
 
   it('marks the generic preproduction package ready only with professional text and all current immutable images', async () => {

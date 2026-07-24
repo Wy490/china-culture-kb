@@ -57,6 +57,22 @@ For referenced assets, assign every asset:
 - Avoid contradictory camera instructions.
 - Use explicit sound design when emotion or action depends on rhythm.
 
+## Story Agent Image Handoff
+
+- The canonical preproduction export is
+  `story-agent-seedance-preproduction-package/v1`.
+- Required image work is exported as `image-generation-request/v1`; the
+  application server records `provider_invoked=false`.
+- Codex performs image generation, writes only beneath the declared run
+  `outputs/` directory, and returns `image-generation-result/v1`.
+- Import is fail-closed on run ID, request hash, prompt hash, path containment,
+  MIME inspection, and recomputed content SHA-256.
+- A delivered preproduction image must have a real local file, current asset
+  mapping, and verified content hash. Rights and human review remain warnings and
+  do not grant production credit automatically.
+- Video generation remains outside the Story Agent boundary and is performed by
+  the user in Seedance.
+
 ## Prompt Cleaning
 
 Before delivery, remove:

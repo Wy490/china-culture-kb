@@ -7415,6 +7415,138 @@ export interface StoryAgentSeedancePreproductionExportRequest {
   series_project_id?: string;
 }
 
+export type StoryAgentImageTaskStatus =
+  | 'planned'
+  | 'awaiting_imagegen'
+  | 'generated'
+  | 'ingested'
+  | 'bound'
+  | 'verified'
+  | 'failed_retryable'
+  | 'blocked';
+
+export interface StoryAgentImageGenerationRequestTask {
+  task_id: string;
+  kind: StoryImageAssetRequirementKind | AiComicSeriesVisualIdentityKind;
+  label: string;
+  target_asset_ids: string[];
+  series_identity_ids: string[];
+  reference_slot?: string;
+  source_story_ids: string[];
+  source_scene_ids: number[];
+  source_shot_ids: string[];
+  prompt: string;
+  negative_constraints: string[];
+  prompt_sha256: string;
+  expected_output_path: string;
+  action: 'generate' | 'reuse_verified';
+}
+
+export interface StoryAgentImageGenerationRequest {
+  schema_version: 'image-generation-request/v1';
+  run_id: string;
+  source: StoryAgentSeedancePreproductionPackage['source'];
+  created_at: string;
+  request_sha256: string;
+  run_directory: string;
+  output_directory: string;
+  provider_invoked: false;
+  executor: 'codex_imagegen';
+  task_count: number;
+  pending_task_count: number;
+  verified_task_count: number;
+  tasks: StoryAgentImageGenerationRequestTask[];
+  instructions: string[];
+}
+
+export interface StoryAgentImageGenerationResultItem {
+  task_id: string;
+  covers_task_ids?: string[];
+  status: Extract<StoryAgentImageTaskStatus, 'generated' | 'failed_retryable' | 'blocked'>;
+  output_path?: string;
+  mime_type?: string;
+  content_sha256?: string;
+  prompt_sha256: string;
+  provider?: string;
+  provider_asset_id?: string;
+  model?: string;
+  failure_reason?: string;
+  retryable?: boolean;
+}
+
+export interface StoryAgentImageGenerationResult {
+  schema_version: 'image-generation-result/v1';
+  run_id: string;
+  request_sha256: string;
+  completed_at: string;
+  items: StoryAgentImageGenerationResultItem[];
+}
+
+export interface StoryAgentImageRunAttempt {
+  attempt_no: number;
+  recorded_at: string;
+  result_status: StoryAgentImageGenerationResultItem['status'];
+  content_sha256?: string;
+  provider?: string;
+  provider_asset_id?: string;
+  model?: string;
+  failure_reason?: string;
+}
+
+export interface StoryAgentImageRunTask {
+  task_id: string;
+  status: StoryAgentImageTaskStatus;
+  prompt_sha256: string;
+  target_asset_ids: string[];
+  series_identity_ids: string[];
+  content_sha256?: string;
+  local_paths: string[];
+  attempts: StoryAgentImageRunAttempt[];
+  last_error?: string;
+  updated_at: string;
+}
+
+export interface StoryAgentImageRun {
+  schema_version: 'story-agent-image-run/v1';
+  run_id: string;
+  source: StoryAgentSeedancePreproductionPackage['source'];
+  status: 'awaiting_imagegen' | 'in_progress' | 'complete' | 'blocked';
+  created_at: string;
+  updated_at: string;
+  request_path: string;
+  result_path: string;
+  request: StoryAgentImageGenerationRequest;
+  tasks: StoryAgentImageRunTask[];
+  summary: {
+    task_count: number;
+    awaiting_imagegen_count: number;
+    generated_count: number;
+    ingested_count: number;
+    bound_count: number;
+    verified_count: number;
+    failed_retryable_count: number;
+    blocked_count: number;
+  };
+  preproduction_acceptance: StoryAgentSeedancePreproductionPackage['acceptance'];
+}
+
+export interface StoryAgentImageRunExportRequest {
+  project_id?: string;
+  series_project_id?: string;
+}
+
+export interface StoryAgentImageResultImportResponse {
+  schema_version: 'story-agent-image-result-import/v1';
+  imported_at: string;
+  processed_item_count: number;
+  ingested_task_count: number;
+  verified_task_count: number;
+  skipped_idempotent_task_count: number;
+  failed_task_count: number;
+  run: StoryAgentImageRun;
+  preproduction_package: StoryAgentSeedancePreproductionPackage;
+}
+
 export interface AiComicSeedanceEditAssetPackageShot {
   production_id: string;
   episode_no: number;

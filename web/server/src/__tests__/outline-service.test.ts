@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import { getStory } from '../services/story-service.js';
@@ -69,6 +70,10 @@ import {
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
 import { exportStoryAgentSeedancePreproductionPackage } from '../services/story-agent-preproduction-package-service.js';
+import {
+  exportStoryAgentImageGenerationRequest,
+  importStoryAgentImageGenerationResult,
+} from '../services/story-agent-image-run-service.js';
 
 const ONE_PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -3396,6 +3401,101 @@ describe('outline-service', () => {
     expect(afterDuplicate.data?.seedance_asset_library?.items.find(item => (
       item.asset_id === archivedAsset?.asset_id
     ))?.history?.filter(event => event.event_type === 'provider_callback')).toHaveLength(1);
+  });
+
+  it('imports and replaces series image-run results while invalidating identity approval state', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '周敦颐少年在濂溪读书，以莲为喻守住清白与良知。',
+      series_title: '濂溪图片运行测试',
+      episode_count: 3,
+      episode_duration_range_sec: { min: 60, max: 120 },
+    });
+    expect(planRes.ok).toBe(true);
+
+    useOutlineTestRoots();
+    const saveRes = await saveAiComicSeriesProject({ plan: planRes.data! });
+    expect(saveRes.ok).toBe(true);
+    const seriesProjectId = saveRes.data!.project.series_project_id;
+
+    useOutlineTestRoots();
+    const episodeRes = await generateAiComicEpisodeFromPlan({
+      series_plan: planRes.data!,
+      episode_no: 1,
+      series_project_id: seriesProjectId,
+      output_gears_segments: true,
+    });
+    expect(episodeRes.ok).toBe(true);
+
+    useOutlineTestRoots();
+    const runRes = await exportStoryAgentImageGenerationRequest({
+      series_project_id: seriesProjectId,
+    });
+    expect(runRes.ok).toBe(true);
+    expect(runRes.data?.source.kind).toBe('ai_comic_series_project');
+    const task = runRes.data!.request.tasks[0];
+    expect(task.series_identity_ids[0]).toMatch(/^series-/);
+
+    const firstOutput = resolve(runRes.data!.request.run_directory, task.expected_output_path);
+    await mkdir(resolve(firstOutput, '..'), { recursive: true });
+    await writeFile(firstOutput, ONE_PIXEL_PNG);
+    const firstSha = createHash('sha256').update(ONE_PIXEL_PNG).digest('hex');
+    const firstImport = await importStoryAgentImageGenerationResult(runRes.data!.run_id, {
+      schema_version: 'image-generation-result/v1',
+      run_id: runRes.data!.run_id,
+      request_sha256: runRes.data!.request.request_sha256,
+      completed_at: '2026-07-24T12:00:00.000Z',
+      items: [{
+        task_id: task.task_id,
+        status: 'generated',
+        output_path: task.expected_output_path,
+        mime_type: 'image/png',
+        content_sha256: firstSha,
+        prompt_sha256: task.prompt_sha256,
+        provider: 'openai_imagegen',
+        provider_asset_id: 'imagegen-series-run-001',
+        model: 'gpt-image-2',
+      }],
+    });
+    expect(firstImport.ok).toBe(true);
+    expect(firstImport.data?.run.tasks.find(item => item.task_id === task.task_id)?.status)
+      .toBe('verified');
+
+    const replacementBytes = Buffer.concat([ONE_PIXEL_PNG, Buffer.from([0])]);
+    await writeFile(firstOutput, replacementBytes);
+    const replacementSha = createHash('sha256').update(replacementBytes).digest('hex');
+    const replacementImport = await importStoryAgentImageGenerationResult(runRes.data!.run_id, {
+      schema_version: 'image-generation-result/v1',
+      run_id: runRes.data!.run_id,
+      request_sha256: runRes.data!.request.request_sha256,
+      completed_at: '2026-07-24T12:05:00.000Z',
+      items: [{
+        task_id: task.task_id,
+        status: 'generated',
+        output_path: task.expected_output_path,
+        mime_type: 'image/png',
+        content_sha256: replacementSha,
+        prompt_sha256: task.prompt_sha256,
+        provider: 'openai_imagegen',
+        provider_asset_id: 'imagegen-series-run-002',
+        model: 'gpt-image-2',
+      }],
+    });
+    expect(replacementImport.ok).toBe(true);
+    expect(replacementImport.data?.run.tasks.find(item => item.task_id === task.task_id)?.attempts)
+      .toHaveLength(2);
+
+    const persisted = await getAiComicSeriesProject(seriesProjectId);
+    expect(persisted.data?.seedance_asset_library?.items.find(item =>
+      item.asset_id === task.target_asset_ids[0]
+    )).toMatchObject({
+      content_sha256: replacementSha,
+      provider: 'openai_imagegen',
+      provider_asset_id: 'imagegen-series-run-002',
+      identity_binding: expect.objectContaining({
+        series_identity_id: task.series_identity_ids[0],
+        status: 'stale',
+      }),
+    });
   });
 
   it('reports unbound episode foreshadowing in the AI comic series quality audit', async () => {

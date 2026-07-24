@@ -2264,6 +2264,12 @@ export async function uploadProjectSeedanceAssetFile(
     role?: SeedanceAssetLibraryItem['role'];
     reference_slot?: string;
     description?: string;
+    trusted_source?: {
+      provider: 'openai_imagegen';
+      provider_asset_id?: string;
+      prompt_sha256: string;
+      model: string;
+    };
     file: {
       original_filename: string;
       mime_type: string;

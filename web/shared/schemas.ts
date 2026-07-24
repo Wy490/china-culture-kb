@@ -1368,6 +1368,64 @@ export const StoryAgentSeedancePreproductionExportRequestSchema = z.object({
   }
 });
 
+export const StoryAgentImageRunIdParamSchema = z.object({
+  runId: z.string().regex(
+    /^image-run-[a-f0-9]{24}$/,
+    'runId must be a stable Story Agent image run id',
+  ),
+});
+
+export const StoryAgentImageRunExportRequestSchema = z.object({
+  project_id: ProjectIdValueSchema.optional(),
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+}).strict().superRefine((request, context) => {
+  if ([request.project_id, request.series_project_id].filter(Boolean).length !== 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'exactly one of project_id or series_project_id is required',
+    });
+  }
+});
+
+export const StoryAgentImageGenerationResultSchema = z.object({
+  schema_version: z.literal('image-generation-result/v1'),
+  run_id: z.string().regex(/^image-run-[a-f0-9]{24}$/),
+  request_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  completed_at: z.string().datetime(),
+  items: z.array(z.object({
+    task_id: z.string().trim().min(1).max(180),
+    covers_task_ids: z.array(z.string().trim().min(1).max(180)).max(100).optional(),
+    status: z.enum(['generated', 'failed_retryable', 'blocked']),
+    output_path: z.string().trim().min(1).max(1_024).optional(),
+    mime_type: z.string().trim().min(1).max(120).optional(),
+    content_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    prompt_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    provider: z.string().trim().min(1).max(120).optional(),
+    provider_asset_id: z.string().trim().min(1).max(240).optional(),
+    model: z.string().trim().min(1).max(120).optional(),
+    failure_reason: z.string().trim().min(1).max(2_000).optional(),
+    retryable: z.boolean().optional(),
+  }).superRefine((item, context) => {
+    if (item.status === 'generated') {
+      for (const field of ['output_path', 'mime_type', 'content_sha256', 'provider', 'model'] as const) {
+        if (!item[field]) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field],
+            message: `${field} is required for generated image results`,
+          });
+        }
+      }
+    } else if (!item.failure_reason) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['failure_reason'],
+        message: 'failure_reason is required for failed or blocked image results',
+      });
+    }
+  })).min(1).max(500),
+}).strict();
+
 export const AiComicSeriesVisualIdentityDefinitionParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
   visualIdentityId: z.string().regex(
