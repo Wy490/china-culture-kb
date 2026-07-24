@@ -1523,10 +1523,75 @@ describe('project-service', () => {
       .toBe(result.data!.acceptance.expected_image_asset_count);
     expect(result.data?.story_units[0].professional_text_package?.schema_version)
       .toBe('professional-text-package/v1');
+    expect(result.data?.story_units[0].story.reference_safety_report?.status)
+      .toBe('not_applicable');
+    expect(result.data?.acceptance.reference_safety).toMatchObject({
+      status: 'not_applicable',
+      report_count: 1,
+      expected_report_count: 1,
+      similarity_completed_count: 0,
+      real_similarity_completed_count: 0,
+      blockers: [],
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+    expect(result.data?.markdown).toContain('引用安全：not_applicable');
     expect(result.data?.story_units[0].shot_asset_bindings.every(binding =>
       binding.missing_asset_ids.length === 0
       && binding.delivered_asset_ids.length === binding.required_asset_ids.length
     )).toBe(true);
+  });
+
+  it('promotes a blocked story reference report into preproduction acceptance', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-preproduction-ref-block-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const rebuiltStory = await rebuildDerivedStoryState({
+      ...makeStory(),
+      storyId: '20260724-story-refb1',
+      gears_segments_url: '/api/stories/20260724-story-refb1/gears-segments',
+    }, {
+      revalidateDomainSafety: false,
+      professionalTextNow: '2026-07-24T10:00:00.000Z',
+    });
+    expect(rebuiltStory.reference_safety_report).toBeTruthy();
+    rebuiltStory.reference_safety_report = {
+      ...rebuiltStory.reference_safety_report!,
+      status: 'blocked',
+      passed: false,
+      issues: [{
+        issue_code: 'plot_structure_similarity',
+        severity: 'blocker',
+        message: '情节结构与已授权参考证据高度重合',
+        reference_ids: ['reference-refb1'],
+      }],
+      blocked_reference_ids: ['reference-refb1'],
+    };
+    const project = await createProjectFromGeneratedStory(
+      rebuiltStory,
+      '2026-07-24T10:00:00.000Z',
+    );
+
+    const result = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: project.project_id,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.acceptance.reference_safety).toMatchObject({
+      status: 'blocked',
+      report_count: 1,
+      expected_report_count: 1,
+      blockers: [
+        expect.stringContaining('情节结构与已授权参考证据高度重合'),
+      ],
+      real_credit_granted: false,
+    });
+    expect(result.data?.acceptance.status).toBe('blocked');
+    expect(result.data?.acceptance.blockers).toEqual(expect.arrayContaining([
+      expect.stringContaining('情节结构与已授权参考证据高度重合'),
+    ]));
   });
 
   it('does not create a project version when quality repair is a no-op', async () => {

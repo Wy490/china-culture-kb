@@ -158,10 +158,13 @@ export async function generateAndStoreChinaCultureStory(
 
   const referenceSafety = evaluateReferenceGenerationSafety({
     generated_text: buildReferenceSafetyText(storyData),
+    generated_story: storyData,
     reference_strength: request.reference_strength,
     reference_trace: storyData.reference_trace,
     expected_style_pack_ids:
       preparation.referenceGenerationContext?.style_pack_ids,
+    similarity_evidence: preparation.referenceSimilarityEvidence,
+    baseline_story: preparation.referenceBaselineStory,
   });
   storyData.reference_safety_report = referenceSafety;
   if (storyData.quality_report) {

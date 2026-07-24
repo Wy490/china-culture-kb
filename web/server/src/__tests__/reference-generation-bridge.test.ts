@@ -7,6 +7,7 @@ import {
   createBenchmarkCard,
   createFilmReferenceAnalysis,
   createReferenceSource,
+  createReferenceSimilarityEvidence,
   createReferenceStylePack,
 } from '../services/reference-library-service.js';
 import {
@@ -62,7 +63,10 @@ function entry(): EntryDetail {
   };
 }
 
-async function createApprovedStylePack(repoRoot: string) {
+async function createApprovedStylePack(
+  repoRoot: string,
+  sourceMode: 'research_only' | 'user_owned' = 'research_only',
+) {
   const analyses = [];
   for (const suffix of ['a', 'b']) {
     const source = await createReferenceSource({
@@ -73,8 +77,13 @@ async function createApprovedStylePack(repoRoot: string) {
         media_type: 'film',
         source_url: `https://example.com/reference-${suffix}`,
         accessed_at: approvedAt,
-        rights_status: 'research_only',
-        access_scope: 'metadata_only',
+        rights_status: sourceMode,
+        access_scope: sourceMode === 'user_owned'
+          ? 'full_user_supplied'
+          : 'metadata_only',
+        ...(sourceMode === 'user_owned'
+          ? { content_fingerprint: suffix.repeat(64) }
+          : {}),
         user_reason: '研究抽象结构原则',
       },
     });
@@ -326,6 +335,89 @@ describe('Reference Generation Bridge', () => {
         style_pack_id: stylePack.id,
       },
     });
+  });
+
+  it('binds authorized similarity evidence by hash without exposing observations to the model prompt', async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'reference-generation-'));
+    temporaryRoots.push(repoRoot);
+    const stylePack = await createApprovedStylePack(repoRoot, 'user_owned');
+    const evidence = await createReferenceSimilarityEvidence({
+      repoRoot,
+      referenceId: stylePack.source_reference_ids[0],
+      now: approvedAt,
+      request: {
+        source_content_fingerprint: 'a'.repeat(64),
+        input_provenance: 'fixture',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'fixture-authorization-not-real-credit',
+          attested_by: 'fixture',
+          attested_at: approvedAt,
+          confirmation: 'authorized_similarity_analysis_only',
+        },
+        observations: {
+          excerpts: [{
+            observation_id: 'excerpt-a',
+            source_locator: 'scene-1',
+            text: '这是一段只允许进入安全检查而不能进入模型提示词的授权观察文本。',
+          }],
+          character_profiles: [],
+          plot_beats: [],
+          shot_sequence: [],
+        },
+      },
+    });
+
+    const resolution = await resolveReferenceGenerationContext({
+      repoRoot,
+      stylePackIds: [stylePack.id],
+      similarityEvidenceIds: [evidence.evidence_id],
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+    });
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok || !resolution.context) return;
+    expect(resolution.similarityEvidence).toEqual([evidence]);
+    expect(resolution.context.similarity_evidence_refs).toEqual([{
+      evidence_id: evidence.evidence_id,
+      reference_id: evidence.reference_id,
+      payload_sha256: evidence.payload_sha256,
+      input_provenance: 'fixture',
+      dimensions: ['excerpt'],
+    }]);
+
+    const prompt = buildStoryGenerationPromptPackage({
+      entry: entry(),
+      request: {
+        entry_name: entry().name,
+        video_type: 'character_story',
+        style_pack_ids: [stylePack.id],
+        reference_similarity_evidence_ids: [evidence.evidence_id],
+      },
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      tone: '',
+      selectedEvent: '拒签冤案',
+      referenceGenerationContext: resolution.context,
+    });
+    const serializedPrompt = JSON.stringify(prompt);
+    expect(serializedPrompt).toContain(evidence.evidence_id);
+    expect(serializedPrompt).not.toContain(
+      '这是一段只允许进入安全检查而不能进入模型提示词的授权观察文本',
+    );
+
+    const trace = buildReferenceGenerationTrace({
+      context: resolution.context,
+      storyStructure: 'single_event_drama',
+      applicationStatus: 'external_prompt_injected',
+    });
+    expect(trace[0].similarity_evidence_refs).toEqual(
+      resolution.context.similarity_evidence_refs,
+    );
   });
 
   it('revalidates approved provenance at generation time and fails closed on drift', async () => {

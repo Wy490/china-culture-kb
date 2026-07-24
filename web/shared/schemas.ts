@@ -179,6 +179,96 @@ export const ReferenceSourceRecordSchema = ReferenceSourceCreateRequestSchema.ex
   updated_at: ReferenceTimestampSchema,
 }).strict();
 
+const ReferenceSimilarityMarkerSchema = ReferenceNonEmptyTextSchema.max(120);
+const ReferenceSimilarityObservationIdSchema =
+  ReferenceNonEmptyTextSchema.max(120);
+const ReferenceSimilarityMarkerObservationSchema = z.object({
+  observation_id: ReferenceSimilarityObservationIdSchema,
+  distinctive_markers: z.array(ReferenceSimilarityMarkerSchema)
+    .min(2)
+    .max(12)
+    .refine(uniqueReferenceIds, 'distinctive_markers must be unique'),
+}).strict();
+export const ReferenceSimilarityEvidenceCreateRequestSchema = z.object({
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  input_provenance: z.enum(['operator_submitted', 'fixture']),
+  authorization: z.object({
+    basis: z.enum(['user_owned', 'licensed', 'public_domain']),
+    authorization_reference: ReferenceNonEmptyTextSchema.max(500),
+    attested_by: ReferenceNonEmptyTextSchema.max(120),
+    attested_at: ReferenceTimestampSchema,
+    confirmation: z.literal('authorized_similarity_analysis_only'),
+  }).strict(),
+  observations: z.object({
+    excerpts: z.array(z.object({
+      observation_id: ReferenceSimilarityObservationIdSchema,
+      source_locator: ReferenceNonEmptyTextSchema.max(200),
+      text: ReferenceNonEmptyTextSchema.min(15).max(500),
+    }).strict()).max(20).refine(
+      items => uniqueReferenceIds(items.map(item => item.observation_id)),
+      'excerpt observation_id values must be unique',
+    ),
+    character_profiles: z.array(
+      ReferenceSimilarityMarkerObservationSchema.extend({
+        label: ReferenceNonEmptyTextSchema.max(120),
+      }).strict(),
+    ).max(50).refine(
+      items => uniqueReferenceIds(items.map(item => item.observation_id)),
+      'character profile observation_id values must be unique',
+    ),
+    plot_beats: z.array(
+      ReferenceSimilarityMarkerObservationSchema.extend({
+        order: z.number().int().min(1).max(500),
+      }).strict(),
+    ).max(100)
+      .refine(
+        items => uniqueReferenceIds(items.map(item => item.observation_id)),
+        'plot beat observation_id values must be unique',
+      )
+      .refine(
+        items => new Set(items.map(item => item.order)).size === items.length,
+        'plot beat order values must be unique',
+      ),
+    shot_sequence: z.array(
+      ReferenceSimilarityMarkerObservationSchema.extend({
+        order: z.number().int().min(1).max(1_000),
+      }).strict(),
+    ).max(500)
+      .refine(
+        items => uniqueReferenceIds(items.map(item => item.observation_id)),
+        'shot sequence observation_id values must be unique',
+      )
+      .refine(
+        items => new Set(items.map(item => item.order)).size === items.length,
+        'shot sequence order values must be unique',
+      ),
+  }).strict().refine(
+    observations =>
+      observations.excerpts.length > 0
+      || observations.character_profiles.length > 0
+      || observations.plot_beats.length > 0
+      || observations.shot_sequence.length > 0,
+    'at least one similarity observation is required',
+  ),
+}).strict();
+
+export const ReferenceSimilarityEvidenceRecordSchema =
+ReferenceSimilarityEvidenceCreateRequestSchema.extend({
+  schema_version: z.literal('reference-similarity-evidence/v1'),
+  evidence_id: z.string().regex(/^reference-similarity-evidence-[a-f0-9-]+$/),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  authorization: ReferenceSimilarityEvidenceCreateRequestSchema.shape.authorization.extend({
+    machine_verified: z.literal(false),
+  }).strict(),
+  payload_sha256: ReferenceContentFingerprintSchema,
+  created_at: ReferenceTimestampSchema,
+  governance: z.object({
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+    production_credit_eligible: z.literal(false),
+  }).strict(),
+}).strict();
+
 export const FilmReferenceAnalysisSchema = z.object({
   hook_timecode: ReferenceTimecodeSchema.optional(),
   central_question: ReferenceNonEmptyTextSchema.max(500).optional(),
@@ -712,6 +802,15 @@ export const StoryGenerateRequestSchema = z.object({
     .max(20)
     .refine(uniqueReferenceIds, 'style_pack_ids must be unique')
     .optional(),
+  reference_similarity_evidence_ids: z.array(
+    z.string().regex(/^reference-similarity-evidence-[a-f0-9-]+$/),
+  )
+    .max(20)
+    .refine(uniqueReferenceIds, 'reference_similarity_evidence_ids must be unique')
+    .optional(),
+  reference_baseline_story_id: z.string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+    .optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
@@ -738,6 +837,12 @@ export const StoryGenerateRequestSchema = z.object({
     return true;
   },
   { message: 'truth_mode is not compatible with the selected video_type', path: ['truth_mode'] },
+).refine(
+  (data) => !data.reference_baseline_story_id || (data.style_pack_ids?.length ?? 0) > 0,
+  {
+    message: 'reference_baseline_story_id requires at least one style_pack_id',
+    path: ['reference_baseline_story_id'],
+  },
 ).refine(
   // memory_mosaic_biography only compatible with certain video_types
   (data) => {

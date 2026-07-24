@@ -7,11 +7,13 @@ import {
   createBenchmarkCard,
   createFilmReferenceAnalysis,
   createReferenceSource,
+  createReferenceSimilarityEvidence,
   createReferenceStylePack,
   createTextReferenceAnalysis,
   getBenchmarkCard,
   getReferenceLibraryDetail,
   getReferenceStylePack,
+  getReferenceSimilarityEvidence,
   listBenchmarkCards,
   listReferenceSources,
   listReferenceStylePacks,
@@ -105,6 +107,17 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     }
   });
 
+  router.get('/similarity-evidence/:evidenceId', async (req, res, next) => {
+    try {
+      res.json(success(await getReferenceSimilarityEvidence({
+        repoRoot,
+        evidenceId: req.params.evidenceId,
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/references/:referenceId', async (req, res, next) => {
     try {
       res.json(success(await getReferenceLibraryDetail({
@@ -132,6 +145,19 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
   router.post('/references/:referenceId/text-analyses', async (req, res, next) => {
     try {
       const record = await createTextReferenceAnalysis({
+        repoRoot,
+        referenceId: req.params.referenceId,
+        request: req.body,
+      });
+      res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/references/:referenceId/similarity-evidence', async (req, res, next) => {
+    try {
+      const record = await createReferenceSimilarityEvidence({
         repoRoot,
         referenceId: req.params.referenceId,
         request: req.body,

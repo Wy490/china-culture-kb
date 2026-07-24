@@ -7,6 +7,7 @@ import type {
 } from '@shared/types.js';
 import { buildStoryPriorityInstruction, resolveLegacyGenerationType, resolveStoryNarrativePatternIds, resolveStoryStructureType, resolveStoryVideoType } from '../../platform/story-generation-policy.js';
 import { storyRepositoryRoot } from '../../platform/story-storage-root.js';
+import { getStory } from '../../platform/story-read-service.js';
 import { buildAdaptationAnalysis } from '../../services/adaptation-analysis-service.js';
 import {
   buildCreationContract,
@@ -21,6 +22,7 @@ import { resolveGenreStoryMatrix } from '../../services/genre-story-profiles.js'
 import { resolveStoryGenerationModelProfile } from '../../services/model-catalog.js';
 import { getProductionMaterialPack } from '../../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../../services/production-material-readiness-service.js';
+import { validateReferenceBaselineCompatibility } from '../../services/reference-baseline-comparison-service.js';
 import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
@@ -76,6 +78,7 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
       ? resolve(process.env.REFERENCE_LIBRARY_REPO_ROOT)
       : storyRepositoryRoot(),
     stylePackIds: request.style_pack_ids,
+    similarityEvidenceIds: request.reference_similarity_evidence_ids,
     videoType,
     presentationStyle,
     storyStructure,
@@ -169,6 +172,69 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const selectedModelProfile = resolveStoryGenerationModelProfile(request.model_profile_id);
   const boldEvents = extractChinaCultureBoldEvents(entry.story);
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
+  let referenceBaselineStory;
+  if (request.reference_baseline_story_id) {
+    if (!referenceGenerationResolution.context) {
+      return {
+        ok: false as const,
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'reference_baseline_story_id requires at least one applied style_pack_id',
+        details: {
+          schema_version: 'story-reference-baseline-gate/v1' as const,
+          status: 'blocked' as const,
+          issue_code: 'reference_assisted_generation_required' as const,
+          baseline_story_id: request.reference_baseline_story_id,
+        },
+      };
+    }
+    const baselineResult = await getStory(request.reference_baseline_story_id);
+    if (!baselineResult.ok || !baselineResult.data) {
+      return {
+        ok: false as const,
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: `Reference baseline story "${request.reference_baseline_story_id}" is unavailable`,
+        details: {
+          schema_version: 'story-reference-baseline-gate/v1' as const,
+          status: 'blocked' as const,
+          issue_code: 'baseline_story_unavailable' as const,
+          baseline_story_id: request.reference_baseline_story_id,
+        },
+      };
+    }
+    const mismatches = validateReferenceBaselineCompatibility({
+      baseline: baselineResult.data,
+      expected: {
+        source_entry: primaryEntryName,
+        original_user_query: original_user_query ?? outline,
+        video_type: videoType,
+        presentation_style: presentationStyle,
+        story_structure: storyStructure,
+        model_profile_id: selectedModelProfile.id,
+        central_event: centralEvent,
+        target_duration: targetDuration,
+        creation_use_case: creationUseCase,
+        truth_mode: truthMode,
+        client_type: request.client_type,
+        target_audience: request.target_audience,
+        communication_goal: request.communication_goal,
+      },
+    });
+    if (mismatches.length) {
+      return {
+        ok: false as const,
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Reference baseline story is not comparable with the current generation input',
+        details: {
+          schema_version: 'story-reference-baseline-gate/v1' as const,
+          status: 'blocked' as const,
+          issue_code: 'baseline_story_incompatible' as const,
+          baseline_story_id: request.reference_baseline_story_id,
+          mismatched_dimensions: mismatches,
+        },
+      };
+    }
+    referenceBaselineStory = baselineResult.data;
+  }
   const preliminaryStoryBlueprint = buildStoryBlueprint({
     entry,
     videoType,
@@ -198,6 +264,9 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     materialPackToUse,
     storyStructure,
     referenceGenerationContext: referenceGenerationResolution.context,
+    referenceSimilarityEvidence:
+      referenceGenerationResolution.similarityEvidence,
+    referenceBaselineStory,
     narrativePatternIds,
     creationUseCase,
     truthMode,

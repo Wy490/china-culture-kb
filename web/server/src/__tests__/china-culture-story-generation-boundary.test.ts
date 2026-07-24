@@ -34,6 +34,12 @@ describe('china_culture story generation boundary', () => {
     expect(generationSource).toContain('orchestrateStoryPostGeneration({');
     expect(generationSource).toContain('evaluateReferenceGenerationSafety({');
     expect(generationSource).toContain('reference_trace: storyData.reference_trace');
+    expect(generationSource).toContain(
+      'similarity_evidence: preparation.referenceSimilarityEvidence',
+    );
+    expect(generationSource).toContain(
+      'baseline_story: preparation.referenceBaselineStory',
+    );
     expect(generationSource).toContain('validateChinaCultureStoryContent({');
     expect(generationSource).toContain('persistGeneratedStoryAndNotifyGears({');
     expect(generationSource.indexOf('options.transform_story_before_validation_and_persistence('))

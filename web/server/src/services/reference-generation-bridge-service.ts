@@ -1,6 +1,9 @@
 import type {
   PresentationStyle,
   ReferenceGenerationSourceTrace,
+  ReferenceSimilarityDimension,
+  ReferenceSimilarityEvidenceRecord,
+  ReferenceSimilarityEvidenceTrace,
   ReferenceStylePackRecord,
   ReferenceTrace,
   StoryStructureType,
@@ -10,6 +13,7 @@ import {
   getBenchmarkCard,
   getReferenceAnalysis,
   getReferenceSource,
+  getReferenceSimilarityEvidence,
   getReferenceStylePack,
 } from './reference-library-service.js';
 
@@ -31,6 +35,7 @@ export interface ReferenceGenerationContext {
   style_pack_ids: string[];
   style_packs: ReferenceGenerationStylePackContext[];
   source_references: ReferenceGenerationSourceTrace[];
+  similarity_evidence_refs: ReferenceSimilarityEvidenceTrace[];
   reusable_principles: string[];
   avoid_copying: string[];
   knowledge_writeback_allowed: false;
@@ -45,9 +50,14 @@ export interface ReferenceGenerationGateDetails {
     | 'duplicate_style_pack_id'
     | 'style_pack_unavailable'
     | 'incompatible_style_pack'
-    | 'style_pack_provenance_invalid';
+    | 'style_pack_provenance_invalid'
+    | 'invalid_similarity_evidence_request'
+    | 'similarity_evidence_unavailable'
+    | 'similarity_evidence_incompatible';
   style_pack_id?: string;
+  similarity_evidence_id?: string;
   requested_style_pack_ids: string[];
+  requested_similarity_evidence_ids?: string[];
   incompatible_dimensions?: Array<
     'video_type' | 'presentation_style' | 'story_structure'
   >;
@@ -55,7 +65,11 @@ export interface ReferenceGenerationGateDetails {
 }
 
 export type ReferenceGenerationContextResolution =
-  | { ok: true; context?: ReferenceGenerationContext }
+  | {
+      ok: true;
+      context?: ReferenceGenerationContext;
+      similarityEvidence: ReferenceSimilarityEvidenceRecord[];
+    }
   | {
       ok: false;
       message: string;
@@ -98,6 +112,7 @@ function blocked(
   extra: Pick<
     ReferenceGenerationGateDetails,
     'style_pack_id' | 'incompatible_dimensions'
+    | 'similarity_evidence_id' | 'requested_similarity_evidence_ids'
   > = {},
 ): ReferenceGenerationContextResolution {
   return {
@@ -158,13 +173,35 @@ async function verifyStylePackProvenance(input: {
 export async function resolveReferenceGenerationContext(input: {
   repoRoot: string;
   stylePackIds?: string[];
+  similarityEvidenceIds?: string[];
   videoType: VideoType;
   presentationStyle: PresentationStyle;
   storyStructure: StoryStructureType;
 }): Promise<ReferenceGenerationContextResolution> {
   const requestedStylePackIds = (input.stylePackIds ?? [])
     .map(stylePackId => stylePackId.trim());
-  if (requestedStylePackIds.length === 0) return { ok: true };
+  const requestedSimilarityEvidenceIds = (input.similarityEvidenceIds ?? [])
+    .map(evidenceId => evidenceId.trim());
+  if (
+    requestedSimilarityEvidenceIds.length > 20
+    || requestedSimilarityEvidenceIds.some(evidenceId => evidenceId.length === 0)
+    || unique(requestedSimilarityEvidenceIds).length
+      !== requestedSimilarityEvidenceIds.length
+    || (
+      requestedSimilarityEvidenceIds.length > 0
+      && requestedStylePackIds.length === 0
+    )
+  ) {
+    return blocked(
+      requestedStylePackIds,
+      'invalid_similarity_evidence_request',
+      'reference_similarity_evidence_ids must be unique, contain at most 20 IDs, and require at least one style_pack_id',
+      { requested_similarity_evidence_ids: requestedSimilarityEvidenceIds },
+    );
+  }
+  if (requestedStylePackIds.length === 0) {
+    return { ok: true, similarityEvidence: [] };
+  }
   if (
     requestedStylePackIds.length > 20
     || requestedStylePackIds.some(stylePackId => stylePackId.length === 0)
@@ -276,8 +313,54 @@ export async function resolveReferenceGenerationContext(input: {
     });
   }
 
+  const allowedReferenceIds = unique(
+    resolvedPacks.flatMap(pack => pack.source_reference_ids),
+  );
+  const similarityEvidence: ReferenceSimilarityEvidenceRecord[] = [];
+  for (const evidenceId of requestedSimilarityEvidenceIds) {
+    let evidence: ReferenceSimilarityEvidenceRecord;
+    try {
+      evidence = await getReferenceSimilarityEvidence({
+        repoRoot: input.repoRoot,
+        evidenceId,
+      });
+    } catch (error) {
+      return blocked(
+        requestedStylePackIds,
+        'similarity_evidence_unavailable',
+        error instanceof Error ? error.message : String(error),
+        {
+          similarity_evidence_id: evidenceId,
+          requested_similarity_evidence_ids: requestedSimilarityEvidenceIds,
+        },
+      );
+    }
+    const source = resolvedPacks
+      .flatMap(pack => pack.source_references)
+      .find(candidate => candidate.reference_id === evidence.reference_id);
+    if (
+      !allowedReferenceIds.includes(evidence.reference_id)
+      || !source
+      || source.content_fingerprint !== evidence.source_content_fingerprint
+    ) {
+      return blocked(
+        requestedStylePackIds,
+        'similarity_evidence_incompatible',
+        'Similarity evidence must belong to a style-pack source and match its content fingerprint',
+        {
+          similarity_evidence_id: evidenceId,
+          requested_similarity_evidence_ids: requestedSimilarityEvidenceIds,
+        },
+      );
+    }
+    similarityEvidence.push(evidence);
+  }
+  const similarityEvidenceRefs = similarityEvidence.map(
+    similarityEvidenceTrace,
+  );
   return {
     ok: true,
+    similarityEvidence,
     context: {
       schema_version: 'reference-generation-context/v1',
       style_pack_ids: resolvedPacks.map(pack => pack.style_pack_id),
@@ -285,6 +368,7 @@ export async function resolveReferenceGenerationContext(input: {
       source_references: uniqueByReferenceId(
         resolvedPacks.flatMap(pack => pack.source_references),
       ),
+      similarity_evidence_refs: similarityEvidenceRefs,
       reusable_principles: unique(
         resolvedPacks.flatMap(pack => pack.abstract_rules),
       ),
@@ -303,8 +387,9 @@ export function buildReferenceGenerationTrace(input: {
   applicationStatus: NonNullable<ReferenceTrace['application_status']>;
 }): ReferenceTrace[] {
   if (!input.context) return [];
+  const context = input.context;
   const injected = input.applicationStatus === 'external_prompt_injected';
-  return input.context.style_packs.map(pack => ({
+  return context.style_packs.map(pack => ({
     style_pack_id: pack.style_pack_id,
     application_status: input.applicationStatus,
     applied_rules: injected ? [...pack.abstract_rules] : [],
@@ -314,8 +399,54 @@ export function buildReferenceGenerationTrace(input: {
     source_analysis_ids: [...pack.source_analysis_ids],
     source_benchmark_ids: [...pack.source_benchmark_ids],
     source_references: pack.source_references.map(source => ({ ...source })),
+    similarity_evidence_refs: context.similarity_evidence_refs
+      .filter(reference => pack.source_reference_ids.includes(reference.reference_id))
+      .map(reference => ({
+        ...reference,
+        dimensions: [...reference.dimensions],
+      })),
     source_story_structure: input.storyStructure,
   }));
+}
+
+export async function loadReferenceSimilarityEvidenceForTrace(input: {
+  repoRoot: string;
+  referenceTrace?: ReferenceTrace[];
+}): Promise<ReferenceSimilarityEvidenceRecord[]> {
+  const evidenceIds = unique(
+    (input.referenceTrace ?? []).flatMap(trace =>
+      trace.similarity_evidence_refs?.map(reference => reference.evidence_id) ?? []),
+  );
+  const settled = await Promise.allSettled(evidenceIds.map(evidenceId =>
+    getReferenceSimilarityEvidence({
+      repoRoot: input.repoRoot,
+      evidenceId,
+    })));
+  return settled.flatMap(result =>
+    result.status === 'fulfilled' ? [result.value] : []);
+}
+
+function similarityEvidenceTrace(
+  evidence: ReferenceSimilarityEvidenceRecord,
+): ReferenceSimilarityEvidenceTrace {
+  const dimensions: ReferenceSimilarityDimension[] = [];
+  if (evidence.observations.excerpts.length > 0) dimensions.push('excerpt');
+  if (evidence.observations.character_profiles.length > 0) {
+    dimensions.push('character_design');
+  }
+  if (evidence.observations.plot_beats.length > 0) {
+    dimensions.push('plot_structure');
+  }
+  if (evidence.observations.shot_sequence.length > 0) {
+    dimensions.push('shot_sequence');
+  }
+  return {
+    evidence_id: evidence.evidence_id,
+    reference_id: evidence.reference_id,
+    payload_sha256: evidence.payload_sha256,
+    input_provenance: evidence.input_provenance,
+    dimensions,
+  };
 }
 
 function uniqueByReferenceId(

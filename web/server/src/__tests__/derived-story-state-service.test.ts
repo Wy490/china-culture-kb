@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryGenerateResult } from '@shared/types.js';
 import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
+import {
+  evaluateReferenceGenerationSafety,
+} from '../services/reference-quality-service.js';
 
 function makeStoryWithStaleLegacySegment(): StoryGenerateResult {
   return {
@@ -100,6 +103,81 @@ describe('derived-story-state-service', () => {
           ],
         },
       },
+    });
+  });
+
+  it('fails closed when traced similarity evidence is unavailable during rebuild', async () => {
+    const story = makeStoryWithStaleLegacySegment();
+    story.reference_trace = [{
+      style_pack_id: 'reference-style-pack-approved',
+      application_status: 'external_prompt_injected',
+      applied_rules: ['用可见行动建立人物选择'],
+      requested_rules: ['用可见行动建立人物选择'],
+      avoid_copying_rules: ['不得复制具体角色、情节与镜头顺序'],
+      source_reference_ids: ['reference-approved'],
+      source_analysis_ids: ['analysis-approved'],
+      source_benchmark_ids: ['benchmark-approved'],
+      source_references: [{
+        reference_id: 'reference-approved',
+        rights_status: 'user_owned',
+        access_scope: 'full_user_supplied',
+        content_fingerprint: 'a'.repeat(64),
+      }],
+      similarity_evidence_refs: [{
+        evidence_id: 'reference-similarity-evidence-missing',
+        reference_id: 'reference-approved',
+        payload_sha256: 'b'.repeat(64),
+        input_provenance: 'operator_submitted',
+        dimensions: ['excerpt'],
+      }],
+      source_story_structure: 'single_event_drama',
+    }];
+
+    await expect(rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+    })).rejects.toMatchObject({
+      name: 'StoryDerivedStateValidationError',
+      story: {
+        reference_safety_report: {
+          status: 'blocked',
+          issues: [
+            expect.objectContaining({
+              issue_code: 'similarity_evidence_provenance_incomplete',
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it('fails closed when a completed baseline comparison cannot reload its baseline story', async () => {
+    const story = makeStoryWithStaleLegacySegment();
+    story.reference_safety_report = {
+      ...evaluateReferenceGenerationSafety({
+        generated_text: story.full_text,
+      }),
+      baseline_comparison: {
+        status: 'completed',
+        baseline_story_id: 'baseline-story-that-does-not-exist-20260724',
+        reference_assisted_story_id: story.storyId,
+        quality_delta: {
+          schema_version: 'story-reference-baseline-quality-delta/v1',
+          baseline_machine_score: 80,
+          reference_assisted_machine_score: 85,
+          aggregate_delta: 5,
+          dimensions: [],
+          same_input_verified: true,
+          machine_comparison_only: true,
+        },
+        comparison_credit_granted: false,
+      },
+    };
+
+    await expect(rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+    })).rejects.toMatchObject({
+      name: 'StoryDerivedStateValidationError',
+      message: expect.stringContaining('baseline-story-that-does-not-exist-20260724'),
     });
   });
 });

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { z } from 'zod';
@@ -9,6 +9,8 @@ import {
   ReferenceAnalysisRecordSchema,
   ReferenceSourceCreateRequestSchema,
   ReferenceSourceRecordSchema,
+  ReferenceSimilarityEvidenceCreateRequestSchema,
+  ReferenceSimilarityEvidenceRecordSchema,
   ReferenceStylePackCreateRequestSchema,
   ReferenceStylePackRecordSchema,
   TextReferenceAnalysisCreateRequestSchema,
@@ -20,6 +22,7 @@ import type {
   ReferenceLibraryDetail,
   ReferenceSourceMediaType,
   ReferenceSourceRecord,
+  ReferenceSimilarityEvidenceRecord,
   ReferenceStylePackRecord,
   TextReferenceAnalysisRecord,
 } from '@shared/types.js';
@@ -28,6 +31,8 @@ const REFERENCE_ID_PATTERN = /^reference-[a-f0-9-]+$/;
 const ANALYSIS_ID_PATTERN = /^analysis-[a-f0-9-]+$/;
 const BENCHMARK_ID_PATTERN = /^benchmark-[a-f0-9-]+$/;
 const STYLE_PACK_ID_PATTERN = /^reference-style-pack-[a-f0-9-]+$/;
+const SIMILARITY_EVIDENCE_ID_PATTERN =
+  /^reference-similarity-evidence-[a-f0-9-]+$/;
 const FILM_MEDIA_TYPES: ReadonlySet<ReferenceSourceMediaType> = new Set([
   'film',
   'episode',
@@ -70,6 +75,10 @@ function benchmarkCardsDirectory(repoRoot: string): string {
 
 function referenceStylePacksDirectory(repoRoot: string): string {
   return path.join(libraryRoot(repoRoot), 'style-packs');
+}
+
+function similarityEvidenceDirectory(repoRoot: string): string {
+  return path.join(libraryRoot(repoRoot), 'similarity-evidence');
 }
 
 function validateReferenceId(referenceId: string): string {
@@ -123,6 +132,56 @@ async function readBenchmarkCardFile(filePath: string): Promise<BenchmarkCard> {
 async function readReferenceStylePackFile(filePath: string): Promise<ReferenceStylePackRecord> {
   const raw = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
   return ReferenceStylePackRecordSchema.parse(raw) as ReferenceStylePackRecord;
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(',')}}`;
+  }
+  if (value === undefined) return 'null';
+  return JSON.stringify(value);
+}
+
+function similarityEvidencePayload(
+  record: Omit<
+    ReferenceSimilarityEvidenceRecord,
+    'schema_version' | 'evidence_id' | 'payload_sha256' | 'created_at'
+  >,
+): unknown {
+  return record;
+}
+
+function similarityEvidenceSha256(value: unknown): string {
+  return createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+async function readSimilarityEvidenceFile(
+  filePath: string,
+): Promise<ReferenceSimilarityEvidenceRecord> {
+  const raw = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
+  const record = ReferenceSimilarityEvidenceRecordSchema.parse(
+    raw,
+  ) as ReferenceSimilarityEvidenceRecord;
+  const payload = similarityEvidencePayload({
+    reference_id: record.reference_id,
+    source_content_fingerprint: record.source_content_fingerprint,
+    input_provenance: record.input_provenance,
+    authorization: record.authorization,
+    observations: record.observations,
+    governance: record.governance,
+  });
+  if (similarityEvidenceSha256(payload) !== record.payload_sha256) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_SIMILARITY_EVIDENCE_INTEGRITY_INVALID',
+      `Reference similarity evidence integrity mismatch: ${record.evidence_id}`,
+    );
+  }
+  return record;
 }
 
 async function readJsonFiles<T>(
@@ -232,7 +291,119 @@ export async function getReferenceLibraryDetail(input: {
 }): Promise<ReferenceLibraryDetail> {
   const source = await getReferenceSource(input);
   const analyses = await listReferenceAnalyses(input);
-  return { source, analyses };
+  const similarityEvidence = await listReferenceSimilarityEvidence(input);
+  return { source, analyses, similarity_evidence: similarityEvidence };
+}
+
+export async function createReferenceSimilarityEvidence(input: {
+  repoRoot: string;
+  referenceId: string;
+  request: unknown;
+  now?: string;
+}): Promise<ReferenceSimilarityEvidenceRecord> {
+  const source = await getReferenceSource(input);
+  const request = ReferenceSimilarityEvidenceCreateRequestSchema.parse(
+    input.request,
+  );
+  if (
+    source.rights_status === 'research_only'
+    || source.rights_status === 'unknown'
+    || source.access_scope === 'metadata_only'
+  ) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_SIMILARITY_EVIDENCE_RIGHTS_INVALID',
+      'Similarity evidence requires user-owned, licensed, or public-domain source material with excerpt or full-user-supplied access',
+    );
+  }
+  if (request.authorization.basis !== source.rights_status) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_SIMILARITY_EVIDENCE_RIGHTS_INVALID',
+      'Similarity evidence authorization basis must match the source rights status',
+    );
+  }
+  if (
+    !source.content_fingerprint
+    || request.source_content_fingerprint !== source.content_fingerprint
+  ) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_SIMILARITY_EVIDENCE_FINGERPRINT_INVALID',
+      'Similarity evidence source fingerprint does not match the immutable reference source record',
+    );
+  }
+  const payload = {
+    reference_id: source.reference_id,
+    source_content_fingerprint: request.source_content_fingerprint,
+    input_provenance: request.input_provenance,
+    authorization: {
+      ...request.authorization,
+      machine_verified: false as const,
+    },
+    observations: request.observations,
+    governance: {
+      prompt_injection_allowed: false as const,
+      knowledge_writeback_allowed: false as const,
+      production_credit_eligible: false as const,
+    },
+  };
+  const record = ReferenceSimilarityEvidenceRecordSchema.parse({
+    schema_version: 'reference-similarity-evidence/v1',
+    evidence_id: `reference-similarity-evidence-${randomUUID()}`,
+    ...payload,
+    payload_sha256: similarityEvidenceSha256(
+      similarityEvidencePayload(payload),
+    ),
+    created_at: input.now ?? new Date().toISOString(),
+  }) as ReferenceSimilarityEvidenceRecord;
+  await atomicWriteJson(
+    path.join(
+      similarityEvidenceDirectory(input.repoRoot),
+      `${record.evidence_id}.json`,
+    ),
+    record,
+  );
+  return record;
+}
+
+export async function getReferenceSimilarityEvidence(input: {
+  repoRoot: string;
+  evidenceId: string;
+}): Promise<ReferenceSimilarityEvidenceRecord> {
+  const evidenceId = validateRecordId({
+    id: input.evidenceId,
+    pattern: SIMILARITY_EVIDENCE_ID_PATTERN,
+    code: 'REFERENCE_SIMILARITY_EVIDENCE_NOT_FOUND',
+    label: 'Reference similarity evidence',
+  });
+  try {
+    return await readSimilarityEvidenceFile(path.join(
+      similarityEvidenceDirectory(input.repoRoot),
+      `${evidenceId}.json`,
+    ));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ReferenceLibraryError(
+        'REFERENCE_SIMILARITY_EVIDENCE_NOT_FOUND',
+        `Reference similarity evidence not found: ${evidenceId}`,
+      );
+    }
+    throw error;
+  }
+}
+
+export async function listReferenceSimilarityEvidence(input: {
+  repoRoot: string;
+  referenceId: string;
+}): Promise<ReferenceSimilarityEvidenceRecord[]> {
+  const referenceId = validateReferenceId(input.referenceId);
+  const records = await readJsonFiles(
+    similarityEvidenceDirectory(input.repoRoot),
+    readSimilarityEvidenceFile,
+  );
+  return records
+    .filter(record => record.reference_id === referenceId)
+    .sort((left, right) =>
+      right.created_at.localeCompare(left.created_at)
+      || left.evidence_id.localeCompare(right.evidence_id));
 }
 
 function approvalFromRequest(

@@ -8,11 +8,13 @@
 import type {
   ReferenceGenerationSafetyFinding,
   ReferenceGenerationSafetyReport,
+  ReferenceSimilarityEvidenceRecord,
   StoryGenerateResult,
   StoryQualityReport,
   ReferenceTrace,
   StoryStructureType,
 } from '@shared/types.js';
+import { buildStoryReferenceBaselineComparison } from './reference-baseline-comparison-service.js';
 
 // ---------------------------------------------------------------------------
 // Reference safety report structure
@@ -38,6 +40,18 @@ export interface ReferenceSafetyInput {
   expected_style_pack_ids?: string[];
   claimed_authorization?: boolean;    // user claims they have rights to "adapt from" a work
   reference_original_sentences?: string[]; // sentences from reference samples (for similarity check)
+  generated_story?: Pick<
+    StoryGenerateResult,
+    | 'full_text'
+    | 'logline'
+    | 'theme'
+    | 'scene_breakdown'
+  > & Partial<Pick<StoryGenerateResult, 'storyId' | 'quality_report'>>;
+  baseline_story?: Pick<
+    StoryGenerateResult,
+    'storyId' | 'quality_report'
+  >;
+  similarity_evidence?: ReferenceSimilarityEvidenceRecord[];
 }
 
 export function buildReferenceSafetyText(
@@ -94,6 +108,10 @@ ReferenceGenerationSafetyReport {
     referenceTraces.flatMap(item => item.source_references ?? []),
   );
   const sourceReferenceIds = sourceReferences.map(source => source.reference_id);
+  const evidenceRefs = uniqueEvidenceRefs(
+    referenceTraces.flatMap(item => item.similarity_evidence_refs ?? []),
+  );
+  const similarityEvidence = input.similarity_evidence ?? [];
   const statuses = unique(
     referenceTraces
       .map(item => item.application_status)
@@ -119,6 +137,21 @@ ReferenceGenerationSafetyReport {
         item.source_references?.some(source => source.reference_id === referenceId))
     )
   );
+  const evidenceProvenanceComplete = evidenceRefs.length === 0 || (
+    evidenceRefs.length === similarityEvidence.length
+    && evidenceRefs.every(reference => {
+      const evidence = similarityEvidence.find(
+        candidate => candidate.evidence_id === reference.evidence_id,
+      );
+      const source = sourceReferences.find(
+        candidate => candidate.reference_id === reference.reference_id,
+      );
+      return evidence?.payload_sha256 === reference.payload_sha256
+        && evidence.reference_id === reference.reference_id
+        && evidence.source_content_fingerprint === source?.content_fingerprint
+        && evidence.input_provenance === reference.input_provenance;
+    })
+  );
   const avoidCopyingConstraintsPresent = !appliedToGeneration || referenceTraces.every(item =>
     item.application_status !== 'external_prompt_injected'
     || (item.avoid_copying_rules?.length ?? 0) > 0
@@ -140,6 +173,14 @@ ReferenceGenerationSafetyReport {
       'blocker',
       'An applied reference style pack has no recorded avoid-copying constraints.',
       sourceReferenceIds,
+    ));
+  }
+  if (!evidenceProvenanceComplete) {
+    issues.push(finding(
+      'similarity_evidence_provenance_incomplete',
+      'blocker',
+      'Similarity evidence is missing or does not match its trace, source fingerprint, or immutable payload hash.',
+      unique(evidenceRefs.map(reference => reference.reference_id)),
     ));
   }
   if (
@@ -190,14 +231,23 @@ ReferenceGenerationSafetyReport {
 
   let exactMatchCount: number | null = null;
   let nearMatchCount: number | null = null;
+  let characterMatchCount: number | null = null;
+  let plotMatchCount: number | null = null;
+  let shotMatchCount: number | null = null;
+  const authorizedExcerpts = similarityEvidence.flatMap(
+    evidence => evidence.observations.excerpts.map(excerpt => excerpt.text),
+  );
+  const referenceSentences = [
+    ...(input.reference_original_sentences ?? []),
+    ...authorizedExcerpts,
+  ];
   if (
     appliedToGeneration
-    && input.reference_original_sentences
-    && input.reference_original_sentences.length > 0
+    && referenceSentences.length > 0
   ) {
     exactMatchCount = 0;
     nearMatchCount = 0;
-    for (const sentence of input.reference_original_sentences) {
+    for (const sentence of referenceSentences) {
       if (sentence.length >= 15 && input.generated_text.includes(sentence)) {
         exactMatchCount += 1;
       } else if (
@@ -225,14 +275,95 @@ ReferenceGenerationSafetyReport {
     }
   }
 
+  if (
+    appliedToGeneration
+    && similarityEvidence.some(
+      evidence => evidence.observations.character_profiles.length > 0,
+    )
+  ) {
+    characterMatchCount = similarityEvidence
+      .flatMap(evidence => evidence.observations.character_profiles)
+      .filter(profile =>
+        markerCoverage(profile.distinctive_markers, input.generated_text) >= 0.75)
+      .length;
+    if (characterMatchCount > 0) {
+      issues.push(finding(
+        'character_design_similarity',
+        'blocker',
+        `Generated story matches ${characterMatchCount} distinctive reference character profile(s).`,
+        sourceReferenceIds,
+      ));
+    }
+  }
+
+  if (
+    appliedToGeneration
+    && input.generated_story
+    && similarityEvidence.some(evidence => evidence.observations.plot_beats.length > 0)
+  ) {
+    const sceneTexts = input.generated_story.scene_breakdown.map(scene => [
+      scene.plot,
+      scene.key_action,
+      scene.conflict,
+      scene.dialogue_or_narration,
+    ].filter(Boolean).join(' '));
+    plotMatchCount = similarityEvidence.filter(evidence =>
+      sequenceMatches(evidence.observations.plot_beats, sceneTexts)).length;
+    if (plotMatchCount > 0) {
+      issues.push(finding(
+        'plot_structure_similarity',
+        'blocker',
+        `Generated story matches ${plotMatchCount} distinctive reference plot sequence(s).`,
+        sourceReferenceIds,
+      ));
+    }
+  }
+
+  if (
+    appliedToGeneration
+    && input.generated_story
+    && similarityEvidence.some(evidence => evidence.observations.shot_sequence.length > 0)
+  ) {
+    const shotTexts = input.generated_story.scene_breakdown.map(scene => [
+      scene.visual_prompt,
+      scene.camera_suggestion,
+      scene.key_action,
+    ].filter(Boolean).join(' '));
+    shotMatchCount = similarityEvidence.filter(evidence =>
+      sequenceMatches(evidence.observations.shot_sequence, shotTexts)).length;
+    if (shotMatchCount > 0) {
+      issues.push(finding(
+        'shot_sequence_similarity',
+        'blocker',
+        `Generated story matches ${shotMatchCount} distinctive reference shot sequence(s).`,
+        sourceReferenceIds,
+      ));
+    }
+  }
+
+  const dimensionCounts = [
+    exactMatchCount,
+    characterMatchCount,
+    plotMatchCount,
+    shotMatchCount,
+  ];
+  const completedDimensionCount = dimensionCounts.filter(
+    count => count !== null,
+  ).length;
   const similarityStatus = !hasReferences
     ? 'not_run_no_reference' as const
     : !appliedToGeneration
       ? 'not_run_reference_not_applied' as const
-      : exactMatchCount === null
+      : completedDimensionCount === 0
         ? 'not_run_no_authorized_source_material' as const
-        : 'partially_completed' as const;
+        : completedDimensionCount === dimensionCounts.length
+          ? 'completed' as const
+          : 'partially_completed' as const;
   const sentenceStatus = exactMatchCount === null ? 'not_run' as const : 'completed' as const;
+  const characterStatus =
+    characterMatchCount === null ? 'not_run' as const : 'completed' as const;
+  const plotStatus = plotMatchCount === null ? 'not_run' as const : 'completed' as const;
+  const shotStatus = shotMatchCount === null ? 'not_run' as const : 'completed' as const;
   const blockedReferenceIds = unique(
     issues.flatMap(issue => issue.reference_ids),
   );
@@ -251,6 +382,7 @@ ReferenceGenerationSafetyReport {
     reference_strength: input.reference_strength ?? null,
     style_pack_ids: stylePackIds,
     source_references: sourceReferences,
+    similarity_evidence_refs: evidenceRefs,
     application: {
       applied_to_generation: appliedToGeneration,
       statuses,
@@ -267,24 +399,38 @@ ReferenceGenerationSafetyReport {
       status: similarityStatus,
       exact_long_sentence: { status: sentenceStatus, match_count: exactMatchCount },
       near_character_overlap: { status: sentenceStatus, match_count: nearMatchCount },
-      character_design: { status: 'not_run', match_count: null },
-      plot_structure: { status: 'not_run', match_count: null },
-      shot_sequence: { status: 'not_run', match_count: null },
+      character_design: { status: characterStatus, match_count: characterMatchCount },
+      plot_structure: { status: plotStatus, match_count: plotMatchCount },
+      shot_sequence: { status: shotStatus, match_count: shotMatchCount },
       similarity_pass_credit_granted: false,
     },
-    baseline_comparison: {
-      status: 'not_run_single_generation',
-      baseline_story_id: null,
-      reference_assisted_story_id: null,
-      quality_delta: null,
-      comparison_credit_granted: false,
-    },
+    baseline_comparison: appliedToGeneration
+      && input.baseline_story
+      && input.generated_story?.storyId
+      ? buildStoryReferenceBaselineComparison({
+          baseline: input.baseline_story,
+          referenceAssisted: {
+            storyId: input.generated_story.storyId,
+            quality_report: input.generated_story.quality_report,
+          },
+        })
+      : {
+          status: 'not_run_single_generation',
+          baseline_story_id: null,
+          reference_assisted_story_id: null,
+          quality_delta: null,
+          comparison_credit_granted: false,
+        },
     issues,
     warnings,
     blocked_reference_ids: blockedReferenceIds,
     machine_validation_only: true,
     human_review_complete: false,
-    real_similarity_check_completed: false,
+    real_similarity_check_completed:
+      similarityStatus === 'completed'
+      && similarityEvidence.length > 0
+      && similarityEvidence.every(evidence =>
+        evidence.input_provenance === 'operator_submitted'),
     real_credit_granted: false,
   };
 }
@@ -294,6 +440,58 @@ function uniqueSourceReferences(
 ): NonNullable<ReferenceTrace['source_references']> {
   const byId = new Map(sources.map(source => [source.reference_id, source]));
   return [...byId.values()].map(source => ({ ...source }));
+}
+
+function uniqueEvidenceRefs(
+  references: NonNullable<ReferenceTrace['similarity_evidence_refs']>,
+): NonNullable<ReferenceTrace['similarity_evidence_refs']> {
+  const byId = new Map(references.map(reference => [
+    reference.evidence_id,
+    reference,
+  ]));
+  return [...byId.values()].map(reference => ({
+    ...reference,
+    dimensions: [...reference.dimensions],
+  }));
+}
+
+function normalizeSimilarityText(value: string): string {
+  return value.toLocaleLowerCase().replace(
+    /[\s，。！？；：、,.!?;:'"“”‘’（）()【】\[\]《》<>—-]+/gu,
+    '',
+  );
+}
+
+function markerCoverage(markers: string[], text: string): number {
+  const normalizedText = normalizeSimilarityText(text);
+  if (markers.length === 0 || normalizedText.length === 0) return 0;
+  const matches = markers.filter(marker =>
+    normalizedText.includes(normalizeSimilarityText(marker))).length;
+  return matches / markers.length;
+}
+
+function sequenceMatches(
+  observations: Array<{
+    order: number;
+    distinctive_markers: string[];
+  }>,
+  generatedUnits: string[],
+): boolean {
+  const ordered = [...observations].sort((left, right) => left.order - right.order);
+  if (ordered.length < 3) return false;
+  let generatedIndex = 0;
+  let matched = 0;
+  for (const observation of ordered) {
+    while (generatedIndex < generatedUnits.length) {
+      const candidate = generatedUnits[generatedIndex];
+      generatedIndex += 1;
+      if (markerCoverage(observation.distinctive_markers, candidate) >= 0.5) {
+        matched += 1;
+        break;
+      }
+    }
+  }
+  return matched / ordered.length >= 0.8;
 }
 
 export function validateReferenceSafety(input: ReferenceSafetyInput): ReferenceSafetyReport {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { storyAgentGenerate } from './story-agent-generate.js';
+import type { StoryAgentGenerateInput } from './story-agent-generate.js';
 
 const originalBaseUrl = process.env.STORY_AGENT_BASE_URL;
 const originalAccessToken = process.env.STORY_AGENT_MCP_ACCESS_TOKEN;
@@ -33,7 +34,7 @@ describe('storyAgentGenerate', () => {
     }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const request = {
+    const request: StoryAgentGenerateInput = {
       domain: 'china_culture',
       entry_name: '屈原投江汨罗——端午节起源',
       original_user_query: '生成一部历史剧情短片',
@@ -43,7 +44,11 @@ describe('storyAgentGenerate', () => {
       auto_repair: true,
       generation_fallback_policy: 'forbid_local_fallback',
       material_readiness_policy: 'require_script_ready',
-    } as const;
+      reference_similarity_evidence_ids: [
+        'reference-similarity-evidence-20260724-a1b2c3d4e5f6',
+      ],
+      reference_baseline_story_id: '20260724-story-baseline-01',
+    };
     const result = await storyAgentGenerate(request);
 
     expect(fetchMock).toHaveBeenCalledOnce();

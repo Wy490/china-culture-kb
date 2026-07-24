@@ -48,6 +48,8 @@ export interface StoryAgentGenerateInput {
   story_structure?: CanonicalStoryStructureType;
   creative_reference_ids?: string[];
   style_pack_ids?: string[];
+  reference_similarity_evidence_ids?: string[];
+  reference_baseline_story_id?: string;
   narrative_pattern_ids?: string[];
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;

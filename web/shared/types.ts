@@ -520,6 +520,61 @@ export interface ReferenceSourceRecord {
   updated_at: string;
 }
 
+export type ReferenceSimilarityDimension =
+  | 'excerpt'
+  | 'character_design'
+  | 'plot_structure'
+  | 'shot_sequence';
+
+export interface ReferenceSimilarityMarkerObservation {
+  observation_id: string;
+  distinctive_markers: string[];
+}
+
+export interface ReferenceSimilarityEvidenceObservations {
+  excerpts: Array<{
+    observation_id: string;
+    source_locator: string;
+    text: string;
+  }>;
+  character_profiles: Array<ReferenceSimilarityMarkerObservation & {
+    label: string;
+  }>;
+  plot_beats: Array<ReferenceSimilarityMarkerObservation & {
+    order: number;
+  }>;
+  shot_sequence: Array<ReferenceSimilarityMarkerObservation & {
+    order: number;
+  }>;
+}
+
+export interface ReferenceSimilarityAuthorization {
+  basis: Extract<
+    ReferenceRightsStatus,
+    'user_owned' | 'licensed' | 'public_domain'
+  >;
+  authorization_reference: string;
+  attested_by: string;
+  attested_at: string;
+  confirmation: 'authorized_similarity_analysis_only';
+  machine_verified: false;
+}
+
+export interface ReferenceSimilarityEvidenceRecord {
+  schema_version: 'reference-similarity-evidence/v1';
+  evidence_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  input_provenance: 'operator_submitted' | 'fixture';
+  authorization: ReferenceSimilarityAuthorization;
+  observations: ReferenceSimilarityEvidenceObservations;
+  payload_sha256: string;
+  created_at: string;
+  governance: ReferenceGovernanceBoundary & {
+    prompt_injection_allowed: false;
+  };
+}
+
 export interface FilmReferenceSequenceBeat {
   start: string;
   end: string;
@@ -603,6 +658,7 @@ export type ReferenceAnalysisRecord =
 export interface ReferenceLibraryDetail {
   source: ReferenceSourceRecord;
   analyses: ReferenceAnalysisRecord[];
+  similarity_evidence: ReferenceSimilarityEvidenceRecord[];
 }
 
 export interface ReferenceGovernanceBoundary {
@@ -858,6 +914,8 @@ export interface StoryGenerateRequest {
   story_structure?: StoryStructureType;
   creative_reference_ids?: string[];
   style_pack_ids?: string[];
+  reference_similarity_evidence_ids?: string[];
+  reference_baseline_story_id?: string;
   narrative_pattern_ids?: NarrativePatternId[];
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;
@@ -7367,6 +7425,7 @@ export interface StoryAgentSeedancePreproductionStoryUnit {
     gears_segments: GearsSegment[];
     cultural_constraints: string[];
     credibility_note: string;
+    reference_safety_report?: ReferenceGenerationSafetyReport;
   };
   script: {
     shot_count: number;
@@ -7407,6 +7466,18 @@ export interface StoryAgentSeedancePreproductionPackage {
     current_asset_mapping_count: number;
     bound_shot_count: number;
     unbound_shot_count: number;
+    reference_safety: {
+      status: 'not_available' | 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';
+      report_count: number;
+      expected_report_count: number;
+      similarity_completed_count: number;
+      real_similarity_completed_count: number;
+      blockers: string[];
+      warnings: string[];
+      machine_validation_only: true;
+      human_review_complete: false;
+      real_credit_granted: false;
+    };
     blockers: string[];
     warnings: string[];
   };
@@ -13146,6 +13217,7 @@ export interface ReferenceTrace {
   source_analysis_ids?: string[];
   source_benchmark_ids?: string[];
   source_references?: ReferenceGenerationSourceTrace[];
+  similarity_evidence_refs?: ReferenceSimilarityEvidenceTrace[];
   source_story_structure: StoryStructureType;
 }
 
@@ -13156,11 +13228,20 @@ export interface ReferenceGenerationSourceTrace {
   content_fingerprint?: string;
 }
 
+export interface ReferenceSimilarityEvidenceTrace {
+  evidence_id: string;
+  reference_id: string;
+  payload_sha256: string;
+  input_provenance: ReferenceSimilarityEvidenceRecord['input_provenance'];
+  dimensions: ReferenceSimilarityDimension[];
+}
+
 export type ReferenceGenerationSimilarityStatus =
   | 'not_run_no_reference'
   | 'not_run_reference_not_applied'
   | 'not_run_no_authorized_source_material'
-  | 'partially_completed';
+  | 'partially_completed'
+  | 'completed';
 
 export interface ReferenceGenerationSimilarityDimension {
   status: 'not_run' | 'completed';
@@ -13175,10 +13256,43 @@ export interface ReferenceGenerationSafetyFinding {
     | 'unauthorized_adaptation_claim'
     | 'forbidden_imitation_language'
     | 'exact_long_sentence_match'
-    | 'near_character_overlap';
+    | 'near_character_overlap'
+    | 'character_design_similarity'
+    | 'plot_structure_similarity'
+    | 'shot_sequence_similarity'
+    | 'similarity_evidence_provenance_incomplete';
   severity: 'blocker' | 'warning';
   message: string;
   reference_ids: string[];
+}
+
+export interface StoryReferenceBaselineQualityDimension {
+  dimension:
+    | 'core_story_checks'
+    | 'genre_score'
+    | 'pattern_score'
+    | 'outline_coverage'
+    | 'family_quality_checks'
+    | 'story_publishable';
+  baseline_score: number;
+  reference_assisted_score: number;
+  delta: number;
+}
+
+export interface StoryReferenceBaselineComparison {
+  status: 'not_run_single_generation' | 'completed';
+  baseline_story_id: string | null;
+  reference_assisted_story_id: string | null;
+  quality_delta: {
+    schema_version: 'story-reference-baseline-quality-delta/v1';
+    baseline_machine_score: number;
+    reference_assisted_machine_score: number;
+    aggregate_delta: number;
+    dimensions: StoryReferenceBaselineQualityDimension[];
+    same_input_verified: true;
+    machine_comparison_only: true;
+  } | null;
+  comparison_credit_granted: false;
 }
 
 export interface ReferenceGenerationSafetyReport {
@@ -13188,6 +13302,7 @@ export interface ReferenceGenerationSafetyReport {
   reference_strength: ReferenceStrength | null;
   style_pack_ids: string[];
   source_references: ReferenceGenerationSourceTrace[];
+  similarity_evidence_refs: ReferenceSimilarityEvidenceTrace[];
   application: {
     applied_to_generation: boolean;
     statuses: NonNullable<ReferenceTrace['application_status']>[];
@@ -13207,19 +13322,13 @@ export interface ReferenceGenerationSafetyReport {
     shot_sequence: ReferenceGenerationSimilarityDimension;
     similarity_pass_credit_granted: false;
   };
-  baseline_comparison: {
-    status: 'not_run_single_generation';
-    baseline_story_id: null;
-    reference_assisted_story_id: null;
-    quality_delta: null;
-    comparison_credit_granted: false;
-  };
+  baseline_comparison: StoryReferenceBaselineComparison;
   issues: ReferenceGenerationSafetyFinding[];
   warnings: ReferenceGenerationSafetyFinding[];
   blocked_reference_ids: string[];
   machine_validation_only: true;
   human_review_complete: false;
-  real_similarity_check_completed: false;
+  real_similarity_check_completed: boolean;
   real_credit_granted: false;
 }
 

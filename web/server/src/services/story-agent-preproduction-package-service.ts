@@ -14,6 +14,7 @@ import type {
   StoryGenerateResult,
   StoryProductionBoard,
   ProfessionalTextPackage,
+  ReferenceGenerationSafetyReport,
 } from '@shared/types.js';
 import { ErrorCodes, fail, success } from '@shared/types.js';
 import { storyGeneratedRoot } from '../platform/story-storage-root.js';
@@ -39,6 +40,10 @@ interface PackageParts {
   expectedStoryUnitCount: number;
   sourceBlockers: string[];
   sourceWarnings: string[];
+  referenceSafetyReports: Array<{
+    storyId: string;
+    report: ReferenceGenerationSafetyReport;
+  }>;
   series?: StoryAgentSeedancePreproductionPackage['series'];
 }
 
@@ -104,6 +109,7 @@ function storyPayload(story: StoryGenerateResult): StoryAgentSeedancePreproducti
     gears_segments: story.gears_segments,
     cultural_constraints: story.cultural_constraints,
     credibility_note: story.credibility_note,
+    reference_safety_report: story.reference_safety_report,
   };
 }
 
@@ -257,6 +263,12 @@ async function buildOrdinaryParts(input: {
         ? ['真人媒体审核尚未全部完成；按当前产品边界不作为功能验收阻塞项。']
         : []),
     ]),
+    referenceSafetyReports: input.story.reference_safety_report
+      ? [{
+          storyId: input.story.storyId,
+          report: input.story.reference_safety_report,
+        }]
+      : [],
   };
 }
 
@@ -292,11 +304,21 @@ async function buildSeriesParts(
   }
   const deliveredAssetIds = new Set(imageAssets.map(asset => asset.asset_id));
   const storyUnits: StoryAgentSeedancePreproductionStoryUnit[] = [];
+  const referenceSafetyReports: PackageParts['referenceSafetyReports'] = [];
   for (const episode of legacy.episodes) {
     const storyResult = await getStory(episode.story_id);
     const professionalTextPackage = storyResult.ok && storyResult.data
       ? professionalTextPackageForStory(storyResult.data)
       : undefined;
+    const referenceSafetyReport = storyResult.ok && storyResult.data
+      ? storyResult.data.reference_safety_report
+      : undefined;
+    if (referenceSafetyReport) {
+      referenceSafetyReports.push({
+        storyId: episode.story_id,
+        report: referenceSafetyReport,
+      });
+    }
     const unitId = `episode-${episode.episode_no}`;
     storyUnits.push({
       unit_id: unitId,
@@ -305,7 +327,10 @@ async function buildSeriesParts(
       story_id: episode.story_id,
       episode_no: episode.episode_no,
       professional_text_package: professionalTextPackage,
-      story: episode.story,
+      story: {
+        ...episode.story,
+        reference_safety_report: referenceSafetyReport,
+      },
       script: episode.script,
       seedance_prompt_package: episode.seedance_prompt_package,
       shot_asset_bindings: episode.script.shots.map(shot => {
@@ -339,11 +364,76 @@ async function buildSeriesParts(
       ? [`仍有 ${legacy.missing_episodes.length} 个故事单元未生成`]
       : [],
     sourceWarnings: legacy.acceptance.warnings,
+    referenceSafetyReports,
     series: {
       project: legacy.project,
       visual_bible: legacy.visual_bible,
       missing_episodes: legacy.missing_episodes,
     },
+  };
+}
+
+function buildReferenceSafetyAcceptance(
+  parts: PackageParts,
+): StoryAgentSeedancePreproductionPackage['acceptance']['reference_safety'] {
+  const reports = parts.referenceSafetyReports;
+  const blockedReports = reports.filter(item => item.report.status === 'blocked');
+  const similarityCompletedCount = reports.filter(item => (
+    item.report.similarity.status === 'completed'
+  )).length;
+  const realSimilarityCompletedCount = reports.filter(item => (
+    item.report.real_similarity_check_completed
+  )).length;
+  const blockers = unique(blockedReports.flatMap(item => {
+    const messages = item.report.issues
+      .filter(issue => issue.severity === 'blocker')
+      .map(issue => `故事 ${item.storyId}：${issue.message}`);
+    return messages.length
+      ? messages
+      : [`故事 ${item.storyId}：引用安全门禁未通过`];
+  }));
+  const warnings = unique([
+    ...reports.flatMap(item => item.report.warnings.map(warning => (
+      `故事 ${item.storyId}：${warning.message}`
+    ))),
+    ...(reports.length < parts.expectedStoryUnitCount
+      ? [`引用安全报告不完整：${reports.length}/${parts.expectedStoryUnitCount}`]
+      : []),
+    ...reports
+      .filter(item => (
+        item.report.status !== 'not_applicable'
+        && item.report.similarity.status !== 'completed'
+      ))
+      .map(item => `故事 ${item.storyId}：真实相似度验证尚未完整执行，不授予相似度通过信用`),
+  ]);
+
+  let status: StoryAgentSeedancePreproductionPackage['acceptance']['reference_safety']['status'];
+  if (blockedReports.length) {
+    status = 'blocked';
+  } else if (!reports.length) {
+    status = 'not_available';
+  } else if (reports.every(item => item.report.status === 'not_applicable')) {
+    status = 'not_applicable';
+  } else if (
+    reports.length === parts.expectedStoryUnitCount
+    && reports.every(item => item.report.status === 'passed')
+  ) {
+    status = 'passed';
+  } else {
+    status = 'passed_with_limits';
+  }
+
+  return {
+    status,
+    report_count: reports.length,
+    expected_report_count: parts.expectedStoryUnitCount,
+    similarity_completed_count: similarityCompletedCount,
+    real_similarity_completed_count: realSimilarityCompletedCount,
+    blockers,
+    warnings,
+    machine_validation_only: true,
+    human_review_complete: false,
+    real_credit_granted: false,
   };
 }
 
@@ -368,8 +458,10 @@ function buildAcceptance(
   const unboundShotCount = bindings.filter(binding => (
     binding.required_asset_ids.length === 0 || binding.missing_asset_ids.length > 0
   )).length;
+  const referenceSafety = buildReferenceSafetyAcceptance(parts);
   const blockers = unique([
     ...parts.sourceBlockers,
+    ...referenceSafety.blockers,
     ...(parts.storyUnits.length !== parts.expectedStoryUnitCount
       ? [`故事单元不完整：${parts.storyUnits.length}/${parts.expectedStoryUnitCount}`]
       : []),
@@ -399,8 +491,12 @@ function buildAcceptance(
     current_asset_mapping_count: currentAssetMappingCount,
     bound_shot_count: Math.max(0, bindings.length - unboundShotCount),
     unbound_shot_count: unboundShotCount,
+    reference_safety: referenceSafety,
     blockers,
-    warnings: parts.sourceWarnings,
+    warnings: unique([
+      ...parts.sourceWarnings,
+      ...referenceSafety.warnings,
+    ]),
   };
 }
 
@@ -417,6 +513,8 @@ function renderMarkdown(
     `- 逐镜脚本：${pkg.acceptance.script_shot_count}`,
     `- Seedance 提示词：${pkg.acceptance.seedance_prompt_shot_count}`,
     `- 已校验图片：${pkg.acceptance.image_asset_count}/${pkg.acceptance.expected_image_asset_count}`,
+    `- 引用安全：${pkg.acceptance.reference_safety.status}`,
+    `- 真实相似度验证：${pkg.acceptance.reference_safety.real_similarity_completed_count}/${pkg.acceptance.reference_safety.expected_report_count}`,
     '',
     '## 产品边界',
     '',

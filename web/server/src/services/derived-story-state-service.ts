@@ -5,6 +5,7 @@ import type {
   StoryGenerateResult,
   StoryQualityReport,
 } from '@shared/types.js';
+import { resolve } from 'node:path';
 import { ensureGearsDeliveryPackage } from './gears-delivery-service.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
 import { enrichStoryQualityReport } from './quality-workflow-service.js';
@@ -18,6 +19,11 @@ import { attachBlueprintScenes } from './story-blueprint-service.js';
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
 import { dispatchProfessionalTextPackageForStory } from './professional-text-dispatch-service.js';
 import { resolveProfessionalEvidenceForStory } from './professional-evidence-resolver-service.js';
+import {
+  loadReferenceSimilarityEvidenceForTrace,
+} from './reference-generation-bridge-service.js';
+import { storyRepositoryRoot } from '../platform/story-storage-root.js';
+import { getStory } from '../platform/story-read-service.js';
 
 export class StoryDerivedStateValidationError extends Error {
   constructor(
@@ -63,13 +69,34 @@ export async function rebuildDerivedStoryState(
     }
   }
 
+  const referenceSimilarityEvidence =
+    await loadReferenceSimilarityEvidenceForTrace({
+      repoRoot: process.env.REFERENCE_LIBRARY_REPO_ROOT?.trim()
+        ? resolve(process.env.REFERENCE_LIBRARY_REPO_ROOT)
+        : storyRepositoryRoot(),
+      referenceTrace: canonicalStory.reference_trace,
+    });
+  const baselineStoryId =
+    canonicalStory.reference_safety_report?.baseline_comparison.baseline_story_id;
+  const baselineStoryResult = baselineStoryId
+    ? await getStory(baselineStoryId)
+    : undefined;
+  if (baselineStoryId && (!baselineStoryResult?.ok || !baselineStoryResult.data)) {
+    throw new StoryDerivedStateValidationError(
+      `Reference baseline story "${baselineStoryId}" is unavailable while rebuilding derived state`,
+      canonicalStory,
+    );
+  }
   const referenceSafety = evaluateReferenceGenerationSafety({
     generated_text: buildReferenceSafetyText(canonicalStory),
+    generated_story: canonicalStory,
     reference_strength:
       canonicalStory.reference_safety_report?.reference_strength ?? undefined,
     reference_trace: canonicalStory.reference_trace ?? [],
     expected_style_pack_ids:
       canonicalStory.reference_safety_report?.style_pack_ids,
+    similarity_evidence: referenceSimilarityEvidence,
+    baseline_story: baselineStoryResult?.data ?? undefined,
   });
   canonicalStory = {
     ...canonicalStory,

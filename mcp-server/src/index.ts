@@ -333,6 +333,20 @@ server.tool(
       .refine(ids => new Set(ids).size === ids.length, 'style_pack_ids must be unique')
       .optional()
       .describe('已批准 Reference Library 风格包 ID；最多 20 个且不可重复'),
+    reference_similarity_evidence_ids: z.array(
+      z.string().regex(/^reference-similarity-evidence-[a-f0-9-]+$/),
+    )
+      .max(20)
+      .refine(
+        ids => new Set(ids).size === ids.length,
+        'reference_similarity_evidence_ids must be unique',
+      )
+      .optional()
+      .describe('已授权、来源指纹绑定的相似度 evidence ID；只用于输出安全检查，不进入生成 prompt'),
+    reference_baseline_story_id: z.string()
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+      .optional()
+      .describe('同输入、同模型且未应用参考风格的已持久化 baseline story ID；只做生成后机器质量对照'),
     narrative_pattern_ids: z.array(z.string()).max(6).optional().describe('叙事模式 ID'),
     reference_strength: z.enum(['light', 'medium', 'strong']).optional().describe('参考强度'),
     genre_strictness: z.enum(['loose', 'balanced', 'strict']).optional().describe('流派严格度'),
