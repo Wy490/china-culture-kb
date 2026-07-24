@@ -1,0 +1,624 @@
+import { createHash } from 'node:crypto';
+import { readFile, realpath } from 'node:fs/promises';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
+import type {
+  ApiResponse,
+  ErrorCode,
+  GenerationType,
+  PresentationStyle,
+  StoryGenerateRequest,
+  StoryGenerateResult,
+  StoryAgentImageGenerationResult,
+  VideoType,
+} from '@shared/types.js';
+import { ErrorCodes, fail, success } from '@shared/types.js';
+import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
+import { getProject } from './project-service.js';
+import {
+  exportStoryAgentImageGenerationRequest,
+  getStoryAgentImageRun,
+  importStoryAgentImageGenerationResult,
+} from './story-agent-image-run-service.js';
+import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
+
+export interface StoryAgent15TypeMatrixCase {
+  video_type: VideoType;
+  generation_type: GenerationType;
+  presentation_style: PresentationStyle;
+  entry_name: string;
+  selected_event: string;
+}
+
+export type StoryAgent15TypeMatrixStageStatus = 'ready' | 'awaiting_imagegen' | 'blocked';
+export type StoryAgent15TypeMatrixFallbackStatus =
+  | 'explicit_local_only'
+  | 'external_model'
+  | 'hidden_fallback';
+
+export interface StoryAgent15TypeMatrixItem {
+  video_type: VideoType;
+  story_id: string;
+  project_id: string;
+  story_title: string;
+  image_run_id: string;
+  image_request_path: string;
+  image_result_path: string;
+  image_run_directory: string;
+  generation_mode?: StoryGenerateResult['generation_mode'];
+  effective_engine?: StoryGenerateResult['effective_engine'];
+  story_status: Extract<StoryAgent15TypeMatrixStageStatus, 'ready' | 'blocked'>;
+  professional_script_status: Extract<StoryAgent15TypeMatrixStageStatus, 'ready' | 'blocked'>;
+  prompt_status: Extract<StoryAgent15TypeMatrixStageStatus, 'ready' | 'blocked'>;
+  image_status: StoryAgent15TypeMatrixStageStatus;
+  preproduction_status: Extract<StoryAgent15TypeMatrixStageStatus, 'ready' | 'blocked'>;
+  fallback_status: StoryAgent15TypeMatrixFallbackStatus;
+  shot_count: number;
+  image_task_count: number;
+  pending_image_task_count: number;
+  delivered_image_count: number;
+  expected_image_count: number;
+  image_request_provider_invoked: false;
+  project_reused: boolean;
+  blockers: string[];
+  preproduction_blockers: string[];
+}
+
+export interface StoryAgent15TypePreproductionMatrixReport {
+  schema_version: 'story-agent-15-type-preproduction-matrix/v1';
+  status: 'ready' | 'awaiting_imagegen' | 'blocked';
+  mode: 'canonical_local_matrix';
+  generated_at: string;
+  boundary: {
+    server_image_provider_invoked: false;
+    codex_imagegen_required: boolean;
+    video_generation_in_scope: false;
+    human_test_required: false;
+  };
+  coverage: {
+    type_count: number;
+    story_ready_count: number;
+    professional_script_ready_count: number;
+    prompt_ready_count: number;
+    image_request_ready_count: number;
+    image_ready_count: number;
+    preproduction_ready_count: number;
+    hidden_fallback_count: number;
+    reused_project_count: number;
+    shot_count: number;
+    image_task_count: number;
+    delivered_image_count: number;
+  };
+  invariants: {
+    every_type_present: boolean;
+    every_story_ready: boolean;
+    every_professional_script_ready: boolean;
+    every_prompt_ready: boolean;
+    every_image_request_ready: boolean;
+    no_hidden_fallback: boolean;
+    unique_projects: boolean;
+  };
+  failed_invariants: string[];
+  items: StoryAgent15TypeMatrixItem[];
+}
+
+export interface PrepareStoryAgent15TypePreproductionMatrixOptions {
+  previous_report?: StoryAgent15TypePreproductionMatrixReport;
+}
+
+export interface StoryAgent15TypeCompositeBoardExecution {
+  run_id: string;
+  output_path: string;
+  provider_asset_id?: string;
+}
+
+export interface StoryAgent15TypeCompositeBoardImportReport {
+  schema_version: 'story-agent-15-type-composite-board-import/v1';
+  status: 'ready';
+  imported_at: string;
+  board_count: number;
+  processed_task_count: number;
+  verified_task_count: number;
+  skipped_idempotent_task_count: number;
+  matrix: StoryAgent15TypePreproductionMatrixReport;
+}
+
+export const STORY_AGENT_15_TYPE_MATRIX_CASES: readonly StoryAgent15TypeMatrixCase[] = [
+  {
+    video_type: 'character_story',
+    generation_type: 'character_story',
+    presentation_style: 'cinematic',
+    entry_name: '周敦颐——理学开山鼻祖',
+    selected_event: '周敦颐拒签冤案并以辞官相争',
+  },
+  {
+    video_type: 'historical_drama',
+    generation_type: 'scene_short',
+    presentation_style: 'cinematic',
+    entry_name: '武昌起义——辛亥革命的第一声枪响',
+    selected_event: '武昌起义提前发动并争夺楚望台军械库',
+  },
+  {
+    video_type: 'legend_story',
+    generation_type: 'character_story',
+    presentation_style: 'ink_style',
+    entry_name: '刘海砍樵——人仙之恋的湖南民间传说',
+    selected_event: '刘海砍樵与人仙相恋的考验',
+  },
+  {
+    video_type: 'children_story',
+    generation_type: 'character_story',
+    presentation_style: 'children_animation',
+    entry_name: '刘海砍樵——人仙之恋的湖南民间传说',
+    selected_event: '刘海砍樵',
+  },
+  {
+    video_type: 'ai_comic_drama',
+    generation_type: 'character_story',
+    presentation_style: 'ai_comic',
+    entry_name: '刘海砍樵——人仙之恋的湖南民间传说',
+    selected_event: '刘海识破胡大姐神异身份',
+  },
+  {
+    video_type: 'culture_promo',
+    generation_type: 'culture_promo',
+    presentation_style: 'voiceover_montage',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '岳麓书院千年文脉',
+  },
+  {
+    video_type: 'heritage_promo',
+    generation_type: 'culture_promo',
+    presentation_style: 'documentary',
+    entry_name: '湘绣——中国四大名绣之一',
+    selected_event: '湘绣制作技艺',
+  },
+  {
+    video_type: 'city_brand_promo',
+    generation_type: 'culture_promo',
+    presentation_style: 'social_media_fastcut',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '长沙岳麓书院文脉与当代生活',
+  },
+  {
+    video_type: 'social_short',
+    generation_type: 'culture_promo',
+    presentation_style: 'social_media_fastcut',
+    entry_name: '湘绣——中国四大名绣之一',
+    selected_event: '一根湘绣丝线为什么要劈成多股',
+  },
+  {
+    video_type: 'documentary_short',
+    generation_type: 'culture_promo',
+    presentation_style: 'documentary',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '朱张会讲',
+  },
+  {
+    video_type: 'explainer_video',
+    generation_type: 'culture_promo',
+    presentation_style: 'host_narration',
+    entry_name: '张家界武陵源——3.8亿年雕琢的世界自然遗产',
+    selected_event: '石英砂岩峰林如何形成',
+  },
+  {
+    video_type: 'lecture_video',
+    generation_type: 'culture_promo',
+    presentation_style: 'host_narration',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '朱张会讲如何体现开放治学精神',
+  },
+  {
+    video_type: 'education_training',
+    generation_type: 'culture_promo',
+    presentation_style: 'host_narration',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '认识岳麓书院的历史层次',
+  },
+  {
+    video_type: 'scene_short',
+    generation_type: 'scene_short',
+    presentation_style: 'cinematic',
+    entry_name: '岳麓书院——千年学府弦歌不绝',
+    selected_event: '岳麓书院空间导览',
+  },
+  {
+    video_type: 'landscape_mood',
+    generation_type: 'scene_short',
+    presentation_style: 'ink_style',
+    entry_name: '张家界武陵源——3.8亿年雕琢的世界自然遗产',
+    selected_event: '武陵源峰林云海',
+  },
+] as const;
+
+function normalizeErrorCode(code?: string): ErrorCode {
+  return Object.values(ErrorCodes).includes(code as ErrorCode)
+    ? code as ErrorCode
+    : ErrorCodes.INTERNAL_ERROR;
+}
+
+function generationRequest(item: StoryAgent15TypeMatrixCase): StoryGenerateRequest {
+  return {
+    entry_name: item.entry_name,
+    generation_type: item.generation_type,
+    video_type: item.video_type,
+    selected_event: item.selected_event,
+    target_video_duration: '1分钟',
+    presentation_style: item.presentation_style,
+    output_gears_segments: true,
+    auto_repair: true,
+    source_material_mode: 'generate_from_knowledge',
+  };
+}
+
+function fallbackStatus(story: StoryGenerateResult): StoryAgent15TypeMatrixFallbackStatus {
+  if (
+    story.generation_used_fallback
+    || story.generation_mode === 'local_fallback'
+    || story.effective_engine === 'local_fallback'
+  ) return 'hidden_fallback';
+  return story.generation_mode === 'local_only'
+    ? 'explicit_local_only'
+    : 'external_model';
+}
+
+function storyReady(story: StoryGenerateResult): boolean {
+  return Boolean(
+    story.full_text.trim()
+    && story.scene_breakdown.length > 0
+    && story.gears_segments.length === story.scene_breakdown.length,
+  );
+}
+
+function professionalScriptReady(story: StoryGenerateResult): boolean {
+  const professional = story.professional_text_package;
+  if (!professional || !professional.full_text.trim()) return false;
+  const machineRepairableHardGates = professional.quality_report.hard_gate_failures
+    .filter(gate => !gate.startsWith('interview_consent_missing:'));
+  return machineRepairableHardGates.length === 0
+    && professional.scene_breakdown.length === story.scene_breakdown.length;
+}
+
+async function resolveStory(input: {
+  item: StoryAgent15TypeMatrixCase;
+  previous?: StoryAgent15TypeMatrixItem;
+}): Promise<ApiResponse<{ story: StoryGenerateResult; reused: boolean }>> {
+  if (input.previous?.project_id) {
+    const previousProject = await getProject(input.previous.project_id);
+    if (
+      previousProject.ok
+      && previousProject.data
+      && previousProject.data.current_story.video_type === input.item.video_type
+      && previousProject.data.current_story.source_entry === input.item.entry_name
+    ) {
+      return success({
+        story: previousProject.data.current_story,
+        reused: true,
+      });
+    }
+  }
+  const generated = await storyAgentDomainRegistry
+    .require('china_culture')
+    .generateStory(generationRequest(input.item));
+  if (!generated.ok || !generated.data) {
+    return fail(
+      normalizeErrorCode(generated.error?.code),
+      generated.error?.message ?? `Failed to generate ${input.item.video_type}`,
+      generated.error?.details,
+    );
+  }
+  return success({ story: generated.data, reused: false });
+}
+
+function reportStatus(input: {
+  failedInvariants: string[];
+  preproductionReadyCount: number;
+  typeCount: number;
+}): StoryAgent15TypePreproductionMatrixReport['status'] {
+  if (input.failedInvariants.length > 0) return 'blocked';
+  return input.preproductionReadyCount === input.typeCount
+    ? 'ready'
+    : 'awaiting_imagegen';
+}
+
+export async function prepareStoryAgent15TypePreproductionMatrix(
+  options: PrepareStoryAgent15TypePreproductionMatrixOptions = {},
+): Promise<ApiResponse<StoryAgent15TypePreproductionMatrixReport>> {
+  const generatedAt = new Date().toISOString();
+  const previousByType = new Map(
+    (options.previous_report?.items ?? []).map(item => [item.video_type, item]),
+  );
+  const items: StoryAgent15TypeMatrixItem[] = [];
+
+  for (const matrixCase of STORY_AGENT_15_TYPE_MATRIX_CASES) {
+    const storyResult = await resolveStory({
+      item: matrixCase,
+      previous: previousByType.get(matrixCase.video_type),
+    });
+    if (!storyResult.ok || !storyResult.data) {
+      return fail(
+        normalizeErrorCode(storyResult.error?.code),
+        storyResult.error?.message ?? `Failed to resolve ${matrixCase.video_type}`,
+        storyResult.error?.details,
+      );
+    }
+    const { story, reused } = storyResult.data;
+    if (!story.project_id) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `${matrixCase.video_type} generation did not persist a project_id`,
+      );
+    }
+    const imageRunResult = await exportStoryAgentImageGenerationRequest({
+      project_id: story.project_id,
+    });
+    if (!imageRunResult.ok || !imageRunResult.data) {
+      return fail(
+        normalizeErrorCode(imageRunResult.error?.code),
+        imageRunResult.error?.message
+          ?? `${matrixCase.video_type} image request export failed`,
+        imageRunResult.error?.details,
+      );
+    }
+    const preproductionResult = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: story.project_id,
+    });
+    if (!preproductionResult.ok || !preproductionResult.data) {
+      return fail(
+        normalizeErrorCode(preproductionResult.error?.code),
+        preproductionResult.error?.message
+          ?? `${matrixCase.video_type} preproduction export failed`,
+        preproductionResult.error?.details,
+      );
+    }
+    const imageRun = imageRunResult.data;
+    const preproduction = preproductionResult.data;
+    const allShots = preproduction.story_units.flatMap(unit => unit.script.shots);
+    const readyStory = storyReady(story);
+    const readyProfessional = professionalScriptReady(story);
+    const readyPrompts = allShots.length > 0 && allShots.every(shot => (
+      shot.script_text.trim() && shot.seedance_prompt.trim()
+    ));
+    const blockers = [
+      ...(readyStory ? [] : ['story_not_ready']),
+      ...(readyProfessional ? [] : ['professional_script_not_ready']),
+      ...(readyPrompts ? [] : ['seedance_prompt_not_ready']),
+      ...(imageRun.request.task_count > 0 ? [] : ['image_request_empty']),
+      ...(fallbackStatus(story) === 'hidden_fallback' ? ['hidden_generation_fallback'] : []),
+    ];
+    items.push({
+      video_type: matrixCase.video_type,
+      story_id: story.storyId,
+      project_id: story.project_id,
+      story_title: story.title,
+      image_run_id: imageRun.run_id,
+      image_request_path: imageRun.request_path,
+      image_result_path: imageRun.result_path,
+      image_run_directory: imageRun.request.run_directory,
+      generation_mode: story.generation_mode,
+      effective_engine: story.effective_engine,
+      story_status: readyStory ? 'ready' : 'blocked',
+      professional_script_status: readyProfessional ? 'ready' : 'blocked',
+      prompt_status: readyPrompts ? 'ready' : 'blocked',
+      image_status: imageRun.status === 'complete'
+        ? 'ready'
+        : imageRun.status === 'blocked'
+          ? 'blocked'
+          : 'awaiting_imagegen',
+      preproduction_status: preproduction.acceptance.status,
+      fallback_status: fallbackStatus(story),
+      shot_count: allShots.length,
+      image_task_count: imageRun.request.task_count,
+      pending_image_task_count: imageRun.summary.awaiting_imagegen_count
+        + imageRun.summary.failed_retryable_count,
+      delivered_image_count: preproduction.acceptance.image_asset_count,
+      expected_image_count: preproduction.acceptance.expected_image_asset_count,
+      image_request_provider_invoked: imageRun.request.provider_invoked,
+      project_reused: reused,
+      blockers,
+      preproduction_blockers: preproduction.acceptance.blockers,
+    });
+  }
+
+  const videoTypes = new Set(items.map(item => item.video_type));
+  const projectIds = new Set(items.map(item => item.project_id));
+  const invariants: StoryAgent15TypePreproductionMatrixReport['invariants'] = {
+    every_type_present: videoTypes.size === STORY_AGENT_15_TYPE_MATRIX_CASES.length,
+    every_story_ready: items.every(item => item.story_status === 'ready'),
+    every_professional_script_ready: items.every(
+      item => item.professional_script_status === 'ready',
+    ),
+    every_prompt_ready: items.every(item => item.prompt_status === 'ready'),
+    every_image_request_ready: items.every(item => item.image_task_count > 0),
+    no_hidden_fallback: items.every(item => item.fallback_status !== 'hidden_fallback'),
+    unique_projects: projectIds.size === items.length,
+  };
+  const failedInvariants = Object.entries(invariants)
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+  const coverage: StoryAgent15TypePreproductionMatrixReport['coverage'] = {
+    type_count: items.length,
+    story_ready_count: items.filter(item => item.story_status === 'ready').length,
+    professional_script_ready_count: items.filter(
+      item => item.professional_script_status === 'ready',
+    ).length,
+    prompt_ready_count: items.filter(item => item.prompt_status === 'ready').length,
+    image_request_ready_count: items.filter(item => item.image_task_count > 0).length,
+    image_ready_count: items.filter(item => item.image_status === 'ready').length,
+    preproduction_ready_count: items.filter(
+      item => item.preproduction_status === 'ready',
+    ).length,
+    hidden_fallback_count: items.filter(
+      item => item.fallback_status === 'hidden_fallback',
+    ).length,
+    reused_project_count: items.filter(item => item.project_reused).length,
+    shot_count: items.reduce((sum, item) => sum + item.shot_count, 0),
+    image_task_count: items.reduce((sum, item) => sum + item.image_task_count, 0),
+    delivered_image_count: items.reduce(
+      (sum, item) => sum + item.delivered_image_count,
+      0,
+    ),
+  };
+  return success({
+    schema_version: 'story-agent-15-type-preproduction-matrix/v1',
+    status: reportStatus({
+      failedInvariants,
+      preproductionReadyCount: coverage.preproduction_ready_count,
+      typeCount: coverage.type_count,
+    }),
+    mode: 'canonical_local_matrix',
+    generated_at: generatedAt,
+    boundary: {
+      server_image_provider_invoked: false,
+      codex_imagegen_required: coverage.preproduction_ready_count !== coverage.type_count,
+      video_generation_in_scope: false,
+      human_test_required: false,
+    },
+    coverage,
+    invariants,
+    failed_invariants: failedInvariants,
+    items,
+  });
+}
+
+export async function importStoryAgent15TypeCompositeBoards(input: {
+  matrix: StoryAgent15TypePreproductionMatrixReport;
+  executions: StoryAgent15TypeCompositeBoardExecution[];
+}): Promise<ApiResponse<StoryAgent15TypeCompositeBoardImportReport>> {
+  const executionByRunId = new Map(
+    input.executions.map(execution => [execution.run_id, execution]),
+  );
+  if (
+    input.executions.length !== input.matrix.items.length
+    || executionByRunId.size !== input.matrix.items.length
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'Exactly one composite board execution is required for every matrix image run',
+    );
+  }
+
+  let processedTaskCount = 0;
+  let verifiedTaskCount = 0;
+  let skippedIdempotentTaskCount = 0;
+  const importedAt = new Date().toISOString();
+  for (const matrixItem of input.matrix.items) {
+    const execution = executionByRunId.get(matrixItem.image_run_id);
+    if (!execution) {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        `Composite board execution is missing for "${matrixItem.image_run_id}"`,
+      );
+    }
+    const runResult = await getStoryAgentImageRun(matrixItem.image_run_id);
+    if (!runResult.ok || !runResult.data) {
+      return fail(
+        normalizeErrorCode(runResult.error?.code),
+        runResult.error?.message ?? `Image run "${matrixItem.image_run_id}" not found`,
+      );
+    }
+    const run = runResult.data;
+    const outputFilePath = resolve(run.request.run_directory, execution.output_path);
+    const outputRoot = resolve(run.request.run_directory, 'outputs');
+    let bytes: Buffer;
+    try {
+      const [realOutputRoot, realOutputFilePath] = await Promise.all([
+        realpath(outputRoot),
+        realpath(outputFilePath),
+      ]);
+      const outputRelation = relative(realOutputRoot, realOutputFilePath);
+      if (
+        !outputRelation
+        || outputRelation.startsWith('..')
+        || isAbsolute(outputRelation)
+      ) {
+        return fail(
+          ErrorCodes.VALIDATION_ERROR,
+          `Composite board output must stay beneath the run outputs directory for "${matrixItem.image_run_id}"`,
+        );
+      }
+      bytes = await readFile(realOutputFilePath);
+    } catch {
+      return fail(
+        ErrorCodes.VALIDATION_ERROR,
+        `Composite board output does not exist for "${matrixItem.image_run_id}"`,
+      );
+    }
+    const contentSha256 = createHash('sha256').update(bytes).digest('hex');
+    const result: StoryAgentImageGenerationResult = {
+      schema_version: 'image-generation-result/v1',
+      run_id: run.run_id,
+      request_sha256: run.request.request_sha256,
+      completed_at: importedAt,
+      items: run.request.tasks.map(task => ({
+        task_id: task.task_id,
+        status: 'generated',
+        output_path: execution.output_path,
+        mime_type: 'image/png',
+        content_sha256: contentSha256,
+        prompt_sha256: task.prompt_sha256,
+        provider: 'openai_imagegen',
+        provider_asset_id: execution.provider_asset_id,
+        model: 'gpt-image-2',
+      })),
+    };
+    const imported = await importStoryAgentImageGenerationResult(run.run_id, result);
+    if (!imported.ok || !imported.data) {
+      return fail(
+        normalizeErrorCode(imported.error?.code),
+        imported.error?.message ?? `Failed to import "${basename(outputFilePath)}"`,
+        imported.error?.details,
+      );
+    }
+    if (imported.data.failed_task_count > 0) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `Composite board import left ${imported.data.failed_task_count} failed tasks for "${run.run_id}"`,
+      );
+    }
+    if (imported.data.verified_task_count !== result.items.length) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        `Composite board import verified ${imported.data.verified_task_count}/${result.items.length} tasks for "${run.run_id}"`,
+      );
+    }
+    processedTaskCount += imported.data.processed_item_count;
+    verifiedTaskCount += imported.data.verified_task_count;
+    skippedIdempotentTaskCount += imported.data.skipped_idempotent_task_count;
+  }
+
+  const refreshed = await prepareStoryAgent15TypePreproductionMatrix({
+    previous_report: input.matrix,
+  });
+  if (!refreshed.ok || !refreshed.data) {
+    return fail(
+      normalizeErrorCode(refreshed.error?.code),
+      refreshed.error?.message ?? 'Failed to refresh the 15-type matrix after image import',
+      refreshed.error?.details,
+    );
+  }
+  if (refreshed.data.status !== 'ready') {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `15-type matrix remained "${refreshed.data.status}" after composite board import`,
+      {
+        failed_invariants: refreshed.data.failed_invariants,
+        incomplete_types: refreshed.data.items
+          .filter(item => item.preproduction_status !== 'ready')
+          .map(item => ({
+            video_type: item.video_type,
+            blockers: item.preproduction_blockers,
+          })),
+      },
+    );
+  }
+  return success({
+    schema_version: 'story-agent-15-type-composite-board-import/v1',
+    status: 'ready',
+    imported_at: importedAt,
+    board_count: input.executions.length,
+    processed_task_count: processedTaskCount,
+    verified_task_count: verifiedTaskCount,
+    skipped_idempotent_task_count: skippedIdempotentTaskCount,
+    matrix: refreshed.data,
+  });
+}

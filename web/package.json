@@ -24,6 +24,8 @@
     "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --",
     "smoke:story-agent-cross-seed-images": "npm run smoke:story-agent-cross-seed-images -w server --",
     "smoke:story-agent-seedance-preproduction": "npm run smoke:story-agent-seedance-preproduction -w server --",
+    "smoke:story-agent-15-type-preproduction": "npm run smoke:story-agent-15-type-preproduction -w server --",
+    "smoke:story-agent-15-type-import-images": "npm run smoke:story-agent-15-type-import-images -w server --",
     "smoke:story-agent-persistent-lifecycle": "npm run smoke:story-agent-persistent-lifecycle -w server --"
   },
   "devDependencies": {

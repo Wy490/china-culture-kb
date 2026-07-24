@@ -165,9 +165,19 @@ async function buildOrdinaryRequestTasks(input: {
     );
   }
   const deliveredAssetIds = new Set(input.preproduction.image_assets.map(asset => asset.asset_id));
+  const requiredImageAssetIds = new Set(
+    boardResult.data.shot_units.flatMap(shot => (
+      shot.seedance_asset_slots
+        .filter(slot => slot.required && slot.modality === 'image')
+        .map(slot => slot.asset_id)
+    )),
+  );
   const storyId = detailResult.data.current_story.storyId;
   const tasks = boardResult.data.image_asset_job_plan.requirements
-    .filter(requirement => requirement.source_shot_ids.length > 0)
+    .filter(requirement => (
+      requirement.source_shot_ids.length > 0
+      && requiredImageAssetIds.has(requirement.asset_id)
+    ))
     .map(requirement => {
       const promptHash = promptSha256(requirement.prompt, requirement.negative_constraints);
       const id = taskId({
