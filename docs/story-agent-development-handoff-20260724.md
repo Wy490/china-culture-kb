@@ -6,6 +6,7 @@
 > P0-E2 功能基线提交：`5bd406b9 feat(story-agent): enforce strict generation policies`
 > P1-A1 功能基线提交：`226e5e34 feat(story-agent): bridge approved reference styles`
 > P1-A2a 功能基线提交：`903f5592 feat(story-agent): gate referenced story outputs`
+> P1-A2b 功能基线提交：`adc54a49 feat(story-agent): verify authorized reference similarity`
 > 上一份研究与长周期开发记录：`docs/story-agent-film-text-benchmark-development-handoff-20260723.md`
 
 ## 0. 下一对话先读这里
@@ -38,7 +39,7 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 当前系统已经具备较完整的结构化 Story Agent 内核，并且 AI 漫剧系列的“故事—脚本镜头—Seedance 提示词—真实图片—逐镜引用—交付包”已经跑通。
 
-15×1 canonical、15×3 本地稳定性/恢复矩阵和 P0-E2 外部 command adapter record-replay 可靠性矩阵均已跑通。P0-E2 对 15 类完成了故事、专业脚本、Seedance 提示词、图片绑定和前置制作包的同等级全链路验收，并证明资料缺失、资料冲突、外部超时和无效输出会在严格策略下硬失败。P1-A1 已将 approved/audited Reference Library style pack 接入 canonical 外部 prompt，并形成 source/analysis/benchmark/style-pack 全链路 trace。P1-A2a 已在最终输出持久化前和 derived-state rebuild 接入机器可读引用安全报告与 fail-closed 门禁。P1-A2b 进一步完成合法用户证据 manifest、四维相似度检测、显式同输入 baseline 对照和 preproduction 独立验收。当前最大问题已经转为真实外部 Provider 凭据验收、真实 operator evidence / baseline 样本运行、自动参考分析任务、不同素材视觉资产压力，以及更高层统一 StoryAgentRun。
+15×1 canonical、15×3 本地稳定性/恢复矩阵和 P0-E2 外部 command adapter record-replay 可靠性矩阵均已跑通。P0-E2 对 15 类完成了故事、专业脚本、Seedance 提示词、图片绑定和前置制作包的同等级全链路验收，并证明资料缺失、资料冲突、外部超时和无效输出会在严格策略下硬失败。P1-A1 已将 approved/audited Reference Library style pack 接入 canonical 外部 prompt，并形成 source/analysis/benchmark/style-pack 全链路 trace。P1-A2a 已在最终输出持久化前和 derived-state rebuild 接入机器可读引用安全报告与 fail-closed 门禁。P1-A2b 进一步完成合法用户证据 manifest、四维相似度检测、显式同输入 baseline 对照和 preproduction 独立验收。P1-A2c 已补上 `reference-analysis-task/v1` 的 Codex/operator 任务账本与幂等 evidence 提交入口。当前最大问题已经转为真实外部 Provider 凭据验收、真实 operator evidence / baseline 样本运行、Reference Library UI、不同素材视觉资产压力，以及更高层统一 StoryAgentRun。
 
 可用两个口径理解当前距离：
 
@@ -280,8 +281,8 @@ web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproductio
 截至 P1-A2b 合法证据、多维门禁与 baseline 对照工作树：
 
 ```text
-服务端全量：169 files passed，1 skipped
-测试：1449 passed，2 skipped
+服务端全量：170 files passed，1 skipped
+测试：1451 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
@@ -623,12 +624,22 @@ P1-A2b 已完成：
 - baseline delta 是机器指标比较，`machine_comparison_only=true`、`comparison_credit_granted=false`；
 - record-replay fixture 只验证调用合同与门禁，不算真实 Provider 或真实相似度证据。
 
-P1-A2c 下一步：
+P1-A2c 当前进展：
 
 1. 用真实 operator-submitted 合法 evidence 跑至少一组全维通过与一组阻断样本；
 2. 用真实外部 Provider 对同一输入先生成 reference-free baseline，再生成 reference-assisted 版本并记录 delta；
-3. 新增 `reference-analysis-task-service.ts`，让 Codex/operator 按 manifest 提交结构化观察；
+3. [x] 新增 `reference-analysis-task-service.ts` 与 `reference-analysis-task/v1`，让 Codex/operator 按 source-bound manifest 提交结构化观察；
 4. 建设 Reference Library 的录入、审核、evidence 与对照 UI。
+
+Analysis Task 已有边界：
+
+- 创建时重验 source rights、access scope、content fingerprint 与 authorization basis；
+- manifest 明确 `server_download_allowed=false`、`source_material_transport=out_of_band_user_authorized`；
+- task 只保存 submission/observations SHA-256 和 evidence 引用，不复制观察正文；
+- submission 固定为 `operator_submitted`，必须精确覆盖请求维度；
+- 相同 submission key + observations 可幂等重放；不同提交返回 conflict；
+- processing 状态可恢复，evidence 反向记录 `analysis_task_id`，任务完成后保存 evidence ID/hash；
+- fixture、授权声明与机器完整性验证仍不授予人工或 production credit。
 
 ### 3.8 P1：缺少面向 Agent 的统一 run 与 MCP 操作面
 
@@ -921,7 +932,7 @@ web/server/src/__tests__/reference-generation-bridge.test.ts
 7. [x] 输出机器可读报告，并把 `not_run` / no-credit 边界传入 professional package；
 8. [x] 支持显式同输入、同类型/结构/模型的 baseline 与 reference-assisted 机器质量对照；
 9. [x] 完成合法不可变 evidence manifest 与角色/情节/镜头序列相似度；
-10. [ ] 新增 `reference-analysis-task-service.ts`，让 Codex/operator 可按 manifest 提交结构化观察。
+10. [x] 新增 `reference-analysis-task-service.ts`，让 Codex/operator 可按 manifest 幂等提交结构化观察。
 
 原始视频、小说和剧本不应由服务器擅自下载。可以像图片生成一样建立 Codex 可执行的分析任务 manifest：Codex 通过用户有权访问的文件或页面完成观察，再提交符合 schema 的结构化分析结果。
 
@@ -1002,7 +1013,7 @@ mcp-server/src/tools/generate-script.ts
 
 ### 7.3 从 P0-E3 或 P1-A2c 开始
 
-P0-A、P0-B、P0-C、P0-D、P0-E1、P0-E2、P1-A1、P1-A2a 和 P1-A2b 已完成。不要再调查视频、后期或真人测试，也不要重复开发已经证明的本地恢复、record-replay、strict fallback、approved style-pack prompt/trace 桥接、合法 evidence、多维相似度或 baseline 合同。
+P0-A、P0-B、P0-C、P0-D、P0-E1、P0-E2、P1-A1、P1-A2a、P1-A2b 和 P1-A2c task contract 已完成。不要再调查视频、后期或真人测试，也不要重复开发已经证明的本地恢复、record-replay、strict fallback、approved style-pack prompt/trace 桥接、合法 evidence、多维相似度、baseline 或 analysis-task 合同。
 
 若当前环境具备真实外部 Provider 凭据，优先执行 P0-E3：
 
@@ -1014,7 +1025,7 @@ real external provider
   → no fixture or local fallback counted as real provider success
 ```
 
-若没有凭据，不要伪造实跑，直接进入 P1-A2c：实现 reference analysis task manifest/UI，或在用户提供合法资料后运行 operator-submitted evidence 的真实四维门禁。没有真实外部 Provider 时不要把 fixture baseline 写成真实对照。
+若没有凭据，不要伪造实跑，直接进入 P1-A2c 后续：建设 Reference Library task/evidence UI，或在用户提供合法资料后通过现有 manifest 运行 operator-submitted evidence 的真实四维门禁。没有真实外部 Provider 时不要把 fixture baseline 写成真实对照。
 
 ### 7.4 验证命令
 
@@ -1053,8 +1064,8 @@ smoke:story-agent-persistent-lifecycle
 ```text
 15 类型 dispatcher / canonical generation / project persistence：通过
 professional dispatcher 聚焦测试：4 项通过
-服务端全量：169 files passed，1 skipped
-测试：1449 passed，2 skipped
+服务端全量：170 files passed，1 skipped
+测试：1451 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
 MCP 全量：93 files / 495 tests passed
@@ -1084,6 +1095,8 @@ P1-A2b similarity：excerpt / character / plot / shot 四维完成；fixture 明
 P1-A2b baseline：`reference_baseline_story_id` 严格同输入/类型/结构/模型且 baseline reference-free；输出透明机器 delta/no-credit
 P1-A2b preproduction：`acceptance.reference_safety` 独立输出并对 blocked 报告 fail closed
 P1-A2b regression：P0-E2 15/15 record-replay 全链路 ready；strict gates 全 blocked；0 real provider calls
+P1-A2c task：`reference-analysis-task/v1`；source/fingerprint/authorization 绑定、维度精确覆盖、processing 恢复与 submission-key 幂等
+P1-A2c evidence：task → `reference-similarity-evidence/v1` 反向 trace；任务账本不复制观察正文
 ```
 
 ## 8. 当前权威数据与注意事项
@@ -1152,7 +1165,7 @@ Codex imagegen 是对话工具，不是仓库服务器依赖。下一开发者�
 故事 → 专业脚本 → Seedance 提示词 → Codex 图片资产 → 前置制作交付包。
 不要生成视频，不要推进回调、剪辑、声音、字幕或成片，不要把真人测试和 production credit 当作当前阻塞项。
 
-P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等、P0-E2 资料严格门禁和外部 record-replay/fallback-forbidden 矩阵、P1-A1 approved Reference Library style-pack → canonical prompt → complete reference_trace 桥接、P1-A2a 最终输出机器引用安全报告/门禁/专业文本结论传递、P1-A2b 合法不可变 evidence/四维相似度/显式 baseline 对照/preproduction 独立验收均已完成。
+P0-A professional dispatcher/evidence resolver、P0-B 通用 preproduction package、P0-C image-generation request/result/run 与断点续跑、P0-D 15×1 真实图片全链路矩阵、P0-E1 本地 15×3 输入/图片恢复与幂等、P0-E2 资料严格门禁和外部 record-replay/fallback-forbidden 矩阵、P1-A1 approved Reference Library style-pack → canonical prompt → complete reference_trace 桥接、P1-A2a 最终输出机器引用安全报告/门禁/专业文本结论传递、P1-A2b 合法不可变 evidence/四维相似度/显式 baseline 对照/preproduction 独立验收、P1-A2c source-bound analysis task manifest/幂等 evidence 提交均已完成。
 
-若具备真实外部 Provider 凭据，从 P0-E3 开始做分层真实 Provider 验收，并把 live external、record-replay fixture 和 local fallback 三种 provenance 严格分开。若同时有用户合法提供的参考材料，则按 `reference-similarity-evidence/v1` 提交 operator evidence，先生成 reference-free baseline，再用 `reference_baseline_story_id` 执行 reference-assisted 对照。若没有凭据或合法材料，不要伪造实跑，进入 P1-A2c 的 reference analysis task manifest/UI 或更高层统一 StoryAgentRun。不得把 fixture、not_run 维度或 machine comparison 写成真实/人工通过。
+若具备真实外部 Provider 凭据，从 P0-E3 开始做分层真实 Provider 验收，并把 live external、record-replay fixture 和 local fallback 三种 provenance 严格分开。若同时有用户合法提供的参考材料，则创建 `reference-analysis-task/v1`，由 Codex/operator 提交 `reference-similarity-evidence/v1`，先生成 reference-free baseline，再用 `reference_baseline_story_id` 执行 reference-assisted 对照。若没有凭据或合法材料，不要伪造实跑，进入 Reference Library UI 或更高层统一 StoryAgentRun。不得把 fixture、not_run 维度或 machine comparison 写成真实/人工通过。
 ```

@@ -563,6 +563,7 @@ export interface ReferenceSimilarityAuthorization {
 export interface ReferenceSimilarityEvidenceRecord {
   schema_version: 'reference-similarity-evidence/v1';
   evidence_id: string;
+  analysis_task_id?: string;
   reference_id: string;
   source_content_fingerprint: string;
   input_provenance: 'operator_submitted' | 'fixture';
@@ -573,6 +574,58 @@ export interface ReferenceSimilarityEvidenceRecord {
   governance: ReferenceGovernanceBoundary & {
     prompt_injection_allowed: false;
   };
+}
+
+export type ReferenceAnalysisTaskStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed';
+
+export interface ReferenceAnalysisTaskRecord {
+  schema_version: 'reference-analysis-task/v1';
+  task_id: string;
+  reference_id: string;
+  source_snapshot: {
+    title: string;
+    media_type: ReferenceSourceMediaType;
+    rights_status: Extract<
+      ReferenceRightsStatus,
+      'user_owned' | 'licensed' | 'public_domain'
+    >;
+    access_scope: Extract<
+      ReferenceAccessScope,
+      'excerpt' | 'full_user_supplied'
+    >;
+    content_fingerprint: string;
+  };
+  requested_dimensions: ReferenceSimilarityDimension[];
+  authorization: ReferenceSimilarityAuthorization;
+  status: ReferenceAnalysisTaskStatus;
+  manifest: {
+    executor: 'codex_or_operator';
+    source_material_transport: 'out_of_band_user_authorized';
+    server_download_allowed: false;
+    input_provenance: 'operator_submitted';
+    output_schema: 'reference-similarity-evidence/v1';
+    output_submission_endpoint: string;
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+  };
+  submission_key_sha256: string | null;
+  observations_sha256: string | null;
+  evidence_id: string | null;
+  evidence_payload_sha256: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
+export interface ReferenceAnalysisTaskSubmissionResult {
+  task: ReferenceAnalysisTaskRecord;
+  evidence: ReferenceSimilarityEvidenceRecord;
+  idempotent_replay: boolean;
 }
 
 export interface FilmReferenceSequenceBeat {

@@ -168,6 +168,7 @@ async function readSimilarityEvidenceFile(
     raw,
   ) as ReferenceSimilarityEvidenceRecord;
   const payload = similarityEvidencePayload({
+    analysis_task_id: record.analysis_task_id,
     reference_id: record.reference_id,
     source_content_fingerprint: record.source_content_fingerprint,
     input_provenance: record.input_provenance,
@@ -300,6 +301,8 @@ export async function createReferenceSimilarityEvidence(input: {
   referenceId: string;
   request: unknown;
   now?: string;
+  analysisTaskId?: string;
+  evidenceId?: string;
 }): Promise<ReferenceSimilarityEvidenceRecord> {
   const source = await getReferenceSource(input);
   const request = ReferenceSimilarityEvidenceCreateRequestSchema.parse(
@@ -331,6 +334,9 @@ export async function createReferenceSimilarityEvidence(input: {
     );
   }
   const payload = {
+    ...(input.analysisTaskId
+      ? { analysis_task_id: input.analysisTaskId }
+      : {}),
     reference_id: source.reference_id,
     source_content_fingerprint: request.source_content_fingerprint,
     input_provenance: request.input_provenance,
@@ -347,18 +353,36 @@ export async function createReferenceSimilarityEvidence(input: {
   };
   const record = ReferenceSimilarityEvidenceRecordSchema.parse({
     schema_version: 'reference-similarity-evidence/v1',
-    evidence_id: `reference-similarity-evidence-${randomUUID()}`,
+    evidence_id: input.evidenceId
+      ?? `reference-similarity-evidence-${randomUUID()}`,
     ...payload,
     payload_sha256: similarityEvidenceSha256(
       similarityEvidencePayload(payload),
     ),
     created_at: input.now ?? new Date().toISOString(),
   }) as ReferenceSimilarityEvidenceRecord;
+  const filePath = path.join(
+    similarityEvidenceDirectory(input.repoRoot),
+    `${record.evidence_id}.json`,
+  );
+  try {
+    const existing = await readSimilarityEvidenceFile(filePath);
+    if (
+      existing.payload_sha256 === record.payload_sha256
+      && existing.reference_id === record.reference_id
+      && existing.analysis_task_id === record.analysis_task_id
+    ) {
+      return existing;
+    }
+    throw new ReferenceLibraryError(
+      'REFERENCE_SIMILARITY_EVIDENCE_CONFLICT',
+      `Reference similarity evidence already exists with different content: ${record.evidence_id}`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
   await atomicWriteJson(
-    path.join(
-      similarityEvidenceDirectory(input.repoRoot),
-      `${record.evidence_id}.json`,
-    ),
+    filePath,
     record,
   );
   return record;

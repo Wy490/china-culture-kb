@@ -256,6 +256,7 @@ export const ReferenceSimilarityEvidenceRecordSchema =
 ReferenceSimilarityEvidenceCreateRequestSchema.extend({
   schema_version: z.literal('reference-similarity-evidence/v1'),
   evidence_id: z.string().regex(/^reference-similarity-evidence-[a-f0-9-]+$/),
+  analysis_task_id: z.string().regex(/^reference-analysis-task-[a-f0-9-]+$/).optional(),
   reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
   authorization: ReferenceSimilarityEvidenceCreateRequestSchema.shape.authorization.extend({
     machine_verified: z.literal(false),
@@ -268,6 +269,90 @@ ReferenceSimilarityEvidenceCreateRequestSchema.extend({
     production_credit_eligible: z.literal(false),
   }).strict(),
 }).strict();
+
+export const ReferenceAnalysisTaskCreateRequestSchema = z.object({
+  requested_dimensions: z.array(z.enum([
+    'excerpt',
+    'character_design',
+    'plot_structure',
+    'shot_sequence',
+  ]))
+    .min(1)
+    .max(4)
+    .refine(uniqueReferenceIds, 'requested_dimensions must be unique'),
+  authorization: ReferenceSimilarityEvidenceCreateRequestSchema.shape.authorization,
+}).strict();
+
+export const ReferenceAnalysisTaskSubmissionSchema = z.object({
+  submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
+  observations: ReferenceSimilarityEvidenceCreateRequestSchema.shape.observations,
+}).strict();
+
+export const ReferenceAnalysisTaskRecordSchema = z.object({
+  schema_version: z.literal('reference-analysis-task/v1'),
+  task_id: z.string().regex(/^reference-analysis-task-[a-f0-9-]+$/),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  source_snapshot: z.object({
+    title: ReferenceNonEmptyTextSchema.max(200),
+    media_type: ReferenceSourceMediaTypeSchema,
+    rights_status: z.enum(['user_owned', 'licensed', 'public_domain']),
+    access_scope: z.enum(['excerpt', 'full_user_supplied']),
+    content_fingerprint: ReferenceContentFingerprintSchema,
+  }).strict(),
+  requested_dimensions: ReferenceAnalysisTaskCreateRequestSchema.shape.requested_dimensions,
+  authorization: ReferenceSimilarityEvidenceCreateRequestSchema.shape.authorization.extend({
+    machine_verified: z.literal(false),
+  }).strict(),
+  status: z.enum(['pending', 'processing', 'completed']),
+  manifest: z.object({
+    executor: z.literal('codex_or_operator'),
+    source_material_transport: z.literal('out_of_band_user_authorized'),
+    server_download_allowed: z.literal(false),
+    input_provenance: z.literal('operator_submitted'),
+    output_schema: z.literal('reference-similarity-evidence/v1'),
+    output_submission_endpoint: z.string().regex(
+      /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/submissions$/,
+    ),
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+  }).strict(),
+  submission_key_sha256: ReferenceContentFingerprintSchema.nullable(),
+  observations_sha256: ReferenceContentFingerprintSchema.nullable(),
+  evidence_id: z.string().regex(/^reference-similarity-evidence-[a-f0-9-]+$/).nullable(),
+  evidence_payload_sha256: ReferenceContentFingerprintSchema.nullable(),
+  created_at: ReferenceTimestampSchema,
+  updated_at: ReferenceTimestampSchema,
+  completed_at: ReferenceTimestampSchema.nullable(),
+  human_review_complete: z.literal(false),
+  real_credit_granted: z.literal(false),
+}).strict().superRefine((record, context) => {
+  const hasSubmissionHashes = Boolean(
+    record.submission_key_sha256 && record.observations_sha256,
+  );
+  const hasCompletion = Boolean(
+    record.evidence_id
+    && record.evidence_payload_sha256
+    && record.completed_at,
+  );
+  if (record.status === 'pending' && (hasSubmissionHashes || hasCompletion)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'pending analysis task cannot contain submission or completion state',
+    });
+  }
+  if (record.status === 'processing' && (!hasSubmissionHashes || hasCompletion)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'processing analysis task requires submission hashes and no completion state',
+    });
+  }
+  if (record.status === 'completed' && (!hasSubmissionHashes || !hasCompletion)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'completed analysis task requires submission and evidence state',
+    });
+  }
+});
 
 export const FilmReferenceAnalysisSchema = z.object({
   hook_timecode: ReferenceTimecodeSchema.optional(),

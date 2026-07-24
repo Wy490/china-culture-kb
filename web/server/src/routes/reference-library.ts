@@ -18,6 +18,12 @@ import {
   listReferenceSources,
   listReferenceStylePacks,
 } from '../services/reference-library-service.js';
+import {
+  createReferenceAnalysisTask,
+  getReferenceAnalysisTask,
+  listReferenceAnalysisTasks,
+  submitReferenceAnalysisTask,
+} from '../services/reference-analysis-task-service.js';
 
 function resolveDefaultRepoRoot(): string {
   const candidates = [
@@ -118,6 +124,30 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     }
   });
 
+  router.get('/analysis-tasks/:taskId', async (req, res, next) => {
+    try {
+      res.json(success(await getReferenceAnalysisTask({
+        repoRoot,
+        taskId: req.params.taskId,
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/analysis-tasks/:taskId/submissions', async (req, res, next) => {
+    try {
+      const result = await submitReferenceAnalysisTask({
+        repoRoot,
+        taskId: req.params.taskId,
+        request: req.body,
+      });
+      res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/references/:referenceId', async (req, res, next) => {
     try {
       res.json(success(await getReferenceLibraryDetail({
@@ -163,6 +193,30 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
         request: req.body,
       });
       res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/references/:referenceId/analysis-tasks', async (req, res, next) => {
+    try {
+      const record = await createReferenceAnalysisTask({
+        repoRoot,
+        referenceId: req.params.referenceId,
+        request: req.body,
+      });
+      res.status(201).json(success(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/references/:referenceId/analysis-tasks', async (req, res, next) => {
+    try {
+      res.json(success(await listReferenceAnalysisTasks({
+        repoRoot,
+        referenceId: req.params.referenceId,
+      })));
     } catch (error) {
       next(error);
     }
