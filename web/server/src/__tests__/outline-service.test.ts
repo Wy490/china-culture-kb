@@ -68,6 +68,7 @@ import {
   updateAiComicSeriesSeedanceProductionStatus,
   updateAiComicSeriesSeedanceProductionStatuses,
 } from '../services/ai-comic-series-service.js';
+import { exportStoryAgentSeedancePreproductionPackage } from '../services/story-agent-preproduction-package-service.js';
 
 const ONE_PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -3626,6 +3627,28 @@ describe('outline-service', () => {
       .toContain('Story Agent → Seedance 前置制作交付包');
     expect(preproductionPackageRes.data?.markdown)
       .toContain('视频生成不在本 Agent 范围内');
+    const genericPreproductionPackageRes = await exportStoryAgentSeedancePreproductionPackage({
+      series_project_id: saveRes.data!.project.series_project_id,
+    });
+    expect(genericPreproductionPackageRes.ok).toBe(true);
+    expect(genericPreproductionPackageRes.data?.schema_version)
+      .toBe('story-agent-seedance-preproduction-package/v1');
+    expect(genericPreproductionPackageRes.data?.source).toMatchObject({
+      kind: 'ai_comic_series_project',
+      source_id: saveRes.data!.project.series_project_id,
+      story_ids: [episodeRes.data!.storyId],
+    });
+    expect(genericPreproductionPackageRes.data?.story_units[0].episode_no).toBe(1);
+    expect(genericPreproductionPackageRes.data?.story_units[0].story.full_text)
+      .toBe(episodeRes.data?.full_text);
+    expect(genericPreproductionPackageRes.data?.story_units[0].professional_text_package)
+      .toMatchObject({
+        schema_version: 'professional-text-package/v1',
+        story_id: episodeRes.data!.storyId,
+      });
+    expect(genericPreproductionPackageRes.data?.acceptance.professional_script_count).toBe(1);
+    expect(genericPreproductionPackageRes.data?.acceptance.status).toBe('blocked');
+    expect(genericPreproductionPackageRes.data?.boundary.video_generation_in_scope).toBe(false);
     const firstShotAssetIds = seedanceAssetReportRes.data!.shots[0].required_asset_ids;
     const bindableAsset = seedanceAssetReportRes.data!.assets.find(asset =>
       asset.has_reference_slot
@@ -3746,6 +3769,19 @@ describe('outline-service', () => {
       functional_test_identity_mapping_current: true,
       production_credit: false,
     });
+    const genericPackageWithImmutableImage = await exportStoryAgentSeedancePreproductionPackage({
+      series_project_id: saveRes.data!.project.series_project_id,
+    });
+    expect(genericPackageWithImmutableImage.ok).toBe(true);
+    expect(genericPackageWithImmutableImage.data?.image_assets).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        asset_id: bindableAsset!.asset_id,
+        local_path: immutableUploadRes.data!.local_path,
+        content_sha256: immutableUploadRes.data!.content_sha256,
+        provider: 'openai_imagegen',
+        file_integrity_verified: true,
+      }),
+    ]));
 
     const mismatchedReviewRes = await updateAiComicSeriesMediaAssetReview(
       saveRes.data!.project.series_project_id,

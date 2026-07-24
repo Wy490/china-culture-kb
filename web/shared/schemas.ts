@@ -1350,6 +1350,24 @@ export const AiComicSeriesProjectIdParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
 });
 
+export const StoryAgentSeedancePreproductionExportRequestSchema = z.object({
+  story_id: StoryIdValueSchema.optional(),
+  project_id: ProjectIdValueSchema.optional(),
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+}).strict().superRefine((request, context) => {
+  const sourceCount = [
+    request.story_id,
+    request.project_id,
+    request.series_project_id,
+  ].filter(Boolean).length;
+  if (sourceCount !== 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'exactly one of story_id, project_id, or series_project_id is required',
+    });
+  }
+});
+
 export const AiComicSeriesVisualIdentityDefinitionParamSchema = z.object({
   seriesProjectId: AiComicSeriesProjectIdValueSchema,
   visualIdentityId: z.string().regex(

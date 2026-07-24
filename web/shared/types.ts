@@ -7301,6 +7301,120 @@ export interface AiComicSeriesSeedancePreproductionPackage {
   markdown: string;
 }
 
+export type StoryAgentSeedancePreproductionSourceKind =
+  | 'story'
+  | 'story_project'
+  | 'ai_comic_series_project';
+
+export interface StoryAgentSeedancePreproductionImageAsset {
+  asset_id: string;
+  source_kind: StoryAgentSeedancePreproductionSourceKind;
+  source_asset_id: string;
+  series_identity_id?: string;
+  kind: SeedanceAssetReferenceKind | AiComicSeedanceAssetReferenceKind;
+  label: string;
+  reference_slot: string;
+  local_path: string;
+  content_sha256: string;
+  provider?: string;
+  provider_asset_id?: string;
+  prompt_sha256?: string;
+  model?: string;
+  file_integrity_verified: true;
+  source_story_ids: string[];
+  source_shot_ids: string[];
+  required_by_shot_count: number;
+  rights_status?: MediaArtifactRightsStatus;
+  human_review_status?: MediaArtifactHumanReviewStatus;
+}
+
+export interface StoryAgentSeedancePreproductionShotAssetBinding {
+  unit_id: string;
+  story_id: string;
+  shot_id: string;
+  source_scene_id?: number;
+  required_asset_ids: string[];
+  delivered_asset_ids: string[];
+  missing_asset_ids: string[];
+  reference_slots: string[];
+}
+
+export interface StoryAgentSeedancePreproductionStoryUnit {
+  unit_id: string;
+  order: number;
+  title: string;
+  story_id: string;
+  project_id?: string;
+  episode_no?: number;
+  professional_text_package?: ProfessionalTextPackage;
+  story: {
+    title: string;
+    logline: string;
+    theme: string;
+    full_text: string;
+    scene_breakdown: StoryScene[];
+    gears_segments: GearsSegment[];
+    cultural_constraints: string[];
+    credibility_note: string;
+  };
+  script: {
+    shot_count: number;
+    total_duration_sec: number;
+    shots: SeedancePromptShotUnit[];
+  };
+  seedance_prompt_package: SeedancePromptPackage;
+  shot_asset_bindings: StoryAgentSeedancePreproductionShotAssetBinding[];
+}
+
+export interface StoryAgentSeedancePreproductionPackage {
+  schema_version: 'story-agent-seedance-preproduction-package/v1';
+  source: {
+    kind: StoryAgentSeedancePreproductionSourceKind;
+    source_id: string;
+    title: string;
+    story_ids: string[];
+  };
+  exported_at: string;
+  target_platform: 'seedance_2_0';
+  boundary: {
+    story_agent_delivers: Array<'story' | 'professional_script' | 'seedance_prompt' | 'image_asset'>;
+    video_generation_in_scope: false;
+    video_generation_executor: 'user_in_seedance';
+    human_test_required_for_functional_acceptance: false;
+    rights_or_human_review_grants_production_credit: false;
+  };
+  acceptance: {
+    status: 'ready' | 'blocked';
+    story_unit_count: number;
+    expected_story_unit_count: number;
+    professional_script_count: number;
+    script_shot_count: number;
+    seedance_prompt_shot_count: number;
+    expected_image_asset_count: number;
+    image_asset_count: number;
+    file_integrity_verified_image_asset_count: number;
+    current_asset_mapping_count: number;
+    bound_shot_count: number;
+    unbound_shot_count: number;
+    blockers: string[];
+    warnings: string[];
+  };
+  story_units: StoryAgentSeedancePreproductionStoryUnit[];
+  image_assets: StoryAgentSeedancePreproductionImageAsset[];
+  series?: {
+    project: AiComicSeriesProjectMeta;
+    visual_bible: AiComicSeriesVisualBible;
+    missing_episodes: AiComicSeriesSeedanceExportPackage['missing_episodes'];
+  };
+  markdown: string;
+}
+
+export interface StoryAgentSeedancePreproductionExportRequest {
+  story_id?: string;
+  project_id?: string;
+  series_project_id?: string;
+}
+
 export interface AiComicSeedanceEditAssetPackageShot {
   production_id: string;
   episode_no: number;

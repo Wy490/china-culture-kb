@@ -23,6 +23,7 @@ import { systemRouter } from '../routes/system.js';
 import { projectsRouter } from '../routes/projects.js';
 import { gearsCallbackRouter } from '../routes/gears-callback.js';
 import { outlineRouter } from '../routes/outline.js';
+import { storyAgentRouter } from '../routes/story-agent.js';
 import { createProjectFromGeneratedStory } from '../services/project-service.js';
 import { storyDefaultGeneratedRoot } from '../platform/story-storage-root.js';
 import {
@@ -289,9 +290,53 @@ app.use('/api/system', systemRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/gears-callback', gearsCallbackRouter);
 app.use('/api/story-outline', outlineRouter);
+app.use('/api/story-agent', storyAgentRouter);
 app.use(errorHandler);
 
 const request = supertest(app);
+
+describe('POST /api/story-agent/preproduction/export', () => {
+  it('exports an ordinary project through the canonical generic contract', async () => {
+    const story: StoryGenerateResult = {
+      ...makeApiStory(),
+      storyId: '20260724-story-prep1',
+      title: '通用预制片 API 测试',
+      gears_segments_url: '/api/stories/20260724-story-prep1/gears-segments',
+    };
+    const project = await createProjectFromGeneratedStory(story, '2026-07-24T09:30:00.000Z');
+
+    const res = await request
+      .post('/api/story-agent/preproduction/export')
+      .send({ project_id: project.project_id });
+
+    expect(res.status).toBe(200);
+    expectSuccess(res.body);
+    expect(res.body.data).toMatchObject({
+      schema_version: 'story-agent-seedance-preproduction-package/v1',
+      source: {
+        kind: 'story_project',
+        source_id: project.project_id,
+      },
+      target_platform: 'seedance_2_0',
+      boundary: {
+        video_generation_in_scope: false,
+        human_test_required_for_functional_acceptance: false,
+      },
+    });
+  });
+
+  it('rejects ambiguous source identifiers', async () => {
+    const res = await request
+      .post('/api/story-agent/preproduction/export')
+      .send({
+        story_id: '20260724-story-prep1',
+        project_id: '20260724-story-prep1--character_story',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.ok).toBe(false);
+  });
+});
 
 describe('GET /api/system/story-generation-capabilities', () => {
   it('returns the non-executing model availability and engine boundary contract', async () => {

@@ -13,6 +13,7 @@ import { stage6RevisionsRouter } from './routes/stage6-revisions.js';
 import { stage7GoldenCardsRouter } from './routes/stage7-golden-cards.js';
 import { stage8BlindReviewRouter } from './routes/stage8-blind-review.js';
 import { referenceLibraryRouter } from './routes/reference-library.js';
+import { storyAgentRouter } from './routes/story-agent.js';
 import {
   initializeStoryStorageRootEnvironment,
   storyGeneratedRoot,
@@ -40,6 +41,7 @@ app.use('/api/stage6-revisions', stage6RevisionsRouter);
 app.use('/api/stage7-golden-cards', stage7GoldenCardsRouter);
 app.use('/api/stage8-blind-review', stage8BlindReviewRouter);
 app.use('/api/reference-library', referenceLibraryRouter);
+app.use('/api/story-agent', storyAgentRouter);
 
 // Unified error handler (must be after all routes)
 app.use(errorHandler);

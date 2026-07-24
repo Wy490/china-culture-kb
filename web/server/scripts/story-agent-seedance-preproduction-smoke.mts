@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type {
-  AiComicSeriesSeedancePreproductionPackage,
   ApiResponse,
+  StoryAgentSeedancePreproductionPackage,
 } from '@shared/types.js'
-import { exportAiComicSeriesSeedancePreproductionPackage } from '../src/services/ai-comic-series-service.js'
+import { exportStoryAgentSeedancePreproductionPackage } from '../src/services/story-agent-preproduction-package-service.js'
 
 type ImageBindingReport = {
   schema_version: 'story-agent-cross-seed-image-asset-binding-report/v1'
@@ -92,8 +92,10 @@ const projectReports: Array<{
 
 for (const series of bindingReport.series_shot_bindings) {
   const stage = `${series.series_title} (${series.series_project_id})`
-  const pkg = requireData<AiComicSeriesSeedancePreproductionPackage>(
-    await exportAiComicSeriesSeedancePreproductionPackage(series.series_project_id),
+  const pkg = requireData<StoryAgentSeedancePreproductionPackage>(
+    await exportStoryAgentSeedancePreproductionPackage({
+      series_project_id: series.series_project_id,
+    }),
     `${stage} preproduction export`,
   )
 
@@ -108,7 +110,7 @@ for (const series of bindingReport.series_shot_bindings) {
   )
   assert(pkg.acceptance.status === 'ready', `${stage}: ${pkg.acceptance.blockers.join('; ')}`)
   assert(
-    pkg.acceptance.story_episode_count === pkg.acceptance.expected_episode_count,
+    pkg.acceptance.story_unit_count === pkg.acceptance.expected_story_unit_count,
     `${stage}: incomplete stories`,
   )
   assert(
@@ -124,19 +126,20 @@ for (const series of bindingReport.series_shot_bindings) {
     `${stage}: delivered image count drifted`,
   )
   assert(
-    pkg.acceptance.current_identity_mapping_count === pkg.acceptance.expected_identity_count,
-    `${stage}: required visual identity mapping is incomplete`,
+    pkg.acceptance.current_asset_mapping_count === pkg.acceptance.expected_image_asset_count,
+    `${stage}: required image mapping is incomplete`,
   )
   assert(pkg.acceptance.unbound_shot_count === 0, `${stage}: unbound shots remain`)
   assert(
-    pkg.acceptance.immutable_image_asset_count === pkg.acceptance.image_asset_count,
+    pkg.acceptance.file_integrity_verified_image_asset_count === pkg.acceptance.image_asset_count,
     `${stage}: immutable image assets are incomplete`,
   )
-  assert(pkg.episodes.every(episode => (
-    episode.story.full_text.trim().length > 0
-    && episode.story.scene_breakdown.length > 0
-    && episode.story.gears_segments.length > 0
-    && episode.script.shots.every(shot => (
+  assert(pkg.story_units.every(unit => (
+    unit.professional_text_package?.schema_version === 'professional-text-package/v1'
+    && unit.story.full_text.trim().length > 0
+    && unit.story.scene_breakdown.length > 0
+    && unit.story.gears_segments.length > 0
+    && unit.script.shots.every(shot => (
       shot.script_text.trim().length > 0
       && shot.seedance_prompt.trim().length > 0
       && shot.seedance_prompt.includes('@图片')
@@ -145,14 +148,16 @@ for (const series of bindingReport.series_shot_bindings) {
   )), `${stage}: story/script/prompt payload is incomplete`)
   assert(pkg.image_assets.every(asset => (
     Boolean(asset.local_path)
-    && /^[a-f0-9]{64}$/i.test(asset.content_sha256 ?? '')
+    && /^[a-f0-9]{64}$/i.test(asset.content_sha256)
     && Boolean(asset.provider)
+    && asset.file_integrity_verified
   )), `${stage}: image asset provenance is incomplete`)
-  assert(pkg.episodes.every(episode => (
-    episode.shot_asset_bindings.length === episode.script.shot_count
-    && episode.shot_asset_bindings.every(binding => (
+  assert(pkg.story_units.every(unit => (
+    unit.shot_asset_bindings.length === unit.script.shot_count
+    && unit.shot_asset_bindings.every(binding => (
       binding.required_asset_ids.length > 0
-      && binding.missing_reference_asset_ids.length === 0
+      && binding.delivered_asset_ids.length === binding.required_asset_ids.length
+      && binding.missing_asset_ids.length === 0
       && binding.reference_slots.length > 0
     ))
   )), `${stage}: shot-to-image bindings are incomplete`)
@@ -168,10 +173,10 @@ for (const series of bindingReport.series_shot_bindings) {
     series_project_id: series.series_project_id,
     series_title: series.series_title,
     status: 'ready',
-    episode_count: pkg.acceptance.story_episode_count,
+    episode_count: pkg.acceptance.story_unit_count,
     shot_count: pkg.acceptance.script_shot_count,
     image_asset_count: pkg.acceptance.image_asset_count,
-    current_identity_mapping_count: pkg.acceptance.current_identity_mapping_count,
+    current_identity_mapping_count: pkg.acceptance.current_asset_mapping_count,
     warning_count: pkg.acceptance.warnings.length,
     json_path: jsonPath,
     markdown_path: markdownPath,

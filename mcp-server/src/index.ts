@@ -16,6 +16,7 @@ import { collect } from './tools/collect.js';
 import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
+import { exportStoryAgentPreproduction } from './tools/export-story-agent-preproduction.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
@@ -327,6 +328,21 @@ server.tool(
   },
   async (input) => {
     const result = await storyAgentGenerate(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_export_story_agent_preproduction — canonical generic Story Agent delivery export
+server.tool(
+  'kb_export_story_agent_preproduction',
+  '通过 canonical Story Agent Web/API 导出通用 Seedance 前置制作包。普通故事、故事项目与 AI 漫剧系列共用 story-agent-seedance-preproduction-package/v1；只交付专业剧本、逐镜提示词和已校验图片，不执行视频生成。',
+  {
+    story_id: z.string().regex(/^\d{8}-story-[0-9a-z]+$/).optional().describe('单个故事 ID；与另外两个来源 ID 三选一'),
+    project_id: z.string().regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/).optional().describe('普通故事项目 ID；与另外两个来源 ID 三选一'),
+    series_project_id: z.string().regex(/^\d{8}-series-[0-9a-z]+$/).optional().describe('AI 漫剧系列项目 ID；与另外两个来源 ID 三选一'),
+  },
+  async (input) => {
+    const result = await exportStoryAgentPreproduction(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

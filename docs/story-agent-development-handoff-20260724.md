@@ -3,7 +3,7 @@
 > 日期：2026-07-24
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 > 分支：`codex/story-agent-manifest-integrity-20260718`
-> 功能基线提交：`13c37236 feat(story-agent): export Seedance preproduction packages`
+> 上一功能基线提交：`679a3f4a feat(story-agent): dispatch professional text packages`
 > 上一份研究与长周期开发记录：`docs/story-agent-film-text-benchmark-development-handoff-20260723.md`
 
 ## 0. 下一对话先读这里
@@ -36,14 +36,14 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 
 当前系统已经具备较完整的结构化 Story Agent 内核，并且 AI 漫剧系列的“故事—脚本镜头—Seedance 提示词—真实图片—逐镜引用—交付包”已经跑通。
 
-但它还不能称为“全部 15 类型都能无人值守稳定交付”的完整 Agent。最大问题不是缺少更多字段，而是现有能力仍分散在多套服务、测试夹具和 Codex 手工图片步骤中，尚未收敛成一个统一、可恢复、可重复执行的 canonical 工作流。
+但它还不能称为“全部 15 类型都能无人值守稳定交付”的完整 Agent。专业文本 dispatcher 和通用前置制作包已经收敛；当前最大问题是 Codex 图片生成仍依赖对话内人工编排，尚未形成可恢复、可重复执行的 request/result manifest 工作流。
 
 可用两个口径理解当前距离：
 
 | 口径 | 主观完成度 | 判断 |
 |---|---:|---|
-| 展示结构化生成与 AI 漫剧前置交付 | 80%–85% | 已有真实持久项目和机器证据 |
-| 全部 15 类型无人值守稳定交付 | 55%–65% | 专业脚本编排、通用图片闭环和全类型端到端矩阵仍未完成 |
+| 展示结构化生成与前置制作交付 | 85%–90% | 普通项目与系列项目已有统一导出合同和机器证据 |
+| 全部 15 类型无人值守稳定交付 | 65%–72% | 可恢复图片任务和全类型端到端矩阵仍未完成 |
 
 这个百分比是工程判断，不是测试自动计算值。后续应以第 6 节的退出条件替代主观百分比。
 
@@ -52,11 +52,11 @@ Story Agent 到图片资产交付为止。真实影片由用户在 Seedance 中�
 | 用户所需能力 | 当前状态 | 已有证据 | 主要不足 |
 |---|---|---|---|
 | 15 类结构化故事 | 已有功能基础 | 15/15 `VideoType` 本地生成矩阵通过 | 目前是一类一个代表输入，且测试强制 `STORY_GEN_LOCAL_ONLY=1` |
-| 15 类专业脚本 | 合同和类型管线齐全 | 15 个专业脚本测试文件、60 项管线测试 | 多数是“已准备好的 Story + 专项 evidence → package”的构建器，不是统一自动生成入口 |
+| 15 类专业脚本 | canonical 接入完成 | 15/15 dispatcher、evidence resolver、generation/project version 派生状态矩阵 | 纪录片真实采访/授权仍会正确转为补证任务 |
 | 连续分集故事 | 较强 | 20 集正式系列；4 个系列共 14 集稳定复跑 | 主要集中在 `ai_comic_drama` 系列形态 |
 | Seedance 提示词 | 较强 | 4 个持久项目、126 镜头、全部含图片引用 | 15 类通用项目尚未全部做图片绑定后的提示词验收 |
 | 图片资产 | 已有真实闭环 | `gpt-image-2` 图片、不可变文件、SHA-256、Provider、prompt hash、身份映射 | 图片生成仍由 Codex 在仓库外调用 imagegen，再由脚本导入；Agent 本身没有可恢复图片任务 |
-| 一键交付包 | AI 漫剧系列已完成 | 4 包、14 集、126 镜头、34 图片、0 未绑定 | 当前接口绑定 `AiComicSeriesProject`，尚未覆盖普通单故事及另外 14 类项目 |
+| 一键交付包 | 通用合同已完成 | story / ordinary project / series 共用 `story-agent-seedance-preproduction-package/v1` | 仍需 15×1 持久项目逐类图片闭环 |
 | 版本与持久化 | 已有 | story snapshot、project/version、series project、asset history | 缺少跨故事/脚本/图片/交付包统一 run manifest |
 | 机器质量与修复 | 已有多层门禁 | genre、premise fidelity、commercial machine gate、repair | 专业脚本管线的自动选择、补证、修复和 derived-state 重建尚未统一 |
 | 影视/文字 benchmark | 基础设施已建 | Reference Library、analysis、benchmark、audited style pack | 已批准 style pack 尚未真正进入 canonical generation prompt 和 `reference_trace` |
@@ -129,7 +129,7 @@ landscape_mood
 - coverage report；
 - revision plan。
 
-这些管线能对准备充分的 story 和专项 evidence 构建、检查、修复专业文本包，但尚未形成单一自动 dispatcher，也没有默认挂接到 `/api/stories/generate` 的返回和项目版本。
+这些管线现已由统一 dispatcher 和 evidence resolver 自动选择，并通过 derived-state rebuild 默认挂接到 `/api/stories/generate`、项目初始版本、后续修复版本和 MCP/Web canonical 输出。缺少不可推断的外部证据时会返回结构化 supplement task。
 
 ### 2.3 连续系列与质量
 
@@ -252,79 +252,39 @@ web/generated/story-agent-cross-seed-image-assets-20260723/seedance-preproductio
 
 ### 2.6 当前自动化基线
 
-截至提交 `13c37236`：
+截至 P0-B 通用前置制作包工作树：
 
 ```text
-服务端全量：162 files passed，1 skipped
-测试：1409 passed，2 skipped
+服务端全量：163 files passed，1 skipped
+测试：1416 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
-前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
+MCP 全量：91 files / 489 tests passed
+通用前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 ```
 
 ## 3. 距离用户目标的真实不足
 
-### 3.1 P0：15 类专业脚本尚未进入统一 canonical 生成链
+### 3.1 P0-A：15 类专业脚本已进入统一 canonical 生成链
 
-这是当前最大的功能缺口。
+已完成：
 
-现状：
+- 15/15 `VideoType` 唯一分派；
+- knowledge/material/blueprint/scenes 自动解析专业 evidence；
+- 缺证据返回 `professional_evidence_missing` supplement task；
+- derived-state rebuild 同步重建 professional package、GEARS 与后续 Seedance 输入；
+- 初始项目版本和后续版本都绑定正确 story/project identity；
+- MCP `kb_story_agent_generate` 与 Web canonical generation 共用结果。
 
-- `/api/stories/generate` 能生成 15 类结构化故事；
-- 15 类 professional pipeline builder 已存在；
-- `StoryGenerateResult` 有可选 `professional_text_package`；
-- 但生成服务没有自动选择相应 professional pipeline；
-- professional pipeline 所需专项 evidence 多由测试夹具手工构造；
-- MCP `kb_generate_script` 仍是 legacy Markdown skeleton writer，并明确不算 canonical generation。
+### 3.2 P0-B：通用一键前置制作包已完成
 
-因此“15 个专业脚本管线测试通过”不能等价为“用户给一句要求后，Agent 能稳定自动返回 15 类专业脚本”。
-
-下一步应实现：
-
-```text
-buildProfessionalTextPackageForStory(story, resolvedEvidence)
-```
-
-它必须：
-
-1. 按 `video_type` 选择唯一管线；
-2. 从 knowledge/material/StoryBlueprint/scene 中解析所需专项 evidence；
-3. 缺证据时返回结构化 supplement task，而不是拼空字段；
-4. 构建 `ProfessionalTextPackage`；
-5. 运行 type-specific quality gate；
-6. 执行机器可完成的 repair；
-7. 重建所有 derived sections；
-8. 写入 story/project version；
-9. 由 Web API 和 MCP canonical 工具统一返回。
-
-### 3.2 P0：当前一键交付包只覆盖 AI 漫剧系列
-
-当前前置制作包建立在：
-
-```text
-AiComicSeriesProject
-```
-
-它没有直接覆盖：
-
-- 单集人物故事；
-- 历史短剧；
-- 传说、儿童故事；
-- 文化/非遗/城市宣传；
-- 社交短视频；
-- 纪录短片；
-- 科普、讲授、教育培训；
-- 场景短片和山水意境。
-
-普通 story project 虽然已经有 production board、Seedance prompt、图片上传和 GEARS delivery，但没有和 AI 漫剧系列同等级的单一前置制作包。
-
-需要新增通用 schema：
+已新增通用 schema：
 
 ```text
 story-agent-seedance-preproduction-package/v1
 ```
 
-输入同时支持：
+canonical 输入同时支持：
 
 ```text
 story_id
@@ -332,7 +292,19 @@ project_id
 series_project_id
 ```
 
-输出必须统一包含 story、professional script、Seedance prompt、image assets、shot bindings、acceptance 和 boundary。
+输出统一包含 story、professional script、Seedance prompt、image assets、shot bindings、acceptance 和 boundary。
+
+已实现：
+
+- `web/server/src/services/story-agent-preproduction-package-service.ts`
+- `POST /api/story-agent/preproduction/export`
+- MCP `kb_export_story_agent_preproduction`
+- 普通 story、普通 project 和 AI 漫剧 series 使用同一 schema；
+- 逐镜只计算 required image slots，不把音频或可选图片误算为阻塞；
+- 图片必须同时通过本地路径约束、真实文件读取、SHA-256 复算和当前镜头映射；
+- 文件被篡改后 fail closed，从交付包剔除；
+- professional package、逐镜脚本、提示词或图片映射不完整时 acceptance 为 blocked；
+- 视频生成、真人测试、rights/human review 和 production credit 边界保持不变。
 
 ### 3.3 P0：图片生成不是 Agent 内部可恢复步骤
 
@@ -595,9 +567,9 @@ project-service.ts
 
 ### 4.2 P0-B：通用前置制作包
 
-复用现有 AI comic series package 的字段分离和 acceptance 规则。
+状态：已完成。
 
-建议文件：
+实现文件：
 
 ```text
 web/server/src/services/story-agent-preproduction-package-service.ts
@@ -606,13 +578,22 @@ web/shared/types.ts
 web/shared/schemas.ts
 ```
 
-验收：
+已验收：
 
 - 普通 story project 和 series project 使用同一个外部 schema；
 - 包含 professional script；
 - 每个镜头都有 prompt 和图片引用；
 - 视频生成、真人测试始终为 false；
 - 只输出真正有文件、hash 和当前映射的图片。
+
+新增证据：
+
+- 普通项目 blocked 合同测试；
+- 普通项目全专业文本 + 全真实图片时 ready 测试；
+- 图片文件被篡改后 SHA fail-closed 测试；
+- AI 漫剧系列同 schema 与不可变图片测试；
+- Web 路由精确一来源校验；
+- MCP canonical bridge fail-closed 测试。
 
 ### 4.3 P0-C：Codex 图片任务 manifest 与断点续跑
 
@@ -766,7 +747,7 @@ git log -5 --oneline
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-history includes: 13c37236 feat(story-agent): export Seedance preproduction packages
+history includes: 679a3f4a feat(story-agent): dispatch professional text packages
 ```
 
 ### 7.2 先读这些文件
@@ -792,19 +773,21 @@ mcp-server/src/tools/story-agent-generate.ts
 mcp-server/src/tools/generate-script.ts
 ```
 
-### 7.3 从 P0-B 开始
+### 7.3 从 P0-C 开始
 
-P0-A 已完成。下一对话不要再调查视频、后期或真人测试，直接做：
+P0-A、P0-B 已完成。下一对话不要再调查视频、后期或真人测试，直接做：
 
 ```text
-通用 story-agent-seedance-preproduction-package/v1
-  → 普通 story / project 与 series project 共用外部 schema
-  → 包含 professional_text_package
-  → 统一逐镜 Seedance prompt、图片映射与 acceptance
-  → Web API / MCP canonical export
+image-generation-request/v1
+  → Story Agent 输出稳定图片任务、prompt 和 identity fingerprint
+image-generation-result/v1
+  → Codex 写回 provider/model/call ID、源文件与 hashes
+story-agent-image-run/v1
+  → 幂等导入、绑定、失败重试与断点续跑
+  → 自动刷新通用 preproduction acceptance
 ```
 
-完成 P0-B 后，再做 P0-C image-generation request/result manifest 与断点续跑。
+完成 P0-C 后，再做 P0-D 15×1 全链路矩阵。
 
 ### 7.4 验证命令
 
@@ -835,17 +818,19 @@ smoke:story-agent-persistent-lifecycle
 任何视频 Provider / playable media / postproduction smoke
 ```
 
-### 7.5 P0-A 最新验证基线
+### 7.5 P0-A + P0-B 最新验证基线
 
 ```text
 15 类型 dispatcher / canonical generation / project persistence：通过
 professional dispatcher 聚焦测试：3 项通过
 服务端全量：163 files passed，1 skipped
-测试：1412 passed，2 skipped
+测试：1416 passed，2 skipped
 server source/scripts TypeScript：通过
 server tsup production build：通过
-MCP canonical bridge 聚焦测试与 TypeScript build：通过
-前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
+MCP 全量：91 files / 489 tests passed
+MCP canonical bridge 与 TypeScript build：通过
+通用 schema Web / service 聚焦测试：通过
+通用前置制作烟测：4 projects / 14 episodes / 126 shots / 34 images / 0 unbound
 ```
 
 ## 8. 当前权威数据与注意事项
@@ -908,5 +893,5 @@ Codex imagegen 是对话工具，不是仓库服务器依赖。下一开发者�
 故事 → 专业脚本 → Seedance 提示词 → Codex 图片资产 → 前置制作交付包。
 不要生成视频，不要推进回调、剪辑、声音、字幕或成片，不要把真人测试和 production credit 当作当前阻塞项。
 
-从交接文档 P0-A 开始：实现统一 professional text dispatcher 和 evidence resolver，把 15 类 ProfessionalTextPackage 自动接入 canonical story generation、项目版本与 MCP/Web 输出。先写聚焦测试，再实现，再跑 15 类型矩阵、lint、build 和全量服务端回归。完成后继续 P0-B 通用前置制作包。
+P0-A professional dispatcher/evidence resolver 和 P0-B 通用 preproduction package 已完成。从交接文档 P0-C 开始：实现 image-generation request/result/run manifest 与断点续跑，不要让 Express 直接调用 Codex imagegen。先写合同与失败恢复测试，再实现幂等导入、当前 identity mapping 刷新和 acceptance 重算；完成后推进 P0-D 15×1 全链路矩阵。
 ```

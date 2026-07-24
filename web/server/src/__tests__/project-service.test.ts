@@ -76,6 +76,8 @@ import {
 } from '../services/production-readiness-portfolio-service.js';
 import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
+import { exportStoryAgentSeedancePreproductionPackage } from '../services/story-agent-preproduction-package-service.js';
+import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
@@ -956,6 +958,32 @@ describe('project-service', () => {
       human_review_status: 'pending',
       production_credit_granted: false,
     });
+    const preproductionWithImage = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: enriched.project_id,
+    });
+    expect(preproductionWithImage.ok).toBe(true);
+    expect(preproductionWithImage.data?.image_assets).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        asset_id: uploadAsset!.asset_id,
+        local_path: uploadRes.data!.local_path,
+        content_sha256: uploadRes.data!.content_sha256,
+        provider: 'local_upload',
+        file_integrity_verified: true,
+      }),
+    ]));
+    expect(preproductionWithImage.data?.story_units[0].shot_asset_bindings.some(binding =>
+      binding.delivered_asset_ids.includes(uploadAsset!.asset_id)
+    )).toBe(true);
+
+    await writeFile(uploadedFilePath, Buffer.from('tampered-image'));
+    const preproductionAfterTamper = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: enriched.project_id,
+    });
+    expect(preproductionAfterTamper.ok).toBe(true);
+    expect(preproductionAfterTamper.data?.image_assets.some(asset =>
+      asset.asset_id === uploadAsset!.asset_id
+    )).toBe(false);
+    await writeFile(uploadedFilePath, ONE_PIXEL_PNG);
 
     const targetStory: StoryGenerateResult = {
       ...story,
@@ -1279,6 +1307,104 @@ describe('project-service', () => {
     )).toMatchObject({
       status: 'processing',
     });
+  });
+
+  it('exports an ordinary project through the generic Story Agent preproduction contract', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-preproduction-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story = makeStory();
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const result = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: enriched.project_id,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.schema_version).toBe('story-agent-seedance-preproduction-package/v1');
+    expect(result.data?.source).toMatchObject({
+      kind: 'story_project',
+      source_id: enriched.project_id,
+      story_ids: [story.storyId],
+    });
+    expect(result.data?.story_units).toHaveLength(1);
+    expect(result.data?.story_units[0].professional_text_package).toMatchObject({
+      schema_version: 'professional-text-package/v1',
+      story_id: story.storyId,
+    });
+    expect(result.data?.story_units[0].story.full_text).toBe(story.full_text);
+    expect(result.data?.story_units[0].script.shots[0]).toMatchObject({
+      shot_id: 'shot-1',
+      script_text: expect.any(String),
+      seedance_prompt: expect.stringContaining('0-3秒'),
+    });
+    expect(result.data?.story_units[0].shot_asset_bindings[0].missing_asset_ids.length)
+      .toBeGreaterThan(0);
+    expect(result.data?.image_assets).toHaveLength(0);
+    expect(result.data?.acceptance.status).toBe('blocked');
+    expect(result.data?.acceptance.blockers).toEqual(expect.arrayContaining([
+      expect.stringContaining('图片'),
+    ]));
+    expect(result.data?.boundary).toEqual({
+      story_agent_delivers: ['story', 'professional_script', 'seedance_prompt', 'image_asset'],
+      video_generation_in_scope: false,
+      video_generation_executor: 'user_in_seedance',
+      human_test_required_for_functional_acceptance: false,
+      rights_or_human_review_grants_production_credit: false,
+    });
+  });
+
+  it('marks the generic preproduction package ready only with professional text and all current immutable images', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-preproduction-ready-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const rebuiltStory = await rebuildDerivedStoryState({
+      ...makeStory(),
+      storyId: '20260724-story-prepr',
+      title: '通用预制片完整交付',
+      gears_segments_url: '/api/stories/20260724-story-prepr/gears-segments',
+    }, {
+      revalidateDomainSafety: false,
+      professionalTextNow: '2026-07-24T10:00:00.000Z',
+    });
+    const project = await createProjectFromGeneratedStory(
+      rebuiltStory,
+      '2026-07-24T10:00:00.000Z',
+    );
+    const board = await getProjectProductionBoard(project.project_id!);
+    expect(board.ok).toBe(true);
+    await prepareProjectGearsProviderAssets(
+      project.project_id!,
+      board.data!.shot_units.map(shot => shot.shot_id),
+    );
+
+    const result = await exportStoryAgentSeedancePreproductionPackage({
+      project_id: project.project_id,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.acceptance).toMatchObject({
+      status: 'ready',
+      professional_script_count: 1,
+      story_unit_count: 1,
+      expected_story_unit_count: 1,
+      image_asset_count: expect.any(Number),
+      file_integrity_verified_image_asset_count: expect.any(Number),
+      unbound_shot_count: 0,
+      blockers: [],
+    });
+    expect(result.data!.acceptance.image_asset_count).toBeGreaterThan(0);
+    expect(result.data!.acceptance.image_asset_count)
+      .toBe(result.data!.acceptance.expected_image_asset_count);
+    expect(result.data!.acceptance.current_asset_mapping_count)
+      .toBe(result.data!.acceptance.expected_image_asset_count);
+    expect(result.data?.story_units[0].professional_text_package?.schema_version)
+      .toBe('professional-text-package/v1');
+    expect(result.data?.story_units[0].shot_asset_bindings.every(binding =>
+      binding.missing_asset_ids.length === 0
+      && binding.delivered_asset_ids.length === binding.required_asset_ids.length
+    )).toBe(true);
   });
 
   it('does not create a project version when quality repair is a no-op', async () => {
