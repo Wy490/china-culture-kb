@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B1 完成，下一步进入 P1-B2
+# Story Agent 开发交接：P1-B2 生成入口完成，下一步建设运行控制台
 
 > 交接日期：2026-07-25
 >
@@ -8,9 +8,11 @@
 >
 > P1-B1 功能基线提交：`f1e5f5c6 feat(story-agent): add unified project run ledger`
 >
-> 远端：`origin/codex/story-agent-manifest-integrity-20260718` 已包含该功能基线
+> P1-B2 生成入口提交：`a04ab79e feat(story-agent): start runs from generation requests`
 >
-> 当前工作区：交接文档创建前干净
+> 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
+>
+> 当前工作区：本交接文档与 ownership-scoped idempotency 回归测试待提交
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 
@@ -40,20 +42,20 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“多个可以工作的服务”推进到“已有项目可由统一顶层账本编排”的阶段。
+Story Agent 已从“已有项目可由统一顶层账本编排”推进到“全新生成请求可直接进入 durable 顶层账本”的阶段。
 
 当前工程判断：
 
 | 口径 | 完成度 | 判断 |
 |---|---:|---|
 | 展示结构化生成与前置制作交付 | 94%–97% | 普通项目、系列项目、15×1、15×3 均有完整交付证据 |
-| 15 类型无人值守稳定交付 | 92%–95% | 本地恢复、图片幂等、严格门禁、record-replay 和项目绑定 StoryAgentRun 均已跑通 |
+| 15 类型无人值守稳定交付 | 93%–96% | 本地恢复、图片幂等、严格门禁、record-replay、项目绑定和生成请求绑定 StoryAgentRun 均已跑通 |
 | 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
 
 仍不能宣称 100% 完成，主要因为：
 
-1. `story-agent-run/v1` 目前从已持久化的普通项目或系列项目开始，不能直接从全新的 `StoryGenerateRequest` 启动；
-2. 尚无 StoryAgentRun Web 控制台；
+1. 尚无 bounded StoryAgentRun 列表 API 和 Web 控制台；
+2. 顶层 run 尚未把专业补证、canonical repair 和 derived-state rebuild 分成独立可重试 checkpoint；
 3. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
 4. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
 5. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
@@ -239,6 +241,7 @@ current_stage → complete
 
 ```text
 web/generated/story-agent-runs/<story-agent-run-id>/run.json
+web/generated/story-agent-runs/<story-agent-run-id>/generation-checkpoint.json
 ```
 
 图片请求仍由原 canonical 账本持久化：
@@ -255,6 +258,7 @@ web/generated/story-agent-image-runs/<image-run-id>/
 
 ```text
 POST /api/story-agent/runs
+POST /api/story-agent/runs/generate
 GET  /api/story-agent/runs/:runId
 POST /api/story-agent/runs/:runId/resume
 POST /api/story-agent/runs/:runId/import-images
@@ -272,6 +276,7 @@ GET  /api/story-agent/runs/:runId/export
 
 ```text
 kb_start_story_agent_run
+kb_generate_story_agent_run
 kb_get_story_agent_run
 kb_resume_story_agent_run
 kb_import_story_agent_images
@@ -310,11 +315,11 @@ Web 全 workspace lint：通过
 
 Server:
   Test Files  171 passed | 1 skipped
-  Tests       1459 passed | 2 skipped
+  Tests       1464 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
-  Tests       500 passed
+  Tests       503 passed
 
 git diff --check：通过
 ```
@@ -345,21 +350,11 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. 下一步：P1-B2
+## 6. P1-B2 当前状态与下一步
 
 在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进 P1-B2。
 
-### 6.1 第一优先级：从全新生成请求启动 run
-
-当前：
-
-```text
-StoryGenerateRequest
-  → 先由 stories API 创建 story/project
-  → 再 POST /api/story-agent/runs
-```
-
-目标：
+### 6.1 已完成：从全新生成请求启动 run
 
 ```text
 StoryGenerateRequest
@@ -372,53 +367,38 @@ StoryGenerateRequest
   → preproduction checkpoint
 ```
 
-建议不要直接破坏现有 `story-agent-run/v1` 的项目绑定 input contract。优先考虑：
+已新增：
 
 ```text
 POST /api/story-agent/runs/generate
 StoryAgentRunGenerateRequestSchema
 story-agent-run/v2
+story-agent-run-input/v2
+story-agent-run-generation-checkpoint/v1
+kb_generate_story_agent_run
 ```
 
-或设计向后兼容、可区分来源的 versioned input：
+已验证：
 
-```text
-input_contract.kind =
-  existing_project
-  existing_series
-  generation_request
-```
+- 模型调用前原子持久化 run 和 generation attempt；
+- 调用方提供稳定 `idempotency_key`；
+- 同 key + 同 canonical request 返回同一 run，attempt 不增加；
+- 同 key + 不同 request 返回 `409/STORY_AGENT_RUN_INPUT_CONFLICT`；
+- required access 模式下 idempotency identity 按 organization + owner actor 隔离；
+- 严格外部生成失败保存 `failed_retryable`，不隐藏 local fallback；
+- resume 新增 attempt 并保留完整失败历史；
+- 独立 `generation-checkpoint.json` 可在 story/project 成功但 `run.json` 最终更新丢失后恢复；
+- local、record-replay、live external、local fallback 和 not-observed provenance 分账；
+- 生成仍复用 Domain Pack、项目、专业文本、Seedance、图片与 preproduction canonical 服务；
+- access control 在 schema 与模型调用前执行；
+- 无图片 Provider、无视频生成、无真人或 production credit。
 
-必须满足：
-
-1. 在调用模型前持久化 run 和 generation attempt；
-2. 支持调用方提供稳定 `idempotency_key`；
-3. 同 key + 同 canonical request 返回同一 run；
-4. 同 key + 不同 request 返回 conflict；
-5. 生成失败保存 retryable/blocked 状态，不丢失 run；
-6. 禁止外部模型失败后隐藏 local fallback；
-7. story/project 创建成功但顶层账本写入失败时可恢复；
-8. 不在 run 服务里复制 `story-service`、专业 dispatcher 或图片逻辑；
-9. access control 在 schema/model 调用前执行；
-10. local、record-replay、live external provenance 必须分开。
-
-推荐先写失败测试：
-
-```text
-- module/route 尚不支持 generation_request；
-- 同 idempotency_key 不重复调用 generation；
-- request hash 冲突 fail closed；
-- external forbid_local_fallback 语义保留；
-- story/project 成功后的账本恢复；
-- 无权限角色在 schema 和模型调用前被拒绝。
-```
-
-### 6.2 第二优先级：StoryAgentRun Web 控制台
+### 6.2 第一优先级：bounded run list 与 StoryAgentRun Web 控制台
 
 需要：
 
 - run 列表和 source/status/filter；
-- 五阶段时间线；
+- generation、story/project、professional、Seedance、image、preproduction 六段时间线；
 - blocker 与 retryable failure；
 - resume；
 - 完整 image request task 展示；
@@ -510,6 +490,7 @@ real external provider
 - reference analysis task/evidence；
 - Reference Library governance/composition/baseline UI；
 - P1-B1 项目绑定 `story-agent-run/v1`；
+- P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -595,13 +576,12 @@ git status --short
 
 当前分支应为 codex/story-agent-manifest-integrity-20260718，基线提交应包含：
 f1e5f5c6 feat(story-agent): add unified project run ledger
+a04ab79e feat(story-agent): start runs from generation requests
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI，以及 P1-B1 项目绑定 story-agent-run/v1、五阶段账本、完整图片 manifest、API/MCP start/get/resume/import/export 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1，以及 P1-B2 生成请求绑定 story-agent-run/v2、generation checkpoint、idempotency conflict、恢复 sidecar 和 API/MCP generate/start/get/resume/import/export 均已完成。不要重新实现。
 
 若没有真实外部 Provider 凭据或用户合法参考材料，直接进入 P1-B2：
-让 StoryAgentRun 从全新的 StoryGenerateRequest 启动，在模型调用前持久化 run/generation attempt，增加 idempotency key + canonical request hash 冲突保护，并把 story/project/professional/Seedance/image/preproduction 变成可恢复 checkpoint。优先写失败测试，复用现有 canonical 服务，不复制 story-service、professional dispatcher、image-run 或 preproduction 逻辑。
-
-随后建设 bounded run list 和 StoryAgentRun Web 控制台。
+先增加 bounded `GET /api/story-agent/runs`，设计稳定 cursor/pagination、source/status/kind filters 与 ownership 隔离；随后建设 StoryAgentRun Web 控制台，展示 generation/story-project/professional/Seedance/image/preproduction 时间线、blocker、retry、图片 manifest 导入和 preproduction export。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
