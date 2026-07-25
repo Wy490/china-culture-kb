@@ -682,6 +682,119 @@ describe('Story Agent top-level run API', () => {
     });
   });
 
+  it('persists retryable professional workflow checkpoints and their resume history', async () => {
+    const started = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: 'api-professional-checkpoints-001',
+        generation_request: {
+          domain: 'china_culture',
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          model_profile_id: 'local_story_engine',
+        },
+      });
+    expect(started.status).toBe(200);
+    const run = started.body.data;
+    expect(run.workflow_checkpoints.map((checkpoint: { checkpoint: string }) => checkpoint.checkpoint))
+      .toEqual([
+        'evidence_supplement',
+        'professional_package',
+        'canonical_repair',
+        'derived_state_rebuild',
+      ]);
+    expect(run.workflow_checkpoints.every(
+      (checkpoint: { attempt_count: number }) => checkpoint.attempt_count === 1,
+    )).toBe(true);
+    expect(run.workflow_checkpoints.find(
+      (checkpoint: { checkpoint: string }) => checkpoint.checkpoint === 'canonical_repair',
+    )?.status).toBe('ready');
+
+    const projectId = run.generation_checkpoint.project_id as string;
+    const projectPath = resolve(
+      generationRunTestRoot,
+      'projects',
+      projectId,
+      'project.json',
+    );
+    const project = JSON.parse(await readFile(projectPath, 'utf8'));
+    const snapshotPath = resolve(
+      generationRunTestRoot,
+      'projects',
+      projectId,
+      'versions',
+      `${project.current_version_id}.json`,
+    );
+    const snapshot = JSON.parse(await readFile(snapshotPath, 'utf8'));
+    snapshot.story.supplement_tasks = [
+      ...(snapshot.story.supplement_tasks ?? []),
+      {
+        task_id: 'professional-evidence-checkpoint-fixture',
+        need_id: 'professional-evidence-checkpoint-fixture',
+        label: '补齐人物选择的可核验来源',
+        description: '用于验证顶层 evidence supplement checkpoint。',
+        status: 'open',
+        source: 'professional_evidence_missing',
+        created_at: '2026-07-25T00:00:00.000Z',
+      },
+    ];
+    snapshot.story.professional_text_package.status = 'revision_required';
+    snapshot.story.professional_text_package.quality_report.hard_gate_failures = [
+      'truth_boundary_missing: 需要补齐事实边界',
+    ];
+    snapshot.story.professional_text_package.delivery_text_package.scene_units = [];
+    snapshot.story.quality_report.passed = false;
+    snapshot.story.quality_report.repair_actions = ['补齐事实边界并重建专业文本'];
+    snapshot.story.reference_safety_report = {
+      ...snapshot.story.reference_safety_report,
+      baseline_comparison: {
+        ...snapshot.story.reference_safety_report.baseline_comparison,
+        baseline_story_id: '20260725-story-missingbaseline',
+      },
+    };
+    delete snapshot.story.gears_delivery;
+    await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+
+    const resumed = await request
+      .post(`/api/story-agent/runs/${run.run_id}/resume`)
+      .send({});
+    expect(resumed.status).toBe(200);
+    const checkpoints = Object.fromEntries(
+      resumed.body.data.workflow_checkpoints.map(
+        (checkpoint: { checkpoint: string }) => [checkpoint.checkpoint, checkpoint],
+      ),
+    ) as Record<string, {
+      status: string;
+      attempt_count: number;
+      blockers: string[];
+      retryable_failures: string[];
+      attempts: Array<{ status: string; error?: { message: string } }>;
+    }>;
+    expect(checkpoints.evidence_supplement).toMatchObject({
+      status: 'awaiting_external_action',
+      attempt_count: 2,
+    });
+    expect(checkpoints.evidence_supplement.blockers.join(' '))
+      .toContain('补齐人物选择的可核验来源');
+    expect(checkpoints.professional_package).toMatchObject({
+      status: 'blocked',
+      attempt_count: 2,
+    });
+    expect(checkpoints.canonical_repair).toMatchObject({
+      status: 'awaiting_external_action',
+      attempt_count: 2,
+    });
+    expect(checkpoints.derived_state_rebuild).toMatchObject({
+      status: 'failed_retryable',
+      attempt_count: 2,
+    });
+    expect(checkpoints.derived_state_rebuild.retryable_failures.join(' '))
+      .toContain('baseline');
+    expect(checkpoints.derived_state_rebuild.attempts.at(-1)).toMatchObject({
+      status: 'failed_retryable',
+    });
+  });
+
   it('lists runs with a bounded stable cursor and filters without returning full ledgers', async () => {
     const fixtures = [
       {

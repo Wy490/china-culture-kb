@@ -19,6 +19,8 @@ import type {
   StoryAgentRunListResponse,
   StoryAgentRunStageResult,
   StoryAgentRunStartRequest,
+  StoryAgentRunWorkflowCheckpoint,
+  StoryAgentRunWorkflowCheckpointKey,
   StoryAgentSeedancePreproductionPackage,
   StoryGenerateResult,
   VideoType,
@@ -41,6 +43,10 @@ import {
   importStoryAgentImageGenerationResult,
 } from './story-agent-image-run-service.js';
 import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
+import {
+  getProject,
+  rebuildProjectDerivedState,
+} from './project-service.js';
 import {
   actorCanAccessProductResource,
   resolveProductResourceBinding,
@@ -524,6 +530,207 @@ function stageResults(input: {
   ];
 }
 
+const WORKFLOW_CHECKPOINT_KEYS: StoryAgentRunWorkflowCheckpointKey[] = [
+  'evidence_supplement',
+  'professional_package',
+  'canonical_repair',
+  'derived_state_rebuild',
+];
+
+function pendingWorkflowCheckpoints(): StoryAgentRunWorkflowCheckpoint[] {
+  return WORKFLOW_CHECKPOINT_KEYS.map(checkpoint => ({
+    checkpoint,
+    status: 'pending',
+    attempt_count: 0,
+    attempts: [],
+    evidence_refs: [],
+    blockers: [],
+    retryable_failures: [],
+    action: workflowCheckpointAction(checkpoint),
+  }));
+}
+
+function workflowCheckpointAction(
+  checkpoint: StoryAgentRunWorkflowCheckpointKey,
+): StoryAgentRunWorkflowCheckpoint['action'] {
+  switch (checkpoint) {
+    case 'evidence_supplement':
+      return {
+        executor: 'project_operator',
+        operation: 'update_project_supplement_task',
+        endpoint: '/api/projects/:projectId/supplement-tasks/:taskId',
+        automatic_on_run_resume: false,
+      };
+    case 'professional_package':
+      return {
+        executor: 'project_operator',
+        operation: 'review_professional_text_package',
+        automatic_on_run_resume: false,
+      };
+    case 'canonical_repair':
+      return {
+        executor: 'canonical_project_service',
+        operation: 'repair_project_quality',
+        endpoint: '/api/projects/:projectId/repair-quality',
+        automatic_on_run_resume: false,
+      };
+    case 'derived_state_rebuild':
+      return {
+        executor: 'canonical_project_service',
+        operation: 'rebuild_project_derived_state',
+        automatic_on_run_resume: true,
+      };
+  }
+}
+
+interface WorkflowCheckpointObservation {
+  status: StoryAgentRunWorkflowCheckpoint['status'];
+  evidence_refs: string[];
+  blockers: string[];
+  retryable_failures: string[];
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+function observeWorkflowCheckpoints(input: {
+  preproduction: StoryAgentSeedancePreproductionPackage;
+  story?: StoryGenerateResult;
+  derivedRebuildError?: WorkflowCheckpointObservation['error'];
+}): Record<StoryAgentRunWorkflowCheckpointKey, WorkflowCheckpointObservation> {
+  const openEvidenceTasks = input.story?.supplement_tasks?.filter(task => (
+    task.status === 'open' && task.source === 'professional_evidence_missing'
+  )) ?? [];
+  const packages = input.preproduction.story_units.flatMap(unit => (
+    unit.professional_text_package ? [unit.professional_text_package] : []
+  ));
+  const missingPackageCount = input.preproduction.story_units.length - packages.length;
+  const professionalBlockers = unique(packages.flatMap(pkg => [
+    ...(pkg.status === 'revision_required'
+      ? [`professional_package_revision_required:${pkg.package_id}`]
+      : []),
+    ...pkg.quality_report.hard_gate_failures.map(
+      failure => `professional_hard_gate:${pkg.package_id}:${failure}`,
+    ),
+    ...(['revise', 'rebuild'].includes(pkg.coverage_report.verdict)
+      ? [`professional_coverage_${pkg.coverage_report.verdict}:${pkg.package_id}`]
+      : []),
+  ]));
+  const professionalFailures = missingPackageCount > 0
+    ? [`professional_package_missing:${missingPackageCount}`]
+    : [];
+  const qualityReport = input.story?.quality_report;
+  const repairActions = qualityReport && 'repair_actions' in qualityReport
+    ? qualityReport.repair_actions ?? []
+    : [];
+  const repairNeeded = qualityReport?.passed === false
+    || professionalBlockers.length > 0;
+  const derivedFailures = unique([
+    ...input.preproduction.story_units.flatMap(unit => {
+      const pkg = unit.professional_text_package;
+      if (!pkg) return [`derived_professional_package_missing:${unit.story_id}`];
+      const expected = unit.story.scene_breakdown.length;
+      return [
+        ...(pkg.scene_breakdown.length === expected
+          ? []
+          : [`derived_professional_scene_count:${unit.story_id}:${pkg.scene_breakdown.length}/${expected}`]),
+        ...(pkg.delivery_text_package.scene_units.length === expected
+          ? []
+          : [`derived_delivery_scene_count:${unit.story_id}:${pkg.delivery_text_package.scene_units.length}/${expected}`]),
+      ];
+    }),
+    ...(input.story && !input.story.gears_delivery
+      ? [`derived_gears_delivery_missing:${input.story.storyId}`]
+      : []),
+  ]);
+  const derivedError = input.derivedRebuildError;
+
+  return {
+    evidence_supplement: {
+      status: openEvidenceTasks.length > 0 ? 'awaiting_external_action' : 'ready',
+      evidence_refs: openEvidenceTasks.map(task => `supplement_task:${task.task_id}`),
+      blockers: openEvidenceTasks.map(task => `${task.task_id}:${task.label}`),
+      retryable_failures: [],
+    },
+    professional_package: {
+      status: professionalBlockers.length > 0
+        ? 'blocked'
+        : professionalFailures.length > 0
+          ? 'failed_retryable'
+          : 'ready',
+      evidence_refs: packages.map(pkg => `professional_text_package:${pkg.package_id}`),
+      blockers: professionalBlockers,
+      retryable_failures: professionalFailures,
+    },
+    canonical_repair: {
+      status: repairNeeded ? 'awaiting_external_action' : 'ready',
+      evidence_refs: [
+        ...(qualityReport ? [`story_quality:${qualityReport.passed ? 'passed' : 'failed'}`] : []),
+        ...packages.map(pkg => `professional_quality:${pkg.package_id}:${pkg.quality_report.status}`),
+      ],
+      blockers: repairNeeded
+        ? unique([
+            ...repairActions,
+            ...professionalBlockers,
+            ...(!qualityReport ? ['story_quality_report_missing'] : []),
+          ])
+        : [],
+      retryable_failures: [],
+    },
+    derived_state_rebuild: {
+      status: derivedError || derivedFailures.length > 0 ? 'failed_retryable' : 'ready',
+      evidence_refs: [
+        ...input.preproduction.story_units.map(unit => `derived_story_unit:${unit.story_id}`),
+        ...(input.story?.gears_delivery
+          ? [`gears_delivery:${input.story.gears_delivery.storyId}`]
+          : []),
+      ],
+      blockers: [],
+      retryable_failures: derivedError
+        ? [derivedError.message]
+        : derivedFailures,
+      error: derivedError,
+    },
+  };
+}
+
+function buildWorkflowCheckpoints(input: {
+  preproduction: StoryAgentSeedancePreproductionPackage;
+  story?: StoryGenerateResult;
+  previous?: StoryAgentRunWorkflowCheckpoint[];
+  now: string;
+  derivedRebuildError?: WorkflowCheckpointObservation['error'];
+}): StoryAgentRunWorkflowCheckpoint[] {
+  const observations = observeWorkflowCheckpoints(input);
+  return WORKFLOW_CHECKPOINT_KEYS.map(checkpoint => {
+    const observation = observations[checkpoint];
+    const previous = input.previous?.find(item => item.checkpoint === checkpoint);
+    const attempts = [
+      ...(previous?.attempts ?? []),
+      {
+        attempt_number: (previous?.attempt_count ?? 0) + 1,
+        status: observation.status,
+        started_at: input.now,
+        completed_at: input.now,
+        evidence_refs: observation.evidence_refs,
+        ...(observation.error ? { error: observation.error } : {}),
+      },
+    ];
+    return {
+      checkpoint,
+      status: observation.status,
+      attempt_count: attempts.length,
+      attempts,
+      evidence_refs: observation.evidence_refs,
+      blockers: observation.blockers,
+      retryable_failures: observation.retryable_failures,
+      action: workflowCheckpointAction(checkpoint),
+    };
+  });
+}
+
 function runStatus(
   stages: StoryAgentRunStageResult[],
 ): {
@@ -550,6 +757,9 @@ function buildRun(input: {
   imageRun?: StoryAgentImageRun;
   imageFailure?: string;
   existing?: StoryAgentProjectRun;
+  story?: StoryGenerateResult;
+  previousWorkflowCheckpoints?: StoryAgentRunWorkflowCheckpoint[];
+  derivedRebuildError?: WorkflowCheckpointObservation['error'];
   now: string;
 }): StoryAgentProjectRun {
   const request = sourceRequest(input.request);
@@ -571,6 +781,13 @@ function buildRun(input: {
     video_types: videoTypes(input.preproduction),
     ...state,
     stage_results: stages,
+    workflow_checkpoints: buildWorkflowCheckpoints({
+      preproduction: input.preproduction,
+      story: input.story,
+      previous: input.previousWorkflowCheckpoints ?? input.existing?.workflow_checkpoints,
+      now: input.now,
+      derivedRebuildError: input.derivedRebuildError,
+    }),
     blockers: unique(stages.flatMap(stage => stage.blockers)),
     retryable_failures: unique(stages.flatMap(stage => stage.retryable_failures)),
     image_request_manifest: input.imageRun
@@ -607,6 +824,35 @@ async function refreshRun(input: {
   existing?: StoryAgentProjectRun;
   incrementResume: boolean;
 }): Promise<ApiResponse<StoryAgentProjectRun>> {
+  let story: StoryGenerateResult | undefined;
+  let derivedRebuildError: WorkflowCheckpointObservation['error'];
+  if (input.request.project_id) {
+    if (input.incrementResume) {
+      try {
+        const rebuilt = await rebuildProjectDerivedState(input.request.project_id);
+        if (rebuilt.ok && rebuilt.data) {
+          story = rebuilt.data.current_story;
+        } else {
+          derivedRebuildError = {
+            code: rebuilt.error?.code ?? ErrorCodes.INTERNAL_ERROR,
+            message: rebuilt.error?.message ?? 'Canonical derived-state rebuild failed',
+            details: rebuilt.error?.details,
+          };
+        }
+      } catch (error) {
+        derivedRebuildError = {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: error instanceof Error
+            ? error.message
+            : 'Canonical derived-state rebuild failed',
+        };
+      }
+    }
+    if (!story) {
+      const detail = await getProject(input.request.project_id);
+      if (detail.ok && detail.data) story = detail.data.current_story;
+    }
+  }
   const preproductionResult = await exportStoryAgentSeedancePreproductionPackage(
     sourceRequest(input.request),
   );
@@ -626,6 +872,8 @@ async function refreshRun(input: {
       ? undefined
       : imageResult.error?.message ?? 'Story Agent image request export failed',
     existing: input.existing,
+    story,
+    derivedRebuildError,
     now,
   });
   if (input.incrementResume) run.resume_count += 1;
@@ -742,6 +990,7 @@ function buildInitialGenerationRun(input: {
     status: 'in_progress',
     current_stage: 'generation',
     stage_results: stages,
+    workflow_checkpoints: pendingWorkflowCheckpoints(),
     blockers: [],
     retryable_failures: [],
     generation_checkpoint: {
@@ -938,6 +1187,36 @@ async function refreshGenerationRun(input: {
     });
   }
   const request = { project_id: input.story.project_id };
+  let currentStory = input.story;
+  let derivedRebuildError: WorkflowCheckpointObservation['error'];
+  if (input.incrementResume) {
+    try {
+      const rebuilt = await rebuildProjectDerivedState(input.story.project_id);
+      if (rebuilt.ok && rebuilt.data) {
+        currentStory = rebuilt.data.current_story;
+      } else {
+        derivedRebuildError = {
+          code: rebuilt.error?.code ?? ErrorCodes.INTERNAL_ERROR,
+          message: rebuilt.error?.message ?? 'Canonical derived-state rebuild failed',
+          details: rebuilt.error?.details,
+        };
+      }
+    } catch (error) {
+      derivedRebuildError = {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: error instanceof Error
+          ? error.message
+          : 'Canonical derived-state rebuild failed',
+      };
+    }
+    if (derivedRebuildError) {
+      const detail = await getProject(input.story.project_id);
+      if (detail.ok && detail.data) currentStory = detail.data.current_story;
+    }
+  } else {
+    const detail = await getProject(input.story.project_id);
+    if (detail.ok && detail.data) currentStory = detail.data.current_story;
+  }
   const preproductionResult = await exportStoryAgentSeedancePreproductionPackage(request);
   if (!preproductionResult.ok || !preproductionResult.data) {
     return persistPostGenerationFailure({
@@ -956,6 +1235,9 @@ async function refreshGenerationRun(input: {
     imageFailure: imageResult.ok
       ? undefined
       : imageResult.error?.message ?? 'Story Agent image request export failed',
+    story: currentStory,
+    previousWorkflowCheckpoints: input.run.workflow_checkpoints,
+    derivedRebuildError,
     now,
   });
   const provenance = provenanceForStory(input.story);
@@ -994,6 +1276,7 @@ async function refreshGenerationRun(input: {
     video_types: derived.video_types,
     ...state,
     stage_results: stages,
+    workflow_checkpoints: derived.workflow_checkpoints,
     blockers: unique(stages.flatMap(stage => stage.blockers)),
     retryable_failures: unique(stages.flatMap(stage => stage.retryable_failures)),
     generation_checkpoint: {

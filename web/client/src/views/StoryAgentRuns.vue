@@ -174,6 +174,43 @@
             </ol>
           </section>
 
+          <section
+            v-if="selectedRun.workflow_checkpoints?.length"
+            class="run-console__checkpoints"
+            data-testid="story-agent-workflow-checkpoints"
+          >
+            <div class="run-console__section-head">
+              <div>
+                <h3>可恢复 Checkpoint</h3>
+                <small>补证、专业包、canonical repair 与派生重建各自保留尝试历史</small>
+              </div>
+            </div>
+            <div class="checkpoint-grid">
+              <article
+                v-for="checkpoint in selectedRun.workflow_checkpoints"
+                :key="checkpoint.checkpoint"
+                :class="`checkpoint checkpoint--${checkpoint.status}`"
+              >
+                <header>
+                  <strong>{{ workflowCheckpointLabel(checkpoint.checkpoint) }}</strong>
+                  <span :class="`status status--${checkpoint.status}`">
+                    {{ stageStatusLabel(checkpoint.status) }}
+                  </span>
+                </header>
+                <p>
+                  第 {{ checkpoint.attempt_count }} 次观察 ·
+                  {{ workflowCheckpointActionLabel(checkpoint.action.operation) }}
+                </p>
+                <small v-if="checkpoint.blockers[0]">{{ checkpoint.blockers[0] }}</small>
+                <small v-else-if="checkpoint.retryable_failures[0]">
+                  可重试：{{ checkpoint.retryable_failures[0] }}
+                </small>
+                <small v-else>{{ checkpoint.evidence_refs.length }} 条证据引用</small>
+                <code>{{ checkpoint.action.automatic_on_run_resume ? 'resume 自动执行' : '显式操作边界' }}</code>
+              </article>
+            </div>
+          </section>
+
           <section v-if="selectedRun.image_request_manifest" class="run-console__images">
             <div class="run-console__section-head">
               <div>
@@ -241,6 +278,8 @@ import type {
   StoryAgentRunListResponse,
   StoryAgentRunStage,
   StoryAgentRunStageStatus,
+  StoryAgentRunWorkflowCheckpoint,
+  StoryAgentRunWorkflowCheckpointKey,
 } from '@shared/types'
 import {
   exportStoryAgentRun,
@@ -313,6 +352,26 @@ function stageStatusLabel(status: StoryAgentRunStageStatus): string {
     failed_retryable: '可重试失败',
     blocked: '已阻断',
   }[status]
+}
+
+function workflowCheckpointLabel(checkpoint: StoryAgentRunWorkflowCheckpointKey): string {
+  return {
+    evidence_supplement: '专业补证',
+    professional_package: '专业文本包',
+    canonical_repair: 'Canonical Repair',
+    derived_state_rebuild: '派生状态重建',
+  }[checkpoint]
+}
+
+function workflowCheckpointActionLabel(
+  operation: StoryAgentRunWorkflowCheckpoint['action']['operation'],
+): string {
+  return {
+    update_project_supplement_task: '补证任务写回',
+    review_professional_text_package: '专业包审校',
+    repair_project_quality: '质量修复服务',
+    rebuild_project_derived_state: '确定性重建服务',
+  }[operation]
 }
 
 function formatTime(value: string): string {
@@ -758,6 +817,7 @@ onMounted(() => {
 }
 
 .run-console__stages,
+.run-console__checkpoints,
 .run-console__images,
 .run-console__boundary {
   margin-top: 22px;
@@ -815,6 +875,61 @@ onMounted(() => {
 
 .stage--blocked,
 .stage--failed_retryable {
+  border-color: #e7b8af;
+  background: #fff6f4;
+}
+
+.checkpoint-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.checkpoint {
+  padding: 13px;
+  border: 1px solid #d9e3e5;
+  border-radius: 12px;
+  background: #f9fbfb;
+}
+
+.checkpoint header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.checkpoint p {
+  margin: 9px 0 6px;
+  color: #61747a;
+  font-size: 11px;
+}
+
+.checkpoint > small,
+.checkpoint > code {
+  display: block;
+  margin-top: 6px;
+  color: #75858c;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.checkpoint > code {
+  width: fit-content;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #315b55;
+  background: #e9f4f1;
+}
+
+.checkpoint--ready {
+  border-color: #a9d8c2;
+  background: #f2faf6;
+}
+
+.checkpoint--blocked,
+.checkpoint--failed_retryable {
   border-color: #e7b8af;
   background: #fff6f4;
 }
@@ -895,6 +1010,10 @@ onMounted(() => {
 
   .run-console__facts {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .checkpoint-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

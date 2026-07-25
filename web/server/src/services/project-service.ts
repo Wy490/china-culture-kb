@@ -6908,6 +6908,83 @@ export async function repairProjectQuality(
   return getProject(projectId);
 }
 
+/**
+ * Rebuilds only the deterministic state derived from the current canonical
+ * story. This deliberately keeps the current narrative version identity and
+ * does not invoke a model-backed quality repair.
+ */
+export async function rebuildProjectDerivedState(
+  projectId: string,
+): Promise<ApiResponse<StoryProjectDetail>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return detailResult;
+  }
+
+  const { project, current_story } = detailResult.data;
+  const updatedAt = nextProjectUpdatedAt(project);
+  let updatedStory: StoryGenerateResult;
+  try {
+    updatedStory = await rebuildDerivedStoryState(current_story, {
+      professionalTextNow: updatedAt,
+    });
+  } catch (error) {
+    const validationFailure = derivedStateValidationFailure<StoryProjectDetail>(error);
+    if (validationFailure) return validationFailure;
+    throw error;
+  }
+
+  const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
+  if (!snapshot) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      `Project "${projectId}" current version is unavailable`,
+    );
+  }
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: updatedAt,
+    source_domain: resolveStorySourceDomain(updatedStory),
+    current_story_id: updatedStory.storyId,
+    title: updatedStory.title,
+    logline: updatedStory.logline,
+    credibility_note: updatedStory.credibility_note,
+    scene_count: updatedStory.scene_breakdown.length,
+    has_gears_segments: updatedStory.gears_segments.length > 0,
+    creation_use_case: updatedStory.creation_use_case ?? project.creation_use_case,
+    truth_mode: updatedStory.truth_mode ?? project.truth_mode,
+    material_sufficiency: updatedStory.material_sufficiency ?? project.material_sufficiency,
+    creation_contract: updatedStory.creation_contract ?? project.creation_contract,
+    open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+    ...qualitySummary(updatedStory),
+  };
+  await projectRepository().writeCurrentState(updatedMeta, {
+    ...snapshot,
+    quality_report: updatedStory.quality_report ?? snapshot.quality_report,
+    story: updatedStory,
+  }, projectMetaExpectation(project));
+
+  await updateSourceStory(updatedStory, raw => ({
+    ...raw,
+    supplement_tasks: updatedStory.supplement_tasks,
+    material_pack: updatedStory.material_pack,
+    knowledge_pack: updatedStory.knowledge_pack,
+    material_sufficiency: updatedStory.material_sufficiency,
+    creation_contract: updatedStory.creation_contract,
+    production_material_pack: updatedStory.production_material_pack,
+    production_material_readiness: updatedStory.production_material_readiness,
+    professional_text_package: updatedStory.professional_text_package,
+    gears_segments: updatedStory.gears_segments,
+    gears_delivery: updatedStory.gears_delivery,
+    quality_report: updatedStory.quality_report,
+    reference_safety_report: updatedStory.reference_safety_report,
+    project_id: updatedStory.project_id,
+    current_version_id: updatedStory.current_version_id,
+  }));
+
+  return getProject(projectId);
+}
+
 const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
   'storyId',
   'project_id',

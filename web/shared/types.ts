@@ -7613,6 +7613,45 @@ export interface StoryAgentRunStageResult {
   retryable_failures: string[];
 }
 
+export type StoryAgentRunWorkflowCheckpointKey =
+  | 'evidence_supplement'
+  | 'professional_package'
+  | 'canonical_repair'
+  | 'derived_state_rebuild';
+
+export interface StoryAgentRunWorkflowCheckpointAttempt {
+  attempt_number: number;
+  status: StoryAgentRunStageStatus;
+  started_at: string;
+  completed_at: string;
+  evidence_refs: string[];
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+export interface StoryAgentRunWorkflowCheckpoint {
+  checkpoint: StoryAgentRunWorkflowCheckpointKey;
+  status: StoryAgentRunStageStatus;
+  attempt_count: number;
+  attempts: StoryAgentRunWorkflowCheckpointAttempt[];
+  evidence_refs: string[];
+  blockers: string[];
+  retryable_failures: string[];
+  action: {
+    executor: 'canonical_project_service' | 'project_operator';
+    operation:
+      | 'update_project_supplement_task'
+      | 'review_professional_text_package'
+      | 'repair_project_quality'
+      | 'rebuild_project_derived_state';
+    endpoint?: string;
+    automatic_on_run_resume: boolean;
+  };
+}
+
 export interface StoryAgentRunImageRequestManifest {
   image_run_id: string;
   image_run_status: StoryAgentImageRun['status'];
@@ -7647,6 +7686,7 @@ export interface StoryAgentProjectRun {
     | 'blocked';
   current_stage: StoryAgentRunStage | 'complete';
   stage_results: StoryAgentRunStageResult[];
+  workflow_checkpoints?: StoryAgentRunWorkflowCheckpoint[];
   blockers: string[];
   retryable_failures: string[];
   image_request_manifest?: StoryAgentRunImageRequestManifest;
@@ -7712,6 +7752,7 @@ export interface StoryAgentGenerationRun {
     | 'blocked';
   current_stage: StoryAgentRunStage | 'complete';
   stage_results: StoryAgentRunStageResult[];
+  workflow_checkpoints?: StoryAgentRunWorkflowCheckpoint[];
   blockers: string[];
   retryable_failures: string[];
   generation_checkpoint: {
