@@ -1,0 +1,18 @@
+{
+  "schema_version": "story-agent-visual-asset-pressure-batch-registry/v1",
+  "recovery_report_path": "generated/story-agent-15x3-stability-matrix/image-recovery-report.json",
+  "batches": [
+    {
+      "batch_id": "imagegen-20260723-baseline",
+      "manifest_path": "generated/story-agent-cross-seed-image-assets-20260723/manifest.json",
+      "binding_report_path": "generated/story-agent-cross-seed-image-assets-20260723/binding-report.json",
+      "style_map_path": "server/scripts/story-agent-visual-asset-pressure-style-map.example.json"
+    },
+    {
+      "batch_id": "imagegen-20260725-batch2",
+      "manifest_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/manifest.json",
+      "binding_report_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/binding-report.json",
+      "style_map_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/style-map.json"
+    }
+  ]
+}
