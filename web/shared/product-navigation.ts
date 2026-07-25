@@ -209,6 +209,14 @@ export const PRODUCT_SECONDARY_NAVIGATION: readonly ProductSecondaryNavigationIt
     allowed_roles: PRODUCTION_ROLES,
   },
   {
+    id: 'story_agent_runs',
+    workspace: 'production',
+    label: 'Story Agent 运行',
+    description: '查看编排阶段、阻塞、图片回片与预制作包',
+    to: '/story-agent/runs',
+    allowed_roles: PRODUCTION_ROLES,
+  },
+  {
     id: 'revision_and_table_read',
     workspace: 'production',
     label: '修订与桌读',
@@ -364,7 +372,11 @@ export const PRESERVED_STORY_AGENT_DEEP_ROUTES = PRODUCT_SECONDARY_NAVIGATION
   .map(item => item.to);
 
 export function productWorkspaceForPath(path: string): ProductWorkspaceId {
-  if (path.startsWith('/workspace/production') || path.startsWith('/story/stage6')) return 'production';
+  if (
+    path.startsWith('/workspace/production')
+    || path.startsWith('/story-agent/runs')
+    || path.startsWith('/story/stage6')
+  ) return 'production';
   if (path.startsWith('/workspace/review') || path.startsWith('/story/stage7') || path.startsWith('/story/stage8')) return 'review';
   if (
     path.startsWith('/knowledge')

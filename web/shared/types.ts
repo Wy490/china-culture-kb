@@ -7740,6 +7740,66 @@ export interface StoryAgentGenerationRun {
 
 export type StoryAgentRun = StoryAgentProjectRun | StoryAgentGenerationRun;
 
+export type StoryAgentRunKind =
+  | 'generation_request'
+  | 'existing_project'
+  | 'existing_series';
+
+export interface StoryAgentRunListQuery {
+  limit: number;
+  cursor?: string;
+  status?: StoryAgentRun['status'];
+  kind?: StoryAgentRunKind;
+  source_kind?: 'story_project' | 'ai_comic_series_project';
+}
+
+export interface StoryAgentRunListItem {
+  run_id: string;
+  schema_version: StoryAgentRun['schema_version'];
+  kind: StoryAgentRunKind;
+  source: StoryAgentRun['source'];
+  generation_request?: {
+    entry_name?: string;
+    video_type?: VideoType;
+  };
+  video_types: VideoType[];
+  status: StoryAgentRun['status'];
+  current_stage: StoryAgentRun['current_stage'];
+  blocker_count: number;
+  retryable_failure_count: number;
+  primary_blocker?: string;
+  image_tasks?: {
+    total: number;
+    pending: number;
+    verified: number;
+    failed_retryable: number;
+    blocked: number;
+  };
+  resume_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoryAgentRunListResponse {
+  schema_version: 'story-agent-run-list/v1';
+  items: StoryAgentRunListItem[];
+  page: {
+    limit: number;
+    scanned_count: number;
+    has_more: boolean;
+    next_cursor?: string;
+  };
+  filters: {
+    status?: StoryAgentRun['status'];
+    kind?: StoryAgentRunKind;
+    source_kind?: 'story_project' | 'ai_comic_series_project';
+  };
+  boundary: {
+    full_ledgers_omitted: true;
+    max_scanned_ledgers: 250;
+  };
+}
+
 export interface StoryAgentRunExportResponse {
   schema_version: 'story-agent-run-export/v1' | 'story-agent-run-export/v2';
   run_id: string;

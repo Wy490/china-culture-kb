@@ -1610,6 +1610,30 @@ export const StoryAgentRunGenerateRequestSchema = z.object({
   generation_request: StoryGenerateRequestSchema,
 }).strict();
 
+export const StoryAgentRunListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().trim().regex(
+    /^[A-Za-z0-9_-]{20,512}$/,
+    'cursor must be an opaque Story Agent run list cursor',
+  ).optional(),
+  status: z.enum([
+    'in_progress',
+    'awaiting_external_action',
+    'failed_retryable',
+    'ready',
+    'blocked',
+  ]).optional(),
+  kind: z.enum([
+    'generation_request',
+    'existing_project',
+    'existing_series',
+  ]).optional(),
+  source_kind: z.enum([
+    'story_project',
+    'ai_comic_series_project',
+  ]).optional(),
+}).strict();
+
 export const StoryAgentImageRunIdParamSchema = z.object({
   runId: z.string().regex(
     /^image-run-[a-f0-9]{24}$/,

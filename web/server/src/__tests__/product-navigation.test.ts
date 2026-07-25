@@ -28,7 +28,11 @@ describe('product navigation contract', () => {
       enabled_feature_flags: ['internal_story_tools'],
     });
 
-    expect(defaultProduction.map(item => item.label)).toEqual(['项目生产', '修订与桌读']);
+    expect(defaultProduction.map(item => item.label)).toEqual([
+      '项目生产',
+      'Story Agent 运行',
+      '修订与桌读',
+    ]);
     expect(defaultProduction.every(item => !item.feature_flag)).toBe(true);
     expect(internalProduction.length).toBeGreaterThan(defaultProduction.length);
     expect(internalProduction.filter(item => item.feature_flag).every(item => item.feature_flag === 'internal_story_tools')).toBe(true);
@@ -78,6 +82,7 @@ describe('product navigation contract', () => {
     expect(productWorkspaceForPath('/story/new')).toBe('creation');
     expect(productWorkspaceForPath('/projects/example')).toBe('projects');
     expect(productWorkspaceForPath('/knowledge/湖南')).toBe('materials');
+    expect(productWorkspaceForPath('/story-agent/runs')).toBe('production');
     expect(productWorkspaceForPath('/story/stage6-exit-audit')).toBe('production');
     expect(productWorkspaceForPath('/story/stage8-operations')).toBe('review');
   });

@@ -94,6 +94,11 @@ export const router = createRouter({
       meta: { workspace: 'production' },
     },
     {
+      path: '/story-agent/runs',
+      name: 'StoryAgentRuns',
+      component: () => import('./views/StoryAgentRuns.vue'),
+    },
+    {
       path: '/workspace/review',
       name: 'ReviewWorkspace',
       component: () => import('./views/WorkspaceHub.vue'),

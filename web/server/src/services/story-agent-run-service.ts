@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type {
   ApiResponse,
@@ -13,6 +13,10 @@ import type {
   StoryAgentRunGenerationAttempt,
   StoryAgentRunGenerationProvenance,
   StoryAgentRunImageImportResponse,
+  StoryAgentRunKind,
+  StoryAgentRunListItem,
+  StoryAgentRunListQuery,
+  StoryAgentRunListResponse,
   StoryAgentRunStageResult,
   StoryAgentRunStartRequest,
   StoryAgentSeedancePreproductionPackage,
@@ -20,7 +24,10 @@ import type {
   VideoType,
 } from '@shared/types.js';
 import { ErrorCodes, fail, success } from '@shared/types.js';
-import type { ProductResourceOwnership } from '@shared/product-access.js';
+import type {
+  ProductAccessContext,
+  ProductResourceOwnership,
+} from '@shared/product-access.js';
 import {
   ArtifactStoreConflictError,
   FileArtifactStore,
@@ -34,6 +41,10 @@ import {
   importStoryAgentImageGenerationResult,
 } from './story-agent-image-run-service.js';
 import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
+import {
+  actorCanAccessProductResource,
+  resolveProductResourceBinding,
+} from './product-resource-access-service.js';
 
 const STORY_AGENT_RUN_SCHEMA_VERSION = 'story-agent-run/v1' as const;
 const STORY_AGENT_RUN_INPUT_SCHEMA_VERSION = 'story-agent-run-input/v1' as const;
@@ -42,6 +53,8 @@ const STORY_AGENT_GENERATION_RUN_INPUT_SCHEMA_VERSION = 'story-agent-run-input/v
 const STORY_AGENT_GENERATION_CHECKPOINT_SCHEMA_VERSION =
   'story-agent-run-generation-checkpoint/v1' as const;
 const STORY_AGENT_RUN_ROOT_DIRECTORY = 'story-agent-runs';
+const STORY_AGENT_RUN_LIST_MAX_SCANNED_LEDGERS = 250 as const;
+const STORY_AGENT_RUN_ID_PATTERN = /^story-agent-run-[a-f0-9]{24}$/;
 const generationRunQueues = new Map<string, Promise<ApiResponse<StoryAgentRun>>>();
 
 function sha256(value: string): string {
@@ -123,6 +136,10 @@ function runFilePath(runId: string): string {
   return resolve(runDirectory(runId), 'run.json');
 }
 
+function runFilePathFromRoot(root: string, runId: string): string {
+  return resolve(root, runId, 'run.json');
+}
+
 function generationCheckpointFilePath(runId: string): string {
   return resolve(runDirectory(runId), 'generation-checkpoint.json');
 }
@@ -140,6 +157,208 @@ async function readRun(runId: string): Promise<StoryAgentRun | undefined> {
   } catch {
     return undefined;
   }
+}
+
+async function readRunFromRoot(root: string, runId: string): Promise<StoryAgentRun | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(runFilePathFromRoot(root, runId), 'utf8')) as StoryAgentRun;
+    return (
+      parsed.schema_version === STORY_AGENT_RUN_SCHEMA_VERSION
+      || parsed.schema_version === STORY_AGENT_GENERATION_RUN_SCHEMA_VERSION
+    )
+      && parsed.run_id === runId
+      ? parsed
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function runKind(run: StoryAgentRun): StoryAgentRunKind {
+  if (run.schema_version === STORY_AGENT_GENERATION_RUN_SCHEMA_VERSION) {
+    return 'generation_request';
+  }
+  return run.source.kind === 'ai_comic_series_project'
+    ? 'existing_series'
+    : 'existing_project';
+}
+
+function encodeRunListCursor(runId: string): string {
+  return Buffer.from(JSON.stringify({
+    schema_version: 'story-agent-run-list-cursor/v1',
+    after_run_id: runId,
+  })).toString('base64url');
+}
+
+function decodeRunListCursor(cursor: string): string | undefined {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
+      schema_version?: unknown;
+      after_run_id?: unknown;
+    };
+    return parsed.schema_version === 'story-agent-run-list-cursor/v1'
+      && typeof parsed.after_run_id === 'string'
+      && STORY_AGENT_RUN_ID_PATTERN.test(parsed.after_run_id)
+      ? parsed.after_run_id
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function summarizeRun(run: StoryAgentRun): StoryAgentRunListItem {
+  const generationRequest = run.schema_version === STORY_AGENT_GENERATION_RUN_SCHEMA_VERSION
+    ? run.input_contract.generation_request
+    : undefined;
+  const manifest = run.image_request_manifest;
+  return {
+    run_id: run.run_id,
+    schema_version: run.schema_version,
+    kind: runKind(run),
+    source: run.source,
+    ...(generationRequest
+      ? {
+          generation_request: {
+            ...(generationRequest.entry_name ? { entry_name: generationRequest.entry_name } : {}),
+            ...(generationRequest.video_type ? { video_type: generationRequest.video_type } : {}),
+          },
+        }
+      : {}),
+    video_types: run.video_types,
+    status: run.status,
+    current_stage: run.current_stage,
+    blocker_count: run.blockers.length,
+    retryable_failure_count: run.retryable_failures.length,
+    ...(run.blockers[0] ? { primary_blocker: run.blockers[0] } : {}),
+    ...(manifest
+      ? {
+          image_tasks: {
+            total: manifest.task_count,
+            pending: manifest.pending_task_count,
+            verified: manifest.verified_task_count,
+            failed_retryable: manifest.failed_retryable_task_count,
+            blocked: manifest.blocked_task_count,
+          },
+        }
+      : {}),
+    resume_count: run.resume_count,
+    created_at: run.created_at,
+    updated_at: run.updated_at,
+  };
+}
+
+async function actorCanAccessRun(
+  run: StoryAgentRun,
+  access: ProductAccessContext | undefined,
+): Promise<boolean> {
+  if (!access || access.mode !== 'required') return true;
+  if (!access.actor) return false;
+  if (
+    run.schema_version === STORY_AGENT_GENERATION_RUN_SCHEMA_VERSION
+    && run.access_control
+  ) {
+    return actorCanAccessProductResource(access.actor, {
+      ...run.access_control,
+      resource_type: run.source?.kind === 'ai_comic_series_project'
+        ? 'series_project'
+        : 'story_project',
+      resource_id: run.source?.source_id ?? run.run_id,
+    });
+  }
+  if (!run.source) return false;
+  const resourceType = run.source.kind === 'ai_comic_series_project'
+    ? 'series_project'
+    : 'story_project';
+  const resolution = await resolveProductResourceBinding(resourceType, run.source.source_id);
+  return Boolean(
+    resolution.binding
+    && actorCanAccessProductResource(access.actor, resolution.binding),
+  );
+}
+
+function runMatchesFilters(run: StoryAgentRun, query: StoryAgentRunListQuery): boolean {
+  return (!query.status || run.status === query.status)
+    && (!query.kind || runKind(run) === query.kind)
+    && (!query.source_kind || run.source?.kind === query.source_kind);
+}
+
+export interface ListStoryAgentRunsOptions {
+  runs_root?: string;
+}
+
+export async function listStoryAgentRuns(
+  query: StoryAgentRunListQuery,
+  access?: ProductAccessContext,
+  options: ListStoryAgentRunsOptions = {},
+): Promise<ApiResponse<StoryAgentRunListResponse>> {
+  const root = options.runs_root ?? runsRoot();
+  const afterRunId = query.cursor ? decodeRunListCursor(query.cursor) : undefined;
+  if (query.cursor && !afterRunId) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Story Agent run list cursor is invalid');
+  }
+
+  let runIds: string[];
+  try {
+    runIds = (await readdir(root, { withFileTypes: true }))
+      .filter(entry => entry.isDirectory() && STORY_AGENT_RUN_ID_PATTERN.test(entry.name))
+      .map(entry => entry.name)
+      .sort((left, right) => right.localeCompare(left));
+  } catch {
+    runIds = [];
+  }
+  const startIndex = afterRunId
+    ? runIds.findIndex(runId => runId.localeCompare(afterRunId) < 0)
+    : 0;
+  const effectiveStartIndex = startIndex < 0 ? runIds.length : startIndex;
+  const items: StoryAgentRunListItem[] = [];
+  let scannedCount = 0;
+
+  for (
+    let index = effectiveStartIndex;
+    index < runIds.length
+      && scannedCount < STORY_AGENT_RUN_LIST_MAX_SCANNED_LEDGERS
+      && items.length < query.limit;
+    index += 1
+  ) {
+    const run = await readRunFromRoot(root, runIds[index]);
+    scannedCount += 1;
+    if (!run) continue;
+    try {
+      if (
+        runMatchesFilters(run, query)
+        && await actorCanAccessRun(run, access)
+      ) {
+        items.push(summarizeRun(run));
+      }
+    } catch {
+      // One malformed or unresolved durable ledger must not break the bounded page.
+    }
+  }
+
+  const nextIndex = effectiveStartIndex + scannedCount;
+  const hasMore = nextIndex < runIds.length;
+  const lastScannedRunId = scannedCount > 0 ? runIds[nextIndex - 1] : undefined;
+  return success({
+    schema_version: 'story-agent-run-list/v1',
+    items,
+    page: {
+      limit: query.limit,
+      scanned_count: scannedCount,
+      has_more: hasMore,
+      ...(hasMore && lastScannedRunId
+        ? { next_cursor: encodeRunListCursor(lastScannedRunId) }
+        : {}),
+    },
+    filters: {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.source_kind ? { source_kind: query.source_kind } : {}),
+    },
+    boundary: {
+      full_ledgers_omitted: true,
+      max_scanned_ledgers: STORY_AGENT_RUN_LIST_MAX_SCANNED_LEDGERS,
+    },
+  });
 }
 
 async function persistRun(run: StoryAgentRun): Promise<void> {

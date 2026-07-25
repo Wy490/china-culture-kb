@@ -3,6 +3,7 @@ import type {
   StoryAgentImageGenerationResult,
   StoryAgentImageRunExportRequest,
   StoryAgentRunGenerateRequest,
+  StoryAgentRunListQuery,
   StoryAgentRunStartRequest,
   StoryAgentSeedancePreproductionExportRequest,
 } from '@shared/types.js';
@@ -15,9 +16,10 @@ import {
   StoryAgentRunIdParamSchema,
   StoryAgentRunGenerateRequestSchema,
   StoryAgentRunStartRequestSchema,
+  StoryAgentRunListQuerySchema,
   StoryAgentSeedancePreproductionExportRequestSchema,
 } from '@shared/schemas.js';
-import { validateBody, validateParams } from '../middleware/validate.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import { requireProductAccess } from '../middleware/product-access.js';
 import { exportStoryAgentSeedancePreproductionPackage } from '../services/story-agent-preproduction-package-service.js';
 import {
@@ -30,6 +32,7 @@ import {
   generateStoryAgentRun,
   getStoryAgentRun,
   importStoryAgentRunImages,
+  listStoryAgentRuns,
   resumeStoryAgentRun,
   startStoryAgentRun,
 } from '../services/story-agent-run-service.js';
@@ -249,6 +252,26 @@ storyAgentRouter.post(
       const result = await startStoryAgentRun(req.body as StoryAgentRunStartRequest);
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400)
         .json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// GET /api/story-agent/runs
+// Lists summaries through a stable cursor while bounding ledger reads per request.
+storyAgentRouter.get(
+  '/runs',
+  requireUnscopedProjectRead,
+  validateQuery(StoryAgentRunListQuerySchema),
+  async (req, res, next) => {
+    try {
+      const access = res.locals.productAccess as ProductAccessContext | undefined;
+      const result = await listStoryAgentRuns(
+        req.query as unknown as StoryAgentRunListQuery,
+        access,
+      );
+      res.status(result.ok ? 200 : 400).json(result);
     } catch (error) {
       next(error);
     }

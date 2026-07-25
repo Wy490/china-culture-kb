@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { success } from '@shared/types.js';
 import type {
   ProductFeatureFlag,
+  ProductAccessContext,
   ProductPermission,
   ProductRoleId,
   ProductSignedSessionPayload,
@@ -36,7 +37,10 @@ import {
   generateAiComicSeriesPlan,
   saveAiComicSeriesProject,
 } from '../services/ai-comic-series-service.js';
-import { storyAgentGenerationRunId } from '../services/story-agent-run-service.js';
+import {
+  listStoryAgentRuns,
+  storyAgentGenerationRunId,
+} from '../services/story-agent-run-service.js';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
 const ENVIRONMENT_NAMES = [
@@ -1444,6 +1448,107 @@ describe('Stage 6-8 route isolation', () => {
 });
 
 describe('high-risk write isolation', () => {
+  it('lists only generation runs owned by the authenticated actor organization', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-agent-run-list-access-'));
+    const runsRoot = resolve(root, 'runs');
+    const makeRun = (
+      runId: string,
+      organizationId: string,
+      ownerActorId: string,
+    ) => ({
+      schema_version: 'story-agent-run/v2',
+      run_id: runId,
+      input_contract: {
+        schema_version: 'story-agent-run-input/v2',
+        kind: 'generation_request',
+        idempotency_key: `owner-list-${ownerActorId}`,
+        generation_request: {
+          domain: 'china_culture',
+          entry_name: `任务 ${ownerActorId}`,
+          video_type: 'documentary',
+        },
+      },
+      input_sha256: 'a'.repeat(64),
+      source: null,
+      video_types: [],
+      status: 'failed_retryable',
+      current_stage: 'generation',
+      stage_results: [],
+      blockers: [],
+      retryable_failures: ['provider_unavailable'],
+      generation_checkpoint: {
+        status: 'failed_retryable',
+        request_sha256: 'b'.repeat(64),
+        attempt_count: 1,
+        attempts: [],
+        provenance: {
+          mode: 'not_observed',
+          external_model_call_performed: null,
+          generation_used_fallback: null,
+        },
+      },
+      access_control: {
+        schema_version: 'story-agent-product-resource-ownership/v1',
+        organization_id: organizationId,
+        owner_actor_id: ownerActorId,
+        member_actor_ids: [],
+      },
+      boundary: {
+        canonical_services_reused: true,
+        image_provider_invoked_by_server: false,
+        video_generation_performed: false,
+        human_review_credit_granted: false,
+      },
+      resume_count: 0,
+      created_at: '2026-07-25T00:00:00.000Z',
+      updated_at: '2026-07-25T00:00:00.000Z',
+    });
+    const ownerARunId = `story-agent-run-${'a'.repeat(24)}`;
+    const ownerBRunId = `story-agent-run-${'b'.repeat(24)}`;
+    for (const fixture of [
+      makeRun(ownerARunId, 'organization-a', 'owner-a'),
+      makeRun(ownerBRunId, 'organization-b', 'owner-b'),
+    ]) {
+      const directory = resolve(runsRoot, fixture.run_id);
+      await mkdir(directory, { recursive: true });
+      await writeFile(
+        resolve(directory, 'run.json'),
+        `${JSON.stringify(fixture, null, 2)}\n`,
+        'utf8',
+      );
+    }
+    const access: ProductAccessContext = {
+      schema_version: 'story-agent-product-access-context/v1',
+      mode: 'required',
+      production_enforced: true,
+      authenticated: true,
+      authentication_method: 'static_registry_token',
+      actor: {
+        actor_id: 'owner-a',
+        display_name: 'Owner A',
+        organization_id: 'organization-a',
+        role: 'creator',
+        enabled_feature_flags: [],
+      },
+      permissions: ['project:read'],
+      request_role_headers_trusted: false,
+      credit_boundary: 'access control does not grant human review, professional pass or signed release credit',
+    };
+
+    try {
+      const listed = await listStoryAgentRuns(
+        { limit: 20 },
+        access,
+        { runs_root: runsRoot },
+      );
+      expect(listed.ok).toBe(true);
+      expect(listed.data?.items.map(item => item.run_id)).toEqual([ownerARunId]);
+      expect(listed.data?.page.scanned_count).toBe(2);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('scopes generation-run idempotency keys to the authenticated owner', () => {
     const ownerA = {
       schema_version: 'story-agent-product-resource-ownership/v1' as const,

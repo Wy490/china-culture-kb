@@ -681,6 +681,221 @@ describe('Story Agent top-level run API', () => {
       },
     });
   });
+
+  it('lists runs with a bounded stable cursor and filters without returning full ledgers', async () => {
+    const fixtures = [
+      {
+        schema_version: 'story-agent-run/v1',
+        run_id: `story-agent-run-${'1'.repeat(24)}`,
+        input_contract: {
+          schema_version: 'story-agent-run-input/v1',
+          series_project_id: '20260725-series-list001',
+        },
+        input_sha256: '1'.repeat(64),
+        source: {
+          kind: 'ai_comic_series_project',
+          source_id: '20260725-series-list001',
+        },
+        video_types: ['ai_comic_drama'],
+        status: 'blocked',
+        current_stage: 'image_assets',
+        stage_results: [],
+        blockers: ['series_image_assets_missing'],
+        retryable_failures: [],
+        boundary: {
+          canonical_services_reused: true,
+          image_provider_invoked_by_server: false,
+          video_generation_performed: false,
+          human_review_credit_granted: false,
+        },
+        resume_count: 0,
+        created_at: '2026-07-25T01:00:00.000Z',
+        updated_at: '2026-07-25T01:00:00.000Z',
+      },
+      {
+        schema_version: 'story-agent-run/v1',
+        run_id: `story-agent-run-${'2'.repeat(24)}`,
+        input_contract: {
+          schema_version: 'story-agent-run-input/v1',
+          project_id: '20260725-story-list002--character_story',
+        },
+        input_sha256: '2'.repeat(64),
+        source: {
+          kind: 'story_project',
+          source_id: '20260725-story-list002--character_story',
+        },
+        video_types: ['character_story'],
+        status: 'ready',
+        current_stage: 'complete',
+        stage_results: [],
+        blockers: [],
+        retryable_failures: [],
+        boundary: {
+          canonical_services_reused: true,
+          image_provider_invoked_by_server: false,
+          video_generation_performed: false,
+          human_review_credit_granted: false,
+        },
+        resume_count: 1,
+        created_at: '2026-07-25T02:00:00.000Z',
+        updated_at: '2026-07-25T02:00:00.000Z',
+      },
+      {
+        schema_version: 'story-agent-run/v2',
+        run_id: `story-agent-run-${'3'.repeat(24)}`,
+        input_contract: {
+          schema_version: 'story-agent-run-input/v2',
+          kind: 'generation_request',
+          idempotency_key: 'list-generation-fixture-003',
+          generation_request: {
+            domain: 'china_culture',
+            entry_name: '列表生成任务',
+            video_type: 'documentary',
+          },
+        },
+        input_sha256: '3'.repeat(64),
+        source: null,
+        video_types: [],
+        status: 'failed_retryable',
+        current_stage: 'generation',
+        stage_results: [],
+        blockers: [],
+        retryable_failures: ['external_generation_unavailable'],
+        generation_checkpoint: {
+          status: 'failed_retryable',
+          request_sha256: '3'.repeat(64),
+          attempt_count: 1,
+          attempts: [],
+          provenance: {
+            mode: 'not_observed',
+            external_model_call_performed: null,
+            generation_used_fallback: null,
+          },
+        },
+        boundary: {
+          canonical_services_reused: true,
+          image_provider_invoked_by_server: false,
+          video_generation_performed: false,
+          human_review_credit_granted: false,
+        },
+        resume_count: 0,
+        created_at: '2026-07-25T03:00:00.000Z',
+        updated_at: '2026-07-25T03:00:00.000Z',
+      },
+    ];
+    for (const fixture of fixtures) {
+      const runDirectory = resolve(
+        generationRunTestRoot,
+        'story-agent-runs',
+        fixture.run_id,
+      );
+      await mkdir(runDirectory, { recursive: true });
+      await writeJsonFixture(runDirectory, 'run.json', fixture);
+    }
+
+    const first = await request.get('/api/story-agent/runs?limit=1');
+    expect(first.status).toBe(200);
+    expectSuccess(first.body);
+    expect(first.body.data).toMatchObject({
+      schema_version: 'story-agent-run-list/v1',
+      items: [{
+        run_id: `story-agent-run-${'3'.repeat(24)}`,
+        kind: 'generation_request',
+        status: 'failed_retryable',
+        source: null,
+      }],
+      page: {
+        limit: 1,
+        scanned_count: 1,
+        has_more: true,
+      },
+      boundary: {
+        full_ledgers_omitted: true,
+        max_scanned_ledgers: 250,
+      },
+    });
+    expect(first.body.data.page.next_cursor).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(first.body.data.items[0].generation_request).toEqual({
+      entry_name: '列表生成任务',
+      video_type: 'documentary',
+    });
+    expect(first.body.data.items[0].preproduction_package).toBeUndefined();
+
+    const second = await request.get('/api/story-agent/runs')
+      .query({ limit: '1', cursor: first.body.data.page.next_cursor });
+    expect(second.status).toBe(200);
+    expect(second.body.data.items.map((item: { run_id: string }) => item.run_id))
+      .toEqual([`story-agent-run-${'2'.repeat(24)}`]);
+
+    const filtered = await request.get('/api/story-agent/runs')
+      .query({ status: 'ready', kind: 'existing_project', source_kind: 'story_project' });
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.data.items).toHaveLength(1);
+    expect(filtered.body.data.items[0]).toMatchObject({
+      run_id: `story-agent-run-${'2'.repeat(24)}`,
+      kind: 'existing_project',
+      source: {
+        kind: 'story_project',
+        source_id: '20260725-story-list002--character_story',
+      },
+    });
+    expect(filtered.body.data.page.scanned_count).toBe(3);
+    expect(filtered.body.data.page.has_more).toBe(false);
+
+    const invalid = await request.get('/api/story-agent/runs?limit=0');
+    expect(invalid.status).toBe(400);
+    expectFailure(invalid.body, 'VALIDATION_ERROR');
+  });
+
+  it('stops list filtering after the advertised maximum ledger reads', async () => {
+    const runIds = Array.from({ length: 251 }, (_, index) => (
+      `story-agent-run-${index.toString(16).padStart(24, '0')}`
+    ));
+    await Promise.all(runIds.map(async runId => {
+      const directory = resolve(generationRunTestRoot, 'story-agent-runs', runId);
+      await mkdir(directory, { recursive: true });
+      await writeJsonFixture(directory, 'run.json', {
+        schema_version: 'story-agent-run/v1',
+        run_id: runId,
+        input_contract: {
+          schema_version: 'story-agent-run-input/v1',
+          project_id: '20260725-story-bounded001--character_story',
+        },
+        input_sha256: 'a'.repeat(64),
+        source: {
+          kind: 'story_project',
+          source_id: '20260725-story-bounded001--character_story',
+        },
+        video_types: ['character_story'],
+        status: 'blocked',
+        current_stage: 'image_assets',
+        stage_results: [],
+        blockers: ['fixture_blocked'],
+        retryable_failures: [],
+        boundary: {
+          canonical_services_reused: true,
+          image_provider_invoked_by_server: false,
+          video_generation_performed: false,
+          human_review_credit_granted: false,
+        },
+        resume_count: 0,
+        created_at: '2026-07-25T00:00:00.000Z',
+        updated_at: '2026-07-25T00:00:00.000Z',
+      });
+    }));
+
+    const response = await request.get('/api/story-agent/runs')
+      .query({ status: 'ready', limit: '50' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.items).toEqual([]);
+    expect(response.body.data.page).toMatchObject({
+      limit: 50,
+      scanned_count: 250,
+      has_more: true,
+    });
+    expect(response.body.data.page.next_cursor).toBeTruthy();
+  });
   });
 
   it('starts, reads, resumes, and exports one stable project-bound run', async () => {

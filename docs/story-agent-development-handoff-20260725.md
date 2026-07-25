@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B2 生成入口完成，下一步建设运行控制台
+# Story Agent 开发交接：P1-B2 运行控制台完成，下一步拆分专业补证与修复 checkpoint
 
 > 交接日期：2026-07-25
 >
@@ -9,6 +9,8 @@
 > P1-B1 功能基线提交：`f1e5f5c6 feat(story-agent): add unified project run ledger`
 >
 > P1-B2 生成入口提交：`a04ab79e feat(story-agent): start runs from generation requests`
+>
+> P1-B2 运行控制台提交：以本交接最终提交为准
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -42,23 +44,22 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“已有项目可由统一顶层账本编排”推进到“全新生成请求可直接进入 durable 顶层账本”的阶段。
+Story Agent 已从“全新生成请求可直接进入 durable 顶层账本”推进到“操作者可通过 bounded 列表和 Web 控制台查看、过滤、恢复与交接完整运行”的阶段。
 
 当前工程判断：
 
 | 口径 | 完成度 | 判断 |
 |---|---:|---|
-| 展示结构化生成与前置制作交付 | 94%–97% | 普通项目、系列项目、15×1、15×3 均有完整交付证据 |
-| 15 类型无人值守稳定交付 | 93%–96% | 本地恢复、图片幂等、严格门禁、record-replay、项目绑定和生成请求绑定 StoryAgentRun 均已跑通 |
+| 展示结构化生成与前置制作交付 | 96%–98% | 普通项目、系列项目、15×1、15×3 和运行控制台均有完整交付证据 |
+| 15 类型无人值守稳定交付 | 94%–97% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun 与 operator 控制台均已跑通 |
 | 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
 
 仍不能宣称 100% 完成，主要因为：
 
-1. 尚无 bounded StoryAgentRun 列表 API 和 Web 控制台；
-2. 顶层 run 尚未把专业补证、canonical repair 和 derived-state rebuild 分成独立可重试 checkpoint；
-3. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
-4. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
-5. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
+1. 顶层 run 尚未把专业补证、canonical repair 和 derived-state rebuild 分成独立可重试 checkpoint；
+2. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
+3. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
+4. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
 
 ## 3. 已完成的核心链路
 
@@ -259,6 +260,7 @@ web/generated/story-agent-image-runs/<image-run-id>/
 ```text
 POST /api/story-agent/runs
 POST /api/story-agent/runs/generate
+GET  /api/story-agent/runs
 GET  /api/story-agent/runs/:runId
 POST /api/story-agent/runs/:runId/resume
 POST /api/story-agent/runs/:runId/import-images
@@ -315,13 +317,23 @@ Web 全 workspace lint：通过
 
 Server:
   Test Files  171 passed | 1 skipped
-  Tests       1464 passed | 2 skipped
+  Tests       1467 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
   Tests       503 passed
 
 git diff --check：通过
+```
+
+本轮新增定向与浏览器证据：
+
+```text
+Story Agent top-level run API：8 passed
+Product access owner list isolation：1 passed
+Product navigation：7 passed
+Web browser smoke：真实本地 run、6 阶段、3 图片任务、筛选空态、resume 0→1
+视觉截图：output/playwright/story-agent-run-console/console-full.png（本地忽略产物）
 ```
 
 其他已经完成的里程碑证据：
@@ -352,7 +364,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 ## 6. P1-B2 当前状态与下一步
 
-在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进 P1-B2。
+在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进 P1-B3。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -393,29 +405,71 @@ kb_generate_story_agent_run
 - access control 在 schema 与模型调用前执行；
 - 无图片 Provider、无视频生成、无真人或 production credit。
 
-### 6.2 第一优先级：bounded run list 与 StoryAgentRun Web 控制台
+### 6.2 已完成：bounded run list 与 StoryAgentRun Web 控制台
 
-需要：
-
-- run 列表和 source/status/filter；
-- generation、story/project、professional、Seedance、image、preproduction 六段时间线；
-- blocker 与 retryable failure；
-- resume；
-- 完整 image request task 展示；
-- result manifest 导入；
-- preproduction export；
-- no-provider/no-video/no-credit 边界；
-- 项目/系列 ownership 隔离。
-
-在 UI 前最好先增加：
+新增列表合同与 API：
 
 ```text
 GET /api/story-agent/runs
+story-agent-run-list/v1
 ```
 
-并设计 bounded pagination，避免扫描所有 `run.json`。
+查询参数：
 
-### 6.3 第三优先级：专业补证/修复 checkpoint
+```text
+limit        1..50，默认 20
+cursor       opaque stable cursor
+status       in_progress / awaiting_external_action / failed_retryable / ready / blocked
+kind         generation_request / existing_project / existing_series
+source_kind  story_project / ai_comic_series_project
+```
+
+bounded 语义：
+
+- 只枚举 run 目录名，按稳定 `run_id` 降序游标推进；
+- 单请求最多读取 250 个 `run.json`；
+- 即使过滤结果为空，也返回 `scanned_count`、`has_more` 和下一游标；
+- 列表只返回摘要，不携带完整 preproduction package；
+- 已用 251 个 ledger 的测试证明第一个请求在 250 停止；
+- 坏 ledger 或 ownership 解析失败只跳过当前项，不击穿整页。
+
+权限：
+
+- 列表入口先要求 `project:read`；
+- access disabled 模式保留本地开发兼容；
+- required 模式下，generation run 按持久化 organization/owner/member 隔离；
+- project/series run 复用 canonical resource binding；
+- 测试证明跨组织 owner 无法在列表看到彼此的 pre-project generation run。
+
+Web 控制台：
+
+```text
+/story-agent/runs
+```
+
+已接入“生产”工作区，包含：
+
+- status/kind/source 过滤和前后页游标；
+- generation、story/project、professional、Seedance、image、preproduction 六段时间线；
+- blocker、retryable failure、状态、当前阶段和 resume 次数；
+- resume / refresh；
+- 完整 image request task、prompt、task ID、预期输出路径；
+- `image-generation-result/v1` JSON 导入；
+- preproduction export JSON；
+- provider 未调用、视频未生成、真人和 production credit 未授予的固定边界。
+
+浏览器 smoke 使用隔离 generated root 创建真实本地 run 后验证：
+
+```text
+页面位于生产工作区
+6 个持久化阶段可见
+3 个图片任务可展开完整 prompt 和输出路径
+ready 筛选正确进入空态且清除陈旧详情
+resume_count 0 → 1
+无布局溢出或遮挡
+```
+
+### 6.3 第一优先级：专业补证/修复 checkpoint
 
 把以下状态提升为顶层可重试阶段：
 
@@ -491,6 +545,7 @@ real external provider
 - Reference Library governance/composition/baseline UI；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
+- P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -512,6 +567,12 @@ web/server/src/services/story-agent-image-run-service.ts
 web/server/src/services/story-agent-preproduction-package-service.ts
 web/server/src/__tests__/api.test.ts
 web/server/src/__tests__/product-access-control.test.ts
+web/server/src/__tests__/product-navigation.test.ts
+
+web/client/src/api/story-agent-runs.ts
+web/client/src/views/StoryAgentRuns.vue
+web/client/src/router.ts
+web/shared/product-navigation.ts
 
 mcp-server/src/tools/story-agent-runs.ts
 mcp-server/src/tools/story-agent-runs.test.ts
@@ -527,7 +588,7 @@ docs/story-agent-film-text-benchmark-development-handoff-20260723.md
 
 ## 10. 验证命令
 
-先跑 P1-B2 targeted tests，不要每次修改后重复全套 CI：
+先跑 P1-B3 targeted tests，不要每次修改后重复全套 CI：
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web/server
@@ -540,7 +601,7 @@ npx vitest run src/tools/story-agent-runs.test.ts
 npm run build
 ```
 
-完成一个 P1-B2 里程碑后再跑：
+完成一个 P1-B3 里程碑后再跑：
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web
@@ -578,10 +639,10 @@ git status --short
 f1e5f5c6 feat(story-agent): add unified project run ledger
 a04ab79e feat(story-agent): start runs from generation requests
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1，以及 P1-B2 生成请求绑定 story-agent-run/v2、generation checkpoint、idempotency conflict、恢复 sidecar 和 API/MCP generate/start/get/resume/import/export 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1，以及 P1-B2 生成请求绑定 story-agent-run/v2、generation checkpoint、idempotency conflict、恢复 sidecar、bounded run list 和 StoryAgentRun Web 控制台均已完成。不要重新实现。
 
-若没有真实外部 Provider 凭据或用户合法参考材料，直接进入 P1-B2：
-先增加 bounded `GET /api/story-agent/runs`，设计稳定 cursor/pagination、source/status/kind filters 与 ownership 隔离；随后建设 StoryAgentRun Web 控制台，展示 generation/story-project/professional/Seedance/image/preproduction 时间线、blocker、retry、图片 manifest 导入和 preproduction export。
+若没有真实外部 Provider 凭据或用户合法参考材料，直接进入 P1-B3：
+把 evidence supplement pending、professional package blocked、canonical repair pending/failed、derived-state rebuild pending/failed 提升为顶层可重试 checkpoint；仍由 canonical 服务执行，顶层 run 只编排、持久化和恢复。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
