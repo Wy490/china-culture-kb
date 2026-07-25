@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B2 运行控制台完成，下一步拆分专业补证与修复 checkpoint
+# Story Agent 开发交接：P1-B3 可恢复专业工作流 checkpoint 完成
 
 > 交接日期：2026-07-25
 >
@@ -11,6 +11,8 @@
 > P1-B2 生成入口提交：`a04ab79e feat(story-agent): start runs from generation requests`
 >
 > P1-B2 运行控制台提交：`f6f07133 feat(story-agent): add bounded run console`
+>
+> P1-B3 工作流 checkpoint 提交：`7a47ea01 feat(story-agent): add recoverable workflow checkpoints`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -44,22 +46,21 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“全新生成请求可直接进入 durable 顶层账本”推进到“操作者可通过 bounded 列表和 Web 控制台查看、过滤、恢复与交接完整运行”的阶段。
+Story Agent 已从“操作者可查看和恢复完整顶层运行”推进到“专业补证、专业包、canonical repair 和 derived-state rebuild 分别拥有 durable checkpoint 与尝试历史”的阶段。
 
 当前工程判断：
 
 | 口径 | 完成度 | 判断 |
 |---|---:|---|
-| 展示结构化生成与前置制作交付 | 96%–98% | 普通项目、系列项目、15×1、15×3 和运行控制台均有完整交付证据 |
-| 15 类型无人值守稳定交付 | 94%–97% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun 与 operator 控制台均已跑通 |
+| 展示结构化生成与前置制作交付 | 97%–99% | 普通项目、系列项目、15×1、15×3、运行控制台和专业 checkpoint 均有完整交付证据 |
+| 15 类型无人值守稳定交付 | 95%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史与 operator 控制台均已跑通 |
 | 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
 
 仍不能宣称 100% 完成，主要因为：
 
-1. 顶层 run 尚未把专业补证、canonical repair 和 derived-state rebuild 分成独立可重试 checkpoint；
-2. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
-3. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
-4. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
+1. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
+2. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
+3. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
 
 ## 3. 已完成的核心链路
 
@@ -188,6 +189,7 @@ video_types
 status
 current_stage
 stage_results
+workflow_checkpoints
 blockers
 retryable_failures
 image_request_manifest
@@ -317,7 +319,7 @@ Web 全 workspace lint：通过
 
 Server:
   Test Files  171 passed | 1 skipped
-  Tests       1467 passed | 2 skipped
+  Tests       1468 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
@@ -329,11 +331,12 @@ git diff --check：通过
 本轮新增定向与浏览器证据：
 
 ```text
-Story Agent top-level run API：8 passed
+Story Agent top-level run API：9 passed
 Product access owner list isolation：1 passed
 Product navigation：7 passed
-Web browser smoke：真实本地 run、6 阶段、3 图片任务、筛选空态、resume 0→1
-视觉截图：output/playwright/story-agent-run-console/console-full.png（本地忽略产物）
+Web browser smoke：真实本地 run、6 阶段、4 个 workflow checkpoint、resume 0→1
+移动布局：390px viewport，checkpoint 单列，document scrollWidth=390
+浏览器唯一 console error：既有 favicon.ico 404，与本里程碑无关
 ```
 
 其他已经完成的里程碑证据：
@@ -362,9 +365,9 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 当前状态与下一步
+## 6. P1-B2 / P1-B3 当前状态与下一步
 
-在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进 P1-B3。
+在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进不同素材视觉资产压力。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -469,18 +472,46 @@ resume_count 0 → 1
 无布局溢出或遮挡
 ```
 
-### 6.3 第一优先级：专业补证/修复 checkpoint
+### 6.3 已完成：专业补证/修复 checkpoint
 
-把以下状态提升为顶层可重试阶段：
+新增四个独立的 `workflow_checkpoints`：
 
-- evidence supplement pending；
-- professional package blocked；
-- canonical repair pending/failed；
-- derived-state rebuild pending/failed。
+```text
+evidence_supplement
+professional_package
+canonical_repair
+derived_state_rebuild
+```
 
-仍必须由原 canonical 服务执行，顶层 run 只编排和记录。
+每个 checkpoint 持久化：
 
-### 6.4 第四优先级：不同素材视觉资产压力
+- 当前状态；
+- `attempt_count` 和完整 attempts 历史；
+- evidence refs；
+- blocker 与 retryable failure；
+- canonical 操作名、endpoint（适用时）和 resume 自动执行边界。
+
+状态语义：
+
+- 未完成的 `professional_evidence_missing` task → `awaiting_external_action`；
+- 缺少专业包 → `failed_retryable`；
+- `revision_required`、professional hard gate 或 coverage revise/rebuild → `blocked`；
+- 质量未通过或专业包要求返修 → canonical repair `awaiting_external_action`；
+- 派生不一致或 rebuild 校验失败 → `failed_retryable`。
+
+恢复边界：
+
+- run resume 自动调用新的 `rebuildProjectDerivedState(projectId)`；
+- 该服务只从当前 canonical story 确定性重建专业包、GEARS delivery、supplement 和质量派生状态；
+- 重建写回当前版本，不创建伪叙事版本；
+- rebuild 失败不会丢失 run，而是记录错误并继续保留可读取的 preproduction 状态；
+- `repairProjectQuality` 仍是显式动作，run resume 不会暗中调用模型或外部 Provider；
+- 补证仍通过原 supplement task API 写回；
+- 顶层 run 只编排、观察和持久化，不另写平行修复器。
+
+浏览器控制台新增四张 checkpoint 卡片，展示状态、观察次数、首个 blocker/failure 和“显式操作边界 / resume 自动执行”。
+
+### 6.4 第一优先级：不同素材视觉资产压力
 
 现有 15×3 主要证明恢复和幂等，还需要：
 
@@ -546,6 +577,8 @@ real external provider
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
+- P1-B3 专业补证、专业包、canonical repair、derived-state rebuild checkpoint；
+- deterministic `rebuildProjectDerivedState` 与 resume 尝试历史；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -561,6 +594,7 @@ docs/story-agent-development-handoff-20260725.md
 web/shared/types.ts
 web/shared/schemas.ts
 web/server/src/services/story-agent-run-service.ts
+web/server/src/services/project-service.ts
 web/server/src/routes/story-agent.ts
 web/server/src/services/story-service.ts
 web/server/src/services/story-agent-image-run-service.ts
@@ -588,7 +622,7 @@ docs/story-agent-film-text-benchmark-development-handoff-20260723.md
 
 ## 10. 验证命令
 
-先跑 P1-B3 targeted tests，不要每次修改后重复全套 CI：
+先跑下一里程碑 targeted tests，不要每次修改后重复全套 CI：
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web/server
@@ -601,7 +635,7 @@ npx vitest run src/tools/story-agent-runs.test.ts
 npm run build
 ```
 
-完成一个 P1-B3 里程碑后再跑：
+完成一个里程碑后再跑：
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web
@@ -638,11 +672,13 @@ git status --short
 当前分支应为 codex/story-agent-manifest-integrity-20260718，基线提交应包含：
 f1e5f5c6 feat(story-agent): add unified project run ledger
 a04ab79e feat(story-agent): start runs from generation requests
+f6f07133 feat(story-agent): add bounded run console
+7a47ea01 feat(story-agent): add recoverable workflow checkpoints
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1，以及 P1-B2 生成请求绑定 story-agent-run/v2、generation checkpoint、idempotency conflict、恢复 sidecar、bounded run list 和 StoryAgentRun Web 控制台均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台，以及 P1-B3 四个专业工作流 checkpoint 均已完成。不要重新实现。
 
-若没有真实外部 Provider 凭据或用户合法参考材料，直接进入 P1-B3：
-把 evidence supplement pending、professional package blocked、canonical repair pending/failed、derived-state rebuild pending/failed 提升为顶层可重试 checkpoint；仍由 canonical 服务执行，顶层 run 只编排、持久化和恢复。
+若没有真实外部 Provider 凭据或用户合法参考材料，直接进入不同素材视觉资产压力：
+覆盖真正不同人物、场景和风格，以及缺图、坏图、SHA 不匹配、identity stale、大批量部分导入、单任务重试和语义一致性。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
