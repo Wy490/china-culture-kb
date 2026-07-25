@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B3 可恢复专业工作流 checkpoint 完成
+# Story Agent 开发交接：P1-B4 不同素材视觉资产压力审计完成
 
 > 交接日期：2026-07-25
 >
@@ -13,6 +13,8 @@
 > P1-B2 运行控制台提交：`f6f07133 feat(story-agent): add bounded run console`
 >
 > P1-B3 工作流 checkpoint 提交：`7a47ea01 feat(story-agent): add recoverable workflow checkpoints`
+>
+> P1-B4 视觉资产压力审计提交：`b24a0e43 feat(story-agent): audit diverse visual asset pressure`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -46,21 +48,21 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“操作者可查看和恢复完整顶层运行”推进到“专业补证、专业包、canonical repair 和 derived-state rebuild 分别拥有 durable checkpoint 与尝试历史”的阶段。
+Story Agent 已从“专业工作流拥有 durable checkpoint 与尝试历史”推进到“不同题材视觉资产的语义差异、文件真实性、绑定状态与失败恢复拥有统一机器审计证据”的阶段。
 
 当前工程判断：
 
 | 口径 | 完成度 | 判断 |
 |---|---:|---|
-| 展示结构化生成与前置制作交付 | 97%–99% | 普通项目、系列项目、15×1、15×3、运行控制台和专业 checkpoint 均有完整交付证据 |
-| 15 类型无人值守稳定交付 | 95%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史与 operator 控制台均已跑通 |
+| 展示结构化生成与前置制作交付 | 97%–99% | 普通项目、系列项目、15×1、15×3、运行控制台、专业 checkpoint 和四题材视觉压力均有完整交付证据 |
+| 15 类型无人值守稳定交付 | 96%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史、operator 控制台与视觉资产六场景审计均已跑通 |
 | 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
 
 仍不能宣称 100% 完成，主要因为：
 
 1. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
 2. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
-3. 视觉压力矩阵仍主要复用 canonical 视觉板，需要更多真正不同素材。
+3. 当前四题材压力审计已证明素材互异和恢复语义，但仍应继续扩大到新生成批次，而不是只依赖现有 canonical 视觉板。
 
 ## 3. 已完成的核心链路
 
@@ -318,8 +320,8 @@ Web build：通过
 Web 全 workspace lint：通过
 
 Server:
-  Test Files  171 passed | 1 skipped
-  Tests       1468 passed | 2 skipped
+  Test Files  172 passed | 1 skipped
+  Tests       1471 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
@@ -328,15 +330,17 @@ MCP:
 git diff --check：通过
 ```
 
-本轮新增定向与浏览器证据：
+本轮新增定向证据：
 
 ```text
-Story Agent top-level run API：9 passed
-Product access owner list isolation：1 passed
-Product navigation：7 passed
-Web browser smoke：真实本地 run、6 阶段、4 个 workflow checkpoint、resume 0→1
-移动布局：390px viewport，checkpoint 单列，document scrollWidth=390
-浏览器唯一 console error：既有 favicon.ico 404，与本里程碑无关
+视觉资产压力服务：2 passed
+Story Agent image run API：3 passed
+系列图片替换 identity stale：1 passed
+压力审计：4 个不同题材 / 4 个不同风格 / 18 个资产 / 8 个唯一内容 SHA
+跨题材内容复用：0
+语义门禁：4/4 passed
+源文件 SHA、媒体签名、immutable preview、当前 identity mapping：18/18
+缺图、坏图、SHA 不匹配、部分导入、失败任务重试、identity stale：6/6 passed
 ```
 
 其他已经完成的里程碑证据：
@@ -360,14 +364,15 @@ web/generated/story-agent-15-type-preproduction-matrix/image-import-report.json
 web/generated/story-agent-15x3-stability-matrix/matrix-report.json
 web/generated/story-agent-15x3-stability-matrix/image-recovery-report.json
 web/generated/story-agent-15x3-stability-matrix/image-idempotency-report.json
+web/generated/story-agent-visual-asset-pressure-20260725/report.json
 web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 ```
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 / P1-B3 当前状态与下一步
+## 6. P1-B2 / P1-B3 / P1-B4 当前状态与下一步
 
-在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进不同素材视觉资产压力。
+在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先把 P1-B4 审计纳入统一运行入口，并用新资产批次继续扩容。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -511,16 +516,65 @@ derived_state_rebuild
 
 浏览器控制台新增四张 checkpoint 卡片，展示状态、观察次数、首个 blocker/failure 和“显式操作边界 / resume 自动执行”。
 
-### 6.4 第一优先级：不同素材视觉资产压力
+### 6.4 已完成：不同素材视觉资产压力
 
-现有 15×3 主要证明恢复和幂等，还需要：
+新增统一机器审计合同：
 
-- 真正不同人物、场景和视觉风格；
-- 缺图、坏图和 SHA 不匹配；
-- 单图替换后的 identity stale；
-- 大批量部分导入；
-- 失败任务单独重试；
-- 不同素材的语义一致性检查。
+```text
+story-agent-visual-asset-pressure-report/v1
+```
+
+四个不同题材和视觉世界：
+
+```text
+original-mystery   → 近未来海洋悬疑
+historical-ethics  → 北宋历史写实
+heritage-craft     → 当代非遗工艺剧情
+children-legend    → 绘本儿童传说
+```
+
+审计同时检查：
+
+- source、style family、人物和地点标签是否跨题材有足够差异；
+- 每个题材是否至少有两个不同内容 SHA，跨题材是否复用同一图片字节；
+- prompt SHA、污染词、必需视觉锚点和禁用视觉锚点；
+- 源文件 SHA、真实媒体签名、immutable preview 和当前 identity mapping；
+- 缺图拒绝、坏图拒绝、SHA 不匹配拒绝；
+- 部分成功保留、失败任务单独重试恢复、替换后 identity stale。
+
+本轮结果：
+
+```text
+status: ready
+4 cases / 4 sources / 4 styles
+6 character labels / 4 location labels
+18 assets / 8 unique content SHA
+0 cross-case content reuse
+4/4 semantic gates passed
+6/6 recovery and rejection scenarios passed
+```
+
+`within_case_composite_asset_reuse:10` 仅表示同一视觉世界内部复用 composite 视觉板，保留为 warning，不掩盖跨题材复用；跨题材复用仍是 blocker。
+
+新增 canonical API 回归证明：同一 result 中坏图任务进入 `failed_retryable` 时，已验证任务保持成功；修复坏图后只重试失败任务，attempt 历史保留。测试会显式清理临时 project/image run，避免污染 bounded MVP top-N。
+
+固定边界仍为：
+
+```text
+machine_validation_only=true
+image_provider_invoked_by_server=false
+video_generation_performed=false
+production_credit_granted=false
+```
+
+### 6.5 下一优先级：统一运行入口与新资产批次扩容
+
+在不引入平行账本的前提下继续：
+
+1. 将视觉压力报告接入 StoryAgentRun/system ops 的可发现入口，保留报告文件为唯一详细证据；
+2. 让审计脚本接受明确的 manifest/binding/recovery 输入，支持新的资产批次而非绑定单一目录；
+3. 用更多新生成、真正不同人物/场景/风格的批次扩大覆盖，并持续禁止跨题材字节复用；
+4. 继续复用 canonical image-run 的路径、SHA、媒体签名、部分恢复、重试与 identity stale 语义。
 
 ## 7. 外部条件具备时才做
 
@@ -579,6 +633,8 @@ real external provider
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
 - P1-B3 专业补证、专业包、canonical repair、derived-state rebuild checkpoint；
 - deterministic `rebuildProjectDerivedState` 与 resume 尝试历史；
+- P1-B4 `story-agent-visual-asset-pressure-report/v1` 与四题材统一审计；
+- 缺图、坏图、SHA 不匹配、部分导入、单任务重试和 identity stale 的 canonical 回归；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -599,7 +655,10 @@ web/server/src/routes/story-agent.ts
 web/server/src/services/story-service.ts
 web/server/src/services/story-agent-image-run-service.ts
 web/server/src/services/story-agent-preproduction-package-service.ts
+web/server/src/services/story-agent-visual-asset-pressure-service.ts
+web/server/scripts/story-agent-visual-asset-pressure.mts
 web/server/src/__tests__/api.test.ts
+web/server/src/__tests__/story-agent-visual-asset-pressure-service.test.ts
 web/server/src/__tests__/product-access-control.test.ts
 web/server/src/__tests__/product-navigation.test.ts
 
@@ -626,6 +685,8 @@ docs/story-agent-film-text-benchmark-development-handoff-20260723.md
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web/server
+npm run smoke:story-agent-visual-asset-pressure
+npx vitest run src/__tests__/story-agent-visual-asset-pressure-service.test.ts
 npx vitest run src/__tests__/api.test.ts -t "Story Agent top-level run API"
 npx vitest run src/__tests__/product-access-control.test.ts -t "protects model generation"
 npm run lint
@@ -674,11 +735,11 @@ f1e5f5c6 feat(story-agent): add unified project run ledger
 a04ab79e feat(story-agent): start runs from generation requests
 f6f07133 feat(story-agent): add bounded run console
 7a47ea01 feat(story-agent): add recoverable workflow checkpoints
+b24a0e43 feat(story-agent): audit diverse visual asset pressure
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台，以及 P1-B3 四个专业工作流 checkpoint 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint，以及 P1-B4 四题材视觉资产压力审计均已完成。不要重新实现。
 
-若没有真实外部 Provider 凭据或用户合法参考材料，直接进入不同素材视觉资产压力：
-覆盖真正不同人物、场景和风格，以及缺图、坏图、SHA 不匹配、identity stale、大批量部分导入、单任务重试和语义一致性。
+若没有真实外部 Provider 凭据或用户合法参考材料，直接把 P1-B4 审计接入统一 StoryAgentRun/system ops 可发现入口，并让脚本接受明确的 manifest/binding/recovery 输入以扩展到新的不同素材批次。复用 canonical image-run，不建立平行图片账本。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
