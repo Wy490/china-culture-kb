@@ -1,4 +1,5 @@
 import type {
+  BenchmarkCard,
   FilmReferenceAnalysis,
   FilmReferenceAnalysisRecord,
   ReferenceAnalysisApprovalRequest,
@@ -10,8 +11,12 @@ import type {
   ReferenceSimilarityDimension,
   ReferenceSimilarityEvidenceObservations,
   ReferenceSourceRecord,
+  ReferenceStylePackRecord,
+  PresentationStyle,
+  StoryStructureType,
   TextReferenceAnalysis,
   TextReferenceAnalysisRecord,
+  VideoType,
 } from '@shared/types'
 import { apiGet, apiPost } from './client'
 
@@ -38,6 +43,33 @@ export interface CreateFilmReferenceAnalysisRequest {
 export interface CreateTextReferenceAnalysisRequest {
   analysis: TextReferenceAnalysis
   analyzed_by: string
+}
+
+export interface CreateBenchmarkCardRequest {
+  analysis_ids: string[]
+  target_video_type: VideoType
+  target_dimension: BenchmarkCard['target_dimension']
+  principle: string
+  evidence_refs: string[]
+  created_by: string
+  approval: {
+    approved_by: string
+    approved_at: string
+  }
+}
+
+export interface CreateReferenceStylePackRequest {
+  name: string
+  description: string
+  benchmark_card_ids: string[]
+  compatible_video_types: VideoType[]
+  compatible_presentation_styles: PresentationStyle[]
+  compatible_story_structures: StoryStructureType[]
+  created_by: string
+  approval: {
+    approved_by: string
+    approved_at: string
+  }
 }
 
 export function listReferenceSources() {
@@ -88,6 +120,22 @@ export function approveReferenceAnalysis(
     `/reference-library/analyses/${encodeURIComponent(analysisId)}/approval`,
     request,
   )
+}
+
+export function listReferenceBenchmarkCards() {
+  return apiGet<BenchmarkCard[]>('/reference-library/benchmark-cards')
+}
+
+export function createReferenceBenchmarkCard(request: CreateBenchmarkCardRequest) {
+  return apiPost<BenchmarkCard>('/reference-library/benchmark-cards', request)
+}
+
+export function listReferenceStylePacks() {
+  return apiGet<ReferenceStylePackRecord[]>('/reference-library/style-packs')
+}
+
+export function createReferenceStylePack(request: CreateReferenceStylePackRequest) {
+  return apiPost<ReferenceStylePackRecord>('/reference-library/style-packs', request)
 }
 
 export function createReferenceAnalysisTask(

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { ErrorCodes, fail, success } from '@shared/types.js';
 import { requireProductAccess } from '../middleware/product-access.js';
 import { getProductAccessContext } from '../services/product-access-service.js';
@@ -52,6 +52,15 @@ function rejectInlineAnalysisApproval(request: unknown): void {
   }
 }
 
+function requiredActorMatchesClaims(req: Request, claims: unknown[]): boolean {
+  const access = getProductAccessContext(req);
+  return access.mode !== 'required'
+    || Boolean(
+      access.actor
+      && claims.every(claim => claim === access.actor?.actor_id),
+    );
+}
+
 export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()): Router {
   const router = Router();
   router.use(requireProductAccess('material:review'));
@@ -81,14 +90,28 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     }
   });
 
-  router.post('/benchmark-cards', async (req, res, next) => {
-    try {
-      const record = await createBenchmarkCard({ repoRoot, request: req.body });
-      res.status(201).json(success(record));
-    } catch (error) {
-      next(error);
-    }
-  });
+  router.post(
+    '/benchmark-cards',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [
+          req.body?.created_by,
+          req.body?.approval?.approved_by,
+        ])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Benchmark created_by and approved_by must match the authenticated material signer',
+          ));
+          return;
+        }
+        const record = await createBenchmarkCard({ repoRoot, request: req.body });
+        res.status(201).json(success(record));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/benchmark-cards/:benchmarkId', async (req, res, next) => {
     try {
@@ -109,14 +132,28 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     }
   });
 
-  router.post('/style-packs', async (req, res, next) => {
-    try {
-      const record = await createReferenceStylePack({ repoRoot, request: req.body });
-      res.status(201).json(success(record));
-    } catch (error) {
-      next(error);
-    }
-  });
+  router.post(
+    '/style-packs',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [
+          req.body?.created_by,
+          req.body?.approval?.approved_by,
+        ])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Style pack created_by and approved_by must match the authenticated material signer',
+          ));
+          return;
+        }
+        const record = await createReferenceStylePack({ repoRoot, request: req.body });
+        res.status(201).json(success(record));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/style-packs/:stylePackId', async (req, res, next) => {
     try {
@@ -145,10 +182,8 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     requireProductAccess('material:sign'),
     async (req, res, next) => {
       try {
-        const access = getProductAccessContext(req);
         if (
-          access.mode === 'required'
-          && access.actor?.actor_id !== req.body?.approved_by
+          !requiredActorMatchesClaims(req, [req.body?.approved_by])
         ) {
           res.status(403).json(fail(
             ErrorCodes.ACCESS_FORBIDDEN,

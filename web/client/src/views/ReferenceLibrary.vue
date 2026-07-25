@@ -45,6 +45,13 @@
 
     <ReferenceSourceIntake @created="handleSourceCreated" />
 
+    <ReferenceCompositionWorkbench
+      :sources="sources"
+      :can-compose="canApproveAnalysis"
+      :actor-id="analysisActorId"
+      :refresh-key="compositionRefreshKey"
+    />
+
     <div v-if="loadingSources" class="empty-state">正在读取参考来源…</div>
     <div v-else-if="sources.length === 0" class="empty-state" data-testid="reference-empty-state">
       <h2>尚无已登记来源</h2>
@@ -295,6 +302,7 @@ import type {
   ReferenceRightsStatus,
 } from '@shared/types'
 import ReferenceAnalysisWorkbench from '@/components/reference-library/ReferenceAnalysisWorkbench.vue'
+import ReferenceCompositionWorkbench from '@/components/reference-library/ReferenceCompositionWorkbench.vue'
 import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
 import {
   createReferenceAnalysisTask,
@@ -326,6 +334,7 @@ const attestedAt = ref(new Date().toISOString())
 const authorizationConfirmed = ref(false)
 const submissionKey = ref(createSubmissionKey())
 const submissionJson = ref('')
+const compositionRefreshKey = ref(0)
 
 const mediaTypeLabel: Record<ReferenceSourceMediaType, string> = {
   film: '电影',
@@ -502,10 +511,12 @@ async function loadSelectedSource(showLoading = true): Promise<void> {
 async function handleSourceCreated(source: ReferenceSourceRecord): Promise<void> {
   await loadSources()
   selectedReferenceId.value = source.reference_id
+  compositionRefreshKey.value += 1
 }
 
 async function handleAnalysisChanged(): Promise<void> {
   await loadSelectedSource(false)
+  compositionRefreshKey.value += 1
 }
 
 async function handleCreateTask(): Promise<void> {

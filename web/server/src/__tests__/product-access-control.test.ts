@@ -389,6 +389,82 @@ describe('product access middleware', () => {
     }
   });
 
+  it('reserves benchmark and style-pack composition for matching material signers', async () => {
+    configureRequiredAccess([
+      { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },
+      { token: 'reviewer-token', actor_id: 'reviewer-1', role: 'cultural_fact_reviewer' },
+    ]);
+    const repoRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-reference-composition-access-'));
+    try {
+      const app = express();
+      app.use(express.json());
+      app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot));
+      app.use(errorHandler);
+      const request = supertest(app);
+      const benchmarkBody = {
+        analysis_ids: [],
+        target_video_type: 'ai_comic_drama',
+        target_dimension: 'hook',
+        principle: '测试原则',
+        evidence_refs: [],
+        created_by: 'reviewer-1',
+        approval: {
+          approved_by: 'reviewer-1',
+          approved_at: '2026-07-25T10:00:00.000Z',
+        },
+      };
+      const stylePackBody = {
+        name: '测试风格包',
+        description: '测试描述',
+        benchmark_card_ids: [],
+        compatible_video_types: ['ai_comic_drama'],
+        compatible_presentation_styles: ['ai_comic'],
+        compatible_story_structures: ['three_act_drama'],
+        created_by: 'reviewer-1',
+        approval: {
+          approved_by: 'reviewer-1',
+          approved_at: '2026-07-25T10:00:00.000Z',
+        },
+      };
+
+      for (const [endpoint, body] of [
+        ['/api/reference-library/benchmark-cards', benchmarkBody],
+        ['/api/reference-library/style-packs', stylePackBody],
+      ] as const) {
+        const researchDenied = await request
+          .post(endpoint)
+          .set('authorization', bearer('research-token'))
+          .send(body);
+        expect(researchDenied.status).toBe(403);
+        expect(researchDenied.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+        for (const mismatchedBody of [
+          { ...body, created_by: 'another-reviewer' },
+          {
+            ...body,
+            approval: { ...body.approval, approved_by: 'another-reviewer' },
+          },
+        ]) {
+          const mismatched = await request
+            .post(endpoint)
+            .set('authorization', bearer('reviewer-token'))
+            .send(mismatchedBody);
+          expect(mismatched.status).toBe(403);
+          expect(mismatched.body.error.code).toBe('ACCESS_FORBIDDEN');
+        }
+
+        const signerAllowed = await request
+          .post(endpoint)
+          .set('authorization', bearer('reviewer-token'))
+          .send(body);
+        expect(signerAllowed.status).toBe(400);
+        expect(signerAllowed.body.error.code).toBe('VALIDATION_ERROR');
+      }
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it('accepts an opaque session cookie and rejects a revoked actor', async () => {
     configureRequiredAccess([
       { token: 'active-token', actor_id: 'active-creator', role: 'creator' },
