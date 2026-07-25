@@ -108,16 +108,24 @@ describe('Reference Intelligence library', () => {
           reusable_principles: ['先展示可见异常，再延迟解释世界规则'],
           avoid_copying: ['不复刻原作角色、灯具造型或镜头顺序'],
         },
-        approval: {
-          approved_by: 'editor-01',
-          approved_at: '2026-07-23T09:00:00.000Z',
-        },
       });
     expect(filmAnalysis.status).toBe(201);
+    const filmApproval = await request
+      .post(`/api/reference-library/analyses/${filmAnalysis.body.data.analysis_id}/approval`)
+      .send({
+        approved_by: 'editor-01',
+        approved_at: '2026-07-23T09:00:00.000Z',
+        confirmation: 'human_reviewed_reference_analysis',
+      });
+    expect(filmApproval.status).toBe(201);
     expect(filmAnalysis.body.data).toMatchObject({
       schema_version: 'reference-analysis-record/v1',
       reference_id: filmSource.body.data.reference_id,
       analysis_type: 'film',
+      approval: { status: 'pending' },
+    });
+    expect(filmApproval.body.data.analysis).toMatchObject({
+      analysis_id: filmAnalysis.body.data.analysis_id,
       approval: { status: 'approved', approved_by: 'editor-01' },
     });
 
@@ -191,5 +199,114 @@ describe('Reference Intelligence library', () => {
     const missing = await request.get('/api/reference-library/references/reference-does-not-exist');
     expect(missing.status).toBe(404);
     expect(missing.body.error.code).toBe('REFERENCE_NOT_FOUND');
+  });
+
+  it('rejects inline analysis approval on the public review endpoint', async () => {
+    const { request } = await createRequest();
+    const source = await request.post('/api/reference-library/references').send({
+      title: '不得内联批准的剧本',
+      media_type: 'screenplay',
+      accessed_at: '2026-07-25T08:00:00.000Z',
+      rights_status: 'research_only',
+      access_scope: 'metadata_only',
+      user_reason: '验证分析与批准职责分离',
+    });
+    const response = await request
+      .post(`/api/reference-library/references/${source.body.data.reference_id}/text-analyses`)
+      .send({
+        analyzed_by: 'research-editor-01',
+        analysis: {
+          source_units: [{ source_unit_id: 'scene-01', summary: '结构摘要' }],
+          character_wants: [],
+          scene_patterns: [{
+            objective: '目标',
+            opposition: '阻力',
+            turn: '转折',
+            visible_action: '动作',
+          }],
+          must_keep: [],
+          compression_options: [],
+          adaptation_risks: [],
+          reusable_principles: ['抽象原则'],
+          avoid_copying: ['禁止复刻'],
+        },
+        approval: {
+          approved_by: 'research-editor-01',
+          approved_at: '2026-07-25T09:00:00.000Z',
+        },
+      });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('REFERENCE_ANALYSIS_APPROVAL_INVALID');
+  });
+
+  it('approves a pending analysis through a deliberate idempotent review action', async () => {
+    const { request } = await createRequest();
+    const source = await request.post('/api/reference-library/references').send({
+      title: '待独立审核剧本分析',
+      media_type: 'screenplay',
+      accessed_at: '2026-07-25T08:00:00.000Z',
+      rights_status: 'licensed',
+      access_scope: 'excerpt',
+      content_fingerprint: 'b'.repeat(64),
+      user_reason: '验证分析提交与批准职责分离',
+    });
+    const pending = await request
+      .post(`/api/reference-library/references/${source.body.data.reference_id}/text-analyses`)
+      .send({
+        analyzed_by: 'research-editor-01',
+        analysis: {
+          source_units: [{ source_unit_id: 'scene-01', summary: '角色用行动暴露真实选择' }],
+          character_wants: ['角色想掩盖自己的错误'],
+          scene_patterns: [{
+            objective: '取回关键物件',
+            opposition: '同伴要求当面解释',
+            turn: '角色主动交出物件',
+            visible_action: '角色把物件放到桌面中央',
+          }],
+          must_keep: ['主动承担后果的选择'],
+          compression_options: ['合并重复解释'],
+          adaptation_risks: ['不能用旁白替代可见行动'],
+          reusable_principles: ['把内心变化转化为不可撤回的动作'],
+          avoid_copying: ['不复用原文台词和独特人物关系'],
+        },
+      });
+    expect(pending.status).toBe(201);
+    expect(pending.body.data.approval).toEqual({ status: 'pending' });
+
+    const approvalRequest = {
+      approved_by: 'cultural-reviewer-01',
+      approved_at: '2026-07-25T09:00:00.000Z',
+      confirmation: 'human_reviewed_reference_analysis',
+    };
+    const approved = await request
+      .post(`/api/reference-library/analyses/${pending.body.data.analysis_id}/approval`)
+      .send(approvalRequest);
+    expect(approved.status).toBe(201);
+    expect(approved.body.data).toMatchObject({
+      idempotent_replay: false,
+      analysis: {
+        analysis_id: pending.body.data.analysis_id,
+        approval: {
+          status: 'approved',
+          approved_by: 'cultural-reviewer-01',
+          approved_at: '2026-07-25T09:00:00.000Z',
+        },
+      },
+    });
+
+    const replay = await request
+      .post(`/api/reference-library/analyses/${pending.body.data.analysis_id}/approval`)
+      .send(approvalRequest);
+    expect(replay.status).toBe(200);
+    expect(replay.body.data.idempotent_replay).toBe(true);
+
+    const conflict = await request
+      .post(`/api/reference-library/analyses/${pending.body.data.analysis_id}/approval`)
+      .send({
+        ...approvalRequest,
+        approved_by: 'different-reviewer',
+      });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe('REFERENCE_ANALYSIS_APPROVAL_CONFLICT');
   });
 });

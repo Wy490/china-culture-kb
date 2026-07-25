@@ -1,9 +1,11 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { Router } from 'express';
-import { success } from '@shared/types.js';
+import { ErrorCodes, fail, success } from '@shared/types.js';
 import { requireProductAccess } from '../middleware/product-access.js';
+import { getProductAccessContext } from '../services/product-access-service.js';
 import {
+  approveReferenceAnalysis,
   createBenchmarkCard,
   createFilmReferenceAnalysis,
   createReferenceSource,
@@ -34,6 +36,20 @@ function resolveDefaultRepoRoot(): string {
   ];
   return candidates.find(candidate => existsSync(path.join(candidate, 'references/creative')))
     ?? candidates[0];
+}
+
+function rejectInlineAnalysisApproval(request: unknown): void {
+  if (
+    request
+    && typeof request === 'object'
+    && Object.prototype.hasOwnProperty.call(request, 'approval')
+  ) {
+    const error = new Error(
+      'Reference analysis must be created as pending and approved through the material:sign endpoint',
+    ) as Error & { code: string };
+    error.code = 'REFERENCE_ANALYSIS_APPROVAL_INVALID';
+    throw error;
+  }
 }
 
 export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()): Router {
@@ -124,6 +140,34 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     }
   });
 
+  router.post(
+    '/analyses/:analysisId/approval',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        const access = getProductAccessContext(req);
+        if (
+          access.mode === 'required'
+          && access.actor?.actor_id !== req.body?.approved_by
+        ) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Reference analysis approved_by must match the authenticated material signer',
+          ));
+          return;
+        }
+        const result = await approveReferenceAnalysis({
+          repoRoot,
+          analysisId: String(req.params.analysisId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   router.get('/analysis-tasks/:taskId', async (req, res, next) => {
     try {
       res.json(success(await getReferenceAnalysisTask({
@@ -161,6 +205,7 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
 
   router.post('/references/:referenceId/film-analyses', async (req, res, next) => {
     try {
+      rejectInlineAnalysisApproval(req.body);
       const record = await createFilmReferenceAnalysis({
         repoRoot,
         referenceId: req.params.referenceId,
@@ -174,6 +219,7 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
 
   router.post('/references/:referenceId/text-analyses', async (req, res, next) => {
     try {
+      rejectInlineAnalysisApproval(req.body);
       const record = await createTextReferenceAnalysis({
         repoRoot,
         referenceId: req.params.referenceId,

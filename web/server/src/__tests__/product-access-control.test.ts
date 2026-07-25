@@ -26,6 +26,7 @@ import { getProductResourceOwnershipAuditReport } from '../services/product-reso
 import { createStage6RevisionsRouter } from '../routes/stage6-revisions.js';
 import { createStage7GoldenCardsRouter } from '../routes/stage7-golden-cards.js';
 import { createStage8BlindReviewRouter } from '../routes/stage8-blind-review.js';
+import { createReferenceLibraryRouter } from '../routes/reference-library.js';
 import { storiesRouter } from '../routes/stories.js';
 import { outlineRouter } from '../routes/outline.js';
 import { projectsRouter } from '../routes/projects.js';
@@ -342,6 +343,50 @@ describe('product access middleware', () => {
     expect(allowed.status).toBe(200);
     expect(allowed.body.data.actor).toMatchObject({ actor_id: 'operator-2', role: 'production_operator' });
     expect(allowed.body.data).not.toHaveProperty('token_sha256');
+  });
+
+  it('reserves reference analysis approval for material signers', async () => {
+    configureRequiredAccess([
+      { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },
+      { token: 'reviewer-token', actor_id: 'reviewer-1', role: 'cultural_fact_reviewer' },
+    ]);
+    const repoRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-reference-approval-access-'));
+    try {
+      const app = express();
+      app.use(express.json());
+      app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot));
+      app.use(errorHandler);
+      const request = supertest(app);
+      const path = '/api/reference-library/analyses/analysis-does-not-exist/approval';
+      const body = {
+        approved_by: 'reviewer-1',
+        approved_at: '2026-07-25T09:00:00.000Z',
+        confirmation: 'human_reviewed_reference_analysis',
+      };
+
+      const researchDenied = await request
+        .post(path)
+        .set('authorization', bearer('research-token'))
+        .send(body);
+      expect(researchDenied.status).toBe(403);
+      expect(researchDenied.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const mismatchedReviewer = await request
+        .post(path)
+        .set('authorization', bearer('reviewer-token'))
+        .send({ ...body, approved_by: 'another-reviewer' });
+      expect(mismatchedReviewer.status).toBe(403);
+      expect(mismatchedReviewer.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const reviewerAllowed = await request
+        .post(path)
+        .set('authorization', bearer('reviewer-token'))
+        .send(body);
+      expect(reviewerAllowed.status).toBe(404);
+      expect(reviewerAllowed.body.error.code).toBe('REFERENCE_ANALYSIS_NOT_FOUND');
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
   });
 
   it('accepts an opaque session cookie and rejects a revoked actor', async () => {

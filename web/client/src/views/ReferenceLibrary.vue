@@ -43,6 +43,8 @@
     <p v-if="pageError" class="notice notice--error" role="alert">{{ pageError }}</p>
     <p v-if="notice" class="notice notice--success" role="status">{{ notice }}</p>
 
+    <ReferenceSourceIntake @created="handleSourceCreated" />
+
     <div v-if="loadingSources" class="empty-state">正在读取参考来源…</div>
     <div v-else-if="sources.length === 0" class="empty-state" data-testid="reference-empty-state">
       <h2>尚无已登记来源</h2>
@@ -100,6 +102,15 @@
             </dl>
           </article>
 
+          <ReferenceAnalysisWorkbench
+            v-if="detail"
+            :source="selectedSource"
+            :analyses="detail.analyses"
+            :can-approve="canApproveAnalysis"
+            :actor-id="analysisActorId"
+            @changed="handleAnalysisChanged"
+          />
+
           <article class="form-card">
             <div class="section-heading">
               <div>
@@ -116,7 +127,12 @@
             <fieldset :disabled="creatingTask || !isTaskEligible(selectedSource)">
               <legend>分析维度</legend>
               <label v-for="dimension in dimensionOptions" :key="dimension.value" class="check-row">
-                <input v-model="requestedDimensions" type="checkbox" :value="dimension.value">
+                <input
+                  v-model="requestedDimensions"
+                  name="requested_dimensions"
+                  type="checkbox"
+                  :value="dimension.value"
+                >
                 <span><strong>{{ dimension.label }}</strong><small>{{ dimension.help }}</small></span>
               </label>
             </fieldset>
@@ -126,6 +142,7 @@
                 授权依据编号 / 文件引用
                 <input
                   v-model.trim="authorizationReference"
+                  name="authorization_reference"
                   :disabled="creatingTask || !isTaskEligible(selectedSource)"
                   placeholder="例如：license-contract-2026-07"
                 >
@@ -134,6 +151,7 @@
                 声明人
                 <input
                   v-model.trim="attestedBy"
+                  name="authorization_attested_by"
                   :disabled="creatingTask || !isTaskEligible(selectedSource)"
                   placeholder="姓名或受控 actor id"
                 >
@@ -142,6 +160,7 @@
                 声明时间（ISO 8601）
                 <input
                   v-model.trim="attestedAt"
+                  name="authorization_attested_at"
                   :disabled="creatingTask || !isTaskEligible(selectedSource)"
                   placeholder="2026-07-25T08:00:00.000Z"
                 >
@@ -150,6 +169,7 @@
             <label class="attestation">
               <input
                 v-model="authorizationConfirmed"
+                name="authorization_confirmation"
                 type="checkbox"
                 :disabled="creatingTask || !isTaskEligible(selectedSource)"
               >
@@ -217,12 +237,18 @@
                   </p>
                   <label>
                     幂等提交 key
-                    <input v-model.trim="submissionKey" minlength="8" maxlength="200">
+                    <input
+                      v-model.trim="submissionKey"
+                      name="evidence_submission_key"
+                      minlength="8"
+                      maxlength="200"
+                    >
                   </label>
                   <label>
                     observations JSON
                     <textarea
                       v-model="submissionJson"
+                      name="evidence_observations_json"
                       rows="18"
                       spellcheck="false"
                       data-testid="reference-observations-json"
@@ -258,6 +284,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { productRoleHasPermission } from '@shared/product-access'
 import type {
   ReferenceAnalysisTaskRecord,
   ReferenceLibraryDetail,
@@ -267,6 +294,8 @@ import type {
   ReferenceSourceRecord,
   ReferenceRightsStatus,
 } from '@shared/types'
+import ReferenceAnalysisWorkbench from '@/components/reference-library/ReferenceAnalysisWorkbench.vue'
+import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
 import {
   createReferenceAnalysisTask,
   getReferenceLibraryDetail,
@@ -274,6 +303,10 @@ import {
   listReferenceSources,
   submitReferenceAnalysisTask,
 } from '@/api/reference-library'
+import {
+  productRole,
+  serverProductAccessContext,
+} from '@/product-access'
 
 const sources = ref<ReferenceSourceRecord[]>([])
 const detail = ref<ReferenceLibraryDetail | null>(null)
@@ -343,6 +376,15 @@ const selectedTask = computed(() => (
   tasks.value.find(task => task.task_id === selectedTaskId.value) ?? null
 ))
 const evidenceCount = computed(() => detail.value?.similarity_evidence.length ?? 0)
+const analysisActorId = computed(() => (
+  serverProductAccessContext.value?.actor?.actor_id ?? `${productRole.value}-operator`
+))
+const canApproveAnalysis = computed(() => {
+  const access = serverProductAccessContext.value
+  return access?.mode === 'required'
+    ? access.permissions.includes('material:sign')
+    : productRoleHasPermission(productRole.value, 'material:sign')
+})
 const canCreateTask = computed(() => Boolean(
   selectedSource.value
   && isTaskEligible(selectedSource.value)
@@ -427,19 +469,19 @@ async function loadSources(): Promise<void> {
   }
 }
 
-async function loadSelectedSource(): Promise<void> {
+async function loadSelectedSource(showLoading = true): Promise<void> {
   if (!selectedReferenceId.value) {
     detail.value = null
     tasks.value = []
     return
   }
-  loadingDetail.value = true
+  if (showLoading) loadingDetail.value = true
   pageError.value = ''
   const [detailResponse, tasksResponse] = await Promise.all([
     getReferenceLibraryDetail(selectedReferenceId.value),
     listReferenceAnalysisTasks(selectedReferenceId.value),
   ])
-  loadingDetail.value = false
+  if (showLoading) loadingDetail.value = false
   if (!detailResponse.ok || !detailResponse.data) {
     pageError.value = detailResponse.error?.message ?? '读取来源详情失败'
     return
@@ -455,6 +497,15 @@ async function loadSelectedSource(): Promise<void> {
       tasks.value.find(task => task.status !== 'completed') ?? tasks.value[0]
     )?.task_id ?? ''
   }
+}
+
+async function handleSourceCreated(source: ReferenceSourceRecord): Promise<void> {
+  await loadSources()
+  selectedReferenceId.value = source.reference_id
+}
+
+async function handleAnalysisChanged(): Promise<void> {
+  await loadSelectedSource(false)
 }
 
 async function handleCreateTask(): Promise<void> {

@@ -7,6 +7,7 @@ import {
   BenchmarkCardSchema,
   FilmReferenceAnalysisCreateRequestSchema,
   ReferenceAnalysisRecordSchema,
+  ReferenceAnalysisApprovalRequestSchema,
   ReferenceSourceCreateRequestSchema,
   ReferenceSourceRecordSchema,
   ReferenceSimilarityEvidenceCreateRequestSchema,
@@ -19,6 +20,7 @@ import type {
   BenchmarkCard,
   FilmReferenceAnalysisRecord,
   ReferenceAnalysisRecord,
+  ReferenceAnalysisApprovalResult,
   ReferenceLibraryDetail,
   ReferenceSourceMediaType,
   ReferenceSourceRecord,
@@ -506,6 +508,36 @@ export async function createTextReferenceAnalysis(input: {
     approval: approvalFromRequest(request.approval),
   };
   return await persistAnalysis(input.repoRoot, record) as TextReferenceAnalysisRecord;
+}
+
+export async function approveReferenceAnalysis(input: {
+  repoRoot: string;
+  analysisId: string;
+  request: unknown;
+}): Promise<ReferenceAnalysisApprovalResult> {
+  const request = ReferenceAnalysisApprovalRequestSchema.parse(input.request);
+  const analysis = await getReferenceAnalysis(input);
+  if (analysis.approval.status === 'approved') {
+    if (
+      analysis.approval.approved_by !== request.approved_by
+      || analysis.approval.approved_at !== request.approved_at
+    ) {
+      throw new ReferenceLibraryError(
+        'REFERENCE_ANALYSIS_APPROVAL_CONFLICT',
+        'Reference analysis is already approved by a different review action',
+      );
+    }
+    return { analysis, idempotent_replay: true };
+  }
+  const approved = await persistAnalysis(input.repoRoot, {
+    ...analysis,
+    approval: {
+      status: 'approved',
+      approved_by: request.approved_by,
+      approved_at: request.approved_at,
+    },
+  });
+  return { analysis: approved, idempotent_replay: false };
 }
 
 export async function createBenchmarkCard(input: {

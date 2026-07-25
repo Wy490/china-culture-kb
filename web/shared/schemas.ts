@@ -401,6 +401,11 @@ export const ReferenceAnalysisApprovalInputSchema = z.object({
   approved_at: ReferenceTimestampSchema,
 }).strict();
 
+export const ReferenceAnalysisApprovalRequestSchema =
+  ReferenceAnalysisApprovalInputSchema.extend({
+    confirmation: z.literal('human_reviewed_reference_analysis'),
+  }).strict();
+
 export const FilmReferenceAnalysisCreateRequestSchema = z.object({
   analysis: FilmReferenceAnalysisSchema,
   analyzed_by: ReferenceNonEmptyTextSchema.max(120),

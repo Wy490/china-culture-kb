@@ -682,6 +682,12 @@ export type ReferenceAnalysisApproval =
   | { status: 'pending' }
   | { status: 'approved'; approved_by: string; approved_at: string };
 
+export interface ReferenceAnalysisApprovalRequest {
+  approved_by: string;
+  approved_at: string;
+  confirmation: 'human_reviewed_reference_analysis';
+}
+
 export interface FilmReferenceAnalysisRecord {
   schema_version: 'reference-analysis-record/v1';
   analysis_id: string;
@@ -707,6 +713,11 @@ export interface TextReferenceAnalysisRecord {
 export type ReferenceAnalysisRecord =
   | FilmReferenceAnalysisRecord
   | TextReferenceAnalysisRecord;
+
+export interface ReferenceAnalysisApprovalResult {
+  analysis: ReferenceAnalysisRecord;
+  idempotent_replay: boolean;
+}
 
 export interface ReferenceLibraryDetail {
   source: ReferenceSourceRecord;

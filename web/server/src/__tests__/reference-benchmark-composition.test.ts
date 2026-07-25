@@ -46,12 +46,15 @@ async function createApprovedFilmAnalysis(request: supertest.Agent, suffix: stri
         reusable_principles: [`抽象原则 ${suffix}`],
         avoid_copying: [`不复制角色与镜头 ${suffix}`],
       },
-      approval: {
-        approved_by: `editor-${suffix}`,
-        approved_at: approvedAt,
-      },
     });
-  return { source: source.body.data, analysis: analysis.body.data };
+  const approval = await request
+    .post(`/api/reference-library/analyses/${analysis.body.data.analysis_id}/approval`)
+    .send({
+      approved_by: `editor-${suffix}`,
+      approved_at: approvedAt,
+      confirmation: 'human_reviewed_reference_analysis',
+    });
+  return { source: source.body.data, analysis: approval.body.data.analysis };
 }
 
 describe('Reference benchmark and style-pack composition', () => {
