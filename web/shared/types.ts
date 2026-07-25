@@ -7577,6 +7577,98 @@ export interface StoryAgentSeedancePreproductionExportRequest {
   series_project_id?: string;
 }
 
+export interface StoryAgentRunStartRequest {
+  project_id?: string;
+  series_project_id?: string;
+}
+
+export type StoryAgentRunStage =
+  | 'source'
+  | 'professional_script'
+  | 'seedance_prompt'
+  | 'image_assets'
+  | 'preproduction_package';
+
+export type StoryAgentRunStageStatus =
+  | 'pending'
+  | 'ready'
+  | 'awaiting_external_action'
+  | 'failed_retryable'
+  | 'blocked';
+
+export interface StoryAgentRunStageResult {
+  stage: StoryAgentRunStage;
+  status: StoryAgentRunStageStatus;
+  evidence_refs: string[];
+  blockers: string[];
+  retryable_failures: string[];
+}
+
+export interface StoryAgentRunImageRequestManifest {
+  image_run_id: string;
+  image_run_status: StoryAgentImageRun['status'];
+  request_sha256: string;
+  request_path: string;
+  request: StoryAgentImageGenerationRequest;
+  provider_invoked: false;
+  executor: 'codex_imagegen';
+  task_count: number;
+  pending_task_count: number;
+  verified_task_count: number;
+  failed_retryable_task_count: number;
+  blocked_task_count: number;
+}
+
+export interface StoryAgentRun {
+  schema_version: 'story-agent-run/v1';
+  run_id: string;
+  input_contract: {
+    schema_version: 'story-agent-run-input/v1';
+    project_id?: string;
+    series_project_id?: string;
+  };
+  input_sha256: string;
+  source: StoryAgentSeedancePreproductionPackage['source'];
+  video_types: VideoType[];
+  status:
+    | 'in_progress'
+    | 'awaiting_external_action'
+    | 'failed_retryable'
+    | 'ready'
+    | 'blocked';
+  current_stage: StoryAgentRunStage | 'complete';
+  stage_results: StoryAgentRunStageResult[];
+  blockers: string[];
+  retryable_failures: string[];
+  image_request_manifest?: StoryAgentRunImageRequestManifest;
+  preproduction_package: StoryAgentSeedancePreproductionPackage;
+  boundary: {
+    canonical_services_reused: true;
+    image_provider_invoked_by_server: false;
+    video_generation_performed: false;
+    human_review_credit_granted: false;
+  };
+  resume_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoryAgentRunExportResponse {
+  schema_version: 'story-agent-run-export/v1';
+  run_id: string;
+  run_status: StoryAgentRun['status'];
+  exported_at: string;
+  video_generation_performed: false;
+  preproduction_package: StoryAgentSeedancePreproductionPackage;
+}
+
+export interface StoryAgentRunImageImportResponse {
+  schema_version: 'story-agent-run-image-import/v1';
+  imported_at: string;
+  image_import: StoryAgentImageResultImportResponse;
+  run: StoryAgentRun;
+}
+
 export type StoryAgentImageTaskStatus =
   | 'planned'
   | 'awaiting_imagegen'

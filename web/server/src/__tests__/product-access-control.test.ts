@@ -31,6 +31,7 @@ import { storiesRouter } from '../routes/stories.js';
 import { outlineRouter } from '../routes/outline.js';
 import { projectsRouter } from '../routes/projects.js';
 import { systemRouter } from '../routes/system.js';
+import { storyAgentRouter } from '../routes/story-agent.js';
 import {
   generateAiComicSeriesPlan,
   saveAiComicSeriesProject,
@@ -1454,6 +1455,7 @@ describe('high-risk write isolation', () => {
     app.use('/api/story-outline', outlineRouter);
     app.use('/api/projects', projectsRouter);
     app.use('/api/system', systemRouter);
+    app.use('/api/story-agent', storyAgentRouter);
     app.use(errorHandler);
     const request = supertest(app);
 
@@ -1481,6 +1483,15 @@ describe('high-risk write isolation', () => {
       .set('authorization', bearer('creator-secret'))
       .send({});
     expect(creatorReplayDraft.status).toBe(400);
+
+    const researchStoryAgentRun = await request.post('/api/story-agent/runs')
+      .set('authorization', bearer('research-secret'))
+      .send({});
+    expect(researchStoryAgentRun.status).toBe(403);
+    const creatorStoryAgentRun = await request.post('/api/story-agent/runs')
+      .set('authorization', bearer('creator-secret'))
+      .send({});
+    expect(creatorStoryAgentRun.status).toBe(400);
 
     const researchSeriesPlan = await request.post('/api/story-outline/ai-comic-series-plan')
       .set('authorization', bearer('research-secret'))

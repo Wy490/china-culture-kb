@@ -21,6 +21,13 @@ import {
   exportStoryAgentImageRequest,
   importStoryAgentImageResult,
 } from './tools/story-agent-image-runs.js';
+import {
+  exportStoryAgentRun,
+  getStoryAgentRun,
+  importStoryAgentRunImages,
+  resumeStoryAgentRun,
+  startStoryAgentRun,
+} from './tools/story-agent-runs.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
@@ -420,6 +427,92 @@ server.tool(
   },
   async (input) => {
     const result = await importStoryAgentImageResult(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_start_story_agent_run — stable top-level Story Agent orchestration ledger
+server.tool(
+  'kb_start_story_agent_run',
+  '为普通故事项目或 AI 漫剧系列创建稳定、可恢复的顶层 StoryAgentRun。复用 canonical 专业文本、Seedance、图片运行和前置制作服务；只导出 provider-free 图片请求，不调用图片或视频 Provider。',
+  {
+    project_id: z.string().regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/).optional().describe('普通故事项目 ID；与 series_project_id 二选一'),
+    series_project_id: z.string().regex(/^\d{8}-series-[0-9a-z]+$/).optional().describe('AI 漫剧系列项目 ID；与 project_id 二选一'),
+  },
+  async (input) => {
+    const result = await startStoryAgentRun(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_get_story_agent_run — read one persisted top-level ledger
+server.tool(
+  'kb_get_story_agent_run',
+  '读取持久化 StoryAgentRun 的阶段状态、阻塞项、可重试失败、图片请求 manifest 与前置制作快照。',
+  {
+    run_id: z.string().regex(/^story-agent-run-[a-f0-9]{24}$/),
+  },
+  async (input) => {
+    const result = await getStoryAgentRun(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_resume_story_agent_run — refresh canonical derived stages without provider calls
+server.tool(
+  'kb_resume_story_agent_run',
+  '从现有项目、图片 run 和前置制作服务重新同步 StoryAgentRun；保持项目与图片 request 幂等，不调用图片或视频 Provider。',
+  {
+    run_id: z.string().regex(/^story-agent-run-[a-f0-9]{24}$/),
+  },
+  async (input) => {
+    const result = await resumeStoryAgentRun(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_import_story_agent_images — import image results through the top-level ledger
+server.tool(
+  'kb_import_story_agent_images',
+  '将 image-generation-result/v1 导入 StoryAgentRun 绑定的 canonical 图片 run，随后自动刷新顶层阶段和前置制作验收。',
+  {
+    run_id: z.string().regex(/^story-agent-run-[a-f0-9]{24}$/),
+    result: z.object({
+      schema_version: z.literal('image-generation-result/v1'),
+      run_id: z.string().regex(/^image-run-[a-f0-9]{24}$/),
+      request_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      completed_at: z.string().datetime(),
+      items: z.array(z.object({
+        task_id: z.string().min(1),
+        covers_task_ids: z.array(z.string().min(1)).optional(),
+        status: z.enum(['generated', 'failed_retryable', 'blocked']),
+        output_path: z.string().optional(),
+        mime_type: z.string().optional(),
+        content_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+        prompt_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        provider: z.string().optional(),
+        provider_asset_id: z.string().optional(),
+        model: z.string().optional(),
+        failure_reason: z.string().optional(),
+        retryable: z.boolean().optional(),
+      })).min(1).max(500),
+    }),
+  },
+  async (input) => {
+    const result = await importStoryAgentRunImages(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_export_story_agent_run — export the persisted preproduction snapshot
+server.tool(
+  'kb_export_story_agent_run',
+  '导出 StoryAgentRun 当前持久化的通用 Seedance 前置制作包快照；不执行视频生成。',
+  {
+    run_id: z.string().regex(/^story-agent-run-[a-f0-9]{24}$/),
+  },
+  async (input) => {
+    const result = await exportStoryAgentRun(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

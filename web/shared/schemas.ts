@@ -1583,6 +1583,25 @@ export const StoryAgentSeedancePreproductionExportRequestSchema = z.object({
   }
 });
 
+export const StoryAgentRunIdParamSchema = z.object({
+  runId: z.string().regex(
+    /^story-agent-run-[a-f0-9]{24}$/,
+    'runId must be a stable top-level Story Agent run id',
+  ),
+});
+
+export const StoryAgentRunStartRequestSchema = z.object({
+  project_id: ProjectIdValueSchema.optional(),
+  series_project_id: AiComicSeriesProjectIdValueSchema.optional(),
+}).strict().superRefine((request, context) => {
+  if ([request.project_id, request.series_project_id].filter(Boolean).length !== 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'exactly one of project_id or series_project_id is required',
+    });
+  }
+});
+
 export const StoryAgentImageRunIdParamSchema = z.object({
   runId: z.string().regex(
     /^image-run-[a-f0-9]{24}$/,

@@ -12,6 +12,7 @@ import { resolve } from 'path';
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import supertest from 'supertest';
 import express from 'express';
 import cors from 'cors';
@@ -409,6 +410,145 @@ describe('Story Agent image run API', () => {
     expect(imported.status).toBe(400);
     expect(imported.body.ok).toBe(false);
     expect(imported.body.error.message).toContain('outputs directory');
+  });
+});
+
+describe('Story Agent top-level run API', () => {
+  it('starts, reads, resumes, and exports one stable project-bound run', async () => {
+    const story: StoryGenerateResult = {
+      ...makeApiStory(),
+      storyId: '20260725-story-run001',
+      title: '统一 Story Agent Run API 测试',
+      gears_segments_url: '/api/stories/20260725-story-run001/gears-segments',
+    };
+    const project = await createProjectFromGeneratedStory(story, '2026-07-25T07:00:00.000Z');
+
+    const started = await request
+      .post('/api/story-agent/runs')
+      .send({ project_id: project.project_id });
+
+    expect(started.status).toBe(200);
+    expectSuccess(started.body);
+    expect(started.body.data).toMatchObject({
+      schema_version: 'story-agent-run/v1',
+      input_contract: {
+        schema_version: 'story-agent-run-input/v1',
+        project_id: project.project_id,
+      },
+      source: {
+        kind: 'story_project',
+        source_id: project.project_id,
+      },
+      image_request_manifest: {
+        provider_invoked: false,
+        executor: 'codex_imagegen',
+      },
+      boundary: {
+        image_provider_invoked_by_server: false,
+        video_generation_performed: false,
+        human_review_credit_granted: false,
+      },
+    });
+    expect(started.body.data.stage_results.map((stage: { stage: string }) => stage.stage))
+      .toEqual([
+        'source',
+        'professional_script',
+        'seedance_prompt',
+        'image_assets',
+        'preproduction_package',
+      ]);
+
+    const repeated = await request
+      .post('/api/story-agent/runs')
+      .send({ project_id: project.project_id });
+    expect(repeated.status).toBe(200);
+    expect(repeated.body.data.run_id).toBe(started.body.data.run_id);
+    expect(repeated.body.data.image_request_manifest.image_run_id)
+      .toBe(started.body.data.image_request_manifest.image_run_id);
+
+    const fetched = await request.get(`/api/story-agent/runs/${started.body.data.run_id}`);
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.data.run_id).toBe(started.body.data.run_id);
+
+    const resumed = await request
+      .post(`/api/story-agent/runs/${started.body.data.run_id}/resume`)
+      .send({});
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.data.run_id).toBe(started.body.data.run_id);
+    expect(resumed.body.data.resume_count).toBe(1);
+
+    const exported = await request.get(
+      `/api/story-agent/runs/${started.body.data.run_id}/export`,
+    );
+    expect(exported.status).toBe(200);
+    expect(exported.body.data).toMatchObject({
+      schema_version: 'story-agent-run-export/v1',
+      run_id: started.body.data.run_id,
+      video_generation_performed: false,
+      preproduction_package: {
+        schema_version: 'story-agent-seedance-preproduction-package/v1',
+      },
+    });
+
+    const imageRequest = started.body.data.image_request_manifest.request;
+    const contentSha256 = createHash('sha256').update(ONE_PIXEL_PNG).digest('hex');
+    const pendingTasks = imageRequest.tasks.filter(
+      (task: { action: string }) => task.action === 'generate',
+    );
+    expect(pendingTasks.length).toBeGreaterThan(0);
+    for (const task of pendingTasks) {
+      const outputPath = resolve(
+        imageRequest.run_directory,
+        task.expected_output_path,
+      );
+      await mkdir(resolve(outputPath, '..'), { recursive: true });
+      await writeFile(outputPath, ONE_PIXEL_PNG);
+    }
+
+    const imported = await request
+      .post(`/api/story-agent/runs/${started.body.data.run_id}/import-images`)
+      .send({
+        schema_version: 'image-generation-result/v1',
+        run_id: started.body.data.image_request_manifest.image_run_id,
+        request_sha256: imageRequest.request_sha256,
+        completed_at: '2026-07-25T07:05:00.000Z',
+        items: pendingTasks.map((task: { task_id: string; expected_output_path: string; prompt_sha256: string }) => ({
+          task_id: task.task_id,
+          status: 'generated',
+          output_path: task.expected_output_path,
+          mime_type: 'image/png',
+          content_sha256: contentSha256,
+          prompt_sha256: task.prompt_sha256,
+          provider: 'openai_imagegen',
+          provider_asset_id: `api-run-${task.task_id}`,
+          model: 'gpt-image-2',
+        })),
+      });
+    expect(imported.status).toBe(200);
+    expect(imported.body.data).toMatchObject({
+      schema_version: 'story-agent-run-image-import/v1',
+      run: {
+        run_id: started.body.data.run_id,
+        status: 'ready',
+        current_stage: 'complete',
+        image_request_manifest: {
+          image_run_status: 'complete',
+          verified_task_count: imageRequest.task_count,
+        },
+      },
+    });
+  });
+
+  it('rejects ambiguous sources before creating a run', async () => {
+    const response = await request
+      .post('/api/story-agent/runs')
+      .send({
+        project_id: '20260725-story-run001--character_story',
+        series_project_id: '20260725-series-run001',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.ok).toBe(false);
   });
 });
 

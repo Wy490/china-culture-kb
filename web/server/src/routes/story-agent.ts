@@ -2,6 +2,7 @@ import { Router, type Request } from 'express';
 import type {
   StoryAgentImageGenerationResult,
   StoryAgentImageRunExportRequest,
+  StoryAgentRunStartRequest,
   StoryAgentSeedancePreproductionExportRequest,
 } from '@shared/types.js';
 import { ErrorCodes } from '@shared/types.js';
@@ -9,6 +10,8 @@ import {
   StoryAgentImageGenerationResultSchema,
   StoryAgentImageRunExportRequestSchema,
   StoryAgentImageRunIdParamSchema,
+  StoryAgentRunIdParamSchema,
+  StoryAgentRunStartRequestSchema,
   StoryAgentSeedancePreproductionExportRequestSchema,
 } from '@shared/schemas.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
@@ -19,6 +22,13 @@ import {
   getStoryAgentImageRun,
   importStoryAgentImageGenerationResult,
 } from '../services/story-agent-image-run-service.js';
+import {
+  exportStoryAgentRun,
+  getStoryAgentRun,
+  importStoryAgentRunImages,
+  resumeStoryAgentRun,
+  startStoryAgentRun,
+} from '../services/story-agent-run-service.js';
 
 export const storyAgentRouter = Router();
 
@@ -27,6 +37,7 @@ function routeParam(value: string | string[]): string {
 }
 
 const requireUnscopedProjectRead = requireProductAccess('project:read');
+const requireUnscopedProductionWrite = requireProductAccess('production:write');
 const requireStoryProjectRead = requireProductAccess('project:read', {
   resource: {
     type: 'story_project',
@@ -63,6 +74,24 @@ const requireSeriesProjectProductionWrite = requireProductAccess('production:wri
     },
   },
 });
+const requireStoryAgentRunProjectWrite = requireProductAccess('production:write', {
+  resource: {
+    type: 'story_project',
+    ids: req => {
+      const projectId = (req.body as StoryAgentRunStartRequest).project_id;
+      return projectId ? [projectId] : [];
+    },
+  },
+});
+const requireStoryAgentRunSeriesWrite = requireProductAccess('production:write', {
+  resource: {
+    type: 'series_project',
+    ids: req => {
+      const seriesProjectId = (req.body as StoryAgentRunStartRequest).series_project_id;
+      return seriesProjectId ? [seriesProjectId] : [];
+    },
+  },
+});
 
 function requirePreproductionSourceRead(req: Request, res: Parameters<typeof requireStoryProjectRead>[1], next: Parameters<typeof requireStoryProjectRead>[2]): void {
   const body = req.body as StoryAgentSeedancePreproductionExportRequest;
@@ -90,6 +119,19 @@ function requireImageRunSourceWrite(
   requireSeriesProjectProductionWrite(req, res, next);
 }
 
+function requireStoryAgentRunSourceWrite(
+  req: Request,
+  res: Parameters<typeof requireStoryAgentRunProjectWrite>[1],
+  next: Parameters<typeof requireStoryAgentRunProjectWrite>[2],
+): void {
+  const body = req.body as StoryAgentRunStartRequest;
+  if (body.project_id) {
+    requireStoryAgentRunProjectWrite(req, res, next);
+    return;
+  }
+  requireStoryAgentRunSeriesWrite(req, res, next);
+}
+
 async function requirePersistedImageRunAccess(
   permission: 'project:read' | 'production:write',
   req: Request,
@@ -110,6 +152,122 @@ async function requirePersistedImageRunAccess(
   });
   await middleware(req, res, next);
 }
+
+async function requirePersistedStoryAgentRunAccess(
+  permission: 'project:read' | 'production:write',
+  req: Request,
+  res: Parameters<typeof requireStoryProjectRead>[1],
+  next: Parameters<typeof requireStoryProjectRead>[2],
+): Promise<void> {
+  const result = await getStoryAgentRun(routeParam(req.params.runId));
+  if (!result.ok || !result.data) {
+    next();
+    return;
+  }
+  const source = result.data.source;
+  const middleware = requireProductAccess(permission, {
+    resource: {
+      type: source.kind === 'ai_comic_series_project' ? 'series_project' : 'story_project',
+      ids: () => [source.source_id],
+    },
+  });
+  await middleware(req, res, next);
+}
+
+// POST /api/story-agent/runs
+// Creates one stable provider-free orchestration ledger for a persisted project.
+storyAgentRouter.post(
+  '/runs',
+  requireUnscopedProductionWrite,
+  validateBody(StoryAgentRunStartRequestSchema),
+  requireStoryAgentRunSourceWrite,
+  async (req, res, next) => {
+    try {
+      const result = await startStoryAgentRun(req.body as StoryAgentRunStartRequest);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400)
+        .json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// GET /api/story-agent/runs/:runId/export
+storyAgentRouter.get(
+  '/runs/:runId/export',
+  requireUnscopedProjectRead,
+  validateParams(StoryAgentRunIdParamSchema),
+  (req, res, next) => {
+    void requirePersistedStoryAgentRunAccess('project:read', req, res, next).catch(next);
+  },
+  async (req, res, next) => {
+    try {
+      const result = await exportStoryAgentRun(routeParam(req.params.runId));
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// GET /api/story-agent/runs/:runId
+storyAgentRouter.get(
+  '/runs/:runId',
+  requireUnscopedProjectRead,
+  validateParams(StoryAgentRunIdParamSchema),
+  (req, res, next) => {
+    void requirePersistedStoryAgentRunAccess('project:read', req, res, next).catch(next);
+  },
+  async (req, res, next) => {
+    try {
+      const result = await getStoryAgentRun(routeParam(req.params.runId));
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// POST /api/story-agent/runs/:runId/resume
+storyAgentRouter.post(
+  '/runs/:runId/resume',
+  requireUnscopedProductionWrite,
+  validateParams(StoryAgentRunIdParamSchema),
+  (req, res, next) => {
+    void requirePersistedStoryAgentRunAccess('production:write', req, res, next).catch(next);
+  },
+  async (req, res, next) => {
+    try {
+      const result = await resumeStoryAgentRun(routeParam(req.params.runId));
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// POST /api/story-agent/runs/:runId/import-images
+storyAgentRouter.post(
+  '/runs/:runId/import-images',
+  requireUnscopedProductionWrite,
+  validateParams(StoryAgentRunIdParamSchema),
+  validateBody(StoryAgentImageGenerationResultSchema),
+  (req, res, next) => {
+    void requirePersistedStoryAgentRunAccess('production:write', req, res, next).catch(next);
+  },
+  async (req, res, next) => {
+    try {
+      const result = await importStoryAgentRunImages(
+        routeParam(req.params.runId),
+        req.body as StoryAgentImageGenerationResult,
+      );
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400)
+        .json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // POST /api/story-agent/preproduction/export
 // Canonical Story Agent boundary export shared by stories, ordinary projects and series.
