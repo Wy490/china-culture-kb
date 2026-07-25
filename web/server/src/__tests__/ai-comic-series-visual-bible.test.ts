@@ -7,6 +7,7 @@ import type {
 import {
   aiComicSeriesVisualIdentityId,
   buildAiComicSeriesVisualBible,
+  isAiComicSeriesGenericVisualCharacterLabel,
 } from '../services/ai-comic-series-visual-bible-service.js'
 
 function fixturePlan(): AiComicSeriesPlan {
@@ -142,6 +143,12 @@ function fixtureLedger(): AiComicContinuityLedger {
 }
 
 describe('AI comic series visual bible', () => {
+  it('classifies narrative role placeholders separately from canonical visual identities', () => {
+    expect(isAiComicSeriesGenericVisualCharacterLabel('同行者')).toBe(true)
+    expect(isAiComicSeriesGenericVisualCharacterLabel(' 关键见证者 ')).toBe(true)
+    expect(isAiComicSeriesGenericVisualCharacterLabel('唐遥')).toBe(false)
+  })
+
   it('builds stable cross-episode identities without promoting placeholders or prompt pollution', () => {
     const plan = fixturePlan()
     plan.main_characters.push({

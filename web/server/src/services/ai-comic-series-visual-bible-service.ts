@@ -45,6 +45,21 @@ const WORLD_RULE_DEFINITION_FIELDS = [
   { field_id: 'trigger_condition', label: '触发条件' },
 ] as const
 
+const GENERIC_VISUAL_CHARACTER_LABELS = new Set([
+  '主角',
+  '配角',
+  '反派',
+  '少年',
+  '百姓',
+  '关键见证者',
+  '对照角色',
+  '同行者',
+])
+
+export function isAiComicSeriesGenericVisualCharacterLabel(label: string): boolean {
+  return GENERIC_VISUAL_CHARACTER_LABELS.has(label.trim())
+}
+
 export function aiComicSeriesVisualIdentityId(
   kind: AiComicSeriesVisualIdentityKind,
   label: string,
@@ -120,22 +135,12 @@ export function buildAiComicSeriesVisualBible(input: {
   }
 
   const memory = input.ledger.series_memory
-  const genericMemoryCharacterLabels = new Set([
-    '主角',
-    '配角',
-    '反派',
-    '少年',
-    '百姓',
-    '关键见证者',
-    '对照角色',
-    '同行者',
-  ])
   for (const character of memory?.characters ?? []) {
     const label = character.label.trim()
     const relatedEpisodeNos = sortedEpisodeNos(character.related_episode_nos)
     if (
       !label
-      || genericMemoryCharacterLabels.has(label)
+      || isAiComicSeriesGenericVisualCharacterLabel(label)
       || productionCharacterNames.has(label)
       || relatedEpisodeNos.length < 1
     ) {

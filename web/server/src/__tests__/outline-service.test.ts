@@ -720,6 +720,28 @@ describe('outline-service', () => {
     );
   });
 
+  it('keeps generic fast-hook planning free of judicial case-file template language', async () => {
+    const planRes = await generateAiComicSeriesPlan({
+      outline: '完全虚构的青铜奇幻故事：少年守护者青牧在青绿雾气笼罩的地下城追查无风自鸣的鸟形铃铛。',
+      series_title: '青铜鸟醒时',
+      episode_count: 2,
+      episode_duration_range_sec: { min: 45, max: 75 },
+      pacing_profile: 'fast_hook',
+      character_hints: [{
+        name: '青牧',
+        role_position: '主角',
+        character_kind: 'named_person',
+        source_text: '少年守护者青牧',
+        asset_stability: 'recurring',
+      }],
+    });
+
+    expect(planRes.ok).toBe(true);
+    expect(JSON.stringify(planRes.data?.episodes)).not.toMatch(
+      /案卷|判词|死刑文书|传唤|案号|新证词/,
+    );
+  });
+
   it('turns AI comic episode planning labels into visible story evidence', async () => {
     const planRes = await generateAiComicSeriesPlan({
       outline: '周敦颐少年在濂溪读书，后来面对南安军拒签冤案，坚持良知。第一集必须把疑点变成可见证物。',

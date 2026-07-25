@@ -27,6 +27,56 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })));
 });
 
+function readyReport(caseCount = 8) {
+  const caseAssetCounts = Array.from(
+    { length: caseCount },
+    (_, index) => index < 2 ? 5 : 4,
+  );
+  const totalAssetCount = caseAssetCounts.reduce((total, count) => total + count, 0);
+  return {
+    schema_version: 'story-agent-visual-asset-pressure-report/v1',
+    status: 'ready',
+    generated_at: '2026-07-25T12:00:00.000Z',
+    coverage: {
+      case_count: caseCount,
+      unique_source_id_count: caseCount,
+      unique_style_family_count: caseCount,
+      unique_character_label_count: caseCount + 2,
+      unique_location_label_count: caseCount,
+      unique_content_sha256_count: caseCount * 2,
+      cross_case_content_reuse_count: 0,
+      semantic_gate_passed_case_count: caseCount,
+      source_content_sha256_verified_asset_count: totalAssetCount,
+      media_signature_verified_asset_count: totalAssetCount,
+      immutable_preview_verified_asset_count: totalAssetCount,
+      identity_mapping_current_asset_count: totalAssetCount,
+    },
+    scenario_summary: {
+      required_count: 6,
+      passed_count: 6,
+      failed_count: 0,
+      not_run_count: 0,
+    },
+    scenario_results: REQUIRED_SCENARIOS.map(scenario => ({
+      scenario,
+      status: 'passed',
+      evidence_refs: [`test:${scenario}`],
+    })),
+    cases: caseAssetCounts.map((assetCount, index) => ({
+      case_id: `case-${index + 1}`,
+      asset_count: assetCount,
+      semantic_gate_passed: true,
+      blockers: [],
+    })),
+    blockers: [],
+    warnings: [`within_case_composite_asset_reuse:${totalAssetCount - caseCount * 2}`],
+    machine_validation_only: true,
+    image_provider_invoked_by_server: false,
+    video_generation_performed: false,
+    production_credit_granted: false,
+  };
+}
+
 describe('Story Agent visual asset pressure ops status', () => {
   it('returns not_run without inventing pressure evidence when the canonical report is missing', async () => {
     const generatedRoot = await testRoot();
@@ -51,48 +101,7 @@ describe('Story Agent visual asset pressure ops status', () => {
     const generatedRoot = await testRoot();
     const reportPath = storyAgentVisualAssetPressureReportPath(generatedRoot);
     await mkdir(resolve(reportPath, '..'), { recursive: true });
-    await writeFile(reportPath, `${JSON.stringify({
-      schema_version: 'story-agent-visual-asset-pressure-report/v1',
-      status: 'ready',
-      generated_at: '2026-07-25T12:00:00.000Z',
-      coverage: {
-        case_count: 4,
-        unique_source_id_count: 4,
-        unique_style_family_count: 4,
-        unique_character_label_count: 6,
-        unique_location_label_count: 4,
-        unique_content_sha256_count: 8,
-        cross_case_content_reuse_count: 0,
-        semantic_gate_passed_case_count: 4,
-        source_content_sha256_verified_asset_count: 18,
-        media_signature_verified_asset_count: 18,
-        immutable_preview_verified_asset_count: 18,
-        identity_mapping_current_asset_count: 18,
-      },
-      scenario_summary: {
-        required_count: 6,
-        passed_count: 6,
-        failed_count: 0,
-        not_run_count: 0,
-      },
-      scenario_results: REQUIRED_SCENARIOS.map(scenario => ({
-        scenario,
-        status: 'passed',
-        evidence_refs: [`test:${scenario}`],
-      })),
-      cases: Array.from({ length: 4 }, (_, index) => ({
-        case_id: `case-${index + 1}`,
-        asset_count: index < 2 ? 5 : 4,
-        semantic_gate_passed: true,
-        blockers: [],
-      })),
-      blockers: [],
-      warnings: ['within_case_composite_asset_reuse:10'],
-      machine_validation_only: true,
-      image_provider_invoked_by_server: false,
-      video_generation_performed: false,
-      production_credit_granted: false,
-    }, null, 2)}\n`, 'utf8');
+    await writeFile(reportPath, `${JSON.stringify(readyReport(), null, 2)}\n`, 'utf8');
 
     const status = await getStoryAgentVisualAssetPressureOpsStatus({ generatedRoot });
 
@@ -106,8 +115,8 @@ describe('Story Agent visual asset pressure ops status', () => {
         generated_at: '2026-07-25T12:00:00.000Z',
       },
       coverage: {
-        case_count: 4,
-        unique_content_sha256_count: 8,
+        case_count: 8,
+        unique_content_sha256_count: 16,
         cross_case_content_reuse_count: 0,
       },
       scenario_summary: {
@@ -115,10 +124,27 @@ describe('Story Agent visual asset pressure ops status', () => {
         passed_count: 6,
       },
       blockers: [],
-      warnings: ['within_case_composite_asset_reuse:10'],
+      warnings: ['within_case_composite_asset_reuse:18'],
     });
     expect(status).not.toHaveProperty('cases');
     expect(status).not.toHaveProperty('scenario_results');
+  });
+
+  it('fails closed when the canonical report regresses to the legacy four-world baseline', async () => {
+    const generatedRoot = await testRoot();
+    const reportPath = storyAgentVisualAssetPressureReportPath(generatedRoot);
+    await mkdir(resolve(reportPath, '..'), { recursive: true });
+    await writeFile(reportPath, `${JSON.stringify(readyReport(4), null, 2)}\n`, 'utf8');
+
+    await expect(getStoryAgentVisualAssetPressureOpsStatus({ generatedRoot })).resolves.toMatchObject({
+      status: 'blocked',
+      coverage: {
+        case_count: 4,
+        unique_source_id_count: 4,
+        unique_style_family_count: 4,
+      },
+      blockers: ['visual_asset_pressure_report_inconsistent'],
+    });
   });
 
   it('fails closed when the canonical report is malformed', async () => {

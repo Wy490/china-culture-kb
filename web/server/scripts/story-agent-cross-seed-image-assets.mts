@@ -21,6 +21,7 @@ type ImageAssetManifest = {
     seed_id: string
     outline: string
     series_title: string
+    series_project_id?: string
     episode_count: number
     duration_range_sec: {
       min: number
@@ -263,7 +264,10 @@ for (let itemIndex = 0; itemIndex < workItems.length; itemIndex += 1) {
     && candidate.prompt_sha256 === item.prompt_sha256
     && candidate.content_sha256 === item.content_sha256
   )
-  if (previousItem) {
+  if (
+    previousItem
+    && (!item.series_project_id || previousItem.series_project_id === item.series_project_id)
+  ) {
     const reused = await validateExistingBinding({
       item,
       imageBuffer,
@@ -281,7 +285,7 @@ for (let itemIndex = 0; itemIndex < workItems.length; itemIndex += 1) {
     ...reports,
     ...(previousReport?.assets ?? []),
   ].find(candidate => candidate.seed_id === item.seed_id)
-  let seriesProjectId = seedProjectCandidate?.series_project_id
+  let seriesProjectId = item.series_project_id ?? seedProjectCandidate?.series_project_id
   let reusedExistingProject = false
   if (seriesProjectId) {
     const candidateProject = await rebuildAiComicSeriesVisualBible(seriesProjectId)
@@ -375,6 +379,16 @@ for (const seriesProjectId of [...new Set(reports.map(item => item.series_projec
     series_title: reports.find(item => item.series_project_id === seriesProjectId)?.series_title ?? '',
     shot_binding_count: assetReport.shot_binding_count,
     unbound_shot_count: assetReport.unbound_shot_count,
+    missing_shot_samples: assetReport.shots
+      .filter(shot => shot.missing_reference_asset_ids.length > 0)
+      .slice(0, 12)
+      .map(shot => ({
+        episode_no: shot.episode_no,
+        shot_id: shot.shot_id,
+        characters: shot.characters,
+        location: shot.location,
+        missing_reference_asset_ids: shot.missing_reference_asset_ids,
+      })),
     functional_test_identity_mapping_count:
       assetReport.completion_plan.summary.functional_test_identity_mapping_count,
   })
@@ -388,6 +402,7 @@ const totalUnboundShotCount = shotBindingReports.reduce(
   0,
 )
 if (totalUnboundShotCount > 0) {
+  console.error(JSON.stringify({ series_shot_bindings: shotBindingReports }, null, 2))
   throw new Error(`shot-level image reference gate failed: ${totalUnboundShotCount} unbound shots`)
 }
 

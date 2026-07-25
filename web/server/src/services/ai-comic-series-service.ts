@@ -257,6 +257,7 @@ import { buildAiComicSeriesBlindReviewPackage } from './ai-comic-series-blind-re
 import {
   aiComicSeriesVisualIdentityId,
   buildAiComicSeriesVisualBible,
+  isAiComicSeriesGenericVisualCharacterLabel,
 } from './ai-comic-series-visual-bible-service.js';
 import {
   buildAiComicSeriesVisualIdentitySuggestionDraft,
@@ -1021,7 +1022,8 @@ function buildAiComicEpisodeAudienceScenes(
   const visibleNewInfo = isRuleMystery || isHeritageStageRescue || isRefusalCase
     ? naturalizeAiComicNewInformationForScene(newInfo)
     : naturalizeAiComicGenericText(newInfo, genericContext.props[0]);
-  const foreshadowing = episode.foreshadowing[0] ?? '案卷边角的旧墨痕';
+  const foreshadowing = episode.foreshadowing[0]
+    ?? (isRefusalCase ? '案卷边角的旧墨痕' : genericContext.props[1]);
   const visibleForeshadowing = isHeritageStageRescue
     ? foreshadowing
         .replace(/^.+?主线推进[:：]\s*/, '')
@@ -8812,7 +8814,9 @@ export async function exportAiComicSeriesSeedanceAssetReportPackage(
     }
     for (const unit of seedancePackage.shot_units) {
       const requiredAssets = [
-        ...unit.characters.map(character => resolveSeedanceShotAsset({
+        ...unit.characters
+          .filter(character => !isAiComicSeriesGenericVisualCharacterLabel(character))
+          .map(character => resolveSeedanceShotAsset({
           kind: 'character',
           label: character,
           episodeNo: episode.episode_no,
@@ -8821,7 +8825,7 @@ export async function exportAiComicSeriesSeedanceAssetReportPackage(
           assets,
           libraryByAssetId,
           libraryByKey,
-        })),
+          })),
         resolveSeedanceShotAsset({
           kind: 'location',
           label: unit.location,
@@ -20107,11 +20111,11 @@ function buildEpisodeNewInformation(
   outline: string,
 ): string {
   if (focus) {
-    if (episodeNo === 1) return `${focus}相关的第一条可见线索进入案卷。`;
-    return `${focus}相关的新证词让主角重新判断“${coreTheme}”。`;
+    if (episodeNo === 1) return `${focus}相关的第一处可见变化进入行动现场。`;
+    return `${focus}相关的新观察让主角重新判断“${coreTheme}”。`;
   }
-  if (episodeNo === 1) return `第一条可见线索进入案卷：${summarizeText(outline, 14)}。`;
-  return `新的证词让主角重新判断“${coreTheme}”。`;
+  if (episodeNo === 1) return `第一处可见变化进入行动现场：${summarizeText(outline, 14)}。`;
+  return `新的可见证据让主角重新判断“${coreTheme}”。`;
 }
 
 function buildOpeningHook(
@@ -20183,10 +20187,10 @@ function buildEndingHook(
   if (pacingProfile === 'fast_hook') {
     const focusLabel = naturalizeAiComicHookSubject(focus);
     const hooks = [
-      `刚暂缓一纸死刑文书，${focusLabel}又牵出另一份被封存的案卷。`,
-      `${focusLabel}改变了他的判断，却把下一道传唤推到门前。`,
-      '主角守住这一笔，门外却传来下一卷案号被连夜送到。',
-      '证物暂时保住一条命，但真正施压的人第一次露出名字。',
+      `${focusLabel}突然改变位置，下一集必须追查是谁先动过它。`,
+      `${focusLabel}改变了主角的判断，却把新的阻力推到门前。`,
+      '主角保住阶段成果，远处却出现同样的异常信号。',
+      '第一重危机暂缓，真正施压者第一次留下可辨认的痕迹。',
     ];
     return hooks[(episodeNo - 1) % hooks.length] ?? hooks[0];
   }
