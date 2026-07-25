@@ -411,6 +411,152 @@ describe('Story Agent image run API', () => {
     expect(imported.body.ok).toBe(false);
     expect(imported.body.error.message).toContain('outputs directory');
   });
+
+  it('preserves partial success while rejecting missing, corrupt, and hash-mismatched outputs before task retry', async () => {
+    const story: StoryGenerateResult = {
+      ...makeApiStory(),
+      storyId: '20260725-story-img03',
+      title: '图片压力恢复 API 测试',
+      gears_segments_url: '/api/stories/20260725-story-img03/gears-segments',
+    };
+    const project = await createProjectFromGeneratedStory(story, '2026-07-25T13:10:00.000Z');
+    const exported = await request
+      .post('/api/story-agent/image-runs/export-request')
+      .send({ project_id: project.project_id });
+    expect(exported.status).toBe(200);
+    const run = exported.body.data;
+    const tasks = run.request.tasks.filter((task: { action: string }) => task.action === 'generate');
+    expect(tasks.length).toBeGreaterThanOrEqual(2);
+    const [retryTask, preservedTask] = tasks;
+    const resultBase = {
+      schema_version: 'image-generation-result/v1',
+      run_id: run.run_id,
+      request_sha256: run.request.request_sha256,
+      completed_at: '2026-07-25T13:11:00.000Z',
+    };
+    const generatedItem = (
+      task: { task_id: string; expected_output_path: string; prompt_sha256: string },
+      contentSha256: string,
+    ) => ({
+      task_id: task.task_id,
+      status: 'generated',
+      output_path: task.expected_output_path,
+      mime_type: 'image/png',
+      content_sha256: contentSha256,
+      prompt_sha256: task.prompt_sha256,
+      provider: 'openai_imagegen',
+      provider_asset_id: `pressure-${task.task_id}`,
+      model: 'gpt-image-2',
+    });
+
+    const missing = await request
+      .post(`/api/story-agent/image-runs/${run.run_id}/import-result`)
+      .send({
+        ...resultBase,
+        items: [generatedItem(retryTask, 'a'.repeat(64))],
+    });
+    expect(missing.status).toBe(400);
+    expect(missing.body.error.message).toContain('beneath the run outputs directory');
+
+    const retryOutput = resolve(run.request.run_directory, retryTask.expected_output_path);
+    await mkdir(resolve(retryOutput, '..'), { recursive: true });
+    await writeFile(retryOutput, ONE_PIXEL_PNG);
+    const hashMismatch = await request
+      .post(`/api/story-agent/image-runs/${run.run_id}/import-result`)
+      .send({
+        ...resultBase,
+        items: [generatedItem(retryTask, 'b'.repeat(64))],
+      });
+    expect(hashMismatch.status).toBe(400);
+    expect(hashMismatch.body.error.message).toContain('content_sha256 mismatch');
+
+    const invalidImage = Buffer.from('not-an-image');
+    const invalidSha256 = createHash('sha256').update(invalidImage).digest('hex');
+    const validSha256 = createHash('sha256').update(ONE_PIXEL_PNG).digest('hex');
+    const preservedOutput = resolve(
+      run.request.run_directory,
+      preservedTask.expected_output_path,
+    );
+    await writeFile(retryOutput, invalidImage);
+    await mkdir(resolve(preservedOutput, '..'), { recursive: true });
+    await writeFile(preservedOutput, ONE_PIXEL_PNG);
+    const partial = await request
+      .post(`/api/story-agent/image-runs/${run.run_id}/import-result`)
+      .send({
+        ...resultBase,
+        items: [
+          generatedItem(retryTask, invalidSha256),
+          generatedItem(preservedTask, validSha256),
+        ],
+      });
+    expect(partial.status).toBe(200);
+    expect(partial.body.data).toMatchObject({
+      failed_task_count: 1,
+      verified_task_count: 1,
+      run: {
+        summary: {
+          failed_retryable_count: 1,
+          verified_count: 1,
+        },
+      },
+    });
+    const partialTasks = Object.fromEntries(
+      partial.body.data.run.tasks.map((task: { task_id: string }) => [task.task_id, task]),
+    );
+    expect(partialTasks[retryTask.task_id]).toMatchObject({
+      status: 'failed_retryable',
+      attempts: [{ result_status: 'failed_retryable' }],
+    });
+    expect(partialTasks[preservedTask.task_id]).toMatchObject({
+      status: 'verified',
+      attempts: [{ result_status: 'generated' }],
+    });
+
+    await writeFile(retryOutput, ONE_PIXEL_PNG);
+    const retried = await request
+      .post(`/api/story-agent/image-runs/${run.run_id}/import-result`)
+      .send({
+        ...resultBase,
+        completed_at: '2026-07-25T13:12:00.000Z',
+        items: [generatedItem(retryTask, validSha256)],
+      });
+    expect(retried.status).toBe(200);
+    expect(retried.body.data).toMatchObject({
+      failed_task_count: 0,
+      verified_task_count: 1,
+      run: {
+        summary: {
+          failed_retryable_count: 0,
+          verified_count: 2,
+        },
+      },
+    });
+    const retriedTasks = Object.fromEntries(
+      retried.body.data.run.tasks.map((task: { task_id: string }) => [task.task_id, task]),
+    );
+    expect(retriedTasks[retryTask.task_id]).toMatchObject({
+      status: 'verified',
+      attempts: [
+        { result_status: 'failed_retryable' },
+        { result_status: 'generated' },
+      ],
+    });
+    expect(retriedTasks[preservedTask.task_id]).toEqual(
+      partialTasks[preservedTask.task_id],
+    );
+    const generatedRoot = process.env.WEB_GENERATED_ROOT
+      ?? resolve(testWorkspaceRoot, 'web', 'generated');
+    await Promise.all([
+      rm(resolve(generatedRoot, 'projects', project.project_id!), {
+        recursive: true,
+        force: true,
+      }),
+      rm(resolve(generatedRoot, 'story-agent-image-runs', run.run_id), {
+        recursive: true,
+        force: true,
+      }),
+    ]);
+  });
 });
 
 describe('Story Agent top-level run API', () => {
