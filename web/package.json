@@ -19,6 +19,7 @@
     "audit:writeback-acceptance": "npm run audit:writeback-acceptance -w client",
     "check": "npm run audit:copy && npm run lint",
     "e2e:track-a": "playwright test --config playwright.config.ts",
+    "e2e:story-agent-visual-pressure": "playwright test e2e/story-agent-visual-pressure.spec.ts --config playwright.config.ts",
     "smoke:audit-crash": "npm run smoke:audit-crash -w server --",
     "smoke:story-agent-full-function": "npm run smoke:story-agent-full-function -w server --",
     "smoke:story-agent-cross-seed": "npm run smoke:story-agent-cross-seed -w server --",
