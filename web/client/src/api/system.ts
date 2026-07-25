@@ -40,6 +40,7 @@ import type {
   StoryAgentGeneratedHealthReport,
   StoryAgentBacklogHandoffPackage,
   StoryAgentMvpStatusReport,
+  StoryAgentVisualAssetPressureOpsStatus,
   StoryGenerationCapabilities,
   TypeInfo,
 } from '@shared/types'
@@ -151,6 +152,12 @@ export function getStoryAgentMvpStatus(options: {
   if (options.includeArchivedSeries) params.set('includeArchivedSeries', '1')
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentMvpStatusReport>(`/system/story-agent-mvp-status${suffix}`)
+}
+
+export function getStoryAgentVisualAssetPressureOpsStatus() {
+  return apiGet<StoryAgentVisualAssetPressureOpsStatus>(
+    '/system/story-agent-visual-asset-pressure',
+  )
 }
 
 export function getDomainPackExpansionCandidates(options: { includeMarkdown?: boolean } = {}) {

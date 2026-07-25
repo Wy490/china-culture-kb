@@ -12,6 +12,46 @@
       </div>
     </header>
 
+    <section
+      v-if="visualAssetPressure"
+      class="run-console__pressure"
+      data-testid="story-agent-visual-asset-pressure"
+    >
+      <div>
+        <p class="run-console__eyebrow">VISUAL ASSET PRESSURE</p>
+        <h2>
+          不同素材视觉压力
+          <span :class="`status status--${visualAssetPressure.status}`">
+            {{ pressureStatusLabel(visualAssetPressure.status) }}
+          </span>
+        </h2>
+        <p>
+          {{ visualAssetPressure.coverage.case_count }} 个题材 ·
+          {{ visualAssetPressure.coverage.unique_style_family_count }} 种风格 ·
+          {{ visualAssetPressure.coverage.unique_content_sha256_count }} 个唯一内容 SHA ·
+          跨题材复用 {{ visualAssetPressure.coverage.cross_case_content_reuse_count }}
+        </p>
+        <small>
+          恢复/拒绝场景
+          {{ visualAssetPressure.scenario_summary.passed_count }}/{{ visualAssetPressure.scenario_summary.required_count }}
+          · 详细证据 {{ visualAssetPressure.report.relative_path }}
+        </small>
+        <ul v-if="visualAssetPressure.blockers.length">
+          <li v-for="blocker in visualAssetPressure.blockers" :key="blocker">{{ blocker }}</li>
+        </ul>
+      </div>
+      <button
+        type="button"
+        class="run-console__button--quiet"
+        :disabled="pressureLoading"
+        @click="loadVisualAssetPressure"
+      >
+        {{ pressureLoading ? '刷新中…' : '刷新审计' }}
+      </button>
+    </section>
+    <p v-else-if="pressureLoading" class="run-console__pressure-loading">正在读取视觉压力审计…</p>
+    <p v-else-if="pressureError" class="run-console__pressure-error">{{ pressureError }}</p>
+
     <form class="run-console__filters" @submit.prevent="applyFilters">
       <label>
         <span>运行状态</span>
@@ -280,6 +320,7 @@ import type {
   StoryAgentRunStageStatus,
   StoryAgentRunWorkflowCheckpoint,
   StoryAgentRunWorkflowCheckpointKey,
+  StoryAgentVisualAssetPressureOpsStatus,
 } from '@shared/types'
 import {
   exportStoryAgentRun,
@@ -288,6 +329,7 @@ import {
   listStoryAgentRuns,
   resumeStoryAgentRun,
 } from '@/api/story-agent-runs'
+import { getStoryAgentVisualAssetPressureOpsStatus } from '@/api/system'
 
 const filters = reactive({
   status: '' as '' | NonNullable<StoryAgentRunListQuery['status']>,
@@ -304,6 +346,9 @@ const detailLoading = ref(false)
 const actionLoading = ref<'' | 'resume' | 'export' | 'import'>('')
 const errorMessage = ref('')
 const imageResultJson = ref('')
+const visualAssetPressure = ref<StoryAgentVisualAssetPressureOpsStatus | null>(null)
+const pressureLoading = ref(false)
+const pressureError = ref('')
 
 const detailTitle = computed(() => {
   if (!selectedRun.value) return ''
@@ -320,6 +365,16 @@ function statusLabel(status: StoryAgentRun['status']): string {
     failed_retryable: '可重试失败',
     ready: '预制作就绪',
     blocked: '已阻断',
+  }[status]
+}
+
+function pressureStatusLabel(
+  status: StoryAgentVisualAssetPressureOpsStatus['status'],
+): string {
+  return {
+    ready: '已通过',
+    blocked: '已阻断',
+    not_run: '未运行',
   }[status]
 }
 
@@ -413,6 +468,18 @@ async function loadRuns(cursor = currentCursor.value): Promise<void> {
     selectedRunId.value = ''
     selectedRun.value = null
   }
+}
+
+async function loadVisualAssetPressure(): Promise<void> {
+  pressureLoading.value = true
+  pressureError.value = ''
+  const result = await getStoryAgentVisualAssetPressureOpsStatus()
+  pressureLoading.value = false
+  if (!result.ok || !result.data) {
+    pressureError.value = result.error?.message || '视觉压力审计读取失败'
+    return
+  }
+  visualAssetPressure.value = result.data
 }
 
 async function selectRun(runId: string): Promise<void> {
@@ -511,6 +578,7 @@ async function importImageResult(): Promise<void> {
 
 onMounted(() => {
   void loadRuns()
+  void loadVisualAssetPressure()
 })
 </script>
 
@@ -569,6 +637,60 @@ onMounted(() => {
   color: #c4dfdc;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.run-console__pressure {
+  margin: 18px 0;
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #bdd8d2;
+  border-radius: 15px;
+  background: #f0f8f6;
+}
+
+.run-console__pressure h2 {
+  margin: 4px 0 7px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 18px;
+}
+
+.run-console__pressure p,
+.run-console__pressure small {
+  margin: 0;
+  color: #50686b;
+}
+
+.run-console__pressure small {
+  display: block;
+  margin-top: 5px;
+}
+
+.run-console__pressure ul {
+  margin: 8px 0 0;
+  color: #913930;
+  font-size: 11px;
+}
+
+.run-console__pressure-loading,
+.run-console__pressure-error {
+  margin: 18px 0;
+  padding: 14px 17px;
+  border-radius: 12px;
+}
+
+.run-console__pressure-loading {
+  color: #61747a;
+  background: #f2f5f6;
+}
+
+.run-console__pressure-error {
+  color: #8f2d24;
+  background: #fff2f0;
 }
 
 .run-console__filters {
@@ -743,6 +865,11 @@ onMounted(() => {
 .status--blocked {
   color: #9b332b;
   background: #fbe2df;
+}
+
+.status--not_run {
+  color: #5f6870;
+  background: #e8ecee;
 }
 
 .run-console__pager,
@@ -994,6 +1121,7 @@ onMounted(() => {
 
 @media (max-width: 980px) {
   .run-console__hero,
+  .run-console__pressure,
   .run-console__summary {
     align-items: stretch;
     flex-direction: column;

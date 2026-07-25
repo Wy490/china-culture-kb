@@ -5,6 +5,7 @@ import { FileArtifactStore } from '../src/repositories/artifact-store.js';
 import { inspectMediaAssetUpload } from '../src/services/asset-ingest-service.js';
 import {
   buildStoryAgentVisualAssetPressureReport,
+  resolveStoryAgentVisualAssetPressureStyleFamilies,
   type StoryAgentVisualAssetPressureCase,
   type StoryAgentVisualAssetPressureScenarioResult,
 } from '../src/services/story-agent-visual-asset-pressure-service.js';
@@ -59,6 +60,11 @@ interface ImageRecoveryReport {
   };
 }
 
+interface VisualAssetPressureStyleMap {
+  schema_version: 'story-agent-visual-asset-pressure-style-map/v1';
+  style_families: Record<string, string>;
+}
+
 const STYLE_FAMILY_BY_SEED: Record<string, string> = {
   'original-mystery': 'near_future_maritime_mystery',
   'historical-ethics': 'northern_song_historical_realism',
@@ -95,10 +101,15 @@ const recoveryPath = resolve(
   argumentValue('--recovery-report')
     ?? 'generated/story-agent-15x3-stability-matrix/image-recovery-report.json',
 );
+const styleMapArgument = argumentValue('--style-map');
+const styleMapPath = styleMapArgument ? resolve(webRoot, styleMapArgument) : undefined;
+const generatedRoot = process.env.WEB_GENERATED_ROOT
+  ? resolve(process.env.WEB_GENERATED_ROOT)
+  : resolve(webRoot, 'generated');
 const outputPath = resolve(
   webRoot,
   argumentValue('--output')
-    ?? 'generated/story-agent-visual-asset-pressure-20260725/report.json',
+    ?? resolve(generatedRoot, 'system/story-agent-visual-asset-pressure/report.json'),
 );
 
 const [manifest, bindingReport, recoveryReport] = await Promise.all([
@@ -115,9 +126,22 @@ if (bindingReport.schema_version !== 'story-agent-cross-seed-image-asset-binding
 if (recoveryReport.schema_version !== 'story-agent-15x3-image-recovery/v1') {
   throw new Error(`Unsupported image recovery report at "${recoveryPath}"`);
 }
+let styleFamilies = STYLE_FAMILY_BY_SEED;
+if (styleMapPath) {
+  const styleMap = await readJson<VisualAssetPressureStyleMap>(styleMapPath);
+  if (styleMap.schema_version !== 'story-agent-visual-asset-pressure-style-map/v1') {
+    throw new Error(`Unsupported visual asset pressure style map at "${styleMapPath}"`);
+  }
+  styleFamilies = styleMap.style_families;
+}
+const seedIds = [...new Set(manifest.assets.map(item => item.seed_id))].sort();
+const resolvedStyleFamilies = resolveStoryAgentVisualAssetPressureStyleFamilies(
+  seedIds,
+  styleFamilies,
+);
 
 const cases: StoryAgentVisualAssetPressureCase[] = [];
-for (const seedId of [...new Set(manifest.assets.map(item => item.seed_id))].sort()) {
+for (const seedId of seedIds) {
   const manifestAssets = manifest.assets.filter(item => item.seed_id === seedId);
   const assets = await Promise.all(manifestAssets.map(async item => {
     const [sourceBytes, prompt] = await Promise.all([
@@ -164,7 +188,7 @@ for (const seedId of [...new Set(manifest.assets.map(item => item.seed_id))].sor
     case_id: seedId,
     source_id: firstBinding?.series_project_id ?? seedId,
     title: manifestAssets[0]?.series_title ?? seedId,
-    style_family: STYLE_FAMILY_BY_SEED[seedId] ?? '',
+    style_family: resolvedStyleFamilies[seedId]!,
     character_labels: manifestAssets
       .filter(item => item.kind === 'character')
       .map(item => item.label),

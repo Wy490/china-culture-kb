@@ -111,6 +111,22 @@ function isSha256(value: string): boolean {
   return /^[a-f0-9]{64}$/i.test(value);
 }
 
+export function resolveStoryAgentVisualAssetPressureStyleFamilies(
+  caseIds: string[],
+  styleFamilies: Record<string, string>,
+): Record<string, string> {
+  const uniqueCaseIds = [...new Set(caseIds)].sort();
+  const resolved = Object.fromEntries(uniqueCaseIds.map(caseId => [
+    caseId,
+    styleFamilies[caseId]?.trim() ?? '',
+  ]));
+  const missing = uniqueCaseIds.filter(caseId => !resolved[caseId]);
+  if (missing.length > 0) {
+    throw new Error(`Missing visual asset pressure style families: ${missing.join(', ')}`);
+  }
+  return resolved;
+}
+
 function assetBlockers(
   item: StoryAgentVisualAssetPressureAsset,
 ): string[] {

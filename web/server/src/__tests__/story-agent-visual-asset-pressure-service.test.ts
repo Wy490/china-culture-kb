@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   buildStoryAgentVisualAssetPressureReport,
+  resolveStoryAgentVisualAssetPressureStyleFamilies,
   type StoryAgentVisualAssetPressureCase,
   type StoryAgentVisualAssetPressureScenarioResult,
 } from '../services/story-agent-visual-asset-pressure-service.js';
@@ -74,6 +75,24 @@ function passedScenarios(): StoryAgentVisualAssetPressureScenarioResult[] {
 }
 
 describe('story-agent visual asset pressure service', () => {
+  it('requires every visual case to have an explicit non-empty style family', () => {
+    expect(resolveStoryAgentVisualAssetPressureStyleFamilies(
+      ['new-case-a', 'new-case-b'],
+      {
+        'new-case-a': 'ink_wash_mystery',
+        'new-case-b': 'contemporary_documentary',
+      },
+    )).toEqual({
+      'new-case-a': 'ink_wash_mystery',
+      'new-case-b': 'contemporary_documentary',
+    });
+
+    expect(() => resolveStoryAgentVisualAssetPressureStyleFamilies(
+      ['new-case-a', 'new-case-b'],
+      { 'new-case-a': 'ink_wash_mystery' },
+    )).toThrow('Missing visual asset pressure style families: new-case-b');
+  });
+
   it('accepts four materially distinct visual worlds with complete recovery evidence', () => {
     const report = buildStoryAgentVisualAssetPressureReport({
       cases: [1, 2, 3, 4].map(pressureCase),

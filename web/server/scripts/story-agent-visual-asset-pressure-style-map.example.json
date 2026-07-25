@@ -1,0 +1,9 @@
+{
+  "schema_version": "story-agent-visual-asset-pressure-style-map/v1",
+  "style_families": {
+    "original-mystery": "near_future_maritime_mystery",
+    "historical-ethics": "northern_song_historical_realism",
+    "heritage-craft": "contemporary_heritage_craft_drama",
+    "children-legend": "painterly_children_legend"
+  }
+}

@@ -80,6 +80,7 @@ import {
 import { preflightStoryAgentFinalDeliveryManifest } from '../services/final-delivery-manifest-preflight-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from '../services/knowledge-writeback-queue-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
+import { getStoryAgentVisualAssetPressureOpsStatus } from '../services/story-agent-visual-asset-pressure-ops-service.js';
 import {
   getProductAccessContext,
   getProductAccessReadiness,
@@ -667,6 +668,18 @@ systemRouter.post(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-visual-asset-pressure — bounded visual pressure summary
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/story-agent-visual-asset-pressure', async (_req, res, next) => {
+  try {
+    res.json(success(await getStoryAgentVisualAssetPressureOpsStatus()));
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/system/story-agent-mvp-status — Story Agent MVP command status

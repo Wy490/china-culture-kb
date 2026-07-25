@@ -3265,6 +3265,103 @@ describe('System API', () => {
     });
   });
 
+  describe('GET /api/system/story-agent-visual-asset-pressure', () => {
+    it('exposes a bounded ops summary from the canonical detailed report', async () => {
+      const reportDir = resolve(
+        process.env.WEB_GENERATED_ROOT!,
+        'system',
+        'story-agent-visual-asset-pressure',
+      );
+      await mkdir(reportDir, { recursive: true });
+      await writeJsonFixture(reportDir, 'report.json', {
+        schema_version: 'story-agent-visual-asset-pressure-report/v1',
+        status: 'ready',
+        generated_at: '2026-07-25T12:00:00.000Z',
+        coverage: {
+          case_count: 4,
+          unique_source_id_count: 4,
+          unique_style_family_count: 4,
+          unique_character_label_count: 6,
+          unique_location_label_count: 4,
+          unique_content_sha256_count: 8,
+          cross_case_content_reuse_count: 0,
+          semantic_gate_passed_case_count: 4,
+          source_content_sha256_verified_asset_count: 18,
+          media_signature_verified_asset_count: 18,
+          immutable_preview_verified_asset_count: 18,
+          identity_mapping_current_asset_count: 18,
+        },
+        scenario_summary: {
+          required_count: 6,
+          passed_count: 6,
+          failed_count: 0,
+          not_run_count: 0,
+        },
+        scenario_results: [
+          'missing_file_rejected',
+          'invalid_image_rejected',
+          'content_sha256_mismatch_rejected',
+          'partial_import_preserved',
+          'failed_task_retry_recovered',
+          'identity_replacement_staled',
+        ].map(scenario => ({
+          scenario,
+          status: 'passed',
+          evidence_refs: [`test:${scenario}`],
+        })),
+        cases: Array.from({ length: 4 }, (_, index) => ({
+          case_id: `case-${index + 1}`,
+          asset_count: index < 2 ? 5 : 4,
+          semantic_gate_passed: true,
+          blockers: [],
+        })),
+        blockers: [],
+        warnings: ['within_case_composite_asset_reuse:10'],
+        machine_validation_only: true,
+        image_provider_invoked_by_server: false,
+        video_generation_performed: false,
+        production_credit_granted: false,
+      });
+
+      try {
+        const res = await request.get('/api/system/story-agent-visual-asset-pressure');
+
+        expect(res.status).toBe(200);
+        expectSuccess(res.body);
+        expect(res.body.data).toMatchObject({
+          schema_version: 'story-agent-visual-asset-pressure-ops-status/v1',
+          status: 'ready',
+          report: {
+            relative_path: 'system/story-agent-visual-asset-pressure/report.json',
+            file_exists: true,
+            schema_valid: true,
+          },
+          coverage: {
+            case_count: 4,
+            unique_style_family_count: 4,
+            unique_content_sha256_count: 8,
+            cross_case_content_reuse_count: 0,
+          },
+          scenario_summary: {
+            required_count: 6,
+            passed_count: 6,
+            failed_count: 0,
+            not_run_count: 0,
+          },
+          machine_validation_only: true,
+          image_provider_invoked_by_server: false,
+          video_generation_performed: false,
+          production_credit_granted: false,
+        });
+        expect(res.body.data).not.toHaveProperty('cases');
+        expect(res.body.data).not.toHaveProperty('scenario_results');
+        expect(JSON.stringify(res.body.data)).not.toContain(process.env.WEB_GENERATED_ROOT);
+      } finally {
+        await rm(reportDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('GET /api/system/story-agent-mvp-status', () => {
     it('combines generated health and production readiness into MVP lanes', async () => {
       const story: StoryGenerateResult = {

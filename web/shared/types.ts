@@ -7857,6 +7857,44 @@ export interface StoryAgentRunImageImportResponse {
   run: StoryAgentRun;
 }
 
+export interface StoryAgentVisualAssetPressureOpsStatus {
+  schema_version: 'story-agent-visual-asset-pressure-ops-status/v1';
+  inspected_at: string;
+  status: 'ready' | 'blocked' | 'not_run';
+  report: {
+    relative_path: 'system/story-agent-visual-asset-pressure/report.json';
+    file_exists: boolean;
+    schema_valid: boolean;
+    generated_at?: string;
+  };
+  coverage: {
+    case_count: number;
+    unique_source_id_count: number;
+    unique_style_family_count: number;
+    unique_character_label_count: number;
+    unique_location_label_count: number;
+    unique_content_sha256_count: number;
+    cross_case_content_reuse_count: number;
+    semantic_gate_passed_case_count: number;
+    source_content_sha256_verified_asset_count: number;
+    media_signature_verified_asset_count: number;
+    immutable_preview_verified_asset_count: number;
+    identity_mapping_current_asset_count: number;
+  };
+  scenario_summary: {
+    required_count: number;
+    passed_count: number;
+    failed_count: number;
+    not_run_count: number;
+  };
+  blockers: string[];
+  warnings: string[];
+  machine_validation_only: true;
+  image_provider_invoked_by_server: false;
+  video_generation_performed: false;
+  production_credit_granted: false;
+}
+
 export type StoryAgentImageTaskStatus =
   | 'planned'
   | 'awaiting_imagegen'
