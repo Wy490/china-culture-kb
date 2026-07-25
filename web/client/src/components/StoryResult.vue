@@ -20,6 +20,76 @@
       <GearsVideoStatus v-if="showGearsVideoStatus" :video="result.gears_video" />
     </header>
 
+    <section v-if="result.reference_safety_report" class="story-result__section">
+      <h3 class="story-result__section-title">Reference 安全与 Baseline 对照</h3>
+      <div class="story-result__reference-audit">
+        <div class="story-result__reference-summary">
+          <article>
+            <span>引用安全</span>
+            <strong>{{ result.reference_safety_report.status }}</strong>
+          </article>
+          <article>
+            <span>应用到生成</span>
+            <strong>{{ result.reference_safety_report.application.applied_to_generation ? '是' : '否' }}</strong>
+          </article>
+          <article>
+            <span>Style Packs</span>
+            <strong>{{ result.reference_safety_report.style_pack_ids.length }}</strong>
+          </article>
+          <article>
+            <span>真实信用</span>
+            <strong>未授予</strong>
+          </article>
+        </div>
+
+        <div
+          v-if="baselineComparison?.status === 'completed' && baselineComparison.quality_delta"
+          class="story-result__baseline-comparison"
+        >
+          <div class="story-result__baseline-score">
+            <article>
+              <span>Baseline 机器分</span>
+              <strong>{{ formatReferenceScore(baselineComparison.quality_delta.baseline_machine_score) }}</strong>
+            </article>
+            <article>
+              <span>Assisted 机器分</span>
+              <strong>{{ formatReferenceScore(baselineComparison.quality_delta.reference_assisted_machine_score) }}</strong>
+            </article>
+            <article>
+              <span>Aggregate Delta</span>
+              <strong :class="referenceDeltaClass(baselineComparison.quality_delta.aggregate_delta)">
+                {{ formatReferenceDelta(baselineComparison.quality_delta.aggregate_delta) }}
+              </strong>
+            </article>
+          </div>
+          <p>
+            {{ baselineComparison.baseline_story_id }}
+            → {{ baselineComparison.reference_assisted_story_id }}
+          </p>
+          <dl>
+            <div
+              v-for="dimension in baselineComparison.quality_delta.dimensions"
+              :key="dimension.dimension"
+            >
+              <dt>{{ referenceDimensionLabel(dimension.dimension) }}</dt>
+              <dd>
+                {{ formatReferenceScore(dimension.baseline_score) }}
+                → {{ formatReferenceScore(dimension.reference_assisted_score) }}
+                · {{ formatReferenceDelta(dimension.delta) }}
+              </dd>
+            </div>
+          </dl>
+          <p class="story-result__reference-boundary">
+            same_input_verified = true · machine_comparison_only = true ·
+            comparison_credit_granted = false
+          </p>
+        </div>
+        <p v-else class="story-result__reference-boundary">
+          Baseline comparison 未运行；单次机器生成不会自动获得对照或人工信用。
+        </p>
+      </div>
+    </section>
+
     <section v-if="result.creation_contract || result.material_sufficiency" class="story-result__section">
       <h3 class="story-result__section-title">创作合同与素材 gate</h3>
       <div class="story-result__contract">
@@ -775,6 +845,7 @@ import type {
   StoryQualityGateId,
   StoryQualityGateStatus,
   StoryMachineReviewStatus,
+  StoryReferenceBaselineQualityDimension,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import GearsActions from './GearsActions.vue'
@@ -976,6 +1047,37 @@ const effectiveEngineLabel = computed(() => {
   if (props.result?.effective_engine === 'local_fallback') return '本地回退引擎'
   return '本地故事引擎'
 })
+
+const baselineComparison = computed(() => (
+  props.result?.reference_safety_report?.baseline_comparison ?? null
+))
+
+function formatReferenceScore(value: number): string {
+  return Number.isInteger(value) ? `${value}` : value.toFixed(2)
+}
+
+function formatReferenceDelta(value: number): string {
+  return `${value > 0 ? '+' : ''}${formatReferenceScore(value)}`
+}
+
+function referenceDeltaClass(value: number): string {
+  if (value > 0) return 'story-result__reference-positive'
+  if (value < 0) return 'story-result__reference-negative'
+  return ''
+}
+
+function referenceDimensionLabel(
+  dimension: StoryReferenceBaselineQualityDimension['dimension'],
+): string {
+  return {
+    core_story_checks: '核心故事检查',
+    genre_score: '类型质量',
+    pattern_score: '叙事模式',
+    outline_coverage: '大纲覆盖',
+    family_quality_checks: '类型族检查',
+    story_publishable: '故事可发布',
+  }[dimension]
+}
 
 const fullTextParagraphs = computed(() => {
   if (!props.result?.full_text) return []
@@ -1213,6 +1315,77 @@ function showCopyMessage(msg: string) {
 .story-result__model-neutral { color: #7f8c8d; }
 .story-result__section { margin-bottom: 24px; }
 .story-result__section-title { margin: 0 0 10px 0; font-size: 18px; color: #2c3e50; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
+
+.story-result__reference-audit {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #a8cdc2;
+  border-radius: 7px;
+  background: #f2f9f7;
+}
+.story-result__reference-summary,
+.story-result__baseline-score {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+.story-result__reference-summary article,
+.story-result__baseline-score article {
+  padding: 8px 10px;
+  border: 1px solid #d4e6e0;
+  border-radius: 6px;
+  background: #fff;
+}
+.story-result__reference-summary span,
+.story-result__baseline-score span {
+  display: block;
+  margin-bottom: 3px;
+  color: #69847b;
+  font-size: 11px;
+}
+.story-result__reference-summary strong,
+.story-result__baseline-score strong {
+  color: #254d41;
+  font-size: 15px;
+}
+.story-result__baseline-comparison > p {
+  overflow-wrap: anywhere;
+  color: #667a73;
+  font: 11px/1.55 ui-monospace, monospace;
+}
+.story-result__baseline-comparison dl {
+  display: grid;
+  gap: 5px;
+}
+.story-result__baseline-comparison dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #dce9e5;
+}
+.story-result__baseline-comparison dt,
+.story-result__baseline-comparison dd {
+  color: #4d655d;
+  font-size: 12px;
+}
+.story-result__baseline-comparison dd {
+  margin: 0;
+  text-align: right;
+}
+.story-result__reference-boundary {
+  margin: 0;
+  color: #788a84;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.story-result__reference-positive {
+  color: #16845f !important;
+}
+.story-result__reference-negative {
+  color: #c13d2f !important;
+}
 
 .story-result__contract {
   display: grid;

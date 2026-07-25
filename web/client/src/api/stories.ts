@@ -86,6 +86,9 @@ import type {
   AiComicSeriesPlanRequest,
   AiComicSeriesPlan,
   MediaAssetReviewUpdateRequest,
+  ReferenceBaselineReplayDraft,
+  ReferenceBaselineReplayDraftRequest,
+  ReferenceStylePackCatalogItem,
 } from '@shared/types'
 
 export function storyPlan(entryName: string, originalUserQuery?: string) {
@@ -97,6 +100,14 @@ export function storyPlan(entryName: string, originalUserQuery?: string) {
 
 export function storyGenerate(req: StoryGenerateRequest) {
   return apiPost<StoryGenerateResult>('/stories/generate', req)
+}
+
+export function getReferenceStylePackCatalog() {
+  return apiGet<ReferenceStylePackCatalogItem[]>('/stories/reference-style-pack-catalog')
+}
+
+export function createReferenceBaselineReplayDraft(req: ReferenceBaselineReplayDraftRequest) {
+  return apiPost<ReferenceBaselineReplayDraft>('/stories/reference-baseline-replay-drafts', req)
 }
 
 export function listStories(generationType?: string, videoType?: VideoType, sourceDomain?: string) {

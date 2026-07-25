@@ -1466,6 +1466,22 @@ describe('high-risk write isolation', () => {
       .send({});
     expect(creatorGenerate.status).toBe(400);
 
+    const researchStylePackCatalog = await request.get('/api/stories/reference-style-pack-catalog')
+      .set('authorization', bearer('research-secret'));
+    expect(researchStylePackCatalog.status).toBe(403);
+    const creatorStylePackCatalog = await request.get('/api/stories/reference-style-pack-catalog')
+      .set('authorization', bearer('creator-secret'));
+    expect(creatorStylePackCatalog.status).toBe(200);
+
+    const researchReplayDraft = await request.post('/api/stories/reference-baseline-replay-drafts')
+      .set('authorization', bearer('research-secret'))
+      .send({});
+    expect(researchReplayDraft.status).toBe(403);
+    const creatorReplayDraft = await request.post('/api/stories/reference-baseline-replay-drafts')
+      .set('authorization', bearer('creator-secret'))
+      .send({});
+    expect(creatorReplayDraft.status).toBe(400);
+
     const researchSeriesPlan = await request.post('/api/story-outline/ai-comic-series-plan')
       .set('authorization', bearer('research-secret'))
       .send({});

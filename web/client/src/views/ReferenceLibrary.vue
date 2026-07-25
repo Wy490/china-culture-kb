@@ -52,6 +52,11 @@
       :refresh-key="compositionRefreshKey"
     />
 
+    <ReferenceBaselineWorkbench
+      :can-create-story="canCreateStory"
+      :refresh-key="compositionRefreshKey"
+    />
+
     <div v-if="loadingSources" class="empty-state">正在读取参考来源…</div>
     <div v-else-if="sources.length === 0" class="empty-state" data-testid="reference-empty-state">
       <h2>尚无已登记来源</h2>
@@ -302,6 +307,7 @@ import type {
   ReferenceRightsStatus,
 } from '@shared/types'
 import ReferenceAnalysisWorkbench from '@/components/reference-library/ReferenceAnalysisWorkbench.vue'
+import ReferenceBaselineWorkbench from '@/components/reference-library/ReferenceBaselineWorkbench.vue'
 import ReferenceCompositionWorkbench from '@/components/reference-library/ReferenceCompositionWorkbench.vue'
 import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
 import {
@@ -393,6 +399,12 @@ const canApproveAnalysis = computed(() => {
   return access?.mode === 'required'
     ? access.permissions.includes('material:sign')
     : productRoleHasPermission(productRole.value, 'material:sign')
+})
+const canCreateStory = computed(() => {
+  const access = serverProductAccessContext.value
+  return access?.mode === 'required'
+    ? access.permissions.includes('story:create')
+    : productRoleHasPermission(productRole.value, 'story:create')
 })
 const canCreateTask = computed(() => Boolean(
   selectedSource.value

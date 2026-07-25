@@ -4,6 +4,7 @@ import { Router, type Request } from 'express';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import {
   GearsDeliveryUpdateRequestSchema,
+  ReferenceBaselineReplayDraftRequestSchema,
   StoryPlanRequestSchema,
   StoryGenerateRequestSchema,
   StoryIdParamSchema,
@@ -17,8 +18,12 @@ import {
   getSeedancePromptPackage,
   updateGearsDeliveryMarkdown,
 } from '../services/story-service.js';
-import type { StoryGenerateRequest, VideoType } from '@shared/types.js';
-import { ErrorCodes } from '@shared/types.js';
+import type {
+  ReferenceBaselineReplayDraftRequest,
+  StoryGenerateRequest,
+  VideoType,
+} from '@shared/types.js';
+import { ErrorCodes, success } from '@shared/types.js';
 import type { ProductAccessContext } from '@shared/product-access.js';
 import { requireProductAccess } from '../middleware/product-access.js';
 import {
@@ -29,6 +34,9 @@ import {
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 import { resolveStoryVideoType } from '../platform/story-generation-policy.js';
 import { runWithStoryGenerationAttemptAudit } from '../services/story-generation-attempt-audit-service.js';
+import { listReferenceStylePacks } from '../services/reference-library-service.js';
+import { createReferenceBaselineReplayDraft } from '../services/reference-baseline-replay-service.js';
+import { storyRepositoryRoot } from '../platform/story-storage-root.js';
 
 export const storiesRouter = Router();
 
@@ -41,6 +49,16 @@ const storyProjectResource = {
   required: true,
 };
 const requireStoryRead = requireProductAccess('project:read', { resource: storyProjectResource });
+const baselineStoryResource = {
+  type: 'story_project' as const,
+  ids: (req: Request) => typeof req.body?.baseline_story_id === 'string'
+    ? storyProjectResourceIdsForStoryId(req.body.baseline_story_id)
+    : [],
+  required: true,
+};
+const requireBaselineStoryRead = requireProductAccess('project:read', {
+  resource: baselineStoryResource,
+});
 const requireStoryProductionWrite = requireProductAccess('production:write', { resource: storyProjectResource });
 
 // POST /api/stories/plan — preview recommendation for an entry
@@ -90,6 +108,50 @@ storiesRouter.post(
   } catch (err) {
     next(err);
   }
+  },
+);
+
+storiesRouter.get('/reference-style-pack-catalog', requireStoryCreate, async (_req, res, next) => {
+  try {
+    const stylePacks = await listReferenceStylePacks({
+      repoRoot: storyRepositoryRoot(),
+    });
+    res.json(success(stylePacks.map(pack => ({
+      id: pack.id,
+      name: pack.name,
+      description: pack.description,
+      compatible_video_types: pack.compatible_video_types,
+      compatible_presentation_styles: pack.compatible_presentation_styles,
+      compatible_story_structures: pack.compatible_story_structures,
+      reusable_principles: pack.reusable_principles,
+      avoid_copying: pack.avoid_copying,
+      source_reference_count: pack.source_reference_ids.length,
+      source_analysis_count: pack.source_analysis_ids.length,
+      source_benchmark_count: pack.source_benchmark_ids.length,
+      approval: pack.approval,
+      governance: pack.governance,
+    }))));
+  } catch (error) {
+    next(error);
+  }
+});
+
+storiesRouter.post(
+  '/reference-baseline-replay-drafts',
+  requireStoryCreate,
+  validateBody(ReferenceBaselineReplayDraftRequestSchema),
+  requireBaselineStoryRead,
+  async (req, res, next) => {
+    try {
+      const request = req.body as ReferenceBaselineReplayDraftRequest;
+      res.json(success(await createReferenceBaselineReplayDraft({
+        repoRoot: storyRepositoryRoot(),
+        baselineStoryId: request.baseline_story_id,
+        stylePackIds: request.style_pack_ids,
+      })));
+    } catch (error) {
+      next(error);
+    }
   },
 );
 

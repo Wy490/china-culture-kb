@@ -948,6 +948,15 @@ export const StoryGenerateRequestSchema = z.object({
   { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
 
+export const ReferenceBaselineReplayDraftRequestSchema = z.object({
+  baseline_story_id: z.string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),
+  style_pack_ids: z.array(ReferenceStylePackIdSchema)
+    .min(1)
+    .max(20)
+    .refine(uniqueReferenceIds, 'style_pack_ids must be unique'),
+}).strict();
+
 export const StoryListQuerySchema = z.object({
   generation_type: GenerationTypeSchema.optional(),
   video_type: VideoTypeSchema.optional(),

@@ -763,6 +763,22 @@ export interface ReferenceStylePackRecord extends StylePack {
   governance: ReferenceGovernanceBoundary;
 }
 
+export interface ReferenceStylePackCatalogItem {
+  id: string;
+  name: string;
+  description: string;
+  compatible_video_types: VideoType[];
+  compatible_presentation_styles: PresentationStyle[];
+  compatible_story_structures: StoryStructureType[];
+  reusable_principles: string[];
+  avoid_copying: string[];
+  source_reference_count: number;
+  source_analysis_count: number;
+  source_benchmark_count: number;
+  approval: ReferenceApprovedAudit;
+  governance: ReferenceGovernanceBoundary;
+}
+
 // ---------------------------------------------------------------------------
 // Generation mode — structured status for model adapter results
 // ---------------------------------------------------------------------------
@@ -13357,6 +13373,31 @@ export interface StoryReferenceBaselineComparison {
     machine_comparison_only: true;
   } | null;
   comparison_credit_granted: false;
+}
+
+export interface ReferenceBaselineReplayDraftRequest {
+  baseline_story_id: string;
+  style_pack_ids: string[];
+}
+
+export interface ReferenceBaselineReplayDraft {
+  schema_version: 'reference-baseline-replay-draft/v1';
+  baseline_story_id: string;
+  style_pack_ids: string[];
+  generation_request: StoryGenerateRequest;
+  baseline_summary: {
+    title: string;
+    source_entry: string;
+    video_type: VideoType;
+    presentation_style: PresentationStyle;
+    story_structure: StoryStructureType;
+    model_profile_id: string;
+    source_mode: 'knowledge_entry' | 'user_material';
+  };
+  no_generation_performed: true;
+  same_input_server_revalidation_required: true;
+  machine_comparison_only: true;
+  real_credit_granted: false;
 }
 
 export interface ReferenceGenerationSafetyReport {

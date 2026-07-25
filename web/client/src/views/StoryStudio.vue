@@ -25,7 +25,7 @@
       </section>
 
       <!-- Input mode tabs -->
-      <label class="story-studio__label">素材输入方式</label>
+      <div class="story-studio__label">素材输入方式</div>
       <div class="story-studio__mode-tabs">
         <button
           class="story-studio__mode-tab"
@@ -120,7 +120,14 @@
             class="story-studio__input"
             placeholder="如 长沙、岳麓、道县"
           />
-          <select v-model="localizationMode" class="story-studio__select">
+          <label class="story-studio__a11y-label" for="localization-mode">地域约束模式</label>
+          <select
+            id="localization-mode"
+            v-model="localizationMode"
+            name="localization_mode"
+            aria-label="地域约束模式"
+            class="story-studio__select"
+          >
             <option value="allow_related_influence">可用思想影响</option>
             <option value="strict_direct_events">只要直接事件</option>
           </select>
@@ -306,43 +313,135 @@
       <div v-if="planError" class="story-studio__error">{{ planError }}</div>
 
       <section class="story-studio__field story-studio__contract-panel">
-        <label class="story-studio__label">创作合同</label>
+        <div class="story-studio__label">创作合同</div>
         <p class="story-studio__field-hint">用于决定允许虚构、事实核验、机构口径和素材 gate；不选择时由系统按成片类型自动判断。</p>
         <div class="story-studio__contract-grid">
-          <select v-model="selectedCreationUseCase" class="story-studio__select">
+          <label class="story-studio__a11y-label" for="creation-use-case">创作用途</label>
+          <select
+            id="creation-use-case"
+            v-model="selectedCreationUseCase"
+            name="creation_use_case"
+            aria-label="创作用途"
+            class="story-studio__select"
+          >
             <option value="">自动判断创作用途</option>
             <option v-for="item in creationUseCaseOptions" :key="item.id" :value="item.id">
               {{ item.label }}
             </option>
           </select>
-          <select v-model="selectedTruthMode" class="story-studio__select">
+          <label class="story-studio__a11y-label" for="truth-mode">真实模式</label>
+          <select
+            id="truth-mode"
+            v-model="selectedTruthMode"
+            name="truth_mode"
+            aria-label="真实模式"
+            class="story-studio__select"
+          >
             <option value="">自动判断真实模式</option>
             <option v-for="item in truthModeOptions" :key="item.id" :value="item.id">
               {{ item.label }}
             </option>
           </select>
+          <label class="story-studio__a11y-label" for="client-type">客户或机构类型</label>
           <input
+            id="client-type"
             v-model="clientType"
+            name="client_type"
+            aria-label="客户或机构类型"
             class="story-studio__input"
             placeholder="客户/机构类型，如 政府机构、品牌方"
           />
+          <label class="story-studio__a11y-label" for="target-audience">目标受众</label>
           <input
+            id="target-audience"
             v-model="targetAudience"
+            name="target_audience"
+            aria-label="目标受众"
             class="story-studio__input"
             placeholder="目标受众，如 青少年研学、城市游客"
           />
         </div>
+        <label class="story-studio__a11y-label" for="communication-goal">传播目标或改编目标</label>
         <textarea
+          id="communication-goal"
           v-model="communicationGoal"
+          name="communication_goal"
+          aria-label="传播目标或改编目标"
           class="story-studio__textarea story-studio__textarea--compact"
           rows="2"
           placeholder="传播目标 / 改编目标，如 稳妥表达廉洁文化、保留原作主线并转成 AI 漫剧分镜"
         />
       </section>
 
+      <section v-if="baselineStoryId" class="story-studio__baseline-panel">
+        <div class="story-studio__baseline-head">
+          <div>
+            <span>REFERENCE-ASSISTED REPLAY</span>
+            <h3>同输入 Baseline 对照</h3>
+          </div>
+          <RouterLink to="/story/new">退出对照模式</RouterLink>
+        </div>
+        <p class="story-studio__baseline-boundary">
+          本流程先由服务端生成只读 replay draft，不调用模型；点击最终“生成”后，
+          服务端仍会在模型调用前重新校验 same-input 与 reference-free baseline。
+          输出只产生机器 delta，不授予真人评审或生产信用。
+        </p>
+        <p v-if="baselineLoading" class="story-studio__baseline-state">
+          正在读取 baseline 与 approved style packs…
+        </p>
+        <p v-else-if="baselineError" class="story-studio__baseline-state story-studio__baseline-state--error" role="alert">
+          {{ baselineError }}
+        </p>
+        <template v-else-if="baselineStory">
+          <dl class="story-studio__baseline-summary">
+            <div><dt>Baseline</dt><dd>{{ baselineStory.title }}</dd></div>
+            <div><dt>Story ID</dt><dd>{{ baselineStory.storyId }}</dd></div>
+            <div><dt>模型</dt><dd>{{ baselineStory.model_profile_id }}</dd></div>
+            <div><dt>类型 / 表现 / 结构</dt><dd>{{ videoTypeLabel(baselineStory.video_type) }} / {{ baselineStory.presentation_style }} / {{ baselineStory.story_structure }}</dd></div>
+          </dl>
+          <p
+            v-if="baselineStory.model_profile_id && !modelProfileAvailable(baselineStory.model_profile_id)"
+            class="story-studio__baseline-state story-studio__baseline-state--error"
+          >
+            Baseline 使用的模型 {{ baselineStory.model_profile_id }} 当前不可用；为保持同模型边界，最终生成已禁用。
+          </p>
+          <div class="story-studio__baseline-packs">
+            <strong>选择兼容的 Approved Style Pack</strong>
+            <label v-for="pack in compatibleReferenceStylePacks" :key="pack.id">
+              <input
+                v-model="selectedReferenceStylePackIds"
+                name="reference_style_pack_ids"
+                type="checkbox"
+                :value="pack.id"
+                :disabled="preparingBaselineDraft || generating"
+              >
+              <span>
+                <b>{{ pack.name }}</b>
+                <small>{{ pack.id }} · {{ pack.reusable_principles.length }} principles</small>
+              </span>
+            </label>
+            <p v-if="compatibleReferenceStylePacks.length === 0">
+              当前没有同时兼容 baseline 成片类型、表现形式与故事结构的 approved style pack。
+            </p>
+          </div>
+          <button
+            type="button"
+            class="btn btn--search"
+            :disabled="!selectedReferenceStylePackIds.length || preparingBaselineDraft || generating"
+            data-testid="prepare-reference-baseline-draft"
+            @click="prepareBaselineDraft"
+          >
+            {{ preparingBaselineDraft ? '正在校验…' : '准备同输入 Replay Draft' }}
+          </button>
+          <p v-if="baselineDraft" class="story-studio__baseline-ready" role="status">
+            Draft 已就绪：未调用模型；最终生成仍将 fail closed 复验 baseline 与 style-pack provenance。
+          </p>
+        </template>
+      </section>
+
       <!-- Video type selector (grouped) — always visible -->
       <section class="story-studio__field">
-        <label class="story-studio__label">成片类型</label>
+        <div class="story-studio__label">成片类型</div>
         <div class="story-studio__vt-cards story-studio__vt-cards--common">
           <div
             v-for="vt in commonVideoTypes"
@@ -390,7 +489,7 @@
         <summary class="story-studio__advanced-summary">生成设置</summary>
 
         <section v-if="selectedVideoType && availableNarrativePatterns.length > 0" class="story-studio__field">
-          <label class="story-studio__label">推荐流派</label>
+          <div class="story-studio__label">推荐流派</div>
           <p class="story-studio__field-hint">系统会根据题材、素材和当前成片类型自动勾选推荐流派；你也可以手动微调。</p>
           <div v-if="recommendedNarrativePatternsForSelectedVideoType.length" class="story-studio__pattern-recommendations">
             <article
@@ -417,6 +516,7 @@
             >
               <input
                 v-model="selectedNarrativePatternIds"
+                name="narrative_pattern_ids"
                 type="checkbox"
                 :value="pattern.pattern_id"
               />
@@ -509,7 +609,7 @@
             <option value="knowledge_first">优先素材完整</option>
           </select>
           <label class="story-studio__checkbox-row">
-            <input v-model="autoRepair" type="checkbox" />
+            <input v-model="autoRepair" name="auto_repair" type="checkbox" />
             <span>生成后自动修复类型质量问题</span>
           </label>
         </section>
@@ -521,10 +621,16 @@
         @click="handleGenerate"
         :disabled="!canGenerate || generating"
       >
-        {{ generating ? '正在生成…' : '生成剧情方案' }}
+        {{
+          generating
+            ? '正在生成…'
+            : baselineStoryId
+              ? '生成 Reference-assisted 对照'
+              : '生成剧情方案'
+        }}
       </button>
 
-      <div v-if="!canGenerate && selectedVideoType && !hasAnyEntrySource" class="story-studio__generate-hint">
+      <div v-if="!baselineStoryId && !canGenerate && selectedVideoType && !hasAnyEntrySource" class="story-studio__generate-hint">
         {{ generateRequirementHint }}
       </div>
 
@@ -610,7 +716,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { storyPlan, storyGenerate, storyOutlineAnalyze } from '@/api/stories'
+import {
+  createReferenceBaselineReplayDraft,
+  getReferenceStylePackCatalog,
+  getStory,
+  storyPlan,
+  storyGenerate,
+  storyOutlineAnalyze,
+} from '@/api/stories'
 import { searchEntries, matchEntries, entriesMultiMatch } from '@/api/entries'
 import { getModelProfiles, getNarrativePatternCatalog, getStoryGenerationCapabilities } from '@/api/system'
 import { deleteProject, listProjects } from '@/api/projects'
@@ -647,6 +760,8 @@ import type {
   StoryProjectListItem,
   CreationUseCase,
   TruthMode,
+  ReferenceBaselineReplayDraft,
+  ReferenceStylePackCatalogItem,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import StoryPlan from '@/components/StoryPlan.vue'
@@ -886,6 +1001,14 @@ const recentStoryProjectsLoading = ref(false)
 const recentStoryProjectsError = ref('')
 const recentStoryProjectsMessage = ref('')
 const deletingRecentProjectId = ref('')
+const baselineStoryId = ref('')
+const baselineStory = ref<StoryGenerateResult | null>(null)
+const referenceStylePacks = ref<ReferenceStylePackCatalogItem[]>([])
+const selectedReferenceStylePackIds = ref<string[]>([])
+const baselineDraft = ref<ReferenceBaselineReplayDraft | null>(null)
+const baselineLoading = ref(false)
+const baselineError = ref('')
+const preparingBaselineDraft = ref(false)
 
 const canUseOutlineOnly = computed(() => {
   return creationPath.value === 'original'
@@ -901,6 +1024,13 @@ const hasAnyEntrySource = computed(() => {
 })
 
 const canGenerate = computed(() => {
+  if (baselineStoryId.value) {
+    return Boolean(
+      baselineDraft.value
+      && baselineStory.value?.model_profile_id
+      && modelProfileAvailable(baselineStory.value.model_profile_id),
+    )
+  }
   if (inputMode.value === 'entry') {
     return selectedEntry.value && (selectedVideoType.value || selectedType.value)
   }
@@ -911,6 +1041,16 @@ const canGenerate = computed(() => {
     return Boolean(selectedVideoType.value || selectedType.value)
   }
   return selectedPrimaryEntries.value.length > 0 && (selectedVideoType.value || selectedType.value)
+})
+
+const compatibleReferenceStylePacks = computed(() => {
+  const baseline = baselineStory.value
+  if (!baseline?.story_structure) return []
+  return referenceStylePacks.value.filter(pack => (
+    pack.compatible_video_types.includes(baseline.video_type)
+    && pack.compatible_presentation_styles.includes(baseline.presentation_style)
+    && pack.compatible_story_structures.includes(baseline.story_structure!)
+  ))
 })
 
 const generateRequirementHint = computed(() => {
@@ -1208,6 +1348,67 @@ async function handleMultiMatch() {
   matchingMulti.value = false
 }
 
+async function loadBaselineWorkflow(storyId: string): Promise<void> {
+  baselineStoryId.value = storyId
+  baselineLoading.value = true
+  baselineError.value = ''
+  baselineDraft.value = null
+  selectedReferenceStylePackIds.value = []
+  const [storyResponse, stylePackResponse] = await Promise.all([
+    getStory(storyId),
+    getReferenceStylePackCatalog(),
+  ])
+  baselineLoading.value = false
+  if (!storyResponse.ok || !storyResponse.data) {
+    baselineError.value = storyResponse.error?.message ?? 'Baseline story 无法读取'
+    return
+  }
+  if (!stylePackResponse.ok || !stylePackResponse.data) {
+    baselineError.value = stylePackResponse.error?.message ?? 'Approved style-pack catalog 无法读取'
+    return
+  }
+  const story = storyResponse.data
+  if (!story.quality_report) {
+    baselineError.value = '该故事没有机器质量报告，不能作为 baseline。'
+    return
+  }
+  if (
+    story.reference_safety_report?.application.applied_to_generation
+    || story.reference_trace?.some(trace => trace.application_status === 'external_prompt_injected')
+  ) {
+    baselineError.value = '该故事已经注入参考规则，不是 reference-free baseline。'
+    return
+  }
+  baselineStory.value = story
+  referenceStylePacks.value = stylePackResponse.data
+  selectedVideoType.value = story.video_type
+  selectedPresentationStyle.value = story.presentation_style
+  selectedModelProfileId.value = story.model_profile_id ?? ''
+  targetDuration.value = story.story_blueprint?.target_duration ?? targetDuration.value
+  selectedCreationUseCase.value = story.creation_use_case ?? ''
+  selectedTruthMode.value = story.truth_mode ?? ''
+  clientType.value = story.client_type ?? ''
+  targetAudience.value = story.target_audience ?? ''
+  communicationGoal.value = story.communication_goal ?? ''
+}
+
+async function prepareBaselineDraft(): Promise<void> {
+  if (!baselineStoryId.value || !selectedReferenceStylePackIds.value.length) return
+  preparingBaselineDraft.value = true
+  baselineError.value = ''
+  baselineDraft.value = null
+  const response = await createReferenceBaselineReplayDraft({
+    baseline_story_id: baselineStoryId.value,
+    style_pack_ids: [...selectedReferenceStylePackIds.value],
+  })
+  preparingBaselineDraft.value = false
+  if (!response.ok || !response.data) {
+    baselineError.value = response.error?.message ?? 'Replay draft 校验失败'
+    return
+  }
+  baselineDraft.value = response.data
+}
+
 // --- Init from route query ---
 onMounted(async () => {
   void loadRecentStoryProjects()
@@ -1265,6 +1466,11 @@ onMounted(async () => {
     selectedVideoType.value = vt as VideoType
     selectedPresentationStyle.value = VIDEO_TYPE_CONFIG[vt as VideoType].default_presentation_style
   }
+
+  const referenceBaselineStoryId = route.query.reference_baseline_story_id as string | undefined
+  if (referenceBaselineStoryId) {
+    await loadBaselineWorkflow(referenceBaselineStoryId)
+  }
 })
 
 watch(selectedModelProfileId, (value) => {
@@ -1277,6 +1483,14 @@ watch(selectedVideoType, (videoType) => {
   applyRecommendedNarrativePatterns(planResult.value)
   if (videoType) alignCreationContractWithVideoType(videoType)
 })
+
+watch(
+  selectedReferenceStylePackIds,
+  () => {
+    baselineDraft.value = null
+  },
+  { deep: true },
+)
 
 function applyRecommendedNarrativePatterns(plan: StoryPlanResult | null) {
   if (!selectedVideoType.value || !plan?.recommended_narrative_patterns?.length) {
@@ -1355,6 +1569,24 @@ async function handleGenerate() {
   generating.value = true
   generateError.value = ''
   generateResult.value = null
+
+  if (baselineStoryId.value) {
+    const draft = baselineDraft.value
+    if (!draft) {
+      generateError.value = '请先准备并通过同输入 replay draft 校验。'
+      generating.value = false
+      return
+    }
+    const response = await storyGenerate(draft.generation_request)
+    if (response.ok && response.data) {
+      generateResult.value = response.data
+      void loadRecentStoryProjects()
+    } else {
+      generateError.value = response.error?.message ?? 'Reference-assisted 对照生成失败'
+    }
+    generating.value = false
+    return
+  }
 
   const videoTypeToSend = selectedVideoType.value ?? selectedType.value ?? 'character_story'
   const generationTypeToSend = selectedType.value ?? (
@@ -1922,6 +2154,16 @@ async function handleGenerate() {
 
 /* Fields */
 .story-studio__field { margin-bottom: 14px; }
+.story-studio__a11y-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .story-studio__label {
   display: block;
   font-size: 14px;
@@ -1970,6 +2212,101 @@ async function handleGenerate() {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+.story-studio__baseline-panel {
+  margin-bottom: 14px;
+  padding: 13px;
+  border: 1px solid #78a89b;
+  border-radius: 8px;
+  background: #f1f8f5;
+}
+.story-studio__baseline-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.story-studio__baseline-head span {
+  color: #277761;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.story-studio__baseline-head h3 {
+  margin: 3px 0 0;
+  color: #23483e;
+  font-size: 17px;
+}
+.story-studio__baseline-head a {
+  color: #277761;
+  font-size: 12px;
+}
+.story-studio__baseline-boundary,
+.story-studio__baseline-state,
+.story-studio__baseline-ready {
+  color: #4e6b62;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.story-studio__baseline-state--error {
+  color: #b53b2e;
+}
+.story-studio__baseline-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #cfdfd9;
+  border-radius: 6px;
+  background: #cfdfd9;
+}
+.story-studio__baseline-summary div {
+  min-width: 0;
+  padding: 8px;
+  background: #fff;
+}
+.story-studio__baseline-summary dt {
+  color: #789087;
+  font-size: 10px;
+}
+.story-studio__baseline-summary dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: #2d4e44;
+  font-size: 11px;
+}
+.story-studio__baseline-packs {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+}
+.story-studio__baseline-packs > label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #cfdfd9;
+  border-radius: 6px;
+  background: #fff;
+}
+.story-studio__baseline-packs label span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.story-studio__baseline-packs small {
+  overflow-wrap: anywhere;
+  color: #73857f;
+  font-size: 10px;
+}
+.story-studio__baseline-packs p {
+  color: #77877f;
+  font-size: 12px;
+}
+.story-studio__baseline-ready {
+  padding: 8px 10px;
+  border-left: 3px solid #2e9879;
+  background: #e2f2ec;
 }
 .story-studio__checkbox-row {
   display: flex;
@@ -2411,7 +2748,8 @@ async function handleGenerate() {
     flex-wrap: wrap;
   }
   .story-studio__creation-paths,
-  .story-studio__contract-grid {
+  .story-studio__contract-grid,
+  .story-studio__baseline-summary {
     grid-template-columns: 1fr;
   }
   .story-studio__vt-cards {
