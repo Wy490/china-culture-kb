@@ -6,9 +6,9 @@
 >
 > 分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 当前提交：`f1e5f5c6 feat(story-agent): add unified project run ledger`
+> P1-B1 功能基线提交：`f1e5f5c6 feat(story-agent): add unified project run ledger`
 >
-> 远端：`origin/codex/story-agent-manifest-integrity-20260718` 与当前提交一致
+> 远端：`origin/codex/story-agent-manifest-integrity-20260718` 已包含该功能基线
 >
 > 当前工作区：交接文档创建前干净
 >
