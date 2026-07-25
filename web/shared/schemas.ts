@@ -1602,6 +1602,14 @@ export const StoryAgentRunStartRequestSchema = z.object({
   }
 });
 
+export const StoryAgentRunGenerateRequestSchema = z.object({
+  idempotency_key: z.string().trim().regex(
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/,
+    'idempotency_key must be 8-128 stable URL-safe characters',
+  ),
+  generation_request: StoryGenerateRequestSchema,
+}).strict();
+
 export const StoryAgentImageRunIdParamSchema = z.object({
   runId: z.string().regex(
     /^image-run-[a-f0-9]{24}$/,

@@ -849,6 +849,7 @@ export const ErrorCodes = {
   INVALID_DURATION: 'INVALID_DURATION',
   STORY_GENERATION_FAILED: 'STORY_GENERATION_FAILED',
   STORY_GENERATION_AUDIT_UNAVAILABLE: 'STORY_GENERATION_AUDIT_UNAVAILABLE',
+  STORY_AGENT_RUN_INPUT_CONFLICT: 'STORY_AGENT_RUN_INPUT_CONFLICT',
   STORY_NOT_FOUND: 'STORY_NOT_FOUND',
   GEARS_SEGMENTS_NOT_FOUND: 'GEARS_SEGMENTS_NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -968,6 +969,7 @@ export type StoryMaterialReadinessPolicy =
   | 'require_script_ready';
 
 export interface StoryGenerateRequest {
+  domain?: string;
   entry_name?: string;
   original_user_query?: string;
   generation_type?: GenerationType;
@@ -7582,7 +7584,14 @@ export interface StoryAgentRunStartRequest {
   series_project_id?: string;
 }
 
+export interface StoryAgentRunGenerateRequest {
+  idempotency_key: string;
+  generation_request: StoryGenerateRequest;
+}
+
 export type StoryAgentRunStage =
+  | 'generation'
+  | 'story_project'
   | 'source'
   | 'professional_script'
   | 'seedance_prompt'
@@ -7619,7 +7628,7 @@ export interface StoryAgentRunImageRequestManifest {
   blocked_task_count: number;
 }
 
-export interface StoryAgentRun {
+export interface StoryAgentProjectRun {
   schema_version: 'story-agent-run/v1';
   run_id: string;
   input_contract: {
@@ -7653,13 +7662,91 @@ export interface StoryAgentRun {
   updated_at: string;
 }
 
+export type StoryAgentRunGenerationProvenanceMode =
+  | 'not_observed'
+  | 'local_only'
+  | 'local_fallback'
+  | 'record_replay_fixture'
+  | 'live_external';
+
+export interface StoryAgentRunGenerationProvenance {
+  mode: StoryAgentRunGenerationProvenanceMode;
+  requested_model_profile_id?: string;
+  effective_model_profile_id?: string;
+  external_model_call_performed: boolean | null;
+  generation_used_fallback: boolean | null;
+}
+
+export interface StoryAgentRunGenerationAttempt {
+  attempt_number: number;
+  status: 'in_progress' | 'succeeded' | 'failed_retryable' | 'blocked';
+  started_at: string;
+  completed_at?: string;
+  story_id?: string;
+  project_id?: string;
+  last_error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  provenance: StoryAgentRunGenerationProvenance;
+}
+
+export interface StoryAgentGenerationRun {
+  schema_version: 'story-agent-run/v2';
+  run_id: string;
+  input_contract: {
+    schema_version: 'story-agent-run-input/v2';
+    kind: 'generation_request';
+    idempotency_key: string;
+    generation_request: StoryGenerateRequest;
+  };
+  input_sha256: string;
+  source: StoryAgentSeedancePreproductionPackage['source'] | null;
+  video_types: VideoType[];
+  status:
+    | 'in_progress'
+    | 'awaiting_external_action'
+    | 'failed_retryable'
+    | 'ready'
+    | 'blocked';
+  current_stage: StoryAgentRunStage | 'complete';
+  stage_results: StoryAgentRunStageResult[];
+  blockers: string[];
+  retryable_failures: string[];
+  generation_checkpoint: {
+    status: StoryAgentRunGenerationAttempt['status'];
+    request_sha256: string;
+    attempt_count: number;
+    story_id?: string;
+    project_id?: string;
+    attempts: StoryAgentRunGenerationAttempt[];
+    last_error?: StoryAgentRunGenerationAttempt['last_error'];
+    provenance: StoryAgentRunGenerationProvenance;
+  };
+  image_request_manifest?: StoryAgentRunImageRequestManifest;
+  preproduction_package?: StoryAgentSeedancePreproductionPackage;
+  access_control?: import('./product-access.js').ProductResourceOwnership;
+  boundary: {
+    canonical_services_reused: true;
+    image_provider_invoked_by_server: false;
+    video_generation_performed: false;
+    human_review_credit_granted: false;
+  };
+  resume_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StoryAgentRun = StoryAgentProjectRun | StoryAgentGenerationRun;
+
 export interface StoryAgentRunExportResponse {
-  schema_version: 'story-agent-run-export/v1';
+  schema_version: 'story-agent-run-export/v1' | 'story-agent-run-export/v2';
   run_id: string;
   run_status: StoryAgentRun['status'];
   exported_at: string;
   video_generation_performed: false;
-  preproduction_package: StoryAgentSeedancePreproductionPackage;
+  preproduction_package: StoryAgentSeedancePreproductionPackage | null;
 }
 
 export interface StoryAgentRunImageImportResponse {

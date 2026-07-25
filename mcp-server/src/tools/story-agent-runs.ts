@@ -3,6 +3,11 @@ export interface StartStoryAgentRunInput {
   series_project_id?: string;
 }
 
+export interface GenerateStoryAgentRunInput {
+  idempotency_key: string;
+  generation_request: Record<string, unknown>;
+}
+
 export interface StoryAgentRunIdInput {
   run_id: string;
 }
@@ -37,6 +42,7 @@ interface StoryAgentApiEnvelope extends Record<string, unknown> {
 }
 
 type StoryAgentRunCanonicalTool =
+  | 'kb_generate_story_agent_run'
   | 'kb_start_story_agent_run'
   | 'kb_get_story_agent_run'
   | 'kb_resume_story_agent_run'
@@ -49,11 +55,13 @@ interface StoryAgentRunBridgeMetadata {
   canonical_service: true;
   application_endpoint: string;
   authoritative_request_schema:
+    | 'StoryAgentRunGenerateRequestSchema'
     | 'StoryAgentRunStartRequestSchema'
     | 'StoryAgentRunIdParamSchema'
     | 'StoryAgentImageGenerationResultSchema';
   output_schema:
     | 'story-agent-run/v1'
+    | 'story-agent-run/v2'
     | 'story-agent-run-image-import/v1'
     | 'story-agent-run-export/v1';
   provider_invoked_by_mcp: false;
@@ -92,6 +100,19 @@ function accessTokenHeader(): Record<string, string> {
 function validateSource(input: StartStoryAgentRunInput): void {
   if ([input.project_id, input.series_project_id].filter(value => Boolean(value?.trim())).length !== 1) {
     throw new Error('exactly one of project_id or series_project_id is required');
+  }
+}
+
+function validateGenerationInput(input: GenerateStoryAgentRunInput): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(input.idempotency_key.trim())) {
+    throw new Error('idempotency_key must be 8-128 stable URL-safe characters');
+  }
+  if (
+    !input.generation_request
+    || typeof input.generation_request !== 'object'
+    || Array.isArray(input.generation_request)
+  ) {
+    throw new Error('generation_request must be a JSON object');
   }
 }
 
@@ -178,6 +199,22 @@ export async function startStoryAgentRun(
       endpoint,
       requestSchema: 'StoryAgentRunStartRequestSchema',
       outputSchema: 'story-agent-run/v1',
+    },
+  );
+}
+
+export async function generateStoryAgentRun(
+  input: GenerateStoryAgentRunInput,
+): Promise<StoryAgentRunBridgeResult> {
+  validateGenerationInput(input);
+  const endpoint = `${storyAgentBaseUrl()}/api/story-agent/runs/generate`;
+  return withBridge(
+    await requestApplication({ endpoint, method: 'POST', body: input }),
+    {
+      canonicalTool: 'kb_generate_story_agent_run',
+      endpoint,
+      requestSchema: 'StoryAgentRunGenerateRequestSchema',
+      outputSchema: 'story-agent-run/v2',
     },
   );
 }

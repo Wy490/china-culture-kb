@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   exportStoryAgentRun,
+  generateStoryAgentRun,
   getStoryAgentRun,
   importStoryAgentRunImages,
   resumeStoryAgentRun,
@@ -19,6 +20,47 @@ afterEach(() => {
 });
 
 describe('Story Agent top-level run MCP bridge', () => {
+  it('delegates fresh generation runs to the canonical v2 application endpoint', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999/';
+    const envelope = {
+      ok: true,
+      data: {
+        schema_version: 'story-agent-run/v2',
+        run_id: 'story-agent-run-1234567890abcdef12345678',
+      },
+      error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(envelope), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const input = {
+      idempotency_key: 'mcp-fresh-generation-001',
+      generation_request: {
+        domain: 'china_culture',
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'character_story',
+        model_profile_id: 'local_story_engine',
+      },
+    };
+
+    const result = await generateStoryAgentRun(input);
+
+    expect(fetchMock.mock.calls[0][0])
+      .toBe('http://127.0.0.1:3999/api/story-agent/runs/generate');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual(input);
+    expect(result.mcp_bridge).toMatchObject({
+      canonical_tool: 'kb_generate_story_agent_run',
+      authoritative_request_schema: 'StoryAgentRunGenerateRequestSchema',
+      output_schema: 'story-agent-run/v2',
+      canonical_service: true,
+      provider_invoked_by_mcp: false,
+      direct_project_write_performed: false,
+      video_generation_performed: false,
+    });
+  });
+
   it('delegates start, get, resume, and export to the canonical application service', async () => {
     process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999/';
     process.env.STORY_AGENT_MCP_ACCESS_TOKEN = 'mcp-run-token';

@@ -1493,6 +1493,15 @@ describe('high-risk write isolation', () => {
       .send({});
     expect(creatorStoryAgentRun.status).toBe(400);
 
+    const researchGeneratedStoryAgentRun = await request.post('/api/story-agent/runs/generate')
+      .set('authorization', bearer('research-secret'))
+      .send({});
+    expect(researchGeneratedStoryAgentRun.status).toBe(403);
+    const creatorGeneratedStoryAgentRun = await request.post('/api/story-agent/runs/generate')
+      .set('authorization', bearer('creator-secret'))
+      .send({});
+    expect(creatorGeneratedStoryAgentRun.status).toBe(400);
+
     const researchSeriesPlan = await request.post('/api/story-outline/ai-comic-series-plan')
       .set('authorization', bearer('research-secret'))
       .send({});

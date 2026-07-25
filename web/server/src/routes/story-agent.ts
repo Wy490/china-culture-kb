@@ -2,15 +2,18 @@ import { Router, type Request } from 'express';
 import type {
   StoryAgentImageGenerationResult,
   StoryAgentImageRunExportRequest,
+  StoryAgentRunGenerateRequest,
   StoryAgentRunStartRequest,
   StoryAgentSeedancePreproductionExportRequest,
 } from '@shared/types.js';
-import { ErrorCodes } from '@shared/types.js';
+import { ErrorCodes, fail } from '@shared/types.js';
+import type { ProductAccessContext } from '@shared/product-access.js';
 import {
   StoryAgentImageGenerationResultSchema,
   StoryAgentImageRunExportRequestSchema,
   StoryAgentImageRunIdParamSchema,
   StoryAgentRunIdParamSchema,
+  StoryAgentRunGenerateRequestSchema,
   StoryAgentRunStartRequestSchema,
   StoryAgentSeedancePreproductionExportRequestSchema,
 } from '@shared/schemas.js';
@@ -24,11 +27,13 @@ import {
 } from '../services/story-agent-image-run-service.js';
 import {
   exportStoryAgentRun,
+  generateStoryAgentRun,
   getStoryAgentRun,
   importStoryAgentRunImages,
   resumeStoryAgentRun,
   startStoryAgentRun,
 } from '../services/story-agent-run-service.js';
+import { productResourceOwnershipForActor } from '../services/product-resource-access-service.js';
 
 export const storyAgentRouter = Router();
 
@@ -38,6 +43,7 @@ function routeParam(value: string | string[]): string {
 
 const requireUnscopedProjectRead = requireProductAccess('project:read');
 const requireUnscopedProductionWrite = requireProductAccess('production:write');
+const requireStoryCreate = requireProductAccess('story:create');
 const requireStoryProjectRead = requireProductAccess('project:read', {
   resource: {
     type: 'story_project',
@@ -165,6 +171,33 @@ async function requirePersistedStoryAgentRunAccess(
     return;
   }
   const source = result.data.source;
+  if (!source) {
+    const access = res.locals.productAccess as ProductAccessContext | undefined;
+    const ownership = result.data.schema_version === 'story-agent-run/v2'
+      ? result.data.access_control
+      : undefined;
+    const actor = access?.actor;
+    const actorAllowed = access?.mode !== 'required'
+      || Boolean(
+        actor
+        && ownership
+        && actor.organization_id === ownership.organization_id
+        && (
+          actor.role === 'administrator'
+          || actor.actor_id === ownership.owner_actor_id
+          || ownership.member_actor_ids.includes(actor.actor_id)
+        ),
+      );
+    if (!actorAllowed) {
+      res.status(403).json(fail(
+        ErrorCodes.ACCESS_RESOURCE_FORBIDDEN,
+        'The authenticated actor is not allowed to access this pre-project Story Agent run',
+      ));
+      return;
+    }
+    next();
+    return;
+  }
   const middleware = requireProductAccess(permission, {
     resource: {
       type: source.kind === 'ai_comic_series_project' ? 'series_project' : 'story_project',
@@ -173,6 +206,36 @@ async function requirePersistedStoryAgentRunAccess(
   });
   await middleware(req, res, next);
 }
+
+// POST /api/story-agent/runs/generate
+// Persists a v2 run before invoking canonical story generation.
+storyAgentRouter.post(
+  '/runs/generate',
+  requireStoryCreate,
+  requireUnscopedProductionWrite,
+  validateBody(StoryAgentRunGenerateRequestSchema),
+  async (req, res, next) => {
+    try {
+      const access = res.locals.productAccess as ProductAccessContext | undefined;
+      const accessControl = access?.mode === 'required' && access.actor
+        ? productResourceOwnershipForActor(access.actor)
+        : undefined;
+      const result = await generateStoryAgentRun(
+        req.body as StoryAgentRunGenerateRequest,
+        { accessControl },
+      );
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_AGENT_RUN_INPUT_CONFLICT
+            ? 409
+            : 400,
+      ).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // POST /api/story-agent/runs
 // Creates one stable provider-free orchestration ledger for a persisted project.

@@ -7,7 +7,7 @@
 //  - Story plan, generate, list, detail, gears-segments endpoints
 //  - Error handling (404, validation, internal)
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { resolve } from 'path';
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -414,6 +414,275 @@ describe('Story Agent image run API', () => {
 });
 
 describe('Story Agent top-level run API', () => {
+  describe('generation-first runs', () => {
+    let previousGeneratedRoot: string | undefined;
+    let generationRunTestRoot = '';
+
+    beforeEach(async () => {
+      previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
+      generationRunTestRoot = await mkdtemp(resolve(testWorkspaceRoot, 'generation-run-'));
+      process.env.WEB_GENERATED_ROOT = generationRunTestRoot;
+    });
+
+    afterEach(async () => {
+      if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
+      else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;
+      await rm(generationRunTestRoot, { recursive: true, force: true });
+    });
+
+  it('starts a durable v2 run from a fresh generation request and replays it idempotently', async () => {
+    const payload = {
+      idempotency_key: 'api-fresh-generation-local-001',
+      generation_request: {
+        domain: 'china_culture',
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'character_story',
+        model_profile_id: 'local_story_engine',
+        target_video_duration: '1分钟',
+        output_gears_segments: true,
+      },
+    };
+
+    const started = await request
+      .post('/api/story-agent/runs/generate')
+      .send(payload);
+
+    expect(started.status).toBe(200);
+    expectSuccess(started.body);
+    expect(started.body.data).toMatchObject({
+      schema_version: 'story-agent-run/v2',
+      input_contract: {
+        schema_version: 'story-agent-run-input/v2',
+        kind: 'generation_request',
+        idempotency_key: payload.idempotency_key,
+        generation_request: payload.generation_request,
+      },
+      source: {
+        kind: 'story_project',
+      },
+      generation_checkpoint: {
+        status: 'succeeded',
+        attempt_count: 1,
+        provenance: {
+          mode: 'local_only',
+          external_model_call_performed: false,
+          generation_used_fallback: false,
+        },
+      },
+      boundary: {
+        canonical_services_reused: true,
+        image_provider_invoked_by_server: false,
+        video_generation_performed: false,
+        human_review_credit_granted: false,
+      },
+    });
+    expect(started.body.data.generation_checkpoint.story_id).toBeTruthy();
+    expect(started.body.data.generation_checkpoint.project_id).toBeTruthy();
+    expect(started.body.data.stage_results.map((stage: { stage: string }) => stage.stage))
+      .toEqual([
+        'generation',
+        'story_project',
+        'professional_script',
+        'seedance_prompt',
+        'image_assets',
+        'preproduction_package',
+      ]);
+
+    const repeated = await request
+      .post('/api/story-agent/runs/generate')
+      .send(payload);
+
+    expect(repeated.status).toBe(200);
+    expect(repeated.body.data.run_id).toBe(started.body.data.run_id);
+    expect(repeated.body.data.generation_checkpoint).toMatchObject({
+      status: 'succeeded',
+      attempt_count: 1,
+      story_id: started.body.data.generation_checkpoint.story_id,
+      project_id: started.body.data.generation_checkpoint.project_id,
+    });
+  });
+
+  it('fails closed when an idempotency key is reused with a different canonical request', async () => {
+    const idempotencyKey = 'api-fresh-generation-conflict-001';
+    const baseRequest = {
+      domain: 'china_culture',
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'character_story',
+      model_profile_id: 'local_story_engine',
+    };
+    const started = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: idempotencyKey,
+        generation_request: baseRequest,
+      });
+    expect(started.status).toBe(200);
+
+    const conflicted = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: idempotencyKey,
+        generation_request: {
+          ...baseRequest,
+          target_video_duration: '3分钟',
+        },
+      });
+
+    expect(conflicted.status).toBe(409);
+    expectFailure(conflicted.body, 'STORY_AGENT_RUN_INPUT_CONFLICT');
+  });
+
+  it('recovers a generated story/project checkpoint when the final run ledger update was lost', async () => {
+    const started = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: 'api-fresh-generation-recovery-001',
+        generation_request: {
+          domain: 'china_culture',
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          model_profile_id: 'local_story_engine',
+        },
+      });
+    expect(started.status).toBe(200);
+    const completedRun = started.body.data;
+    const checkpointPath = resolve(
+      generationRunTestRoot,
+      'story-agent-runs',
+      completedRun.run_id,
+      'generation-checkpoint.json',
+    );
+    expect((await stat(checkpointPath)).isFile()).toBe(true);
+
+    const simulatedPreModelRun = structuredClone(completedRun);
+    simulatedPreModelRun.source = null;
+    simulatedPreModelRun.status = 'in_progress';
+    simulatedPreModelRun.current_stage = 'generation';
+    simulatedPreModelRun.stage_results = simulatedPreModelRun.stage_results.map(
+      (stage: { stage: string }) => ({
+        stage: stage.stage,
+        status: 'pending',
+        evidence_refs: [],
+        blockers: [],
+        retryable_failures: [],
+      }),
+    );
+    simulatedPreModelRun.stage_results[0].status = 'pending';
+    simulatedPreModelRun.blockers = [];
+    simulatedPreModelRun.retryable_failures = [];
+    simulatedPreModelRun.generation_checkpoint.status = 'in_progress';
+    delete simulatedPreModelRun.generation_checkpoint.story_id;
+    delete simulatedPreModelRun.generation_checkpoint.project_id;
+    delete simulatedPreModelRun.generation_checkpoint.last_error;
+    simulatedPreModelRun.generation_checkpoint.provenance = {
+      mode: 'not_observed',
+      requested_model_profile_id: 'local_story_engine',
+      external_model_call_performed: null,
+      generation_used_fallback: null,
+    };
+    simulatedPreModelRun.generation_checkpoint.attempts[0] = {
+      attempt_number: 1,
+      status: 'in_progress',
+      started_at: simulatedPreModelRun.generation_checkpoint.attempts[0].started_at,
+      provenance: simulatedPreModelRun.generation_checkpoint.provenance,
+    };
+    delete simulatedPreModelRun.image_request_manifest;
+    delete simulatedPreModelRun.preproduction_package;
+    await writeFile(
+      resolve(checkpointPath, '..', 'run.json'),
+      `${JSON.stringify(simulatedPreModelRun, null, 2)}\n`,
+      'utf8',
+    );
+
+    const resumed = await request
+      .post(`/api/story-agent/runs/${completedRun.run_id}/resume`)
+      .send({});
+
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.data).toMatchObject({
+      schema_version: 'story-agent-run/v2',
+      run_id: completedRun.run_id,
+      source: {
+        kind: 'story_project',
+        source_id: completedRun.generation_checkpoint.project_id,
+      },
+      generation_checkpoint: {
+        status: 'succeeded',
+        attempt_count: 1,
+        story_id: completedRun.generation_checkpoint.story_id,
+        project_id: completedRun.generation_checkpoint.project_id,
+      },
+      resume_count: 1,
+    });
+  });
+
+  it('persists a retryable generation checkpoint when strict external generation cannot run', async () => {
+    const response = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: 'api-fresh-generation-strict-001',
+        generation_request: {
+          domain: 'china_culture',
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          model_profile_id: 'claude_sonnet',
+          generation_fallback_policy: 'forbid_local_fallback',
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expectSuccess(response.body);
+    expect(response.body.data).toMatchObject({
+      schema_version: 'story-agent-run/v2',
+      status: 'failed_retryable',
+      current_stage: 'generation',
+      source: null,
+      generation_checkpoint: {
+        status: 'failed_retryable',
+        attempt_count: 1,
+        provenance: {
+          mode: 'not_observed',
+          external_model_call_performed: null,
+          generation_used_fallback: null,
+        },
+        last_error: {
+          code: 'VALIDATION_ERROR',
+        },
+      },
+    });
+    expect(response.body.data.generation_checkpoint.last_error.message)
+      .toContain('External story generation was required');
+
+    const fetched = await request.get(
+      `/api/story-agent/runs/${response.body.data.run_id}`,
+    );
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.data.generation_checkpoint).toMatchObject({
+      status: 'failed_retryable',
+      attempt_count: 1,
+    });
+
+    const resumed = await request
+      .post(`/api/story-agent/runs/${response.body.data.run_id}/resume`)
+      .send({});
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.data).toMatchObject({
+      status: 'failed_retryable',
+      current_stage: 'generation',
+      resume_count: 1,
+      generation_checkpoint: {
+        status: 'failed_retryable',
+        attempt_count: 2,
+        provenance: {
+          mode: 'not_observed',
+          external_model_call_performed: null,
+          generation_used_fallback: null,
+        },
+      },
+    });
+  });
+  });
+
   it('starts, reads, resumes, and exports one stable project-bound run', async () => {
     const story: StoryGenerateResult = {
       ...makeApiStory(),

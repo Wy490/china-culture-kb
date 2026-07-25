@@ -23,6 +23,7 @@ import {
 } from './tools/story-agent-image-runs.js';
 import {
   exportStoryAgentRun,
+  generateStoryAgentRun,
   getStoryAgentRun,
   importStoryAgentRunImages,
   resumeStoryAgentRun,
@@ -427,6 +428,23 @@ server.tool(
   },
   async (input) => {
     const result = await importStoryAgentImageResult(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// kb_generate_story_agent_run — durable generation-first Story Agent orchestration ledger
+server.tool(
+  'kb_generate_story_agent_run',
+  '从全新的 StoryGenerateRequest 创建 durable StoryAgentRun。模型调用前写入 generation checkpoint；同一 idempotency_key 幂等，冲突请求 fail closed；复用 canonical 故事、项目、专业文本、Seedance、图片和前置制作服务。',
+  {
+    idempotency_key: z.string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/)
+      .describe('调用方稳定提供的幂等键；同键只能绑定一个 canonical generation request'),
+    generation_request: z.record(z.unknown())
+      .describe('完整 StoryGenerateRequest JSON 对象；由 canonical Web schema 最终校验'),
+  },
+  async (input) => {
+    const result = await generateStoryAgentRun(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );
