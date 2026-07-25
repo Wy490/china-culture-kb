@@ -10,7 +10,7 @@
 >
 > P1-B2 生成入口提交：`a04ab79e feat(story-agent): start runs from generation requests`
 >
-> P1-B2 运行控制台提交：以本交接最终提交为准
+> P1-B2 运行控制台提交：`f6f07133 feat(story-agent): add bounded run console`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
