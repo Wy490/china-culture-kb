@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B6 八视觉世界 ImageGen 压力审计完成
+# Story Agent 开发交接：P1-B7 视觉批次注册表与响应式 smoke 完成
 
 > 交接日期：2026-07-25
 >
@@ -19,6 +19,8 @@
 > P1-B5 ops 可发现性提交：`ac4db463 feat(story-agent): surface visual pressure ops status`
 >
 > P1-B6 八世界扩容提交：`4dbd4b32 feat(story-agent): expand visual pressure to eight worlds`
+>
+> P1-B7 批次注册表提交：`93754889 feat(story-agent): register visual pressure batches`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -378,7 +380,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 当前状态与下一步
+## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 当前状态与下一步
 
 在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先使用显式输入运行新的不同素材批次，并继续扩大视觉世界覆盖。
 
@@ -653,8 +655,8 @@ story-agent-cross-seed-image-assets.mts
   → 接受 manifest 中显式 series_project_id
   → 导入 canonical image-run 并绑定现有 visual identities
 
-story-agent-visual-asset-pressure-eight-world-merge.mts
-  → 合并 20260723 与 20260725 两批证据
+story-agent-visual-asset-pressure-batch-merge.mts
+  → 从批次注册表读取任意数量批次
   → 复用同一六场景 recovery report
   → 输出八世界 canonical 审计输入
 ```
@@ -699,12 +701,86 @@ video_generation_performed=false
 production_credit_granted=false
 ```
 
-### 6.7 下一优先级
+### 6.7 已完成：批次注册表与桌面/移动浏览器 smoke
 
-1. 若内置浏览器可以访问宿主机开发端口，补 StoryAgentRun 八世界压力卡的桌面和移动 smoke；当前已有 build/vue-tsc/API 证据；
-2. 将多批次 manifest 合并规则提炼为可持续批次注册表，避免未来第三批继续手写固定旧风格映射；
-3. 继续扩容时必须保持每个新世界两张独立源图、显式 identity catalog、0 跨世界字节复用和同一六场景 fail-closed；
-4. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
+新增数据驱动合同：
+
+```text
+story-agent-visual-asset-pressure-batch-registry/v1
+```
+
+默认注册表：
+
+```text
+web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
+```
+
+每个批次只需声明：
+
+```text
+batch_id
+manifest_path
+binding_report_path
+style_map_path
+```
+
+恢复场景报告在注册表顶层只声明一次。第三批及后续批次只需增加 JSON 条目，不再修改合并源码或手写旧批次风格映射。
+
+合并服务 fail-closed 检查：
+
+- 注册表 schema、非空批次和唯一 `batch_id`；
+- 所有输入路径必须是 web root 内的相对路径；
+- manifest、binding report、style map schema；
+- 同批 manifest/binding 与跨批 provider/model 一致性；
+- 跨批 seed 不重复；
+- 每个 seed 必须有且只能使用所属批次声明的 style family；
+- 汇总资产、镜头、未绑定和 production credit 计数。
+
+旧命令继续作为兼容别名，新 canonical 命令为：
+
+```text
+npm run smoke:story-agent-visual-asset-pressure-batch-merge
+```
+
+真实两批注册表合并结果：
+
+```text
+2 batches / 8 seeds
+31 manifest assets / 61 canonical bound assets
+8 series / 0 unbound shots / 0 production credit
+```
+
+重新运行 canonical 审计后仍为：
+
+```text
+status: ready
+8 cases / 8 sources / 8 styles
+16 unique content SHA / 0 cross-case reuse
+8/8 semantic gates / 6/6 recovery scenarios
+```
+
+内置浏览器真实 smoke：
+
+```text
+desktop: 1280 × 720
+mobile:  390 × 844
+route:   /story-agent/runs
+```
+
+两种视口均确认：
+
+- 压力卡显示“已通过”；
+- 8 个题材、8 种风格、16 个唯一内容 SHA、跨题材复用 0；
+- 恢复/拒绝场景 6/6 和 canonical 相对路径；
+- 自动化边界文案完整；
+- 刷新审计后仍返回一致数据；
+- 移动端 document/body width 均为 390px，卡片宽 358px，无横向溢出。
+
+### 6.8 下一优先级
+
+1. 把本轮响应式 smoke 固化为使用 fixture API 的可重复 Playwright viewport 回归，覆盖 ready、blocked、not_run 三态；
+2. 第三批真实新图具备时，只向注册表追加条目并验证 0 跨世界字节复用，不再改合并代码；
+3. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
 
 ## 7. 外部条件具备时才做
 
@@ -770,6 +846,8 @@ real external provider
 - P1-B6 第二批四世界 ImageGen 源图、精确 identity catalog 与八世界合并审计；
 - generic visual character 共享判定、54 个伪缺图根因修复与通用题材司法模板防污染；
 - canonical ops 八世界最低门槛与 legacy 四世界 fail-closed 回归；
+- P1-B7 `story-agent-visual-asset-pressure-batch-registry/v1` 与数据驱动多批次合并；
+- StoryAgentRun 压力卡 1280×720 桌面、390×844 移动和刷新交互 smoke；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -794,14 +872,17 @@ web/server/src/services/ai-comic-series-service.ts
 web/server/src/services/ai-comic-series-visual-bible-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-ops-service.ts
+web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-manifest.mts
-web/server/scripts/story-agent-visual-asset-pressure-eight-world-merge.mts
+web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
+web/server/scripts/story-agent-visual-asset-pressure-batch-merge.mts
 web/server/scripts/story-agent-visual-asset-pressure.mts
 web/server/scripts/story-agent-visual-asset-pressure-style-map.example.json
 web/server/src/__tests__/ai-comic-series-visual-bible.test.ts
 web/server/src/__tests__/outline-service.test.ts
+web/server/src/__tests__/story-agent-visual-asset-pressure-batch-registry-service.test.ts
 web/server/src/__tests__/api.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-service.test.ts
@@ -836,7 +917,7 @@ npm run smoke:story-agent-visual-asset-pressure-batch2-manifest
 npm run smoke:story-agent-cross-seed-images -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260725-batch2/manifest.json \
   --output generated/story-agent-cross-seed-image-assets-20260725-batch2/binding-report.json
-npm run smoke:story-agent-visual-asset-pressure-eight-world-merge
+npm run smoke:story-agent-visual-asset-pressure-batch-merge
 npm run smoke:story-agent-visual-asset-pressure -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260725-eight-world/manifest.json \
   --binding-report generated/story-agent-cross-seed-image-assets-20260725-eight-world/binding-report.json \
@@ -844,6 +925,7 @@ npm run smoke:story-agent-visual-asset-pressure -- \
   --style-map generated/story-agent-cross-seed-image-assets-20260725-eight-world/style-map.json
 npx vitest run src/__tests__/ai-comic-series-visual-bible.test.ts
 npx vitest run src/__tests__/outline-service.test.ts -t "generic fast-hook"
+npx vitest run src/__tests__/story-agent-visual-asset-pressure-batch-registry-service.test.ts
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-service.test.ts
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
 npx vitest run src/__tests__/api.test.ts -t "story-agent-visual-asset-pressure"
@@ -898,10 +980,11 @@ f6f07133 feat(story-agent): add bounded run console
 b24a0e43 feat(story-agent): audit diverse visual asset pressure
 ac4db463 feat(story-agent): surface visual pressure ops status
 4dbd4b32 feat(story-agent): expand visual pressure to eight worlds
+93754889 feat(story-agent): register visual pressure batches
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性，以及 P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染，以及 P1-B7 数据驱动批次注册表和响应式浏览器 smoke 均已完成。不要重新实现。
 
-下一步优先补 StoryAgentRun 八世界压力卡的桌面/移动浏览器 smoke，并把多批次 manifest 合并规则提炼为可持续批次注册表。若继续生成第三批，仍须在服务端之外使用 Codex imagegen，为每个新世界提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；复用 canonical image-run，不建立平行图片账本。
+下一步优先把 StoryAgentRun 压力卡固化为可重复的 Playwright viewport 回归，覆盖 ready、blocked、not_run 三态。若继续生成第三批，仍须在服务端之外使用 Codex imagegen，为每个新世界提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；只向 batch registry 追加条目，复用 canonical image-run，不建立平行图片账本。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
