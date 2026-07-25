@@ -12,7 +12,7 @@
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
-> 当前工作区：本交接文档与 ownership-scoped idempotency 回归测试待提交
+> 当前工作区：功能与回归测试已提交；本交接最终提交后应为干净
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 

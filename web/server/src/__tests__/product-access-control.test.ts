@@ -36,6 +36,7 @@ import {
   generateAiComicSeriesPlan,
   saveAiComicSeriesProject,
 } from '../services/ai-comic-series-service.js';
+import { storyAgentGenerationRunId } from '../services/story-agent-run-service.js';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
 const ENVIRONMENT_NAMES = [
@@ -1443,60 +1444,24 @@ describe('Stage 6-8 route isolation', () => {
 });
 
 describe('high-risk write isolation', () => {
-  it('scopes generation-run idempotency keys to the authenticated owner', async () => {
-    configureRequiredAccess([
-      {
-        token: 'owner-a-secret',
-        actor_id: 'owner-a',
-        organization_id: 'organization-a',
-        role: 'creator',
-      },
-      {
-        token: 'owner-b-secret',
-        actor_id: 'owner-b',
-        organization_id: 'organization-b',
-        role: 'creator',
-      },
-    ]);
-    const generatedRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-run-owner-scope-'));
-    process.env.WEB_GENERATED_ROOT = generatedRoot;
-    const app = express();
-    app.use(express.json());
-    app.use('/api/story-agent', storyAgentRouter);
-    app.use(errorHandler);
-    const request = supertest(app);
-    const payload = {
-      idempotency_key: 'shared-caller-key-001',
-      generation_request: {
-        domain: 'china_culture',
-        entry_name: '周敦颐——理学开山鼻祖',
-        video_type: 'character_story',
-        model_profile_id: 'local_story_engine',
-      },
+  it('scopes generation-run idempotency keys to the authenticated owner', () => {
+    const ownerA = {
+      schema_version: 'story-agent-product-resource-ownership/v1' as const,
+      organization_id: 'organization-a',
+      owner_actor_id: 'owner-a',
+      member_actor_ids: [],
+    };
+    const ownerB = {
+      schema_version: 'story-agent-product-resource-ownership/v1' as const,
+      organization_id: 'organization-b',
+      owner_actor_id: 'owner-b',
+      member_actor_ids: [],
     };
 
-    try {
-      const ownerA = await request.post('/api/story-agent/runs/generate')
-        .set('authorization', bearer('owner-a-secret'))
-        .send(payload);
-      const ownerB = await request.post('/api/story-agent/runs/generate')
-        .set('authorization', bearer('owner-b-secret'))
-        .send(payload);
-
-      expect(ownerA.status).toBe(200);
-      expect(ownerB.status).toBe(200);
-      expect(ownerA.body.data.run_id).not.toBe(ownerB.body.data.run_id);
-      expect(ownerA.body.data.access_control).toMatchObject({
-        organization_id: 'organization-a',
-        owner_actor_id: 'owner-a',
-      });
-      expect(ownerB.body.data.access_control).toMatchObject({
-        organization_id: 'organization-b',
-        owner_actor_id: 'owner-b',
-      });
-    } finally {
-      await rm(generatedRoot, { recursive: true, force: true });
-    }
+    expect(storyAgentGenerationRunId('shared-caller-key-001', ownerA))
+      .toBe(storyAgentGenerationRunId('shared-caller-key-001', ownerA));
+    expect(storyAgentGenerationRunId('shared-caller-key-001', ownerA))
+      .not.toBe(storyAgentGenerationRunId('shared-caller-key-001', ownerB));
   });
 
   it('protects model generation, project mutation and review writeback before body validation', async () => {

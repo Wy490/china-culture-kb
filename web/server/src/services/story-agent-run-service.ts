@@ -97,7 +97,7 @@ function runIdFor(request: StoryAgentRunStartRequest): string {
   })).slice(0, 24)}`;
 }
 
-function generationRunIdFor(
+export function storyAgentGenerationRunId(
   idempotencyKey: string,
   accessControl?: ProductResourceOwnership,
 ): string {
@@ -491,7 +491,10 @@ function buildInitialGenerationRun(input: {
   now: string;
 }): StoryAgentGenerationRun {
   const requestSha256 = canonicalSha256(input.request.generation_request);
-  const runId = generationRunIdFor(input.request.idempotency_key, input.accessControl);
+  const runId = storyAgentGenerationRunId(
+    input.request.idempotency_key,
+    input.accessControl,
+  );
   const provenance = notObservedProvenance(input.request);
   const attempt: StoryAgentRunGenerationAttempt = {
     attempt_number: 1,
@@ -901,7 +904,7 @@ export async function generateStoryAgentRun(
   request: StoryAgentRunGenerateRequest,
   options: { accessControl?: ProductResourceOwnership } = {},
 ): Promise<ApiResponse<StoryAgentRun>> {
-  const runId = generationRunIdFor(request.idempotency_key, options.accessControl);
+  const runId = storyAgentGenerationRunId(request.idempotency_key, options.accessControl);
   return serializeGenerationRun(runId, async () => {
     const existing = await readRun(runId);
     if (existing) {
