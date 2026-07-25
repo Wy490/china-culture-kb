@@ -193,6 +193,14 @@ export const PRODUCT_SECONDARY_NAVIGATION: readonly ProductSecondaryNavigationIt
     allowed_roles: MATERIAL_EDITOR_ROLES,
   },
   {
+    id: 'reference_library',
+    workspace: 'materials',
+    label: '参考分析',
+    description: '创建来源绑定任务并提交结构化证据',
+    to: '/reference-library',
+    allowed_roles: MATERIAL_EDITOR_ROLES,
+  },
+  {
     id: 'production_projects',
     workspace: 'production',
     label: '项目生产',

@@ -50,6 +50,11 @@ export const router = createRouter({
       component: () => import('./views/DomainPackExpansionQueue.vue'),
     },
     {
+      path: '/reference-library',
+      name: 'ReferenceLibrary',
+      component: () => import('./views/ReferenceLibrary.vue'),
+    },
+    {
       path: '/projects/:projectId',
       name: 'ProjectDetail',
       component: () => import('./views/ProjectDetail.vue'),
