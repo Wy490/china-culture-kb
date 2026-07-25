@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B7 视觉批次注册表与响应式 smoke 完成
+# Story Agent 开发交接：P1-B8 视觉压力三态响应式回归完成
 
 > 交接日期：2026-07-25
 >
@@ -21,6 +21,8 @@
 > P1-B6 八世界扩容提交：`4dbd4b32 feat(story-agent): expand visual pressure to eight worlds`
 >
 > P1-B7 批次注册表提交：`93754889 feat(story-agent): register visual pressure batches`
+>
+> P1-B8 响应式回归提交：`9782c924 test(story-agent): cover visual pressure viewports`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -380,7 +382,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 当前状态与下一步
+## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 / P1-B8 当前状态与下一步
 
 在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先使用显式输入运行新的不同素材批次，并继续扩大视觉世界覆盖。
 
@@ -776,9 +778,52 @@ route:   /story-agent/runs
 - 刷新审计后仍返回一致数据；
 - 移动端 document/body width 均为 390px，卡片宽 358px，无横向溢出。
 
-### 6.8 下一优先级
+### 6.8 已完成：视觉压力三态 Playwright 响应式回归
 
-1. 把本轮响应式 smoke 固化为使用 fixture API 的可重复 Playwright viewport 回归，覆盖 ready、blocked、not_run 三态；
+新增可重复浏览器合同：
+
+```text
+web/e2e/story-agent-visual-pressure.spec.ts
+npm run e2e:story-agent-visual-pressure
+```
+
+测试复用仓库已有 Playwright Web Server、访问控制 registry 和 Chromium，不建立新的 mock server。fixture 只在浏览器请求层替换：
+
+```text
+GET /api/story-agent/runs
+GET /api/system/story-agent-visual-asset-pressure
+```
+
+运行列表固定为空，视觉压力摘要覆盖三态：
+
+```text
+ready   → 已通过，8 cases / 8 styles / 16 SHA / 0 reuse / 6/6 scenarios
+blocked → 已阻断，8 cases / 8 styles / 15 SHA / 1 reuse / 5/6 scenarios
+not_run → 未运行，0 cases / 0 styles / 0 SHA / report missing
+```
+
+每个状态都验证：
+
+- 1280×720 桌面与 390×844 移动视口；
+- 状态标签、覆盖数字、场景计数、canonical 相对路径和 blocker；
+- 自动化边界文案；
+- “刷新审计”确实触发第二次 API 请求且状态保持一致；
+- document/body 不产生横向溢出，移动压力卡保持至少 350px 可读宽度；
+- 无 page error、console error 或 API 4xx/5xx。
+
+结果：
+
+```text
+3 Playwright tests passed
+Web production build passed
+server/client lint and typecheck passed
+```
+
+这些 fixture 只证明 UI 合同和响应式行为，不修改 canonical 报告，也不授予真实审计、人工或 production credit。
+
+### 6.9 下一优先级
+
+1. 为 batch merge 输出可校验的 composition report，记录 registry SHA、每批 manifest/binding/style-map SHA 和批次计数；canonical 压力审计必须验证该 provenance，避免合并输入被替换后仍沿用旧结论；
 2. 第三批真实新图具备时，只向注册表追加条目并验证 0 跨世界字节复用，不再改合并代码；
 3. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
 
@@ -848,6 +893,7 @@ real external provider
 - canonical ops 八世界最低门槛与 legacy 四世界 fail-closed 回归；
 - P1-B7 `story-agent-visual-asset-pressure-batch-registry/v1` 与数据驱动多批次合并；
 - StoryAgentRun 压力卡 1280×720 桌面、390×844 移动和刷新交互 smoke；
+- P1-B8 `ready/blocked/not_run` 三态 Playwright 双视口回归与 API/console 错误守卫；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -893,6 +939,8 @@ web/client/src/api/story-agent-runs.ts
 web/client/src/views/StoryAgentRuns.vue
 web/client/src/router.ts
 web/shared/product-navigation.ts
+web/e2e/story-agent-visual-pressure.spec.ts
+web/playwright.config.ts
 
 mcp-server/src/tools/story-agent-runs.ts
 mcp-server/src/tools/story-agent-runs.test.ts
@@ -942,6 +990,7 @@ npm run build
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web
+npm run e2e:story-agent-visual-pressure
 npm run build
 npm run lint
 
@@ -981,10 +1030,11 @@ b24a0e43 feat(story-agent): audit diverse visual asset pressure
 ac4db463 feat(story-agent): surface visual pressure ops status
 4dbd4b32 feat(story-agent): expand visual pressure to eight worlds
 93754889 feat(story-agent): register visual pressure batches
+9782c924 test(story-agent): cover visual pressure viewports
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染，以及 P1-B7 数据驱动批次注册表和响应式浏览器 smoke 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke，以及 P1-B8 三态 Playwright 双视口回归均已完成。不要重新实现。
 
-下一步优先把 StoryAgentRun 压力卡固化为可重复的 Playwright viewport 回归，覆盖 ready、blocked、not_run 三态。若继续生成第三批，仍须在服务端之外使用 Codex imagegen，为每个新世界提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；只向 batch registry 追加条目，复用 canonical image-run，不建立平行图片账本。
+下一步优先让 batch merge 输出可校验 composition report，包含 registry 和每批输入文件 SHA，并让 canonical 压力审计验证该 provenance。若继续生成第三批，仍须在服务端之外使用 Codex imagegen，为每个新世界提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；只向 batch registry 追加条目，复用 canonical image-run，不建立平行图片账本。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
