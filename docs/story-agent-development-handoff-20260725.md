@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B10 批次 provenance ops/UI 可见完成
+# Story Agent 开发交接：P1-B11 十二视觉世界与三批 provenance 完成
 
 > 交接日期：2026-07-26
 >
@@ -27,6 +27,8 @@
 > P1-B9 composition provenance 提交：`a50a157f feat(story-agent): verify visual batch composition`
 >
 > P1-B10 provenance ops/UI 提交：`9b9ba280 feat(story-agent): surface batch provenance status`
+>
+> P1-B11 十二世界扩容提交：`0a73c595 feat(story-agent): expand visual pressure to twelve worlds`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -60,13 +62,13 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“多批次合并输入、输出与 canonical 审计结论之间均有逐文件 SHA-256 provenance，旧证据或输入替换会 fail-closed，并通过有界 ops/API/UI 摘要直接可见”的阶段。
+Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、合并输出与 canonical 审计结论之间均有逐文件 SHA-256 provenance，旧证据或输入替换会 fail-closed，并通过有界 ops/API/UI 摘要直接可见”的阶段。
 
 当前工程判断：
 
 | 口径 | 完成度 | 判断 |
 |---|---:|---|
-| 展示结构化生成与前置制作交付 | 98%–99% | 普通项目、系列项目、15×1、15×3、运行控制台、专业 checkpoint、八题材视觉压力、composition provenance 与 ops 摘要均有完整交付证据 |
+| 展示结构化生成与前置制作交付 | 98%–99% | 普通项目、系列项目、15×1、15×3、运行控制台、专业 checkpoint、十二题材视觉压力、三批 composition provenance 与 ops 摘要均有完整交付证据 |
 | 15 类型无人值守稳定交付 | 96%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史、视觉资产六场景审计及其 fail-closed ops 读取均已跑通 |
 | 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
 
@@ -74,7 +76,7 @@ Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”�
 
 1. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
 2. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
-3. 当前八题材压力审计已证明素材互异、恢复语义和两批输入/输出 provenance，但仍应在真实新图具备时继续追加批次，而不是只依赖现有 canonical 视觉板。
+3. 当前十二题材压力审计已证明素材互异、恢复语义和三批输入/输出 provenance；继续扩容前应优先把 ImageGen 调用与预期内容 SHA 固化为不可重签的批次 receipt。
 
 ## 3. 已完成的核心链路
 
@@ -386,9 +388,9 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 / P1-B8 / P1-B9 / P1-B10 当前状态与下一步
+## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 / P1-B8 / P1-B9 / P1-B10 / P1-B11 当前状态与下一步
 
-在没有真实外部 Provider 凭据和合法参考材料时，下一对话可继续用 Codex imagegen 在服务端之外创建第三批不同视觉世界，并只通过注册表接入既有合并、provenance 与 canonical 审计链。
+在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先为 Codex ImageGen 批次增加提交到代码仓库的 immutable receipt，阻止源图被替换后通过重跑 manifest/composition 静默重签。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -664,7 +666,7 @@ story-agent-cross-seed-image-assets.mts
 story-agent-visual-asset-pressure-batch-merge.mts
   → 从批次注册表读取任意数量批次
   → 复用同一六场景 recovery report
-  → 输出八世界 canonical 审计输入
+  → 当前输出十二世界 canonical 审计输入
 ```
 
 本轮同时修复了两个真实根因：
@@ -916,21 +918,21 @@ composition 详细 blockers
 - canonical 报告缺失时返回 `not_run / 0 批 / 0/0 文件`；
 - 报告不可读或 schema 非法时返回 `blocked / 0 批 / 0/0 文件`；
 - schema 合法时复制 canonical provenance 的状态和计数；
-- stale composition 继续令整体 ops 状态 fail-closed，并显示 `blocked / 2 批 / 11/12 文件`；
-- 当前真实 canonical 报告返回 `ready + verified / 2 批 / 12/12 文件`，blocker 为空。
+- stale composition 继续令整体 ops 状态 fail-closed，并显示 `blocked / 3 批 / 14/15 文件`；
+- 当前真实 canonical 报告已随 P1-B11 更新为 `ready + verified / 3 批 / 15/15 文件`，blocker 为空。
 
 StoryAgentRun 压力卡新增一行：
 
 ```text
-批次证据 已验证 · 2 批 · 文件 12/12
+批次证据 已验证 · 3 批 · 文件 15/15
 ```
 
 同一位置对 blocked/not_run 分别显示“已阻断”和“未运行”。既有题材/风格/SHA、恢复场景、canonical 相对路径、blocker、刷新按钮和自动化边界不变。
 
 Playwright 三态 fixture 已扩展 provenance，并在 1280×720 与 390×844 两种视口验证：
 
-- `verified / 2 批 / 12/12`；
-- `blocked / 2 批 / 11/12`；
+- `verified / 3 批 / 15/15`；
+- `blocked / 3 批 / 14/15`；
 - `not_run / 0 批 / 0/0`；
 - 刷新仍发起第二次 API 请求；
 - 无横向溢出、page error、console error 或 API 4xx/5xx。
@@ -947,10 +949,113 @@ server/client lint and typecheck passed
 Web production build passed
 ```
 
-### 6.11 下一优先级
+### 6.11 已完成：第三批 ImageGen 与十二视觉世界
 
-1. 用 Codex imagegen 在服务端之外创建第三批真实新图，选择与现有八世界明显不同的新题材与风格；每个新世界仍提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；
-2. 只向 batch registry 追加第三批条目，验证合并代码无需修改、composition 自动扩展到 3 批与 15 个文件引用，并继续满足 0 跨世界字节复用和 canonical `ready`；
+第三批根目录：
+
+```text
+web/generated/story-agent-cross-seed-image-assets-20260726-batch3/
+  identity-catalog.json
+  prompts/*.txt
+  sources/*.png
+  manifest.json
+  binding-report.json
+  style-map.json
+```
+
+`web/generated/` 按仓库规则不提交 Git；项目最终资产与逐图完整提示词均保存在上述 `sources/` 和 `prompts/`。生成使用 Codex 内置 ImageGen，一图一调用，未使用 CLI/API fallback，也未由 Story Agent 服务端调用图片模型。
+
+四个新视觉世界：
+
+| seed | 标题 | 视觉语言 | 边界 |
+|---|---|---|---|
+| `tulou-rain-documentary` | 土楼听雨 | 福建土楼雨季建筑纪录 | 单楼观察不外推为所有土楼，不虚构仪式 |
+| `kunqu-backstage-drama` | 水袖未落 | 江南昆曲工笔后台戏 | 具体剧团排练经验不写成统一表演规则 |
+| `paper-cut-snow-fable` | 红窗追月 | 东北红白剪纸雪地童话 | 纸兔和纸森林明确为虚构，不冒充真实传说 |
+| `maritime-porcelain-museum` | 瓷片归港 | 闽南海洋博物馆青晒悬疑 | 证据不足时不判年代、窑口或沉船来源 |
+
+canonical 准备结果：
+
+```text
+4 series projects
+8 generated episodes
+4 character identities
+4 primary costumes
+16 canonical locations
+8 independent ImageGen source PNGs
+```
+
+第三批 manifest/binding：
+
+```text
+12 manifest input assets
+8 unique source SHA-256
+28 canonical bound assets
+72 shot bindings
+0 unbound shots
+0 production credit
+status: passed
+```
+
+只向现有 registry 追加：
+
+```text
+batch_id: imagegen-20260726-batch3
+```
+
+合并代码未修改。三批重建结果：
+
+```text
+3 batches / 12 seeds
+43 manifest assets / 89 canonical bound assets
+12 series / 0 unbound shots / 0 production credit
+```
+
+composition 与 canonical 审计：
+
+```text
+registry SHA-256:
+8efa8ae54e3ca781d1891b93d4f0b37ffcb603565f2d6e65d181019f8e7bfc61
+
+3 batches / 11 source files / 4 merged outputs
+15/15 files verified
+12 cases / 12 sources / 12 styles
+24 unique content SHA / 0 cross-case reuse
+43/43 source SHA / media signature / immutable preview / identity mapping
+6/6 recovery scenarios
+status: ready
+blockers: 0
+```
+
+composition JSON 不包含 `/Users/...` 绝对路径。
+
+ops canonical 最低门槛同步提升为：
+
+```text
+case/source/style >= 12
+composition batches >= 3
+composition files >= 15
+verified_file_count == file_count
+```
+
+旧八世界报告的红灯用例先证明它仍会被误判 `ready`，门槛提升后改为 fail-closed `blocked`。Playwright fixture 同步为 12 cases / 24 SHA / 3 批 15/15，桌面与移动三态继续通过。
+
+验证结果：
+
+```text
+targeted services: 4 files / 17 tests passed
+ops API:           1 targeted test passed
+Playwright:        3 tests passed
+server:            175 files passed, 1 skipped
+                   1489 tests passed, 2 skipped
+server/client lint and typecheck passed
+Web production build passed
+```
+
+### 6.12 下一优先级
+
+1. 新增提交到代码仓库的 `story-agent-visual-asset-pressure-batch-receipt/v1`，固定每次内置 ImageGen 调用 ID、prompt SHA、内容 SHA、尺寸和 seed/role；manifest 生成必须先验证 receipt，不能从当前文件重新计算后静默重签；
+2. 为旧两批补齐相同 receipt 或明确 `legacy_unsealed`，canonical ops 对新批次缺 receipt fail-closed，同时不把 receipt 当作 rights、人审或 production credit；
 3. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
 
 ## 7. 外部条件具备时才做
@@ -1016,12 +1121,13 @@ real external provider
 - 参数化 `--manifest/--binding-report/--recovery-report/--style-map/--output`；
 - P1-B6 第二批四世界 ImageGen 源图、精确 identity catalog 与八世界合并审计；
 - generic visual character 共享判定、54 个伪缺图根因修复与通用题材司法模板防污染；
-- canonical ops 八世界最低门槛与 legacy 四世界 fail-closed 回归；
+- canonical ops 十二世界/三批最低门槛与 legacy 八世界 fail-closed 回归；
 - P1-B7 `story-agent-visual-asset-pressure-batch-registry/v1` 与数据驱动多批次合并；
 - StoryAgentRun 压力卡 1280×720 桌面、390×844 移动和刷新交互 smoke；
 - P1-B8 `ready/blocked/not_run` 三态 Playwright 双视口回归与 API/console 错误守卫；
 - P1-B9 `story-agent-visual-asset-pressure-batch-composition/v1`、12/12 文件 SHA provenance 与 canonical/ops fail-closed 校验；
 - P1-B10 ops/API 的有界 composition provenance 状态计数、StoryAgentRun 压力卡展示与三态双视口回归；
+- P1-B11 第三批四世界、8 张内置 ImageGen 源图、十二世界合并审计与 3 批 15/15 provenance；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -1050,6 +1156,8 @@ web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-manifest.mts
+web/server/scripts/story-agent-visual-asset-pressure-batch3-prepare.mts
+web/server/scripts/story-agent-visual-asset-pressure-batch3-manifest.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-merge.mts
 web/server/scripts/story-agent-visual-asset-pressure.mts
@@ -1094,6 +1202,11 @@ npm run smoke:story-agent-visual-asset-pressure-batch2-manifest
 npm run smoke:story-agent-cross-seed-images -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260725-batch2/manifest.json \
   --output generated/story-agent-cross-seed-image-assets-20260725-batch2/binding-report.json
+npm run smoke:story-agent-visual-asset-pressure-batch3-prepare
+npm run smoke:story-agent-visual-asset-pressure-batch3-manifest
+npm run smoke:story-agent-cross-seed-images -- \
+  --manifest generated/story-agent-cross-seed-image-assets-20260726-batch3/manifest.json \
+  --output generated/story-agent-cross-seed-image-assets-20260726-batch3/binding-report.json
 npm run smoke:story-agent-visual-asset-pressure-batch-merge
 npm run smoke:story-agent-visual-asset-pressure -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260725-eight-world/manifest.json \
@@ -1164,10 +1277,11 @@ ac4db463 feat(story-agent): surface visual pressure ops status
 9782c924 test(story-agent): cover visual pressure viewports
 a50a157f feat(story-agent): verify visual batch composition
 9b9ba280 feat(story-agent): surface batch provenance status
+0a73c595 feat(story-agent): expand visual pressure to twelve worlds
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验，以及 P1-B10 有界 provenance ops/UI 展示均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示，以及 P1-B11 第三批四世界/十二世界合并审计均已完成。不要重新实现。
 
-下一步优先在服务端之外使用 Codex imagegen 创建第三批不同视觉世界，为每个新世界提供两张独立源图、精确 identity catalog、manifest、binding report 和显式 style map；只向 batch registry 追加条目，验证 composition 自动扩展到 3 批 / 15 文件引用，复用 canonical image-run，不建立平行图片账本。
+下一步优先新增提交到代码仓库的 immutable batch receipt，固定 ImageGen 调用 ID、prompt SHA、内容 SHA、尺寸和 seed/role。manifest 生成必须先验证 receipt，源图或提示词被替换后不得通过重跑脚本静默重签；旧批次应补齐 receipt 或明确 `legacy_unsealed`，且 receipt 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
