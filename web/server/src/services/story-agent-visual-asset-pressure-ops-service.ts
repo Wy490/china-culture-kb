@@ -5,7 +5,9 @@ import type { StoryAgentVisualAssetPressureOpsStatus } from '@shared/types.js';
 import { storyGeneratedRoot } from '../platform/story-storage-root.js';
 
 const REPORT_RELATIVE_PATH = 'system/story-agent-visual-asset-pressure/report.json' as const;
-const CANONICAL_MINIMUM_CASE_COUNT = 8;
+const CANONICAL_MINIMUM_CASE_COUNT = 12;
+const CANONICAL_MINIMUM_BATCH_COUNT = 3;
+const CANONICAL_MINIMUM_COMPOSITION_FILE_COUNT = 15;
 const REQUIRED_SCENARIOS = [
   'missing_file_rejected',
   'invalid_image_rejected',
@@ -158,8 +160,9 @@ function reportIsInternallyReady(
     && report.scenario_summary.not_run_count === 0
     && REQUIRED_SCENARIOS.every(scenario => passedScenarios.has(scenario))
     && report.composition_provenance.status === 'verified'
-    && report.composition_provenance.batch_count >= 2
-    && report.composition_provenance.file_count > 0
+    && report.composition_provenance.batch_count >= CANONICAL_MINIMUM_BATCH_COUNT
+    && report.composition_provenance.file_count
+      >= CANONICAL_MINIMUM_COMPOSITION_FILE_COUNT
     && report.composition_provenance.verified_file_count
       === report.composition_provenance.file_count
     && report.composition_provenance.blockers.length === 0;

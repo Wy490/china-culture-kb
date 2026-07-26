@@ -18,6 +18,8 @@
     "smoke:story-agent-cross-seed-images": "tsx scripts/story-agent-cross-seed-image-assets.mts",
     "smoke:story-agent-visual-asset-pressure-batch2-prepare": "tsx scripts/story-agent-visual-asset-pressure-batch2-prepare.mts",
     "smoke:story-agent-visual-asset-pressure-batch2-manifest": "tsx scripts/story-agent-visual-asset-pressure-batch2-manifest.mts",
+    "smoke:story-agent-visual-asset-pressure-batch3-prepare": "tsx scripts/story-agent-visual-asset-pressure-batch3-prepare.mts",
+    "smoke:story-agent-visual-asset-pressure-batch3-manifest": "tsx scripts/story-agent-visual-asset-pressure-batch3-manifest.mts",
     "smoke:story-agent-visual-asset-pressure-batch-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure-eight-world-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure": "tsx scripts/story-agent-visual-asset-pressure.mts",

@@ -13,6 +13,12 @@
       "manifest_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/manifest.json",
       "binding_report_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/binding-report.json",
       "style_map_path": "generated/story-agent-cross-seed-image-assets-20260725-batch2/style-map.json"
+    },
+    {
+      "batch_id": "imagegen-20260726-batch3",
+      "manifest_path": "generated/story-agent-cross-seed-image-assets-20260726-batch3/manifest.json",
+      "binding_report_path": "generated/story-agent-cross-seed-image-assets-20260726-batch3/binding-report.json",
+      "style_map_path": "generated/story-agent-cross-seed-image-assets-20260726-batch3/style-map.json"
     }
   ]
 }

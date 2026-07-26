@@ -27,7 +27,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })));
 });
 
-function readyReport(caseCount = 8) {
+function readyReport(caseCount = 12) {
   const caseAssetCounts = Array.from(
     { length: caseCount },
     (_, index) => index < 2 ? 5 : 4,
@@ -61,9 +61,9 @@ function readyReport(caseCount = 8) {
       status: 'verified',
       report_relative_path: 'generated/combined/composition-report.json',
       registry_content_sha256: 'a'.repeat(64),
-      batch_count: 2,
-      file_count: 12,
-      verified_file_count: 12,
+      batch_count: 3,
+      file_count: 15,
+      verified_file_count: 15,
       blockers: [] as string[],
     },
     scenario_results: REQUIRED_SCENARIOS.map(scenario => ({
@@ -130,8 +130,8 @@ describe('Story Agent visual asset pressure ops status', () => {
         generated_at: '2026-07-25T12:00:00.000Z',
       },
       coverage: {
-        case_count: 8,
-        unique_content_sha256_count: 16,
+        case_count: 12,
+        unique_content_sha256_count: 24,
         cross_case_content_reuse_count: 0,
       },
       scenario_summary: {
@@ -140,12 +140,12 @@ describe('Story Agent visual asset pressure ops status', () => {
       },
       composition_provenance: {
         status: 'verified',
-        batch_count: 2,
-        file_count: 12,
-        verified_file_count: 12,
+        batch_count: 3,
+        file_count: 15,
+        verified_file_count: 15,
       },
       blockers: [],
-      warnings: ['within_case_composite_asset_reuse:18'],
+      warnings: ['within_case_composite_asset_reuse:26'],
     });
     expect(status).not.toHaveProperty('cases');
     expect(status).not.toHaveProperty('scenario_results');
@@ -154,18 +154,18 @@ describe('Story Agent visual asset pressure ops status', () => {
     expect(status.composition_provenance).not.toHaveProperty('blockers');
   });
 
-  it('fails closed when the canonical report regresses to the legacy four-world baseline', async () => {
+  it('fails closed when the canonical report regresses to the legacy eight-world baseline', async () => {
     const generatedRoot = await testRoot();
     const reportPath = storyAgentVisualAssetPressureReportPath(generatedRoot);
     await mkdir(resolve(reportPath, '..'), { recursive: true });
-    await writeFile(reportPath, `${JSON.stringify(readyReport(4), null, 2)}\n`, 'utf8');
+    await writeFile(reportPath, `${JSON.stringify(readyReport(8), null, 2)}\n`, 'utf8');
 
     await expect(getStoryAgentVisualAssetPressureOpsStatus({ generatedRoot })).resolves.toMatchObject({
       status: 'blocked',
       coverage: {
-        case_count: 4,
-        unique_source_id_count: 4,
-        unique_style_family_count: 4,
+        case_count: 8,
+        unique_source_id_count: 8,
+        unique_style_family_count: 8,
       },
       blockers: ['visual_asset_pressure_report_inconsistent'],
     });
@@ -177,7 +177,7 @@ describe('Story Agent visual asset pressure ops status', () => {
     await mkdir(resolve(reportPath, '..'), { recursive: true });
     const report = readyReport();
     report.composition_provenance.status = 'blocked';
-    report.composition_provenance.verified_file_count = 11;
+    report.composition_provenance.verified_file_count = 14;
     report.composition_provenance.blockers = [
       'composition_sha256_mismatch:generated/batch/manifest.json',
     ];
@@ -187,9 +187,9 @@ describe('Story Agent visual asset pressure ops status', () => {
       status: 'blocked',
       composition_provenance: {
         status: 'blocked',
-        batch_count: 2,
-        file_count: 12,
-        verified_file_count: 11,
+        batch_count: 3,
+        file_count: 15,
+        verified_file_count: 14,
       },
       blockers: ['visual_asset_pressure_report_inconsistent'],
     });
