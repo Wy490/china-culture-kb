@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { FileArtifactStore } from '../src/repositories/artifact-store.js';
 import { inspectMediaAssetUpload } from '../src/services/asset-ingest-service.js';
+import {
+  verifyStoryAgentVisualAssetPressureBatchCompositionReport,
+  type StoryAgentVisualAssetPressureCompositionVerification,
+} from '../src/services/story-agent-visual-asset-pressure-batch-registry-service.js';
 import {
   buildStoryAgentVisualAssetPressureReport,
   resolveStoryAgentVisualAssetPressureStyleFamilies,
@@ -81,6 +85,14 @@ function argumentValue(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+function webRelativePath(path: string, label: string): string {
+  const value = relative(webRoot, path).replaceAll('\\', '/');
+  if (!value || isAbsolute(value) || value === '..' || value.startsWith('../')) {
+    throw new Error(`${label} must stay beneath the web root`);
+  }
+  return value;
+}
+
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 }
@@ -103,6 +115,13 @@ const recoveryPath = resolve(
 );
 const styleMapArgument = argumentValue('--style-map');
 const styleMapPath = styleMapArgument ? resolve(webRoot, styleMapArgument) : undefined;
+const compositionReportArgument = argumentValue('--composition-report');
+const compositionReportPath = compositionReportArgument
+  ? resolve(webRoot, compositionReportArgument)
+  : undefined;
+const compositionReportRelativePath = compositionReportPath
+  ? webRelativePath(compositionReportPath, 'composition report path')
+  : undefined;
 const generatedRoot = process.env.WEB_GENERATED_ROOT
   ? resolve(process.env.WEB_GENERATED_ROOT)
   : resolve(webRoot, 'generated');
@@ -139,6 +158,41 @@ const resolvedStyleFamilies = resolveStoryAgentVisualAssetPressureStyleFamilies(
   seedIds,
   styleFamilies,
 );
+let compositionProvenance: StoryAgentVisualAssetPressureCompositionVerification = {
+  status: 'not_run',
+  batch_count: 0,
+  file_count: 0,
+  verified_file_count: 0,
+  blockers: [],
+};
+if (compositionReportPath) {
+  try {
+    const compositionReport = await readJson<unknown>(compositionReportPath);
+    compositionProvenance =
+      await verifyStoryAgentVisualAssetPressureBatchCompositionReport({
+        report: compositionReport,
+        report_relative_path: compositionReportRelativePath,
+        web_root: webRoot,
+        expected_outputs: {
+          manifest_path: webRelativePath(manifestPath, 'manifest path'),
+          binding_report_path: webRelativePath(bindingPath, 'binding report path'),
+          style_map_path: styleMapPath
+            ? webRelativePath(styleMapPath, 'style map path')
+            : '',
+          recovery_report_path: webRelativePath(recoveryPath, 'recovery report path'),
+        },
+      });
+  } catch (error) {
+    compositionProvenance = {
+      status: 'blocked',
+      report_relative_path: compositionReportRelativePath,
+      batch_count: 0,
+      file_count: 0,
+      verified_file_count: 0,
+      blockers: [`composition_report_unreadable:${(error as Error).message}`],
+    };
+  }
+}
 
 const cases: StoryAgentVisualAssetPressureCase[] = [];
 for (const seedId of seedIds) {
@@ -244,6 +298,7 @@ function scenario(
 
 const report = buildStoryAgentVisualAssetPressureReport({
   cases,
+  composition_provenance: compositionProvenance,
   scenario_results: [
     scenario('missing_file_rejected', missingFileRejected, [
       `probe:${manifestPath}.missing-probe`,

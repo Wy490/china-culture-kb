@@ -74,6 +74,18 @@ function passedScenarios(): StoryAgentVisualAssetPressureScenarioResult[] {
   }));
 }
 
+function verifiedComposition() {
+  return {
+    status: 'verified' as const,
+    report_relative_path: 'generated/combined/composition-report.json',
+    registry_content_sha256: sha256('registry'),
+    batch_count: 2,
+    file_count: 12,
+    verified_file_count: 12,
+    blockers: [],
+  };
+}
+
 describe('story-agent visual asset pressure service', () => {
   it('requires every visual case to have an explicit non-empty style family', () => {
     expect(resolveStoryAgentVisualAssetPressureStyleFamilies(
@@ -97,6 +109,7 @@ describe('story-agent visual asset pressure service', () => {
     const report = buildStoryAgentVisualAssetPressureReport({
       cases: [1, 2, 3, 4].map(pressureCase),
       scenario_results: passedScenarios(),
+      composition_provenance: verifiedComposition(),
       generated_at: '2026-07-25T13:00:00.000Z',
     });
 
@@ -140,6 +153,7 @@ describe('story-agent visual asset pressure service', () => {
     const report = buildStoryAgentVisualAssetPressureReport({
       cases,
       scenario_results: scenarios,
+      composition_provenance: verifiedComposition(),
       generated_at: '2026-07-25T13:05:00.000Z',
     });
 
@@ -150,5 +164,31 @@ describe('story-agent visual asset pressure service', () => {
     expect(report.blockers.join('\n')).toContain('prompt_pollution');
     expect(report.blockers.join('\n')).toContain('forbidden_visual_anchor');
     expect(report.blockers.join('\n')).toContain('failed_task_retry_recovered:not_run');
+  });
+
+  it('blocks a report when batch composition provenance is absent or stale', () => {
+    const withoutComposition = buildStoryAgentVisualAssetPressureReport({
+      cases: [1, 2, 3, 4].map(pressureCase),
+      scenario_results: passedScenarios(),
+      generated_at: '2026-07-26T03:10:00.000Z',
+    });
+    expect(withoutComposition.status).toBe('blocked');
+    expect(withoutComposition.blockers).toContain('batch_composition:not_run');
+
+    const staleComposition = buildStoryAgentVisualAssetPressureReport({
+      cases: [1, 2, 3, 4].map(pressureCase),
+      scenario_results: passedScenarios(),
+      composition_provenance: {
+        ...verifiedComposition(),
+        status: 'blocked',
+        verified_file_count: 11,
+        blockers: ['composition_sha256_mismatch:generated/batch/manifest.json'],
+      },
+      generated_at: '2026-07-26T03:11:00.000Z',
+    });
+    expect(staleComposition.status).toBe('blocked');
+    expect(staleComposition.blockers).toContain(
+      'batch_composition:composition_sha256_mismatch:generated/batch/manifest.json',
+    );
   });
 });

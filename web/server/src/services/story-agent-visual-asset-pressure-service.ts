@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { StoryAgentImageGenerationRequestTask } from '@shared/types.js';
+import type {
+  StoryAgentVisualAssetPressureCompositionVerification,
+} from './story-agent-visual-asset-pressure-batch-registry-service.js';
 
 const REQUIRED_SCENARIOS = [
   'missing_file_rejected',
@@ -90,6 +93,7 @@ export interface StoryAgentVisualAssetPressureReport {
     not_run_count: number;
   };
   scenario_results: StoryAgentVisualAssetPressureScenarioResult[];
+  composition_provenance: StoryAgentVisualAssetPressureCompositionVerification;
   cases: StoryAgentVisualAssetPressureCaseResult[];
   blockers: string[];
   warnings: string[];
@@ -179,6 +183,7 @@ function scenarioResults(
 export function buildStoryAgentVisualAssetPressureReport(input: {
   cases: StoryAgentVisualAssetPressureCase[];
   scenario_results: StoryAgentVisualAssetPressureScenarioResult[];
+  composition_provenance?: StoryAgentVisualAssetPressureCompositionVerification;
   generated_at?: string;
 }): StoryAgentVisualAssetPressureReport {
   const caseResults = input.cases.map(item => {
@@ -220,6 +225,13 @@ export function buildStoryAgentVisualAssetPressureReport(input: {
     0,
   );
   const uniqueContentHashCount = contentHashCases.size;
+  const compositionProvenance = input.composition_provenance ?? {
+    status: 'not_run' as const,
+    batch_count: 0,
+    file_count: 0,
+    verified_file_count: 0,
+    blockers: [],
+  };
   const coverage = {
     case_count: input.cases.length,
     unique_source_id_count: new Set(
@@ -281,6 +293,15 @@ export function buildStoryAgentVisualAssetPressureReport(input: {
     ...scenarios
       .filter(item => item.status === 'passed' && item.evidence_refs.length === 0)
       .map(item => `${item.scenario}:evidence_missing`),
+    ...(compositionProvenance.status === 'verified'
+      ? []
+      : compositionProvenance.blockers.length > 0
+        ? compositionProvenance.blockers.map(blocker => `batch_composition:${blocker}`)
+        : [`batch_composition:${compositionProvenance.status}`]),
+    ...(compositionProvenance.status === 'verified'
+      && compositionProvenance.verified_file_count !== compositionProvenance.file_count
+      ? ['batch_composition:verified_file_count_mismatch']
+      : []),
   ]);
   const warnings = unique([
     ...(totalAssetCount === uniqueContentHashCount
@@ -300,6 +321,7 @@ export function buildStoryAgentVisualAssetPressureReport(input: {
       not_run_count: scenarios.filter(item => item.status === 'not_run').length,
     },
     scenario_results: scenarios,
+    composition_provenance: compositionProvenance,
     cases: caseResults,
     blockers,
     warnings,

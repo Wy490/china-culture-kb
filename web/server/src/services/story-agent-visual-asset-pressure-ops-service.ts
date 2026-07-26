@@ -37,12 +37,23 @@ const ScenarioSummarySchema = z.object({
   not_run_count: z.number().int().nonnegative(),
 });
 
+const CompositionProvenanceSchema = z.object({
+  status: z.enum(['verified', 'blocked', 'not_run']),
+  report_relative_path: z.string().min(1).optional(),
+  registry_content_sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+  batch_count: z.number().int().nonnegative(),
+  file_count: z.number().int().nonnegative(),
+  verified_file_count: z.number().int().nonnegative(),
+  blockers: z.array(z.string()),
+});
+
 const DetailedReportSchema = z.object({
   schema_version: z.literal('story-agent-visual-asset-pressure-report/v1'),
   status: z.enum(['ready', 'blocked']),
   generated_at: z.string().datetime(),
   coverage: CoverageSchema,
   scenario_summary: ScenarioSummarySchema,
+  composition_provenance: CompositionProvenanceSchema,
   scenario_results: z.array(z.object({
     scenario: z.enum(REQUIRED_SCENARIOS),
     status: z.enum(['passed', 'failed', 'not_run']),
@@ -139,7 +150,13 @@ function reportIsInternallyReady(
     && report.scenario_summary.passed_count === report.scenario_summary.required_count
     && report.scenario_summary.failed_count === 0
     && report.scenario_summary.not_run_count === 0
-    && REQUIRED_SCENARIOS.every(scenario => passedScenarios.has(scenario));
+    && REQUIRED_SCENARIOS.every(scenario => passedScenarios.has(scenario))
+    && report.composition_provenance.status === 'verified'
+    && report.composition_provenance.batch_count >= 2
+    && report.composition_provenance.file_count > 0
+    && report.composition_provenance.verified_file_count
+      === report.composition_provenance.file_count
+    && report.composition_provenance.blockers.length === 0;
 }
 
 export function storyAgentVisualAssetPressureReportPath(

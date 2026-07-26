@@ -3297,6 +3297,15 @@ describe('System API', () => {
           failed_count: 0,
           not_run_count: 0,
         },
+        composition_provenance: {
+          status: 'verified',
+          report_relative_path: 'generated/combined/composition-report.json',
+          registry_content_sha256: 'a'.repeat(64),
+          batch_count: 2,
+          file_count: 12,
+          verified_file_count: 12,
+          blockers: [],
+        },
         scenario_results: [
           'missing_file_rejected',
           'invalid_image_rejected',
