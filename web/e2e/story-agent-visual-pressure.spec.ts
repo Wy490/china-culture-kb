@@ -10,6 +10,10 @@ type PressureStateFixture = {
   contentShaCount: number
   crossCaseReuseCount: number
   scenarioPassedCount: number
+  provenanceStatus: StoryAgentVisualAssetPressureOpsStatus['composition_provenance']['status']
+  batchCount: number
+  fileCount: number
+  verifiedFileCount: number
   blocker?: string
 }
 
@@ -22,6 +26,10 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     contentShaCount: 16,
     crossCaseReuseCount: 0,
     scenarioPassedCount: 6,
+    provenanceStatus: 'verified',
+    batchCount: 2,
+    fileCount: 12,
+    verifiedFileCount: 12,
   },
   {
     status: 'blocked',
@@ -31,6 +39,10 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     contentShaCount: 15,
     crossCaseReuseCount: 1,
     scenarioPassedCount: 5,
+    provenanceStatus: 'blocked',
+    batchCount: 2,
+    fileCount: 12,
+    verifiedFileCount: 11,
     blocker: 'cross_case_content_reuse_detected',
   },
   {
@@ -41,6 +53,10 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     contentShaCount: 0,
     crossCaseReuseCount: 0,
     scenarioPassedCount: 0,
+    provenanceStatus: 'not_run',
+    batchCount: 0,
+    fileCount: 0,
+    verifiedFileCount: 0,
     blocker: 'visual_asset_pressure_report_missing',
   },
 ]
@@ -76,6 +92,12 @@ function pressureStatus(fixture: PressureStateFixture): StoryAgentVisualAssetPre
       passed_count: fixture.scenarioPassedCount,
       failed_count: fixture.status === 'blocked' ? 1 : 0,
       not_run_count: fixture.status === 'not_run' ? 6 : 0,
+    },
+    composition_provenance: {
+      status: fixture.provenanceStatus,
+      batch_count: fixture.batchCount,
+      file_count: fixture.fileCount,
+      verified_file_count: fixture.verifiedFileCount,
     },
     blockers: fixture.blocker ? [fixture.blocker] : [],
     warnings: [],
@@ -179,6 +201,13 @@ for (const fixture of PRESSURE_STATES) {
       `${fixture.caseCount} 个题材 · ${fixture.styleCount} 种风格 · ${fixture.contentShaCount} 个唯一内容 SHA · 跨题材复用 ${fixture.crossCaseReuseCount}`,
     )
     await expect(card).toContainText(`恢复/拒绝场景 ${fixture.scenarioPassedCount}/6`)
+    await expect(card).toContainText(
+      `批次证据 ${fixture.provenanceStatus === 'verified'
+        ? '已验证'
+        : fixture.provenanceStatus === 'blocked'
+          ? '已阻断'
+          : '未运行'} · ${fixture.batchCount} 批 · 文件 ${fixture.verifiedFileCount}/${fixture.fileCount}`,
+    )
     await expect(card).toContainText('system/story-agent-visual-asset-pressure/report.json')
     await expect(card.locator(`.status--${fixture.status}`)).toHaveText(fixture.label)
     if (fixture.blocker) {

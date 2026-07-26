@@ -98,6 +98,12 @@ describe('Story Agent visual asset pressure ops status', () => {
         file_exists: false,
         schema_valid: false,
       },
+      composition_provenance: {
+        status: 'not_run',
+        batch_count: 0,
+        file_count: 0,
+        verified_file_count: 0,
+      },
       blockers: ['visual_asset_pressure_report_missing'],
       machine_validation_only: true,
       image_provider_invoked_by_server: false,
@@ -132,11 +138,20 @@ describe('Story Agent visual asset pressure ops status', () => {
         required_count: 6,
         passed_count: 6,
       },
+      composition_provenance: {
+        status: 'verified',
+        batch_count: 2,
+        file_count: 12,
+        verified_file_count: 12,
+      },
       blockers: [],
       warnings: ['within_case_composite_asset_reuse:18'],
     });
     expect(status).not.toHaveProperty('cases');
     expect(status).not.toHaveProperty('scenario_results');
+    expect(status.composition_provenance).not.toHaveProperty('report_relative_path');
+    expect(status.composition_provenance).not.toHaveProperty('registry_content_sha256');
+    expect(status.composition_provenance).not.toHaveProperty('blockers');
   });
 
   it('fails closed when the canonical report regresses to the legacy four-world baseline', async () => {
@@ -170,6 +185,12 @@ describe('Story Agent visual asset pressure ops status', () => {
 
     await expect(getStoryAgentVisualAssetPressureOpsStatus({ generatedRoot })).resolves.toMatchObject({
       status: 'blocked',
+      composition_provenance: {
+        status: 'blocked',
+        batch_count: 2,
+        file_count: 12,
+        verified_file_count: 11,
+      },
       blockers: ['visual_asset_pressure_report_inconsistent'],
     });
   });
@@ -185,6 +206,12 @@ describe('Story Agent visual asset pressure ops status', () => {
       report: {
         file_exists: true,
         schema_valid: false,
+      },
+      composition_provenance: {
+        status: 'blocked',
+        batch_count: 0,
+        file_count: 0,
+        verified_file_count: 0,
       },
       blockers: ['visual_asset_pressure_report_invalid'],
     });

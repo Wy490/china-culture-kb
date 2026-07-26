@@ -7887,6 +7887,12 @@ export interface StoryAgentVisualAssetPressureOpsStatus {
     failed_count: number;
     not_run_count: number;
   };
+  composition_provenance: {
+    status: 'verified' | 'blocked' | 'not_run';
+    batch_count: number;
+    file_count: number;
+    verified_file_count: number;
+  };
   blockers: string[];
   warnings: string[];
   machine_validation_only: true;

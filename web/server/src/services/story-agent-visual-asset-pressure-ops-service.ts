@@ -112,6 +112,12 @@ function baseStatus(
     },
     coverage: { ...EMPTY_COVERAGE },
     scenario_summary: { ...EMPTY_SCENARIOS },
+    composition_provenance: {
+      status: status === 'not_run' ? 'not_run' : 'blocked',
+      batch_count: 0,
+      file_count: 0,
+      verified_file_count: 0,
+    },
     blockers,
     warnings: [],
     machine_validation_only: true,
@@ -209,6 +215,12 @@ export async function getStoryAgentVisualAssetPressureOpsStatus(
     },
     coverage: report.coverage,
     scenario_summary: report.scenario_summary,
+    composition_provenance: {
+      status: report.composition_provenance.status,
+      batch_count: report.composition_provenance.batch_count,
+      file_count: report.composition_provenance.file_count,
+      verified_file_count: report.composition_provenance.verified_file_count,
+    },
     blockers: [
       ...report.blockers,
       ...(!internallyReady && report.blockers.length === 0

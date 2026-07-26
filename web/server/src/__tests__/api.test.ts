@@ -3357,6 +3357,12 @@ describe('System API', () => {
             failed_count: 0,
             not_run_count: 0,
           },
+          composition_provenance: {
+            status: 'verified',
+            batch_count: 2,
+            file_count: 12,
+            verified_file_count: 12,
+          },
           machine_validation_only: true,
           image_provider_invoked_by_server: false,
           video_generation_performed: false,

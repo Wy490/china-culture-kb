@@ -36,6 +36,12 @@
           {{ visualAssetPressure.scenario_summary.passed_count }}/{{ visualAssetPressure.scenario_summary.required_count }}
           · 详细证据 {{ visualAssetPressure.report.relative_path }}
         </small>
+        <small>
+          批次证据
+          {{ pressureProvenanceStatusLabel(visualAssetPressure.composition_provenance.status) }}
+          · {{ visualAssetPressure.composition_provenance.batch_count }} 批
+          · 文件 {{ visualAssetPressure.composition_provenance.verified_file_count }}/{{ visualAssetPressure.composition_provenance.file_count }}
+        </small>
         <ul v-if="visualAssetPressure.blockers.length">
           <li v-for="blocker in visualAssetPressure.blockers" :key="blocker">{{ blocker }}</li>
         </ul>
@@ -373,6 +379,16 @@ function pressureStatusLabel(
 ): string {
   return {
     ready: '已通过',
+    blocked: '已阻断',
+    not_run: '未运行',
+  }[status]
+}
+
+function pressureProvenanceStatusLabel(
+  status: StoryAgentVisualAssetPressureOpsStatus['composition_provenance']['status'],
+): string {
+  return {
+    verified: '已验证',
     blocked: '已阻断',
     not_run: '未运行',
   }[status]
