@@ -665,7 +665,9 @@ export type ReferenceAnalysisTaskStatus =
   | 'completed';
 
 export interface ReferenceAnalysisTaskRecord {
-  schema_version: 'reference-analysis-task/v1';
+  schema_version:
+    | 'reference-analysis-task/v1'
+    | 'reference-analysis-task/v2';
   task_id: string;
   reference_id: string;
   source_snapshot: {
@@ -686,14 +688,24 @@ export interface ReferenceAnalysisTaskRecord {
   status: ReferenceAnalysisTaskStatus;
   manifest: {
     executor: 'codex_or_operator';
-    source_material_transport: 'out_of_band_user_authorized';
     server_download_allowed: false;
     input_provenance: 'operator_submitted';
     output_schema: 'reference-similarity-evidence/v1';
     output_submission_endpoint: string;
     prompt_injection_allowed: false;
     knowledge_writeback_allowed: false;
-  };
+  } & (
+    | {
+        source_material_transport: 'out_of_band_user_authorized';
+        source_material_id?: never;
+        source_material_manifest_endpoint?: never;
+      }
+    | {
+        source_material_transport: 'stored_user_supplied';
+        source_material_id: string;
+        source_material_manifest_endpoint: string;
+      }
+  );
   submission_key_sha256: string | null;
   observations_sha256: string | null;
   evidence_id: string | null;

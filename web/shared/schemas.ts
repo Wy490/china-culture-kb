@@ -382,7 +382,10 @@ export const ReferenceAnalysisTaskSubmissionSchema = z.object({
 }).strict();
 
 export const ReferenceAnalysisTaskRecordSchema = z.object({
-  schema_version: z.literal('reference-analysis-task/v1'),
+  schema_version: z.enum([
+    'reference-analysis-task/v1',
+    'reference-analysis-task/v2',
+  ]),
   task_id: z.string().regex(/^reference-analysis-task-[a-f0-9-]+$/),
   reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
   source_snapshot: z.object({
@@ -399,7 +402,15 @@ export const ReferenceAnalysisTaskRecordSchema = z.object({
   status: z.enum(['pending', 'processing', 'completed']),
   manifest: z.object({
     executor: z.literal('codex_or_operator'),
-    source_material_transport: z.literal('out_of_band_user_authorized'),
+    source_material_transport: z.enum([
+      'out_of_band_user_authorized',
+      'stored_user_supplied',
+    ]),
+    source_material_id:
+      ReferenceTextMaterialRecordSchema.shape.material_id.optional(),
+    source_material_manifest_endpoint: z.string().regex(
+      /^\/api\/reference-library\/references\/reference-[a-f0-9-]+\/text-material\/manifest$/,
+    ).optional(),
     server_download_allowed: z.literal(false),
     input_provenance: z.literal('operator_submitted'),
     output_schema: z.literal('reference-similarity-evidence/v1'),
@@ -419,6 +430,33 @@ export const ReferenceAnalysisTaskRecordSchema = z.object({
   human_review_complete: z.literal(false),
   real_credit_granted: z.literal(false),
 }).strict().superRefine((record, context) => {
+  const storedMaterial =
+    record.manifest.source_material_transport === 'stored_user_supplied';
+  const hasStoredMaterialFields = Boolean(
+    record.manifest.source_material_id
+    && record.manifest.source_material_manifest_endpoint,
+  );
+  if (
+    (storedMaterial && !hasStoredMaterialFields)
+    || (!storedMaterial && (
+      record.manifest.source_material_id !== undefined
+      || record.manifest.source_material_manifest_endpoint !== undefined
+    ))
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'analysis task source material manifest is inconsistent',
+    });
+  }
+  if (
+    record.schema_version === 'reference-analysis-task/v1'
+    && storedMaterial
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'v1 analysis task cannot declare stored source material',
+    });
+  }
   const hasSubmissionHashes = Boolean(
     record.submission_key_sha256 && record.observations_sha256,
   );

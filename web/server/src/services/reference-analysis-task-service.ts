@@ -17,6 +17,9 @@ import {
   getReferenceSimilarityEvidence,
   getReferenceSource,
 } from './reference-library-service.js';
+import {
+  getReferenceTextMaterialManifest,
+} from './reference-text-material-service.js';
 
 const TASK_ID_PATTERN = /^reference-analysis-task-[a-f0-9-]+$/;
 
@@ -98,11 +101,29 @@ export async function createReferenceAnalysisTask(input: {
       'Task authorization basis must match the reference source rights status',
     );
   }
+  let sourceMaterialManifest: Awaited<
+    ReturnType<typeof getReferenceTextMaterialManifest>
+  > | undefined;
+  if (source.media_type === 'novel' || source.media_type === 'screenplay') {
+    try {
+      sourceMaterialManifest = await getReferenceTextMaterialManifest({
+        repoRoot: input.repoRoot,
+        referenceId: source.reference_id,
+      });
+    } catch (error) {
+      if (
+        (error as { code?: string }).code
+        !== 'REFERENCE_TEXT_MATERIAL_NOT_FOUND'
+      ) {
+        throw error;
+      }
+    }
+  }
 
   const taskId = `reference-analysis-task-${randomUUID()}`;
   const now = input.now ?? new Date().toISOString();
   const record = ReferenceAnalysisTaskRecordSchema.parse({
-    schema_version: 'reference-analysis-task/v1',
+    schema_version: 'reference-analysis-task/v2',
     task_id: taskId,
     reference_id: source.reference_id,
     source_snapshot: {
@@ -120,7 +141,18 @@ export async function createReferenceAnalysisTask(input: {
     status: 'pending',
     manifest: {
       executor: 'codex_or_operator',
-      source_material_transport: 'out_of_band_user_authorized',
+      ...(sourceMaterialManifest
+        ? {
+            source_material_transport: 'stored_user_supplied' as const,
+            source_material_id: sourceMaterialManifest.material_id,
+            source_material_manifest_endpoint:
+              `/api/reference-library/references/${source.reference_id}`
+              + '/text-material/manifest',
+          }
+        : {
+            source_material_transport:
+              'out_of_band_user_authorized' as const,
+          }),
       server_download_allowed: false,
       input_provenance: 'operator_submitted',
       output_schema: 'reference-similarity-evidence/v1',

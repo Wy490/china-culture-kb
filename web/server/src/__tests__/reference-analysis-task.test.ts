@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
@@ -7,9 +8,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createJsonBodyParser } from '../middleware/json-body.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { createReferenceLibraryRouter } from '../routes/reference-library.js';
+import { ReferenceAnalysisTaskRecordSchema } from '@shared/schemas.js';
 
 const temporaryRoots: string[] = [];
 const sourceFingerprint = 'e'.repeat(64);
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
 
 async function createRequest() {
   const repoRoot = await mkdtemp(path.join(
@@ -120,7 +126,7 @@ describe('reference analysis task manifest', () => {
 
     expect(created.status).toBe(201);
     expect(created.body.data).toMatchObject({
-      schema_version: 'reference-analysis-task/v1',
+      schema_version: 'reference-analysis-task/v2',
       reference_id: source.body.data.reference_id,
       source_snapshot: {
         title: '用户授权分析的剧本',
@@ -142,6 +148,9 @@ describe('reference analysis task manifest', () => {
       real_credit_granted: false,
     });
     expect(JSON.stringify(created.body.data)).not.toContain('source_body');
+    expect(created.body.data.manifest).not.toHaveProperty(
+      'source_material_manifest_endpoint',
+    );
     const listed = await request.get(
       `/api/reference-library/references/${source.body.data.reference_id}/analysis-tasks`,
     );
@@ -211,6 +220,99 @@ describe('reference analysis task manifest', () => {
     expect(JSON.stringify(fetched.body.data)).not.toContain(
       observations().excerpts[0].text,
     );
+  });
+
+  it('discovers a sealed text material manifest without embedding source text', async () => {
+    const request = await createRequest();
+    const content = [
+      '# 第一场',
+      '守门人想保住账本，来客用旧信迫使他作出选择。',
+      '守门人最终把钥匙放到桌上，冲突转为公开承担。',
+    ].join('\n');
+    const fingerprint = sha256(content);
+    const source = await request.post('/api/reference-library/references').send({
+      title: '已封存的用户剧本',
+      media_type: 'screenplay',
+      accessed_at: '2026-07-27T11:00:00.000Z',
+      rights_status: 'user_owned',
+      access_scope: 'full_user_supplied',
+      content_fingerprint: fingerprint,
+      user_reason: '让分析任务从 exact-byte chunk manifest 读取',
+    });
+    const uploaded = await request
+      .post(`/api/reference-library/references/${source.body.data.reference_id}/text-material`)
+      .send({
+        content,
+        content_type: 'text/markdown',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'user-task-attestation-20260727',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-27T11:01:00.000Z',
+          confirmation: 'authorized_reference_text_ingest',
+        },
+      });
+    expect(uploaded.status).toBe(201);
+
+    const created = await request
+      .post(`/api/reference-library/references/${source.body.data.reference_id}/analysis-tasks`)
+      .send({
+        requested_dimensions: ['excerpt', 'plot_structure'],
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'user-task-attestation-20260727',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-27T11:01:00.000Z',
+          confirmation: 'authorized_similarity_analysis_only',
+        },
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.data).toMatchObject({
+      schema_version: 'reference-analysis-task/v2',
+      source_snapshot: {
+        content_fingerprint: fingerprint,
+      },
+      manifest: {
+        source_material_transport: 'stored_user_supplied',
+        source_material_id: uploaded.body.data.material.material_id,
+        source_material_manifest_endpoint:
+          `/api/reference-library/references/${source.body.data.reference_id}`
+          + '/text-material/manifest',
+        server_download_allowed: false,
+        prompt_injection_allowed: false,
+        knowledge_writeback_allowed: false,
+      },
+    });
+    expect(JSON.stringify(created.body.data)).not.toContain('守门人想保住账本');
+
+    const fetchedManifest = await request.get(
+      created.body.data.manifest.source_material_manifest_endpoint,
+    );
+    expect(fetchedManifest.status).toBe(200);
+    expect(fetchedManifest.body.data).toMatchObject({
+      material_id: uploaded.body.data.material.material_id,
+      source_content_fingerprint: fingerprint,
+      content_included: false,
+      chunk_count: 1,
+    });
+  });
+
+  it('keeps legacy v1 out-of-band task records readable', async () => {
+    const request = await createRequest();
+    const source = await createOwnedSource(request);
+    const created = await request
+      .post(`/api/reference-library/references/${source.body.data.reference_id}/analysis-tasks`)
+      .send(taskRequest());
+    const legacy = {
+      ...created.body.data,
+      schema_version: 'reference-analysis-task/v1',
+    };
+    expect(ReferenceAnalysisTaskRecordSchema.parse(legacy)).toMatchObject({
+      schema_version: 'reference-analysis-task/v1',
+      manifest: {
+        source_material_transport: 'out_of_band_user_authorized',
+      },
+    });
   });
 
   it('rejects unauthorized task sources and incomplete requested dimensions', async () => {
