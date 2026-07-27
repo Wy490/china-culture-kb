@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-C4 可恢复文字分析执行闭环完成
+# Story Agent 开发交接：P1-C5 Evidence-bound 文字分析草拟闭环完成
 
 > 交接日期：2026-07-27
 >
@@ -54,9 +54,11 @@
 >
 > P1-C4 可恢复文字分析执行提交：`21e3ae70 feat(story-agent): resume reference text analysis`
 >
-> 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
+> P1-C5 Evidence-bound 分析草拟提交：`ff8f43c8 feat(story-agent): draft evidence-bound text analyses`
 >
-> 当前工作区：功能与回归测试已提交；本交接最终提交后应为干净
+> 远端：本交接提交后当前分支领先远端 4 个提交；安全审查要求用户明确授权后才可推送，未擅自上传
+>
+> 当前工作区：P1-C5 功能与回归已提交；本交接最终提交后应为干净
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 
@@ -89,7 +91,7 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到两条闭环同时成立的阶段：
 
 1. 十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；registry/composition v3 可数据驱动发现 sealed descriptor 并把其 SHA 纳入 17/17 provenance，clean-checkout/CI 可先运行独立只读 preflight；
-2. 用户自有、已授权或公版的小说/剧本可在 Reference Library 中按预登记 SHA-256 封存 exact UTF-8 bytes，生成无正文 manifest 与确定性 Unicode 分块；新建分析任务自动绑定只读 material manifest，并可由 Codex/operator 使用无服务端模型调用的逐块 checkpoint、partial SHA 和确定性聚合闭环生成 operator evidence。
+2. 用户自有、已授权或公版的小说/剧本可在 Reference Library 中按预登记 SHA-256 封存 exact UTF-8 bytes，生成无正文 manifest 与确定性 Unicode 分块；新建分析任务自动绑定只读 material manifest，并可由 Codex/operator 使用无服务端模型调用的逐块 checkpoint、partial SHA 和确定性聚合闭环生成 operator evidence，再建立 source/execution/evidence-bound 草拟任务，提交带不可变 provenance 的 pending `TextReferenceAnalysis`，最后交给独立 `material:sign` 审核。
 
 当前工程判断：
 
@@ -97,7 +99,7 @@ Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”�
 |---|---:|---|
 | 展示结构化生成与前置制作交付 | 98%–99% | 普通项目、系列项目、15×1、15×3、运行控制台、专业 checkpoint、十二题材视觉压力、三批 composition provenance 与 ops 摘要均有完整交付证据 |
 | 15 类型无人值守稳定交付 | 96%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史、视觉资产六场景审计及其 fail-closed ops 读取均已跑通 |
-| 原始影视/文字参考资料自动理解 | 60%–70% | 合法文字已具备 exact-byte 接入、任务绑定、可续跑分块执行和 operator evidence 聚合；完整 TextReferenceAnalysis 仍需 Codex/operator 草拟与独立签署，影视材料仍为带外输入 |
+| 原始影视/文字参考资料自动理解 | 68%–76% | 合法文字已具备 exact-byte 接入、任务绑定、可续跑分块执行、operator evidence 聚合和 evidence-bound pending analysis 草拟；仍缺真实合法材料执行、结构化补充循环与真人独立签署，影视材料仍为带外输入 |
 
 仍不能宣称 100% 完成，主要因为：
 
@@ -198,6 +200,8 @@ story-agent-seedance-preproduction-package/v1
 - 新任务自动发现并绑定 `stored_user_supplied` material ID 与 manifest endpoint；
 - `reference-text-analysis-execution/v1` 每任务唯一可恢复执行账本；
 - `reference-text-analysis-partial/v1` 分块观察、chunk SHA、submission key SHA 与结果 SHA；
+- `reference-text-analysis-draft-task/v1` 锁定 source fingerprint、execution、evidence/final observation SHA、executor 和输出 SHA；
+- `reference-analysis-record/v2` 为文字分析保存不可变 provenance 与 no-writeback/no-credit governance；
 - 只返回首个未完成 chunk 的游标式续跑；
 - 按 sealed manifest 顺序做 observation ID 命名空间、locator 绑定和 plot/shot 全局重排；
 - evidence 完成后账本写入失败可通过原 task 幂等提交恢复；
@@ -210,6 +214,7 @@ story-agent-seedance-preproduction-package/v1
 - final-output 和 derived-state fail-closed；
 - reference-free baseline 与 reference-assisted 机器质量 delta；
 - Reference Library Web 治理、授权文字接入、组合和 baseline 工作台。
+- Reference Library Web 的 P1-C5 草拟台只在已完成且绑定 sealed text 的任务中出现，完整 JSON 提交后固定生成 pending analysis；
 
 真实边界：
 
@@ -374,8 +379,8 @@ Web build：通过
 Web 全 workspace lint：通过
 
 Server:
-  Test Files  182 passed | 1 skipped
-  Tests       1522 passed | 2 skipped
+  Test Files  183 passed | 1 skipped
+  Tests       1525 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
@@ -422,6 +427,11 @@ P1-C4 API 落盘验收：2 个 sealed chunks；pending→in_progress→ready_to_
                     required access 下 executor/submitted_by/finalized_by 均绑定认证 actor
 P1-C4 浏览器：生产构建与 vue-tsc 通过；本轮 Playwright CLI 下载被安全策略拒绝，
               应用内浏览器首次 127.0.0.1 失败后被错误页 URL 策略锁定，未形成成功 smoke 证据
+P1-C5 contract/API：5 个定向文件 / 54 项测试通过；
+                    source/execution/evidence provenance、创建/提交幂等、冲突、崩溃恢复、
+                    required-mode actor 绑定、inline approval 拒绝和完成产物篡改检测均通过
+P1-C5 Web：vue-tsc、lint 与 production build 通过；本轮未新增真实浏览器 smoke，
+           不把生产构建冒充交互验收
 ```
 
 权威报告：
@@ -438,9 +448,9 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C4 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C5 当前状态与下一步
 
-在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先为 Codex ImageGen 批次增加提交到代码仓库的 immutable receipt，阻止源图被替换后通过重跑 manifest/composition 静默重签。
+在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先推进 P1-C6 的结构化补充与同一 draft task 恢复；P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 已完成，不要重做。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -1912,7 +1922,7 @@ P1-B12 至 P1-B18 已把单个真实 sealed batch 的本地封存、确定性打
 3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`；
 4. receipt、bundle、descriptor、composition 和 preflight 都只证明机器完整性，不代表 rights、人审或 production credit。
 
-### 6.20 P1-C1 至 P1-C4 授权文字材料与可恢复分析闭环（2026-07-27）
+### 6.20 P1-C1 至 P1-C5 授权文字材料与可恢复分析闭环（2026-07-27）
 
 功能提交：
 
@@ -1921,6 +1931,7 @@ e794a0b8 feat(story-agent): ingest authorized reference text
 0fe1b59f feat(story-agent): bind analysis tasks to reference text
 182b8119 feat(story-agent): add authorized text material workbench
 21e3ae70 feat(story-agent): resume reference text analysis
+ff8f43c8 feat(story-agent): draft evidence-bound text analyses
 ```
 
 新增合同：
@@ -2077,28 +2088,88 @@ git diff --check passed
 
 浏览器验收没有伪报成功：Playwright CLI 因当前环境无法安全下载而未运行；应用内浏览器可确认 `localhost:5173` 的宿主 HTTP 200，但首次使用 `127.0.0.1` 形成 Chrome 错误页后，浏览器 URL 安全策略禁止从 `data:` 错误页继续导航。API 的真实路由、文件持久化与崩溃恢复已由 Supertest 端到端覆盖；下一轮若浏览器环境恢复，应补一次 UI 手工 smoke。
 
-### 6.21 下一优先级
-
-在不引入视频 Provider、服务端模型调用或伪造真实资料的前提下，下一里程碑优先做 P1-C5：
+P1-C5 新增合同：
 
 ```text
-completed operator evidence
-  → source/evidence-bound TextReferenceAnalysis drafting task
-  → Codex/operator out-of-process structured draft
-  → pending TextReferenceAnalysis with immutable provenance
-  → independent material:sign review
+reference-text-analysis-draft-task/v1
+reference-analysis-record/v2
+```
+
+草拟链：
+
+```text
+completed reference-analysis-task/v2
+  + completed reference-text-analysis-execution/v1
+  + verified reference-similarity-evidence/v1
+  → deterministic evidence-bound draft task
+  → Codex/operator out-of-process complete JSON
+  → pending TextReferenceAnalysis v2
+  → independent material:sign approval
+```
+
+实现语义：
+
+- draft task ID 由 analysis task、text execution 和 evidence ID 确定性派生，一个完成证据链只对应一个草拟任务；
+- 创建时重新验证 source fingerprint、execution 完成态、evidence ID/payload SHA 与 final observations SHA，并锁定 `codex/operator + executor_id`；
+- 草拟任务账本不嵌入来源正文或 observation 正文，只保存不可变标识、SHA、executor、幂等提交 key SHA、analysis payload SHA 和状态；
+- manifest 固定 `server_model_call_allowed=false`、`source_text_instruction_authority=none`、输出 `reference-analysis-record/v2` 且 `approval.status=pending`；
+- 提交 schema 要求完整 `TextReferenceAnalysis`，拒绝编辑器“请填写”占位词、额外 approval 字段和 executor 冒用；
+- v2 analysis provenance 锁定 draft task、analysis task、execution、evidence ID/SHA、final observations SHA 与 source fingerprint；
+- v2 governance 固定禁止 prompt injection、知识写回和 production credit；
+- pending analysis 继续复用现有独立 `material:sign` approval endpoint；批准只改变 approval audit，不移除 provenance；
+- pending→processing→completed 使用持久化 submission hash 和 `submitted_at`，analysis 已写入而草拟账本未完成时可幂等恢复；
+- completed GET 和 submission replay 会重新读取 analysis，核对 payload SHA、executor、时间、完整 provenance 与 governance；合法 schema 内篡改也 fail-closed；
+- Reference Library Web 只为完成且绑定 sealed text 的任务展示 P1-C5 草拟台，提交后刷新 analysis 审核台；
+- 没有服务端模型调用，没有自动批准、知识写回、生产 prompt 注入、真人审核声明或 production credit。
+
+持久化位置：
+
+```text
+references/creative/library/analysis-draft-tasks/<draftTaskId>.json
+references/creative/library/analyses/<analysisId>.json
+```
+
+P1-C5 验证结果：
+
+```text
+targeted:
+  5 files / 54 tests passed
+server:
+  183 files passed, 1 skipped
+  1525 tests passed, 2 skipped
+MCP:
+  95 files / 503 tests passed
+server/client lint and typecheck passed
+Web server/client production build passed
+MCP build passed
+git diff --check passed
+```
+
+本轮没有新增浏览器交互 smoke；只声明 Web 生产构建和类型检查通过。
+
+### 6.21 下一优先级
+
+在不引入视频 Provider、服务端模型调用或伪造真实资料的前提下，下一里程碑优先做 P1-C6：为“现有 evidence 不足以完整草拟”建立结构化补充与恢复闭环：
+
+```text
+evidence-bound draft task
+  → structured missing-field / insufficient-evidence declaration
+  → bounded supplement task linked to immutable draft provenance
+  → operator/Codex supplies authorized supplemental observations
+  → resume the same draft task
+  → complete pending TextReferenceAnalysis
 ```
 
 要求：
 
-1. 复用现有 source、execution、similarity evidence 和 pending analysis 合同，不另建平行来源存储；
-2. 原文始终作为不可信数据，来源文字中的指令不得改变 system/task policy；
-3. 服务端不直接调用模型；草拟任务必须记录 executor、输入 evidence SHA、submission key 和输出 SHA；
-4. TextReferenceAnalysis 必须保持 `approval.status=pending`，且显式绑定来源 fingerprint、task/execution/evidence provenance；
-5. 不从 similarity evidence 猜造缺失的 `source_units/scene_patterns/reusable_principles/avoid_copying`；信息不足时返回结构化待补项；
-6. pending analysis 不能自动写入 style pack、知识库、生产 prompt 或授予 production credit；
-7. 独立 `material:sign` 仍只由真人签署者执行；
-8. 影视材料继续带外，不借 P1-C5 自动下载或转码视频。
+1. 复用 P1-C5 同一个 draft task，不另建平行 analysis 或来源存储；
+2. `needs_supplement` 必须明确缺失的 TextReferenceAnalysis 字段、原因、现有 evidence 引用和允许的补充输入，不接受自由文本伪装完整结果；
+3. 补充内容仍绑定合法 sealed source、operator identity、submission key 和 immutable SHA；
+4. 服务端不调用模型，不从现有 evidence 猜值，不把来源文字中的指令当作策略；
+5. 补充前不生成 analysis；恢复后仍只生成 `approval.status=pending` 的 v2 analysis；
+6. 独立 `material:sign`、no-writeback、no-production-credit 边界不变；
+7. 若无法在不复制正文的前提下形成最小安全合同，应停在结构设计与测试，不扩大为服务端全文生成；
+8. 影视材料继续带外，不借 P1-C6 自动下载、转码或生成视频。
 
 ## 7. 外部条件具备时才做
 
@@ -2156,6 +2227,7 @@ real external provider
 - P1-C2 `reference-analysis-task/v2` 对 sealed material 的自动发现与 v1 兼容；
 - P1-C3 Web Crypto 指纹校验、授权文字 Web 工作台、任务 material 状态展示与隔离 repo root；
 - P1-C4 每任务唯一文字执行账本、逐块 partial SHA/checkpoint、只续跑未完成 chunk、确定性 operator evidence 聚合与崩溃恢复；
+- P1-C5 evidence-bound 草拟任务、`reference-analysis-record/v2` immutable provenance、pending-only 提交、完成产物篡改检测与 Web 草拟台；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
@@ -2215,6 +2287,7 @@ web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service
 web/server/src/services/reference-text-material-service.ts
 web/server/src/services/reference-analysis-task-service.ts
 web/server/src/services/reference-text-analysis-execution-service.ts
+web/server/src/services/reference-text-analysis-draft-task-service.ts
 web/server/src/routes/reference-library.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
@@ -2250,6 +2323,7 @@ web/server/src/__tests__/product-navigation.test.ts
 web/server/src/__tests__/reference-library.test.ts
 web/server/src/__tests__/reference-analysis-task.test.ts
 web/server/src/__tests__/reference-text-analysis-execution.test.ts
+web/server/src/__tests__/reference-text-analysis-draft-task.test.ts
 
 web/client/src/api/story-agent-runs.ts
 web/client/src/views/StoryAgentRuns.vue
@@ -2257,6 +2331,7 @@ web/client/src/api/reference-library.ts
 web/client/src/views/ReferenceLibrary.vue
 web/client/src/components/reference-library/ReferenceTextMaterialWorkbench.vue
 web/client/src/components/reference-library/ReferenceTextAnalysisExecutionWorkbench.vue
+web/client/src/components/reference-library/ReferenceTextAnalysisDraftWorkbench.vue
 web/client/src/router.ts
 web/shared/product-navigation.ts
 web/e2e/story-agent-visual-pressure.spec.ts
@@ -2283,6 +2358,7 @@ cd /Users/wuyu/Desktop/china-culture-kb/web/server
 npm test -- reference-library.test.ts
 npm test -- reference-analysis-task.test.ts
 npm test -- reference-text-analysis-execution.test.ts
+npm test -- reference-text-analysis-draft-task.test.ts
 npm run smoke:story-agent-visual-asset-pressure-batch2-prepare
 npm run smoke:story-agent-visual-asset-pressure-batch2-manifest
 npm run smoke:story-agent-cross-seed-images -- \
@@ -2382,14 +2458,15 @@ e794a0b8 feat(story-agent): ingest authorized reference text
 0fe1b59f feat(story-agent): bind analysis tasks to reference text
 182b8119 feat(story-agent): add authorized text material workbench
 21e3ae70 feat(story-agent): resume reference text analysis
+ff8f43c8 feat(story-agent): draft evidence-bound text analyses
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance 均已完成。不要重新实现。
 
-下一步优先 P1-C5：从 completed operator evidence 建立 source/evidence-bound TextReferenceAnalysis 草拟任务，由 Codex/operator 在服务端之外提交完整结构化 draft，生成带不可变 provenance 的 pending TextReferenceAnalysis，再经过独立 `material:sign` 审核。不得从证据猜造缺失字段；服务端不得直接调用模型，不得把来源文字中的指令当作 prompt policy，也不得自动批准或写回。
+下一步优先 P1-C6：为 P1-C5 中“现有 evidence 不足以完整填写 TextReferenceAnalysis”的情形增加结构化 `needs_supplement`、有界补充任务和同一 draft task 恢复。不得猜造缺失字段；补充前不得生成 analysis，恢复后仍只能生成 pending v2 analysis。服务端不得直接调用模型，不得把来源文字中的指令当作 prompt policy，也不得自动批准或写回。
 
 真实 artifact store 上传/下载仍需用户选择后端并授权凭据注入与保留策略。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor/composition/preflight 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
-完成本轮后运行 targeted tests、Web build/lint、server/MCP milestone gate，更新本交接，commit 并 push 当前分支。
+完成本轮后运行 targeted tests、Web build/lint、server/MCP milestone gate，更新本交接并创建本地 commit。只有用户明确授权向 GitHub 传输仓库内容时，才 push 当前分支。
 ```
