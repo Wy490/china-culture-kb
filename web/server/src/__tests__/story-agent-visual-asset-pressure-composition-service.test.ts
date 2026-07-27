@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
@@ -14,7 +15,21 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })));
 });
 
-async function fixture() {
+function sha256(value: Uint8Array | string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function pngHeader(width: number, height: number): Buffer {
+  const bytes = Buffer.alloc(24);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes, 0);
+  bytes.writeUInt32BE(13, 8);
+  bytes.write('IHDR', 12, 'ascii');
+  bytes.writeUInt32BE(width, 16);
+  bytes.writeUInt32BE(height, 20);
+  return bytes;
+}
+
+async function fixture(sealed = false) {
   const webRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-visual-composition-'));
   roots.push(webRoot);
   const paths = {
@@ -23,17 +38,24 @@ async function fixture() {
     batchManifest: 'generated/batch/manifest.json',
     batchBinding: 'generated/batch/binding-report.json',
     batchStyle: 'generated/batch/style-map.json',
+    batchReceipt: 'server/scripts/batch-receipt.json',
+    batchPrompt: 'generated/batch/prompts/world-1-character.txt',
+    batchSource: 'generated/batch/sources/world-1-character.png',
     outputManifest: 'generated/combined/manifest.json',
     outputBinding: 'generated/combined/binding-report.json',
     outputStyle: 'generated/combined/style-map.json',
     outputRecovery: 'generated/combined/image-recovery-report.json',
   };
+  const batchPrompt = 'sealed exact prompt';
+  const batchSource = pngHeader(1024, 1536);
   const values = {
     registry: {
-      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v1',
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
       recovery_report_path: paths.recovery,
       batches: [{
         batch_id: 'batch-1',
+        receipt_status: sealed ? 'sealed' : 'legacy_unsealed',
+        ...(sealed ? { receipt_path: paths.batchReceipt } : {}),
         manifest_path: paths.batchManifest,
         binding_report_path: paths.batchBinding,
         style_map_path: paths.batchStyle,
@@ -44,7 +66,15 @@ async function fixture() {
       schema_version: 'story-agent-cross-seed-image-asset-manifest/v1',
       provider: 'openai_imagegen',
       model: 'gpt-image-2',
-      assets: [{ seed_id: 'world-1' }],
+      assets: [{
+        seed_id: 'world-1',
+        kind: 'character',
+        provider_asset_id: 'imagegen-built-in-call_sealed',
+        prompt_path: paths.batchPrompt,
+        prompt_sha256: sha256(batchPrompt),
+        source_path: paths.batchSource,
+        content_sha256: sha256(batchSource),
+      }],
     },
     batchBinding: {
       schema_version: 'story-agent-cross-seed-image-asset-binding-report/v1',
@@ -55,17 +85,44 @@ async function fixture() {
       schema_version: 'story-agent-visual-asset-pressure-style-map/v1',
       style_families: { 'world-1': 'world-1-style' },
     },
+    batchReceipt: {
+      schema_version: 'story-agent-visual-asset-pressure-batch-receipt/v1',
+      batch_id: 'batch-1',
+      generated_at: '2026-07-26T03:00:00.000Z',
+      provider: 'openai_imagegen',
+      model: 'gpt-image-2',
+      assets: [{
+        seed_id: 'world-1',
+        role: 'character',
+        provider_asset_id: 'imagegen-built-in-call_sealed',
+        prompt_path: paths.batchPrompt,
+        prompt_sha256: sha256(batchPrompt),
+        source_path: paths.batchSource,
+        content_sha256: sha256(batchSource),
+        mime_type: 'image/png',
+        width: 1024,
+        height: 1536,
+      }],
+      machine_validation_only: true,
+      image_provider_invoked_by_server: false,
+      video_generation_performed: false,
+      production_credit_granted: false,
+    },
+    batchPrompt,
+    batchSource,
     outputManifest: { schema_version: 'story-agent-cross-seed-image-asset-manifest/v1' },
     outputBinding: { schema_version: 'story-agent-cross-seed-image-asset-binding-report/v1' },
     outputStyle: { schema_version: 'story-agent-visual-asset-pressure-style-map/v1' },
     outputRecovery: { schema_version: 'story-agent-15x3-image-recovery/v1' },
   };
-  const bytes = Object.fromEntries(
-    Object.entries(values).map(([key, value]) => [
-      key,
-      Buffer.from(`${JSON.stringify(value, null, 2)}\n`),
-    ]),
-  ) as Record<keyof typeof values, Buffer>;
+  const bytes = Object.fromEntries(Object.entries(values).map(([key, value]) => [
+    key,
+    Buffer.isBuffer(value)
+      ? value
+      : Buffer.from(typeof value === 'string'
+        ? value
+        : `${JSON.stringify(value, null, 2)}\n`),
+  ])) as Record<keyof typeof values, Buffer>;
   await Promise.all(Object.entries(paths).map(async ([key, path]) => {
     const absolutePath = resolve(webRoot, path);
     await mkdir(resolve(absolutePath, '..'), { recursive: true });
@@ -80,6 +137,15 @@ async function fixture() {
       manifest: { relative_path: paths.batchManifest, bytes: bytes.batchManifest },
       binding_report: { relative_path: paths.batchBinding, bytes: bytes.batchBinding },
       style_map: { relative_path: paths.batchStyle, bytes: bytes.batchStyle },
+      receipt_status: sealed ? 'sealed' : 'legacy_unsealed',
+      ...(sealed
+        ? {
+            receipt: {
+              relative_path: paths.batchReceipt,
+              bytes: bytes.batchReceipt,
+            },
+          }
+        : {}),
       seed_count: 1,
       manifest_asset_count: 1,
       binding_asset_count: 1,
@@ -110,12 +176,14 @@ describe('Story Agent visual pressure batch composition provenance', () => {
     });
 
     expect(item.report).toMatchObject({
-      schema_version: 'story-agent-visual-asset-pressure-batch-composition/v1',
+      schema_version: 'story-agent-visual-asset-pressure-batch-composition/v2',
       summary: {
         batch_count: 1,
         source_file_count: 5,
         output_file_count: 4,
         file_count: 9,
+        sealed_batch_count: 0,
+        legacy_unsealed_batch_count: 1,
       },
     });
     expect(verification).toEqual({
@@ -123,6 +191,8 @@ describe('Story Agent visual pressure batch composition provenance', () => {
       report_relative_path: undefined,
       registry_content_sha256: item.report.registry.content_sha256,
       batch_count: 1,
+      sealed_batch_count: 0,
+      legacy_unsealed_batch_count: 1,
       file_count: 9,
       verified_file_count: 9,
       blockers: [],
@@ -152,6 +222,47 @@ describe('Story Agent visual pressure batch composition provenance', () => {
     expect(verification.verified_file_count).toBe(8);
     expect(verification.blockers).toContain(
       `composition_sha256_mismatch:${item.paths.batchManifest}`,
+    );
+  });
+
+  it('re-verifies sealed receipt prompt and source bytes during composition checks', async () => {
+    const item = await fixture(true);
+    const initial = await verifyStoryAgentVisualAssetPressureBatchCompositionReport({
+      report: item.report,
+      web_root: item.webRoot,
+      expected_outputs: {
+        manifest_path: item.paths.outputManifest,
+        binding_report_path: item.paths.outputBinding,
+        style_map_path: item.paths.outputStyle,
+        recovery_report_path: item.paths.outputRecovery,
+      },
+    });
+    expect(initial).toMatchObject({
+      status: 'verified',
+      sealed_batch_count: 1,
+      legacy_unsealed_batch_count: 0,
+      file_count: 10,
+      verified_file_count: 10,
+    });
+
+    await writeFile(
+      resolve(item.webRoot, item.paths.batchPrompt),
+      'silently replaced prompt',
+    );
+    const changed = await verifyStoryAgentVisualAssetPressureBatchCompositionReport({
+      report: item.report,
+      web_root: item.webRoot,
+      expected_outputs: {
+        manifest_path: item.paths.outputManifest,
+        binding_report_path: item.paths.outputBinding,
+        style_map_path: item.paths.outputStyle,
+        recovery_report_path: item.paths.outputRecovery,
+      },
+    });
+    expect(changed.status).toBe('blocked');
+    expect(changed.blockers).toContain(
+      `composition_receipt_blocked:batch-1:`
+      + `receipt_prompt_sha256_mismatch:${item.paths.batchPrompt}`,
     );
   });
 

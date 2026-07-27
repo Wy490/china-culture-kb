@@ -5,6 +5,10 @@ import {
   mergeStoryAgentVisualAssetPressureBatches,
   parseStoryAgentVisualAssetPressureBatchRegistry,
 } from '../src/services/story-agent-visual-asset-pressure-batch-registry-service.js'
+import {
+  parseStoryAgentVisualAssetPressureBatchReceipt,
+  verifyStoryAgentVisualAssetPressureBatchReceipt,
+} from '../src/services/story-agent-visual-asset-pressure-batch-receipt-service.js'
 
 function argumentValue(name: string): string | undefined {
   const index = process.argv.indexOf(name)
@@ -68,9 +72,28 @@ const [batchFiles, recoveryInput] = await Promise.all([
     manifest: await readJsonFile(resolve(webRoot, batch.manifest_path)),
     binding_report: await readJsonFile(resolve(webRoot, batch.binding_report_path)),
     style_map: await readJsonFile(resolve(webRoot, batch.style_map_path)),
+    receipt: batch.receipt_path
+      ? await readJsonFile(resolve(webRoot, batch.receipt_path))
+      : undefined,
   }))),
   readJsonFile(recoveryInputPath),
 ])
+for (const batch of batchFiles) {
+  if (batch.definition.receipt_status !== 'sealed' || !batch.receipt) continue
+  const receipt = parseStoryAgentVisualAssetPressureBatchReceipt(batch.receipt.value)
+  if (receipt.batch_id !== batch.batch_id) {
+    throw new Error(`${batch.batch_id}: receipt batch_id mismatch`)
+  }
+  const verification = await verifyStoryAgentVisualAssetPressureBatchReceipt({
+    receipt,
+    web_root: webRoot,
+  })
+  if (verification.status !== 'sealed') {
+    throw new Error(
+      `${batch.batch_id}: immutable receipt blocked: ${verification.blockers.join(', ')}`,
+    )
+  }
+}
 const loadedBatches = batchFiles.map(batch => ({
   batch_id: batch.batch_id,
   manifest: batch.manifest.value,
@@ -118,6 +141,15 @@ const compositionReport = buildStoryAgentVisualAssetPressureBatchCompositionRepo
         relative_path: batch.definition.style_map_path,
         bytes: batch.style_map.bytes,
       },
+      receipt_status: batch.definition.receipt_status,
+      ...(batch.receipt && batch.definition.receipt_path
+        ? {
+            receipt: {
+              relative_path: batch.definition.receipt_path,
+              bytes: batch.receipt.bytes,
+            },
+          }
+        : {}),
       seed_count: new Set(manifestAssets.map(asset => asset.seed_id)).size,
       manifest_asset_count: manifestAssets.length,
       binding_asset_count: arrayLength(batch.binding_report.value.assets),

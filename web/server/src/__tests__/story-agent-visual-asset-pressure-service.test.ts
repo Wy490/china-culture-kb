@@ -80,6 +80,8 @@ function verifiedComposition() {
     report_relative_path: 'generated/combined/composition-report.json',
     registry_content_sha256: sha256('registry'),
     batch_count: 2,
+    sealed_batch_count: 1,
+    legacy_unsealed_batch_count: 1,
     file_count: 12,
     verified_file_count: 12,
     blockers: [],

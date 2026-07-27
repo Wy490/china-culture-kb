@@ -161,6 +161,8 @@ const resolvedStyleFamilies = resolveStoryAgentVisualAssetPressureStyleFamilies(
 let compositionProvenance: StoryAgentVisualAssetPressureCompositionVerification = {
   status: 'not_run',
   batch_count: 0,
+  sealed_batch_count: 0,
+  legacy_unsealed_batch_count: 0,
   file_count: 0,
   verified_file_count: 0,
   blockers: [],
@@ -187,6 +189,8 @@ if (compositionReportPath) {
       status: 'blocked',
       report_relative_path: compositionReportRelativePath,
       batch_count: 0,
+      sealed_batch_count: 0,
+      legacy_unsealed_batch_count: 0,
       file_count: 0,
       verified_file_count: 0,
       blockers: [`composition_report_unreadable:${(error as Error).message}`],

@@ -1,7 +1,10 @@
-import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import type { AiComicPacingProfile } from '@shared/types.js'
+import {
+  parseStoryAgentVisualAssetPressureBatchReceipt,
+  verifyStoryAgentVisualAssetPressureBatchReceipt,
+} from '../src/services/story-agent-visual-asset-pressure-batch-receipt-service.js'
 
 type PreparationCatalog = {
   schema_version: 'story-agent-visual-asset-pressure-batch-preparation/v1'
@@ -27,32 +30,6 @@ type PreparationCatalog = {
   }>
 }
 
-const PROVIDER_ASSET_IDS: Record<string, {
-  character: string
-  world: string
-}> = {
-  'tulou-rain-documentary': {
-    character: 'imagegen-built-in-call_EeUFDGE52eb4Uar7TWwY53OF',
-    world: 'imagegen-built-in-call_kyONmsfoobgp6r9QgCIJGFEc',
-  },
-  'kunqu-backstage-drama': {
-    character: 'imagegen-built-in-call_awjwQbajpk1UFt9OICqxCf6T',
-    world: 'imagegen-built-in-call_ozntZeRpZuCObMKIhteSH2t3',
-  },
-  'paper-cut-snow-fable': {
-    character: 'imagegen-built-in-call_RHBGb5C1ESRoAcV1Zl6igcsf',
-    world: 'imagegen-built-in-call_2oqfn9cO38yMcmumFLaczmD8',
-  },
-  'maritime-porcelain-museum': {
-    character: 'imagegen-built-in-call_0GTMdLuUbmrXGdTFcAjjMRFL',
-    world: 'imagegen-built-in-call_hZr8IzbtnhgthvHOsev2fhcS',
-  },
-}
-
-function sha256(value: Uint8Array | string): string {
-  return createHash('sha256').update(value).digest('hex')
-}
-
 function argumentValue(name: string): string | undefined {
   const index = process.argv.indexOf(name)
   return index >= 0 ? process.argv[index + 1] : undefined
@@ -72,18 +49,51 @@ const styleMapPath = resolve(
   webRoot,
   argumentValue('--style-map-output') ?? `${batchRoot}/style-map.json`,
 )
-const catalog = JSON.parse(await readFile(catalogPath, 'utf8')) as PreparationCatalog
+const receiptPath = resolve(
+  webRoot,
+  argumentValue('--receipt')
+    ?? 'server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json',
+)
+const [catalogValue, receiptValue] = await Promise.all([
+  readFile(catalogPath, 'utf8'),
+  readFile(receiptPath, 'utf8'),
+])
+const catalog = JSON.parse(catalogValue) as PreparationCatalog
+const receipt = parseStoryAgentVisualAssetPressureBatchReceipt(
+  JSON.parse(receiptValue) as unknown,
+)
 if (
   catalog.schema_version !== 'story-agent-visual-asset-pressure-batch-preparation/v1'
   || catalog.preparation_revision !== 1
 ) {
   throw new Error('unsupported batch3 preparation catalog')
 }
+const receiptVerification = await verifyStoryAgentVisualAssetPressureBatchReceipt({
+  receipt,
+  web_root: webRoot,
+})
+if (receiptVerification.status !== 'sealed') {
+  throw new Error(
+    `batch3 immutable receipt blocked: ${receiptVerification.blockers.join(', ')}`,
+  )
+}
+const receiptAssets = new Map(
+  receipt.assets.map(asset => [`${asset.seed_id}:${asset.role}`, asset]),
+)
+const catalogSeedIds = new Set(catalog.seeds.map(seed => seed.seed_id))
+for (const asset of receipt.assets) {
+  if (!catalogSeedIds.has(asset.seed_id)) {
+    throw new Error(`batch3 receipt has unknown seed_id: ${asset.seed_id}`)
+  }
+}
 
 const assets = []
 for (const seed of catalog.seeds) {
-  const providerIds = PROVIDER_ASSET_IDS[seed.seed_id]
-  if (!providerIds) throw new Error(`${seed.seed_id}: missing provider asset ids`)
+  const characterReceipt = receiptAssets.get(`${seed.seed_id}:character`)
+  const worldReceipt = receiptAssets.get(`${seed.seed_id}:world`)
+  if (!characterReceipt || !worldReceipt) {
+    throw new Error(`${seed.seed_id}: immutable receipt roles are incomplete`)
+  }
   const character = seed.visual_identities.find(identity => (
     identity.kind === 'character' && identity.label.includes(seed.primary_character)
   ))
@@ -112,41 +122,26 @@ for (const seed of catalog.seeds) {
     required_visual_anchors: requiredVisualAnchors,
     forbidden_visual_anchors: forbiddenVisualAnchors,
   }
-  const characterSourcePath = `${batchRoot}/sources/${seed.seed_id}-character.png`
-  const characterPromptPath = `${batchRoot}/prompts/${seed.seed_id}-character.txt`
-  const worldSourcePath = `${batchRoot}/sources/${seed.seed_id}-world.png`
-  const worldPromptPath = `${batchRoot}/prompts/${seed.seed_id}-world.txt`
-  const [
-    characterSource,
-    characterPrompt,
-    worldSource,
-    worldPrompt,
-  ] = await Promise.all([
-    readFile(resolve(webRoot, characterSourcePath)),
-    readFile(resolve(webRoot, characterPromptPath), 'utf8'),
-    readFile(resolve(webRoot, worldSourcePath)),
-    readFile(resolve(webRoot, worldPromptPath), 'utf8'),
-  ])
   assets.push({
     ...common,
     label: character.label,
     kind: 'character',
-    source_path: characterSourcePath,
-    prompt_path: characterPromptPath,
-    provider_asset_id: providerIds.character,
-    content_sha256: sha256(characterSource),
-    prompt_sha256: sha256(characterPrompt),
+    source_path: characterReceipt.source_path,
+    prompt_path: characterReceipt.prompt_path,
+    provider_asset_id: characterReceipt.provider_asset_id,
+    content_sha256: characterReceipt.content_sha256,
+    prompt_sha256: characterReceipt.prompt_sha256,
   })
   for (const identity of [costume, location, prop].filter(Boolean)) {
     assets.push({
       ...common,
       label: identity!.label,
       kind: identity!.kind,
-      source_path: worldSourcePath,
-      prompt_path: worldPromptPath,
-      provider_asset_id: providerIds.world,
-      content_sha256: sha256(worldSource),
-      prompt_sha256: sha256(worldPrompt),
+      source_path: worldReceipt.source_path,
+      prompt_path: worldReceipt.prompt_path,
+      provider_asset_id: worldReceipt.provider_asset_id,
+      content_sha256: worldReceipt.content_sha256,
+      prompt_sha256: worldReceipt.prompt_sha256,
       bind_remaining_shot_identities: identity!.kind === 'location',
     })
   }
@@ -154,8 +149,8 @@ for (const seed of catalog.seeds) {
 
 const manifest = {
   schema_version: 'story-agent-cross-seed-image-asset-manifest/v1',
-  provider: 'openai_imagegen',
-  model: 'gpt-image-2',
+  provider: receipt.provider,
+  model: receipt.model,
   assets,
 }
 const styleMap = {
@@ -178,4 +173,6 @@ console.log(JSON.stringify({
   seed_count: catalog.seeds.length,
   asset_count: assets.length,
   unique_content_sha256_count: new Set(assets.map(asset => asset.content_sha256)).size,
+  receipt_path: receiptPath,
+  receipt_status: receiptVerification.status,
 }, null, 2))

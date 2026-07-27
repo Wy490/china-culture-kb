@@ -7,7 +7,8 @@ import { storyGeneratedRoot } from '../platform/story-storage-root.js';
 const REPORT_RELATIVE_PATH = 'system/story-agent-visual-asset-pressure/report.json' as const;
 const CANONICAL_MINIMUM_CASE_COUNT = 12;
 const CANONICAL_MINIMUM_BATCH_COUNT = 3;
-const CANONICAL_MINIMUM_COMPOSITION_FILE_COUNT = 15;
+const CANONICAL_MINIMUM_COMPOSITION_FILE_COUNT = 16;
+const CANONICAL_MINIMUM_SEALED_BATCH_COUNT = 1;
 const REQUIRED_SCENARIOS = [
   'missing_file_rejected',
   'invalid_image_rejected',
@@ -44,6 +45,8 @@ const CompositionProvenanceSchema = z.object({
   report_relative_path: z.string().min(1).optional(),
   registry_content_sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
   batch_count: z.number().int().nonnegative(),
+  sealed_batch_count: z.number().int().nonnegative(),
+  legacy_unsealed_batch_count: z.number().int().nonnegative(),
   file_count: z.number().int().nonnegative(),
   verified_file_count: z.number().int().nonnegative(),
   blockers: z.array(z.string()),
@@ -117,6 +120,8 @@ function baseStatus(
     composition_provenance: {
       status: status === 'not_run' ? 'not_run' : 'blocked',
       batch_count: 0,
+      sealed_batch_count: 0,
+      legacy_unsealed_batch_count: 0,
       file_count: 0,
       verified_file_count: 0,
     },
@@ -161,6 +166,11 @@ function reportIsInternallyReady(
     && REQUIRED_SCENARIOS.every(scenario => passedScenarios.has(scenario))
     && report.composition_provenance.status === 'verified'
     && report.composition_provenance.batch_count >= CANONICAL_MINIMUM_BATCH_COUNT
+    && report.composition_provenance.sealed_batch_count
+      >= CANONICAL_MINIMUM_SEALED_BATCH_COUNT
+    && report.composition_provenance.sealed_batch_count
+      + report.composition_provenance.legacy_unsealed_batch_count
+      === report.composition_provenance.batch_count
     && report.composition_provenance.file_count
       >= CANONICAL_MINIMUM_COMPOSITION_FILE_COUNT
     && report.composition_provenance.verified_file_count
@@ -221,6 +231,9 @@ export async function getStoryAgentVisualAssetPressureOpsStatus(
     composition_provenance: {
       status: report.composition_provenance.status,
       batch_count: report.composition_provenance.batch_count,
+      sealed_batch_count: report.composition_provenance.sealed_batch_count,
+      legacy_unsealed_batch_count:
+        report.composition_provenance.legacy_unsealed_batch_count,
       file_count: report.composition_provenance.file_count,
       verified_file_count: report.composition_provenance.verified_file_count,
     },

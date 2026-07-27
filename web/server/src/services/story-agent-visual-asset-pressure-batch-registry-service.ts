@@ -1,17 +1,23 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, normalize, resolve } from 'node:path';
+import {
+  parseStoryAgentVisualAssetPressureBatchReceipt,
+  verifyStoryAgentVisualAssetPressureBatchReceipt,
+} from './story-agent-visual-asset-pressure-batch-receipt-service.js';
 
 type JsonObject = Record<string, unknown>;
 
 export type StoryAgentVisualAssetPressureBatchRegistry = {
-  schema_version: 'story-agent-visual-asset-pressure-batch-registry/v1';
+  schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2';
   recovery_report_path: string;
   batches: Array<{
     batch_id: string;
     manifest_path: string;
     binding_report_path: string;
     style_map_path: string;
+    receipt_status: 'sealed' | 'legacy_unsealed';
+    receipt_path?: string;
   }>;
 };
 
@@ -33,7 +39,7 @@ type CompositionFileEvidence = {
 };
 
 export type StoryAgentVisualAssetPressureBatchCompositionReport = {
-  schema_version: 'story-agent-visual-asset-pressure-batch-composition/v1';
+  schema_version: 'story-agent-visual-asset-pressure-batch-composition/v2';
   generated_at: string;
   registry: CompositionFileEvidence;
   recovery_report: CompositionFileEvidence;
@@ -42,6 +48,8 @@ export type StoryAgentVisualAssetPressureBatchCompositionReport = {
     manifest: CompositionFileEvidence;
     binding_report: CompositionFileEvidence;
     style_map: CompositionFileEvidence;
+    receipt_status: 'sealed' | 'legacy_unsealed';
+    receipt?: CompositionFileEvidence;
     seed_count: number;
     manifest_asset_count: number;
     binding_asset_count: number;
@@ -58,6 +66,8 @@ export type StoryAgentVisualAssetPressureBatchCompositionReport = {
     source_file_count: number;
     output_file_count: 4;
     file_count: number;
+    sealed_batch_count: number;
+    legacy_unsealed_batch_count: number;
   };
   machine_validation_only: true;
   image_provider_invoked_by_server: false;
@@ -70,6 +80,8 @@ export type StoryAgentVisualAssetPressureCompositionVerification = {
   report_relative_path?: string;
   registry_content_sha256?: string;
   batch_count: number;
+  sealed_batch_count: number;
+  legacy_unsealed_batch_count: number;
   file_count: number;
   verified_file_count: number;
   blockers: string[];
@@ -154,7 +166,11 @@ export function parseStoryAgentVisualAssetPressureBatchRegistry(
   value: unknown,
 ): StoryAgentVisualAssetPressureBatchRegistry {
   const input = asObject(value, 'batch registry');
-  if (input.schema_version !== 'story-agent-visual-asset-pressure-batch-registry/v1') {
+  const isV1 = input.schema_version
+    === 'story-agent-visual-asset-pressure-batch-registry/v1';
+  const isV2 = input.schema_version
+    === 'story-agent-visual-asset-pressure-batch-registry/v2';
+  if (!isV1 && !isV2) {
     throw new Error(`unsupported batch registry schema: ${String(input.schema_version ?? '')}`);
   }
   if (!Array.isArray(input.batches) || input.batches.length < 1) {
@@ -169,6 +185,18 @@ export function parseStoryAgentVisualAssetPressureBatchRegistry(
       throw new Error(`duplicate batch_id: ${batchId}`);
     }
     batchIds.add(batchId);
+    const receiptStatus: 'sealed' | 'legacy_unsealed' = isV1
+      ? 'legacy_unsealed' as const
+      : batch.receipt_status as 'sealed' | 'legacy_unsealed';
+    if (receiptStatus !== 'sealed' && receiptStatus !== 'legacy_unsealed') {
+      throw new Error(`${batchId} receipt_status must be sealed or legacy_unsealed`);
+    }
+    if (receiptStatus === 'sealed' && !batch.receipt_path) {
+      throw new Error(`${batchId} sealed batch must declare receipt_path`);
+    }
+    if (receiptStatus === 'legacy_unsealed' && batch.receipt_path !== undefined) {
+      throw new Error(`${batchId} legacy_unsealed batch cannot declare receipt_path`);
+    }
     return {
       batch_id: batchId,
       manifest_path: safeRelativePath(
@@ -183,11 +211,20 @@ export function parseStoryAgentVisualAssetPressureBatchRegistry(
         batch.style_map_path,
         `${batchId} style_map_path`,
       ),
+      receipt_status: receiptStatus,
+      ...(receiptStatus === 'sealed'
+        ? {
+            receipt_path: safeRelativePath(
+              batch.receipt_path,
+              `${batchId} receipt_path`,
+            ),
+          }
+        : {}),
     };
   });
 
   return {
-    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v1',
+    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
     recovery_report_path: safeRelativePath(
       input.recovery_report_path,
       'recovery_report_path',
@@ -347,6 +384,8 @@ export function buildStoryAgentVisualAssetPressureBatchCompositionReport(input: 
     manifest: CompositionFileInput;
     binding_report: CompositionFileInput;
     style_map: CompositionFileInput;
+    receipt_status: 'sealed' | 'legacy_unsealed';
+    receipt?: CompositionFileInput;
     seed_count: number;
     manifest_asset_count: number;
     binding_asset_count: number;
@@ -359,9 +398,26 @@ export function buildStoryAgentVisualAssetPressureBatchCompositionReport(input: 
     recovery_report: CompositionFileInput;
   };
 }): StoryAgentVisualAssetPressureBatchCompositionReport {
-  const sourceFileCount = 2 + input.batches.length * 3;
+  const sealedBatchCount = input.batches.filter(
+    batch => batch.receipt_status === 'sealed',
+  ).length;
+  const legacyUnsealedBatchCount = input.batches.filter(
+    batch => batch.receipt_status === 'legacy_unsealed',
+  ).length;
+  if (sealedBatchCount + legacyUnsealedBatchCount !== input.batches.length) {
+    throw new Error('every composition batch must declare a valid receipt_status');
+  }
+  for (const batch of input.batches) {
+    if (batch.receipt_status === 'sealed' && !batch.receipt) {
+      throw new Error(`${batch.batch_id} sealed batch must include receipt evidence`);
+    }
+    if (batch.receipt_status === 'legacy_unsealed' && batch.receipt) {
+      throw new Error(`${batch.batch_id} legacy_unsealed batch cannot include receipt evidence`);
+    }
+  }
+  const sourceFileCount = 2 + input.batches.length * 3 + sealedBatchCount;
   return {
-    schema_version: 'story-agent-visual-asset-pressure-batch-composition/v1',
+    schema_version: 'story-agent-visual-asset-pressure-batch-composition/v2',
     generated_at: isoTimestamp(
       input.generated_at ?? new Date().toISOString(),
       'composition generated_at',
@@ -376,6 +432,10 @@ export function buildStoryAgentVisualAssetPressureBatchCompositionReport(input: 
         `${batch.batch_id} binding_report`,
       ),
       style_map: fileEvidence(batch.style_map, `${batch.batch_id} style_map`),
+      receipt_status: batch.receipt_status,
+      ...(batch.receipt
+        ? { receipt: fileEvidence(batch.receipt, `${batch.batch_id} receipt`) }
+        : {}),
       seed_count: nonnegativeInteger(batch.seed_count, `${batch.batch_id} seed_count`),
       manifest_asset_count: nonnegativeInteger(
         batch.manifest_asset_count,
@@ -407,6 +467,8 @@ export function buildStoryAgentVisualAssetPressureBatchCompositionReport(input: 
       source_file_count: sourceFileCount,
       output_file_count: 4,
       file_count: sourceFileCount + 4,
+      sealed_batch_count: sealedBatchCount,
+      legacy_unsealed_batch_count: legacyUnsealedBatchCount,
     },
     machine_validation_only: true,
     image_provider_invoked_by_server: false,
@@ -421,7 +483,7 @@ export function parseStoryAgentVisualAssetPressureBatchCompositionReport(
   const input = asObject(value, 'batch composition report');
   if (
     input.schema_version
-    !== 'story-agent-visual-asset-pressure-batch-composition/v1'
+    !== 'story-agent-visual-asset-pressure-batch-composition/v2'
   ) {
     throw new Error(
       `unsupported batch composition schema: ${String(input.schema_version ?? '')}`,
@@ -430,6 +492,21 @@ export function parseStoryAgentVisualAssetPressureBatchCompositionReport(
   const batches = objectArray(input.batches, 'composition batches').map(
     (batch, index) => {
       const batchId = requiredString(batch.batch_id, `composition batches[${index}] batch_id`);
+      if (
+        batch.receipt_status !== 'sealed'
+        && batch.receipt_status !== 'legacy_unsealed'
+      ) {
+        throw new Error(
+          `${batchId} receipt_status must be sealed or legacy_unsealed`,
+        );
+      }
+      const receiptStatus: 'sealed' | 'legacy_unsealed' = batch.receipt_status;
+      if (batch.receipt_status === 'sealed' && !batch.receipt) {
+        throw new Error(`${batchId} sealed batch must include receipt evidence`);
+      }
+      if (batch.receipt_status === 'legacy_unsealed' && batch.receipt !== undefined) {
+        throw new Error(`${batchId} legacy_unsealed batch cannot include receipt evidence`);
+      }
       return {
         batch_id: batchId,
         manifest: parseFileEvidence(batch.manifest, `${batchId} manifest`),
@@ -438,6 +515,10 @@ export function parseStoryAgentVisualAssetPressureBatchCompositionReport(
           `${batchId} binding_report`,
         ),
         style_map: parseFileEvidence(batch.style_map, `${batchId} style_map`),
+        receipt_status: receiptStatus,
+        ...(receiptStatus === 'sealed'
+          ? { receipt: parseFileEvidence(batch.receipt, `${batchId} receipt`) }
+          : {}),
         seed_count: nonnegativeInteger(batch.seed_count, `${batchId} seed_count`),
         manifest_asset_count: nonnegativeInteger(
           batch.manifest_asset_count,
@@ -457,7 +538,7 @@ export function parseStoryAgentVisualAssetPressureBatchCompositionReport(
   const outputs = asObject(input.outputs, 'composition outputs');
   const summary = asObject(input.summary, 'composition summary');
   const parsed: StoryAgentVisualAssetPressureBatchCompositionReport = {
-    schema_version: 'story-agent-visual-asset-pressure-batch-composition/v1',
+    schema_version: 'story-agent-visual-asset-pressure-batch-composition/v2',
     generated_at: isoTimestamp(input.generated_at, 'composition generated_at'),
     registry: parseFileEvidence(input.registry, 'composition registry'),
     recovery_report: parseFileEvidence(
@@ -488,6 +569,14 @@ export function parseStoryAgentVisualAssetPressureBatchCompositionReport(
       ),
       output_file_count: 4,
       file_count: nonnegativeInteger(summary.file_count, 'composition file_count'),
+      sealed_batch_count: nonnegativeInteger(
+        summary.sealed_batch_count,
+        'composition sealed_batch_count',
+      ),
+      legacy_unsealed_batch_count: nonnegativeInteger(
+        summary.legacy_unsealed_batch_count,
+        'composition legacy_unsealed_batch_count',
+      ),
     },
     machine_validation_only: true,
     image_provider_invoked_by_server: false,
@@ -527,8 +616,10 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
       status: 'blocked',
       ...(input.report_relative_path
         ? { report_relative_path: input.report_relative_path }
-        : {}),
+      : {}),
       batch_count: 0,
+      sealed_batch_count: 0,
+      legacy_unsealed_batch_count: 0,
       file_count: 0,
       verified_file_count: 0,
       blockers: [`composition_report_invalid:${(error as Error).message}`],
@@ -567,6 +658,7 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
       batch.manifest,
       batch.binding_report,
       batch.style_map,
+      ...(batch.receipt ? [batch.receipt] : []),
     ]),
     report.outputs.manifest,
     report.outputs.binding_report,
@@ -587,11 +679,20 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
     }
   }
 
-  const expectedSourceFileCount = 2 + report.batches.length * 3;
+  const sealedBatchCount = report.batches.filter(
+    batch => batch.receipt_status === 'sealed',
+  ).length;
+  const legacyUnsealedBatchCount = report.batches.filter(
+    batch => batch.receipt_status === 'legacy_unsealed',
+  ).length;
+  const expectedSourceFileCount = 2 + report.batches.length * 3 + sealedBatchCount;
   if (
     report.summary.batch_count !== report.batches.length
     || report.summary.source_file_count !== expectedSourceFileCount
     || report.summary.file_count !== expectedSourceFileCount + 4
+    || report.summary.sealed_batch_count !== sealedBatchCount
+    || report.summary.legacy_unsealed_batch_count !== legacyUnsealedBatchCount
+    || sealedBatchCount + legacyUnsealedBatchCount !== report.batches.length
   ) {
     blockers.push('composition_summary_inconsistent');
   }
@@ -617,6 +718,9 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
         || composedBatch.binding_report.relative_path
           !== registeredBatch.binding_report_path
         || composedBatch.style_map.relative_path !== registeredBatch.style_map_path
+        || composedBatch.receipt_status !== registeredBatch.receipt_status
+        || (registeredBatch.receipt_status === 'sealed'
+          && composedBatch.receipt?.relative_path !== registeredBatch.receipt_path)
       ) {
         blockers.push(`composition_registry_batch_mismatch:${registeredBatch.batch_id}`);
       }
@@ -626,6 +730,35 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
   }
 
   for (const batch of report.batches) {
+    let sealedReceipt: ReturnType<
+      typeof parseStoryAgentVisualAssetPressureBatchReceipt
+    > | undefined;
+    if (batch.receipt_status === 'sealed' && batch.receipt) {
+      try {
+        const receiptBytes = await readFile(
+          resolve(input.web_root, batch.receipt.relative_path),
+        );
+        const receipt = parseStoryAgentVisualAssetPressureBatchReceipt(
+          JSON.parse(receiptBytes.toString('utf8')) as unknown,
+        );
+        sealedReceipt = receipt;
+        if (receipt.batch_id !== batch.batch_id) {
+          blockers.push(`composition_receipt_batch_id_mismatch:${batch.batch_id}`);
+        }
+        const receiptVerification =
+          await verifyStoryAgentVisualAssetPressureBatchReceipt({
+            receipt,
+            web_root: input.web_root,
+          });
+        blockers.push(...receiptVerification.blockers.map(
+          blocker => `composition_receipt_blocked:${batch.batch_id}:${blocker}`,
+        ));
+      } catch (error) {
+        blockers.push(
+          `composition_receipt_invalid:${batch.batch_id}:${(error as Error).message}`,
+        );
+      }
+    }
     try {
       const [manifestBytes, bindingBytes] = await Promise.all([
         readFile(resolve(input.web_root, batch.manifest.relative_path)),
@@ -643,6 +776,46 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
         manifest.assets,
         `${batch.batch_id} manifest assets`,
       );
+      if (sealedReceipt) {
+        if (
+          manifest.provider !== sealedReceipt.provider
+          || manifest.model !== sealedReceipt.model
+        ) {
+          blockers.push(`composition_receipt_provider_model_mismatch:${batch.batch_id}`);
+        }
+        const referencedReceiptKeys = new Set<string>();
+        for (const [assetIndex, manifestAsset] of manifestAssets.entries()) {
+          const seedId = requiredString(
+            manifestAsset.seed_id,
+            `${batch.batch_id} manifest assets[${assetIndex}] seed_id`,
+          );
+          const role = manifestAsset.kind === 'character' ? 'character' : 'world';
+          const receiptAsset = sealedReceipt.assets.find(asset => (
+            asset.seed_id === seedId
+            && asset.role === role
+            && asset.provider_asset_id === manifestAsset.provider_asset_id
+            && asset.prompt_path === manifestAsset.prompt_path
+            && asset.prompt_sha256 === manifestAsset.prompt_sha256
+            && asset.source_path === manifestAsset.source_path
+            && asset.content_sha256 === manifestAsset.content_sha256
+          ));
+          if (receiptAsset) {
+            referencedReceiptKeys.add(`${receiptAsset.seed_id}:${receiptAsset.role}`);
+          } else {
+            blockers.push(
+              `composition_manifest_asset_not_sealed:${batch.batch_id}:${assetIndex}`,
+            );
+          }
+        }
+        for (const receiptAsset of sealedReceipt.assets) {
+          const key = `${receiptAsset.seed_id}:${receiptAsset.role}`;
+          if (!referencedReceiptKeys.has(key)) {
+            blockers.push(
+              `composition_receipt_asset_unreferenced:${batch.batch_id}:${key}`,
+            );
+          }
+        }
+      }
       const seedCount = new Set(manifestAssets.map((asset, index) => (
         requiredString(
           asset.seed_id,
@@ -683,6 +856,8 @@ export async function verifyStoryAgentVisualAssetPressureBatchCompositionReport(
       : {}),
     registry_content_sha256: report.registry.content_sha256,
     batch_count: report.batches.length,
+    sealed_batch_count: sealedBatchCount,
+    legacy_unsealed_batch_count: legacyUnsealedBatchCount,
     file_count: report.summary.file_count,
     verified_file_count: verifiedFileCount,
     blockers: uniqueBlockers,

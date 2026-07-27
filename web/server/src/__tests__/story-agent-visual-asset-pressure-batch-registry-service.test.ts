@@ -6,23 +6,27 @@ import {
 
 function registry() {
   return {
-    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v1',
+    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
     recovery_report_path: 'generated/recovery.json',
     batches: [
       {
         batch_id: 'baseline',
+        receipt_status: 'legacy_unsealed',
         manifest_path: 'generated/baseline/manifest.json',
         binding_report_path: 'generated/baseline/binding-report.json',
         style_map_path: 'server/scripts/baseline-style-map.json',
       },
       {
         batch_id: 'batch-2',
+        receipt_status: 'legacy_unsealed',
         manifest_path: 'generated/batch-2/manifest.json',
         binding_report_path: 'generated/batch-2/binding-report.json',
         style_map_path: 'generated/batch-2/style-map.json',
       },
       {
         batch_id: 'batch-3',
+        receipt_status: 'sealed',
+        receipt_path: 'server/scripts/batch-3-receipt.json',
         manifest_path: 'generated/batch-3/manifest.json',
         binding_report_path: 'generated/batch-3/binding-report.json',
         style_map_path: 'generated/batch-3/style-map.json',
@@ -73,12 +77,33 @@ function loadedBatch(batchId: string, seedId: string, status: 'passed' | 'blocke
 describe('Story Agent visual pressure batch registry', () => {
   it('accepts an additional batch without requiring merge-code changes', () => {
     expect(parseStoryAgentVisualAssetPressureBatchRegistry(registry())).toMatchObject({
-      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v1',
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
       recovery_report_path: 'generated/recovery.json',
       batches: [
-        { batch_id: 'baseline' },
-        { batch_id: 'batch-2' },
-        { batch_id: 'batch-3' },
+        { batch_id: 'baseline', receipt_status: 'legacy_unsealed' },
+        { batch_id: 'batch-2', receipt_status: 'legacy_unsealed' },
+        {
+          batch_id: 'batch-3',
+          receipt_status: 'sealed',
+          receipt_path: 'server/scripts/batch-3-receipt.json',
+        },
+      ],
+    });
+  });
+
+  it('normalizes v1 registries to explicit legacy_unsealed provenance', () => {
+    const legacy = registry();
+    legacy.schema_version = 'story-agent-visual-asset-pressure-batch-registry/v1';
+    legacy.batches = legacy.batches.map((batch) => {
+      const { receipt_status: _receiptStatus, receipt_path: _receiptPath, ...rest } = batch;
+      return rest as typeof batch;
+    });
+    expect(parseStoryAgentVisualAssetPressureBatchRegistry(legacy)).toMatchObject({
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
+      batches: [
+        { receipt_status: 'legacy_unsealed' },
+        { receipt_status: 'legacy_unsealed' },
+        { receipt_status: 'legacy_unsealed' },
       ],
     });
   });

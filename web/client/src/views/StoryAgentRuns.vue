@@ -40,6 +40,8 @@
           批次证据
           {{ pressureProvenanceStatusLabel(visualAssetPressure.composition_provenance.status) }}
           · {{ visualAssetPressure.composition_provenance.batch_count }} 批
+          · 封存 {{ visualAssetPressure.composition_provenance.sealed_batch_count }}
+          · 历史未封存 {{ visualAssetPressure.composition_provenance.legacy_unsealed_batch_count }}
           · 文件 {{ visualAssetPressure.composition_provenance.verified_file_count }}/{{ visualAssetPressure.composition_provenance.file_count }}
         </small>
         <ul v-if="visualAssetPressure.blockers.length">

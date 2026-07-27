@@ -62,8 +62,10 @@ function readyReport(caseCount = 12) {
       report_relative_path: 'generated/combined/composition-report.json',
       registry_content_sha256: 'a'.repeat(64),
       batch_count: 3,
-      file_count: 15,
-      verified_file_count: 15,
+      sealed_batch_count: 1,
+      legacy_unsealed_batch_count: 2,
+      file_count: 16,
+      verified_file_count: 16,
       blockers: [] as string[],
     },
     scenario_results: REQUIRED_SCENARIOS.map(scenario => ({
@@ -101,6 +103,8 @@ describe('Story Agent visual asset pressure ops status', () => {
       composition_provenance: {
         status: 'not_run',
         batch_count: 0,
+        sealed_batch_count: 0,
+        legacy_unsealed_batch_count: 0,
         file_count: 0,
         verified_file_count: 0,
       },
@@ -141,8 +145,10 @@ describe('Story Agent visual asset pressure ops status', () => {
       composition_provenance: {
         status: 'verified',
         batch_count: 3,
-        file_count: 15,
-        verified_file_count: 15,
+        sealed_batch_count: 1,
+        legacy_unsealed_batch_count: 2,
+        file_count: 16,
+        verified_file_count: 16,
       },
       blockers: [],
       warnings: ['within_case_composite_asset_reuse:26'],
@@ -177,7 +183,7 @@ describe('Story Agent visual asset pressure ops status', () => {
     await mkdir(resolve(reportPath, '..'), { recursive: true });
     const report = readyReport();
     report.composition_provenance.status = 'blocked';
-    report.composition_provenance.verified_file_count = 14;
+    report.composition_provenance.verified_file_count = 15;
     report.composition_provenance.blockers = [
       'composition_sha256_mismatch:generated/batch/manifest.json',
     ];
@@ -188,11 +194,33 @@ describe('Story Agent visual asset pressure ops status', () => {
       composition_provenance: {
         status: 'blocked',
         batch_count: 3,
-        file_count: 15,
-        verified_file_count: 14,
+        sealed_batch_count: 1,
+        legacy_unsealed_batch_count: 2,
+        file_count: 16,
+        verified_file_count: 15,
       },
       blockers: ['visual_asset_pressure_report_inconsistent'],
     });
+  });
+
+  it('fails closed when all registered batches are legacy_unsealed', async () => {
+    const generatedRoot = await testRoot();
+    const reportPath = storyAgentVisualAssetPressureReportPath(generatedRoot);
+    await mkdir(resolve(reportPath, '..'), { recursive: true });
+    const report = readyReport();
+    report.composition_provenance.sealed_batch_count = 0;
+    report.composition_provenance.legacy_unsealed_batch_count = 3;
+    await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+
+    await expect(getStoryAgentVisualAssetPressureOpsStatus({ generatedRoot }))
+      .resolves.toMatchObject({
+        status: 'blocked',
+        composition_provenance: {
+          sealed_batch_count: 0,
+          legacy_unsealed_batch_count: 3,
+        },
+        blockers: ['visual_asset_pressure_report_inconsistent'],
+      });
   });
 
   it('fails closed when the canonical report is malformed', async () => {
@@ -210,6 +238,8 @@ describe('Story Agent visual asset pressure ops status', () => {
       composition_provenance: {
         status: 'blocked',
         batch_count: 0,
+        sealed_batch_count: 0,
+        legacy_unsealed_batch_count: 0,
         file_count: 0,
         verified_file_count: 0,
       },

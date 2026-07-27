@@ -12,6 +12,8 @@ type PressureStateFixture = {
   scenarioPassedCount: number
   provenanceStatus: StoryAgentVisualAssetPressureOpsStatus['composition_provenance']['status']
   batchCount: number
+  sealedBatchCount: number
+  legacyUnsealedBatchCount: number
   fileCount: number
   verifiedFileCount: number
   blocker?: string
@@ -28,8 +30,10 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     scenarioPassedCount: 6,
     provenanceStatus: 'verified',
     batchCount: 3,
-    fileCount: 15,
-    verifiedFileCount: 15,
+    sealedBatchCount: 1,
+    legacyUnsealedBatchCount: 2,
+    fileCount: 16,
+    verifiedFileCount: 16,
   },
   {
     status: 'blocked',
@@ -41,8 +45,10 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     scenarioPassedCount: 5,
     provenanceStatus: 'blocked',
     batchCount: 3,
-    fileCount: 15,
-    verifiedFileCount: 14,
+    sealedBatchCount: 1,
+    legacyUnsealedBatchCount: 2,
+    fileCount: 16,
+    verifiedFileCount: 15,
     blocker: 'cross_case_content_reuse_detected',
   },
   {
@@ -55,6 +61,8 @@ const PRESSURE_STATES: PressureStateFixture[] = [
     scenarioPassedCount: 0,
     provenanceStatus: 'not_run',
     batchCount: 0,
+    sealedBatchCount: 0,
+    legacyUnsealedBatchCount: 0,
     fileCount: 0,
     verifiedFileCount: 0,
     blocker: 'visual_asset_pressure_report_missing',
@@ -96,6 +104,8 @@ function pressureStatus(fixture: PressureStateFixture): StoryAgentVisualAssetPre
     composition_provenance: {
       status: fixture.provenanceStatus,
       batch_count: fixture.batchCount,
+      sealed_batch_count: fixture.sealedBatchCount,
+      legacy_unsealed_batch_count: fixture.legacyUnsealedBatchCount,
       file_count: fixture.fileCount,
       verified_file_count: fixture.verifiedFileCount,
     },
@@ -206,7 +216,10 @@ for (const fixture of PRESSURE_STATES) {
         ? '已验证'
         : fixture.provenanceStatus === 'blocked'
           ? '已阻断'
-          : '未运行'} · ${fixture.batchCount} 批 · 文件 ${fixture.verifiedFileCount}/${fixture.fileCount}`,
+          : '未运行'} · ${fixture.batchCount} 批`,
+    )
+    await expect(card).toContainText(
+      `封存 ${fixture.sealedBatchCount} · 历史未封存 ${fixture.legacyUnsealedBatchCount} · 文件 ${fixture.verifiedFileCount}/${fixture.fileCount}`,
     )
     await expect(card).toContainText('system/story-agent-visual-asset-pressure/report.json')
     await expect(card.locator(`.status--${fixture.status}`)).toHaveText(fixture.label)

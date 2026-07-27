@@ -228,6 +228,8 @@ export function buildStoryAgentVisualAssetPressureReport(input: {
   const compositionProvenance = input.composition_provenance ?? {
     status: 'not_run' as const,
     batch_count: 0,
+    sealed_batch_count: 0,
+    legacy_unsealed_batch_count: 0,
     file_count: 0,
     verified_file_count: 0,
     blockers: [],
@@ -301,6 +303,10 @@ export function buildStoryAgentVisualAssetPressureReport(input: {
     ...(compositionProvenance.status === 'verified'
       && compositionProvenance.verified_file_count !== compositionProvenance.file_count
       ? ['batch_composition:verified_file_count_mismatch']
+      : []),
+    ...(compositionProvenance.status === 'verified'
+      && compositionProvenance.sealed_batch_count < 1
+      ? ['batch_composition:sealed_batch_coverage:0/1']
       : []),
   ]);
   const warnings = unique([
