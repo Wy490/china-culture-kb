@@ -3,7 +3,11 @@ import { basename, isAbsolute, relative, resolve } from 'node:path'
 import {
   preflightStoryAgentVisualAssetPressureReceiptEvidence,
 } from '../src/services/story-agent-visual-asset-pressure-receipt-evidence-preflight-service.js'
+import {
+  parseStoryAgentVisualAssetPressureBatchRegistry,
+} from '../src/services/story-agent-visual-asset-pressure-batch-registry-service.js'
 
+const MAX_REGISTRY_FILE_BYTES = 1024 * 1024
 const MAX_DESCRIPTOR_FILE_BYTES = 128 * 1024
 const MAX_RECEIPT_FILE_BYTES = 4 * 1024 * 1024
 const MAX_BUNDLE_FILE_BYTES = 180 * 1024 * 1024
@@ -34,23 +38,49 @@ async function requireBoundedFile(
   }
 }
 
+const registryPath = resolve(
+  webRoot,
+  argumentValue('--registry')
+    ?? 'server/scripts/story-agent-visual-asset-pressure-batch-registry.json',
+)
+const registryRelativePath = webRelativePath(registryPath, 'registry path')
+await requireBoundedFile(
+  registryPath,
+  MAX_REGISTRY_FILE_BYTES,
+  'registry file',
+)
+const registry = parseStoryAgentVisualAssetPressureBatchRegistry(
+  JSON.parse((await readFile(registryPath)).toString('utf8')) as unknown,
+)
+const batchId = argumentValue('--batch-id') ?? 'imagegen-20260726-batch3'
+const batch = registry.batches.find(item => item.batch_id === batchId)
+if (
+  !batch
+  || batch.receipt_status !== 'sealed'
+  || !batch.receipt_path
+  || !batch.evidence_descriptor_path
+) {
+  throw new Error('preflight batch must be registered with sealed evidence')
+}
+const registeredDescriptorPath = resolve(
+  webRoot,
+  batch.evidence_descriptor_path,
+)
+const registeredReceiptPath = resolve(webRoot, batch.receipt_path)
 const descriptorPath = resolve(
   webRoot,
-  argumentValue('--descriptor')
-    ?? 'server/scripts/'
-      + 'story-agent-visual-asset-pressure-batch3-evidence-bundle-descriptor.json',
+  argumentValue('--descriptor') ?? batch.evidence_descriptor_path,
 )
 const receiptPath = resolve(
   webRoot,
-  argumentValue('--receipt')
-    ?? 'server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json',
+  argumentValue('--receipt') ?? batch.receipt_path,
 )
-const bundlePath = resolve(
-  webRoot,
-  argumentValue('--bundle')
-    ?? 'generated/story-agent-visual-asset-pressure-evidence/'
-      + 'imagegen-20260726-batch3-receipt-evidence-bundle.json',
-)
+if (
+  descriptorPath !== registeredDescriptorPath
+  || receiptPath !== registeredReceiptPath
+) {
+  throw new Error('preflight receipt and descriptor must match the registry')
+}
 const descriptorRelativePath = webRelativePath(descriptorPath, 'descriptor path')
 const receiptRelativePath = webRelativePath(receiptPath, 'receipt path')
 
@@ -61,12 +91,10 @@ await Promise.all([
     'descriptor file',
   ),
   requireBoundedFile(receiptPath, MAX_RECEIPT_FILE_BYTES, 'receipt file'),
-  requireBoundedFile(bundlePath, MAX_BUNDLE_FILE_BYTES, 'bundle file'),
 ])
-const [descriptorBytes, receiptBytes, bundleBytes] = await Promise.all([
+const [descriptorBytes, receiptBytes] = await Promise.all([
   readFile(descriptorPath),
   readFile(receiptPath),
-  readFile(bundlePath),
 ])
 let descriptor: unknown
 try {
@@ -74,6 +102,18 @@ try {
 } catch {
   descriptor = null
 }
+const parsedDescriptor = descriptor && typeof descriptor === 'object'
+  && !Array.isArray(descriptor)
+  ? descriptor as Record<string, unknown>
+  : {}
+const bundlePath = resolve(
+  webRoot,
+  argumentValue('--bundle')
+    ?? `generated/story-agent-visual-asset-pressure-evidence/${
+      String(parsedDescriptor.bundle_file_name ?? '')}`,
+)
+await requireBoundedFile(bundlePath, MAX_BUNDLE_FILE_BYTES, 'bundle file')
+const bundleBytes = await readFile(bundlePath)
 const result = await preflightStoryAgentVisualAssetPressureReceiptEvidence({
   descriptor,
   receipt_bytes: receiptBytes,
@@ -82,6 +122,7 @@ const result = await preflightStoryAgentVisualAssetPressureReceiptEvidence({
 })
 console.log(JSON.stringify({
   ...result,
+  registry_path: registryRelativePath,
   descriptor_path: descriptorRelativePath,
   receipt_path: receiptRelativePath,
   image_provider_invoked_by_server: false,

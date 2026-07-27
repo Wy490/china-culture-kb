@@ -6,7 +6,7 @@ import {
 
 function registry() {
   return {
-    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
+    schema_version: 'story-agent-visual-asset-pressure-batch-registry/v3',
     recovery_report_path: 'generated/recovery.json',
     batches: [
       {
@@ -27,6 +27,8 @@ function registry() {
         batch_id: 'batch-3',
         receipt_status: 'sealed',
         receipt_path: 'server/scripts/batch-3-receipt.json',
+        evidence_descriptor_path:
+          'server/scripts/batch-3-evidence-descriptor.json',
         manifest_path: 'generated/batch-3/manifest.json',
         binding_report_path: 'generated/batch-3/binding-report.json',
         style_map_path: 'generated/batch-3/style-map.json',
@@ -77,7 +79,7 @@ function loadedBatch(batchId: string, seedId: string, status: 'passed' | 'blocke
 describe('Story Agent visual pressure batch registry', () => {
   it('accepts an additional batch without requiring merge-code changes', () => {
     expect(parseStoryAgentVisualAssetPressureBatchRegistry(registry())).toMatchObject({
-      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v3',
       recovery_report_path: 'generated/recovery.json',
       batches: [
         { batch_id: 'baseline', receipt_status: 'legacy_unsealed' },
@@ -86,6 +88,8 @@ describe('Story Agent visual pressure batch registry', () => {
           batch_id: 'batch-3',
           receipt_status: 'sealed',
           receipt_path: 'server/scripts/batch-3-receipt.json',
+          evidence_descriptor_path:
+            'server/scripts/batch-3-evidence-descriptor.json',
         },
       ],
     });
@@ -95,11 +99,16 @@ describe('Story Agent visual pressure batch registry', () => {
     const legacy = registry();
     legacy.schema_version = 'story-agent-visual-asset-pressure-batch-registry/v1';
     legacy.batches = legacy.batches.map((batch) => {
-      const { receipt_status: _receiptStatus, receipt_path: _receiptPath, ...rest } = batch;
+      const {
+        receipt_status: _receiptStatus,
+        receipt_path: _receiptPath,
+        evidence_descriptor_path: _evidenceDescriptorPath,
+        ...rest
+      } = batch;
       return rest as typeof batch;
     });
     expect(parseStoryAgentVisualAssetPressureBatchRegistry(legacy)).toMatchObject({
-      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v3',
       batches: [
         { receipt_status: 'legacy_unsealed' },
         { receipt_status: 'legacy_unsealed' },
@@ -118,6 +127,38 @@ describe('Story Agent visual pressure batch registry', () => {
     traversal.batches[2]!.manifest_path = '../outside/manifest.json';
     expect(() => parseStoryAgentVisualAssetPressureBatchRegistry(traversal))
       .toThrow('batch-3 manifest_path must stay beneath the web root');
+  });
+
+  it('requires descriptor discovery only for v3 sealed batches', () => {
+    const missingDescriptor = registry();
+    delete missingDescriptor.batches[2]!.evidence_descriptor_path;
+    expect(() => parseStoryAgentVisualAssetPressureBatchRegistry(
+      missingDescriptor,
+    )).toThrow('batch-3 sealed batch must declare evidence_descriptor_path');
+
+    const legacyDescriptor = registry();
+    legacyDescriptor.batches[0]!.evidence_descriptor_path =
+      'server/scripts/legacy-evidence-descriptor.json';
+    expect(() => parseStoryAgentVisualAssetPressureBatchRegistry(
+      legacyDescriptor,
+    )).toThrow(
+      'baseline legacy_unsealed batch cannot declare evidence_descriptor_path',
+    );
+
+    const v2 = registry();
+    v2.schema_version = 'story-agent-visual-asset-pressure-batch-registry/v2';
+    delete v2.batches[2]!.evidence_descriptor_path;
+    expect(parseStoryAgentVisualAssetPressureBatchRegistry(v2)).toMatchObject({
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v3',
+      batches: [{
+        receipt_status: 'legacy_unsealed',
+      }, {
+        receipt_status: 'legacy_unsealed',
+      }, {
+        receipt_status: 'sealed',
+        receipt_path: 'server/scripts/batch-3-receipt.json',
+      }],
+    });
   });
 
   it('merges every registered batch and derives aggregate counts', () => {

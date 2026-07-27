@@ -39,6 +39,7 @@ async function fixture(sealed = false) {
     batchBinding: 'generated/batch/binding-report.json',
     batchStyle: 'generated/batch/style-map.json',
     batchReceipt: 'server/scripts/batch-receipt.json',
+    batchDescriptor: 'server/scripts/batch-evidence-descriptor.json',
     batchPrompt: 'generated/batch/prompts/world-1-character.txt',
     batchSource: 'generated/batch/sources/world-1-character.png',
     outputManifest: 'generated/combined/manifest.json',
@@ -48,14 +49,45 @@ async function fixture(sealed = false) {
   };
   const batchPrompt = 'sealed exact prompt';
   const batchSource = pngHeader(1024, 1536);
+  const batchReceipt = {
+    schema_version: 'story-agent-visual-asset-pressure-batch-receipt/v1',
+    batch_id: 'batch-1',
+    generated_at: '2026-07-26T03:00:00.000Z',
+    provider: 'openai_imagegen',
+    model: 'gpt-image-2',
+    assets: [{
+      seed_id: 'world-1',
+      role: 'character',
+      provider_asset_id: 'imagegen-built-in-call_sealed',
+      prompt_path: paths.batchPrompt,
+      prompt_sha256: sha256(batchPrompt),
+      source_path: paths.batchSource,
+      content_sha256: sha256(batchSource),
+      mime_type: 'image/png',
+      width: 1024,
+      height: 1536,
+    }],
+    machine_validation_only: true,
+    image_provider_invoked_by_server: false,
+    video_generation_performed: false,
+    production_credit_granted: false,
+  };
+  const batchReceiptBytes = Buffer.from(
+    `${JSON.stringify(batchReceipt, null, 2)}\n`,
+  );
   const values = {
     registry: {
-      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v2',
+      schema_version: 'story-agent-visual-asset-pressure-batch-registry/v3',
       recovery_report_path: paths.recovery,
       batches: [{
         batch_id: 'batch-1',
         receipt_status: sealed ? 'sealed' : 'legacy_unsealed',
-        ...(sealed ? { receipt_path: paths.batchReceipt } : {}),
+        ...(sealed
+          ? {
+              receipt_path: paths.batchReceipt,
+              evidence_descriptor_path: paths.batchDescriptor,
+            }
+          : {}),
         manifest_path: paths.batchManifest,
         binding_report_path: paths.batchBinding,
         style_map_path: paths.batchStyle,
@@ -85,26 +117,25 @@ async function fixture(sealed = false) {
       schema_version: 'story-agent-visual-asset-pressure-style-map/v1',
       style_families: { 'world-1': 'world-1-style' },
     },
-    batchReceipt: {
-      schema_version: 'story-agent-visual-asset-pressure-batch-receipt/v1',
+    batchReceipt,
+    batchDescriptor: {
+      schema_version:
+        'story-agent-visual-asset-pressure-receipt-evidence-descriptor/v1',
       batch_id: 'batch-1',
-      generated_at: '2026-07-26T03:00:00.000Z',
-      provider: 'openai_imagegen',
-      model: 'gpt-image-2',
-      assets: [{
-        seed_id: 'world-1',
-        role: 'character',
-        provider_asset_id: 'imagegen-built-in-call_sealed',
-        prompt_path: paths.batchPrompt,
-        prompt_sha256: sha256(batchPrompt),
-        source_path: paths.batchSource,
-        content_sha256: sha256(batchSource),
-        mime_type: 'image/png',
-        width: 1024,
-        height: 1536,
-      }],
+      receipt_content_sha256: sha256(batchReceiptBytes),
+      bundle_file_name: 'batch-1-receipt-evidence-bundle.json',
+      bundle_schema_version:
+        'story-agent-visual-asset-pressure-receipt-evidence-bundle/v1',
+      bundle_content_sha256: 'a'.repeat(64),
+      bundle_byte_length: 1024,
+      file_count: 2,
+      prompt_file_count: 1,
+      source_file_count: 1,
+      total_evidence_byte_count: batchPrompt.length + batchSource.length,
       machine_validation_only: true,
-      image_provider_invoked_by_server: false,
+      external_location_declared: false,
+      rights_granted: false,
+      human_review_performed: false,
       video_generation_performed: false,
       production_credit_granted: false,
     },
@@ -144,6 +175,10 @@ async function fixture(sealed = false) {
               relative_path: paths.batchReceipt,
               bytes: bytes.batchReceipt,
             },
+            evidence_descriptor: {
+              relative_path: paths.batchDescriptor,
+              bytes: bytes.batchDescriptor,
+            },
           }
         : {}),
       seed_count: 1,
@@ -176,7 +211,7 @@ describe('Story Agent visual pressure batch composition provenance', () => {
     });
 
     expect(item.report).toMatchObject({
-      schema_version: 'story-agent-visual-asset-pressure-batch-composition/v2',
+      schema_version: 'story-agent-visual-asset-pressure-batch-composition/v3',
       summary: {
         batch_count: 1,
         source_file_count: 5,
@@ -241,8 +276,8 @@ describe('Story Agent visual pressure batch composition provenance', () => {
       status: 'verified',
       sealed_batch_count: 1,
       legacy_unsealed_batch_count: 0,
-      file_count: 10,
-      verified_file_count: 10,
+      file_count: 11,
+      verified_file_count: 11,
     });
 
     await writeFile(
@@ -263,6 +298,42 @@ describe('Story Agent visual pressure batch composition provenance', () => {
     expect(changed.blockers).toContain(
       `composition_receipt_blocked:batch-1:`
       + `receipt_prompt_sha256_mismatch:${item.paths.batchPrompt}`,
+    );
+  });
+
+  it('binds sealed descriptor evidence to the exact registered receipt bytes', async () => {
+    const item = await fixture(true);
+    const changedDescriptor = Buffer.from(`${JSON.stringify({
+      ...JSON.parse(item.bytes.batchDescriptor.toString('utf8')) as object,
+      receipt_content_sha256: 'b'.repeat(64),
+    }, null, 2)}\n`);
+    await writeFile(
+      resolve(item.webRoot, item.paths.batchDescriptor),
+      changedDescriptor,
+    );
+    const verification =
+      await verifyStoryAgentVisualAssetPressureBatchCompositionReport({
+        report: {
+          ...item.report,
+          batches: [{
+            ...item.report.batches[0]!,
+            evidence_descriptor: {
+              relative_path: item.paths.batchDescriptor,
+              content_sha256: sha256(changedDescriptor),
+            },
+          }],
+        },
+        web_root: item.webRoot,
+        expected_outputs: {
+          manifest_path: item.paths.outputManifest,
+          binding_report_path: item.paths.outputBinding,
+          style_map_path: item.paths.outputStyle,
+          recovery_report_path: item.paths.outputRecovery,
+        },
+      });
+    expect(verification.status).toBe('blocked');
+    expect(verification.blockers).toContain(
+      'composition_descriptor_receipt_sha256_mismatch:batch-1',
     );
   });
 

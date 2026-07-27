@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve } from 'node:path'
 import {
@@ -9,6 +10,9 @@ import {
   parseStoryAgentVisualAssetPressureBatchReceipt,
   verifyStoryAgentVisualAssetPressureBatchReceipt,
 } from '../src/services/story-agent-visual-asset-pressure-batch-receipt-service.js'
+import {
+  parseStoryAgentVisualAssetPressureReceiptEvidenceDescriptor,
+} from '../src/services/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.js'
 
 function argumentValue(name: string): string | undefined {
   const index = process.argv.indexOf(name)
@@ -75,11 +79,18 @@ const [batchFiles, recoveryInput] = await Promise.all([
     receipt: batch.receipt_path
       ? await readJsonFile(resolve(webRoot, batch.receipt_path))
       : undefined,
+    evidence_descriptor: batch.evidence_descriptor_path
+      ? await readJsonFile(resolve(webRoot, batch.evidence_descriptor_path))
+      : undefined,
   }))),
   readJsonFile(recoveryInputPath),
 ])
 for (const batch of batchFiles) {
-  if (batch.definition.receipt_status !== 'sealed' || !batch.receipt) continue
+  if (
+    batch.definition.receipt_status !== 'sealed'
+    || !batch.receipt
+    || !batch.evidence_descriptor
+  ) continue
   const receipt = parseStoryAgentVisualAssetPressureBatchReceipt(batch.receipt.value)
   if (receipt.batch_id !== batch.batch_id) {
     throw new Error(`${batch.batch_id}: receipt batch_id mismatch`)
@@ -92,6 +103,19 @@ for (const batch of batchFiles) {
     throw new Error(
       `${batch.batch_id}: immutable receipt blocked: ${verification.blockers.join(', ')}`,
     )
+  }
+  const descriptor =
+    parseStoryAgentVisualAssetPressureReceiptEvidenceDescriptor(
+      batch.evidence_descriptor.value,
+    )
+  const receiptSha256 = createHash('sha256')
+    .update(batch.receipt.bytes)
+    .digest('hex')
+  if (
+    descriptor.batch_id !== batch.batch_id
+    || descriptor.receipt_content_sha256 !== receiptSha256
+  ) {
+    throw new Error(`${batch.batch_id}: evidence descriptor does not bind receipt`)
   }
 }
 const loadedBatches = batchFiles.map(batch => ({
@@ -147,6 +171,14 @@ const compositionReport = buildStoryAgentVisualAssetPressureBatchCompositionRepo
             receipt: {
               relative_path: batch.definition.receipt_path,
               bytes: batch.receipt.bytes,
+            },
+          }
+        : {}),
+      ...(batch.evidence_descriptor && batch.definition.evidence_descriptor_path
+        ? {
+            evidence_descriptor: {
+              relative_path: batch.definition.evidence_descriptor_path,
+              bytes: batch.evidence_descriptor.bytes,
             },
           }
         : {}),
