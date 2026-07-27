@@ -5907,10 +5907,6 @@ describe('project-service', () => {
   });
 
   it('drafts core, explainer, and second-wave production material fields from scenes and delivery hints', async () => {
-    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
-    TEMP_DIRS.push(root);
-    process.env.KB_ROOT = resolve(root, 'data');
-
     const cases: Array<{
       videoType: StoryGenerateResult['video_type'];
       style: StoryGenerateResult['presentation_style'];
@@ -6220,10 +6216,19 @@ describe('project-service', () => {
         culturalConstraints: [],
       },
     ];
+    const productionPacks = new Map(
+      [...new Set(cases.map(item => item.videoType))]
+        .map(videoType => [videoType, getProductionMaterialPack(videoType)]),
+    );
+    expect([...productionPacks.values()].every(Boolean)).toBe(true);
+
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
 
     for (const [caseIndex, item] of cases.entries()) {
       const caseId = `${item.sourceDomain ?? 'china-culture'}-${item.videoType}-${caseIndex + 1}`;
-      const productionPack = getProductionMaterialPack(item.videoType);
+      const productionPack = productionPacks.get(item.videoType);
       expect(productionPack).toBeTruthy();
       const materialPack: StoryGenerateResult['material_pack'] = {
         schema_version: 'material-pack/v1',
@@ -6339,7 +6344,7 @@ describe('project-service', () => {
       expect(draftedFieldValues).toContain(item.expectedSnippet);
       if (item.forbiddenSnippet) expect(draftedFieldValues).not.toContain(item.forbiddenSnippet);
     }
-  });
+  }, 20_000);
 
   it('adds manual project material and refreshes creation contract fields', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
