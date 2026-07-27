@@ -316,6 +316,10 @@ export async function getReferenceLibraryDetail(input: {
 }): Promise<ReferenceLibraryDetail> {
   const source = await getReferenceSource(input);
   const analyses = await listReferenceAnalyses(input);
+  await verifyEvidenceBoundTextAnalysisProvenance(
+    input.repoRoot,
+    analyses.filter(analysis => analysis.approval.status === 'approved'),
+  );
   const similarityEvidence = await listReferenceSimilarityEvidence(input);
   return { source, analyses, similarity_evidence: similarityEvidence };
 }

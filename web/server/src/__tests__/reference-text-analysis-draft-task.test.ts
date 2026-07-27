@@ -829,6 +829,13 @@ describe('reference text analysis draft task', () => {
     expect(tampered.body.error.code).toBe(
       'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
     );
+    const rejectedDetail = await request.get(
+      `/api/reference-library/references/${fixture.source.reference_id}`,
+    );
+    expect(rejectedDetail.status).toBe(400);
+    expect(rejectedDetail.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
     const rejectedApprovalReplay = await request
       .post(
         `/api/reference-library/analyses/`
