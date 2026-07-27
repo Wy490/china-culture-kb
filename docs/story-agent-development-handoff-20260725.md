@@ -1344,11 +1344,152 @@ canonical remains ready / 12 cases / 1 sealed + 2 legacy / 16/16
 
 注意：`web/generated/` 不提交 Git，clean-checkout CI 若没有恢复对应 evidence artifact，会按设计 fail-closed；当前命令是已有 evidence workspace 的只读 preflight，不得用缺失文件的 CI 结果声称 receipt 无效或重新创建 receipt。
 
-### 6.15 下一优先级
+### 6.15 P1-B15 sealed evidence bundle 导出/恢复（2026-07-27）
 
-1. 若要把 registry receipt audit 接入 clean-checkout CI，先定义受控 evidence artifact 的恢复与 SHA 锁定流程；不得把缺失的 `web/generated` 内容替换成 fixture 后仍称为真实 sealed evidence；
-2. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`，不得伪造封存；
-3. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
+完成提交：
+
+```text
+8d3ea787 feat(story-agent): package sealed receipt evidence
+```
+
+新增合同：
+
+```text
+story-agent-visual-asset-pressure-receipt-evidence-bundle/v1
+```
+
+实现文件：
+
+```text
+web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.ts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-export.mts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-restore.mts
+web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.test.ts
+```
+
+bundle 是确定性 JSON + canonical base64，包含 receipt 引用的 exact prompt/source bytes，并固定：
+
+```text
+batch_id
+receipt_content_sha256
+relative_path
+prompt/source kind
+media_type
+content_sha256
+byte_length
+base64 bytes
+bounded summary
+```
+
+不含 `generated_at`，相同 receipt 与 evidence bytes 会生成完全相同的 bundle 字节。解析门槛：
+
+```text
+files <= 256
+each file <= 16 MiB
+total decoded bytes <= 128 MiB
+canonical base64 only
+unique safe relative paths
+summary counts exact
+all SHA/length values recomputed
+```
+
+导出：
+
+```bash
+cd /Users/wuyu/Desktop/china-culture-kb/web/server
+npm run smoke:story-agent-visual-asset-pressure-receipt-evidence-export
+```
+
+导出前先验证 committed receipt、prompt/source SHA 和 PNG 尺寸；输出只允许位于 `web/generated`。若目标已存在且字节一致，返回 `verified_existing`；若不同则拒绝覆盖。
+
+真实 batch3 bundle：
+
+```text
+output:
+web/generated/story-agent-visual-asset-pressure-evidence/
+  imagegen-20260726-batch3-receipt-evidence-bundle.json
+
+bundle SHA-256:
+324c954603d26d692b2d14e46607f81e0ecaa3835d661ec2942168978abf3eb2
+
+bundle bytes: 28,474,649
+decoded evidence bytes: 21,351,766
+16 files = 8 prompts + 8 PNG sources
+```
+
+第二次真实导出返回 `verified_existing`，SHA 未变化。
+
+恢复：
+
+```bash
+npm run smoke:story-agent-visual-asset-pressure-receipt-evidence-restore
+```
+
+恢复门禁：
+
+- bundle 必须绑定当前 committed receipt 的 exact bytes SHA；
+- bundle 文件集合、kind、media type、SHA 必须与 receipt 完全一致；
+- 目标现有文件只有内容 SHA 完全相同时才作为 `verified_existing`；
+- 任一现有文件冲突时，在写入任何 peer 前整体 `blocked`；
+- 新文件使用 `wx`，绝不覆盖；中途失败只回滚本次新建文件；
+- 拒绝目标路径中的 symbolic link；
+- 恢复后重新运行 receipt hash/PNG dimension verification；
+- restore bundle 文件读取上限为 180 MiB。
+
+真实 workspace 恢复结果：
+
+```text
+status: verified_existing
+16 files
+0 restored
+16 existing
+0 blockers
+```
+
+隔离临时 Web root 测试已证明：
+
+```text
+clean evidence workspace
+  → restore 4/4 fixture files
+  → receipt sealed
+  → registry audit verified
+  → second restore verified_existing
+```
+
+同时覆盖 bundle tamper、receipt SHA 不匹配、operator-owned 冲突文件和零部分恢复。
+
+固定边界：
+
+```text
+rights_granted=false
+human_review_performed=false
+external_artifact_uploaded=false
+external_artifact_download_verified_by_transport=false
+image_provider_invoked_by_server=false
+video_generation_performed=false
+production_credit_granted=false
+```
+
+真实 bundle 位于 gitignored `web/generated`，本轮没有上传任何外部 artifact store。
+
+验证结果：
+
+```text
+receipt/bundle/manifest/registry/composition/pressure/ops targeted:
+  8 files / 33 tests passed
+server:
+  179 files passed, 1 skipped
+  1505 tests passed, 2 skipped
+server lint/typecheck passed
+server production build passed
+canonical remains ready / 12 cases / 1 sealed + 2 legacy / 16/16
+```
+
+### 6.16 下一优先级
+
+1. 新增提交内 evidence bundle descriptor，固定 batch ID、receipt SHA、bundle SHA、字节数和文件计数，让 clean-checkout CI 在恢复 blob 前先验证选中的 artifact 正是预期确定性 bundle；
+2. descriptor 只描述完整性，不内置外部 URL、凭据、rights 或 production credit；具体 artifact store 上传/下载仍需用户选择并授权；
+3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`，不得伪造封存。
 
 ## 7. 外部条件具备时才做
 
@@ -1423,6 +1564,7 @@ real external provider
 - P1-B12 committed immutable batch receipt、registry/composition v2、第三批 sealed 与旧批次 `legacy_unsealed`、3 批 16/16 provenance；
 - P1-B13 通用 receipt-backed manifest builder、必填路径 CLI、只读 receipt inspection 与 batch3 零字节漂移迁移；
 - P1-B14 registry-level bounded receipt audit、sealed 全量验证与 legacy 显式枚举；
+- P1-B15 deterministic sealed evidence bundle、receipt SHA 锁定、安全幂等恢复与零覆盖；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -1450,6 +1592,7 @@ web/server/src/services/story-agent-visual-asset-pressure-ops-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-receipt-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-manifest-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-registry-audit-service.ts
+web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
@@ -1458,6 +1601,8 @@ web/server/scripts/story-agent-visual-asset-pressure-batch3-prepare.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-manifest.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-inspect.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-export.mts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-restore.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-merge.mts
@@ -1469,6 +1614,7 @@ web/server/src/__tests__/story-agent-visual-asset-pressure-batch-registry-servic
 web/server/src/__tests__/story-agent-visual-asset-pressure-batch-receipt-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-manifest-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-registry-audit-service.test.ts
+web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-composition-service.test.ts
 web/server/src/__tests__/api.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
@@ -1585,10 +1731,11 @@ a50a157f feat(story-agent): verify visual batch composition
 de86b56c feat(story-agent): seal visual asset batch receipts
 4d3ac1d5 feat(story-agent): generalize receipt-backed manifests
 1b2c298a feat(story-agent): audit visual receipt registries
+8d3ea787 feat(story-agent): package sealed receipt evidence
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具，以及 P1-B14 registry-level 只读 receipt audit 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit，以及 P1-B15 deterministic evidence bundle/restore 均已完成。不要重新实现。
 
-下一步若要接入 clean-checkout CI，先定义受控 evidence artifact 的恢复与 SHA 锁定，不得以 fixture 替代真实 sealed evidence。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt 仍不代表 rights、人审或 production credit。
+下一步新增提交内 evidence bundle descriptor，固定 batch/receipt/bundle SHA 与计数；artifact store 上传/下载仍需用户选择并授权。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
