@@ -23,6 +23,8 @@
     "smoke:story-agent-visual-asset-pressure-receipt-manifest": "tsx scripts/story-agent-visual-asset-pressure-receipt-manifest.mts",
     "smoke:story-agent-visual-asset-pressure-receipt-inspect": "tsx scripts/story-agent-visual-asset-pressure-receipt-inspect.mts",
     "smoke:story-agent-visual-asset-pressure-receipt-registry-audit": "tsx scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts",
+    "smoke:story-agent-visual-asset-pressure-receipt-evidence-export": "tsx scripts/story-agent-visual-asset-pressure-receipt-evidence-export.mts",
+    "smoke:story-agent-visual-asset-pressure-receipt-evidence-restore": "tsx scripts/story-agent-visual-asset-pressure-receipt-evidence-restore.mts",
     "smoke:story-agent-visual-asset-pressure-batch-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure-eight-world-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure": "tsx scripts/story-agent-visual-asset-pressure.mts",
