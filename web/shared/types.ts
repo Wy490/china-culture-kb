@@ -13959,6 +13959,7 @@ export interface ReferenceTrace {
   source_benchmark_ids?: string[];
   source_references?: ReferenceGenerationSourceTrace[];
   similarity_evidence_refs?: ReferenceSimilarityEvidenceTrace[];
+  supplement_provenance_refs?: ReferenceSupplementProvenanceTrace[];
   source_story_structure: StoryStructureType;
 }
 
@@ -13975,6 +13976,14 @@ export interface ReferenceSimilarityEvidenceTrace {
   payload_sha256: string;
   input_provenance: ReferenceSimilarityEvidenceRecord['input_provenance'];
   dimensions: ReferenceSimilarityDimension[];
+}
+
+export interface ReferenceSupplementProvenanceTrace {
+  analysis_id: string;
+  supplement_request_sha256: string;
+  supplement_id: string;
+  supplement_payload_sha256: string;
+  status: 'verified';
 }
 
 export type ReferenceGenerationSimilarityStatus =

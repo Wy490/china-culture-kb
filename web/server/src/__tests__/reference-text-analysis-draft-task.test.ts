@@ -8,6 +8,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createJsonBodyParser } from '../middleware/json-body.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { createReferenceLibraryRouter } from '../routes/reference-library.js';
+import {
+  buildReferenceGenerationTrace,
+  resolveReferenceGenerationContext,
+} from '../services/reference-generation-bridge-service.js';
 
 const temporaryRoots: string[] = [];
 
@@ -659,6 +663,137 @@ describe('reference text analysis draft task', () => {
       },
     });
 
+    const approved = await request
+      .post(
+        `/api/reference-library/analyses/`
+        + `${completed.body.data.analysis.analysis_id}/approval`,
+      )
+      .send({
+        approved_by: 'reviewer-01',
+        approved_at: '2026-07-27T13:30:00.000Z',
+        confirmation: 'human_reviewed_reference_analysis',
+      });
+    expect(approved.status).toBe(201);
+    const comparisonSource = await request
+      .post('/api/reference-library/references')
+      .send({
+        title: '用于跨来源 benchmark 的研究样本',
+        media_type: 'film',
+        source_url: 'https://example.com/comparison-film',
+        accessed_at: '2026-07-27T13:31:00.000Z',
+        rights_status: 'research_only',
+        access_scope: 'metadata_only',
+        user_reason: '仅用于验证下游补充 provenance 复核',
+      });
+    expect(comparisonSource.status).toBe(201);
+    const comparisonAnalysis = await request
+      .post(
+        `/api/reference-library/references/`
+        + `${comparisonSource.body.data.reference_id}/film-analyses`,
+      )
+      .send({
+        analyzed_by: 'researcher-02',
+        analysis: {
+          sequence_beats: [{
+            start: '00:00:00',
+            end: '00:00:10',
+            function: '以可见选择完成场景转折',
+          }],
+          shot_observations: [{
+            timecode: '00:00:05',
+            evidence_note: '人物先行动，解释随后出现',
+          }],
+          continuity_methods: ['以同一道具维持场景连续性'],
+          reusable_principles: ['用可见动作承载不可撤回的选择'],
+          avoid_copying: ['不得复制具体人物、台词或镜头排列'],
+        },
+      });
+    expect(comparisonAnalysis.status).toBe(201);
+    const comparisonApproval = await request
+      .post(
+        `/api/reference-library/analyses/`
+        + `${comparisonAnalysis.body.data.analysis_id}/approval`,
+      )
+      .send({
+        approved_by: 'reviewer-01',
+        approved_at: '2026-07-27T13:32:00.000Z',
+        confirmation: 'human_reviewed_reference_analysis',
+      });
+    expect(comparisonApproval.status).toBe(201);
+
+    const benchmarkRequest = {
+      analysis_ids: [
+        completed.body.data.analysis.analysis_id,
+        comparisonAnalysis.body.data.analysis_id,
+      ],
+      target_video_type: 'character_story',
+      target_dimension: 'scene',
+      principle: '以功能反转的可见动作承载人物选择',
+      evidence_refs: [
+        completed.body.data.analysis.analysis_id,
+        comparisonAnalysis.body.data.analysis_id,
+      ],
+      created_by: 'reviewer-01',
+      approval: {
+        approved_by: 'reviewer-01',
+        approved_at: '2026-07-27T13:33:00.000Z',
+      },
+    };
+    const benchmark = await request
+      .post('/api/reference-library/benchmark-cards')
+      .send(benchmarkRequest);
+    expect(benchmark.status).toBe(201);
+    const stylePackRequest = {
+      name: '补充证据约束的动作反转',
+      description: '仅组合经完整账本复核的抽象场景原则。',
+      benchmark_card_ids: [benchmark.body.data.benchmark_id],
+      compatible_video_types: ['character_story'],
+      compatible_presentation_styles: ['cinematic'],
+      compatible_story_structures: ['single_event_drama'],
+      created_by: 'reviewer-01',
+      approval: {
+        approved_by: 'reviewer-01',
+        approved_at: '2026-07-27T13:34:00.000Z',
+      },
+    };
+    const stylePack = await request
+      .post('/api/reference-library/style-packs')
+      .send(stylePackRequest);
+    expect(stylePack.status).toBe(201);
+    const resolution = await resolveReferenceGenerationContext({
+      repoRoot,
+      stylePackIds: [stylePack.body.data.id],
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+    });
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok || !resolution.context) {
+      throw new Error('Expected supplemented style-pack context');
+    }
+    const trace = buildReferenceGenerationTrace({
+      context: resolution.context,
+      storyStructure: 'single_event_drama',
+      applicationStatus: 'external_prompt_injected',
+    });
+    expect(trace[0]).toMatchObject({
+      supplement_provenance_refs: [{
+        analysis_id: completed.body.data.analysis.analysis_id,
+        supplement_request_sha256:
+          declared.body.data.supplement_request.request_payload_sha256,
+        supplement_id: supplemented.body.data.supplement.supplement_id,
+        supplement_payload_sha256:
+          supplemented.body.data.supplement.payload_sha256,
+        status: 'verified',
+      }],
+    });
+    expect(JSON.stringify(trace)).not.toContain(
+      supplementSubmission.items[0].observation_summary,
+    );
+    expect(JSON.stringify(trace)).not.toContain(
+      fixture.evidence.observations.excerpts[0].text,
+    );
+
     const tamperedSupplement = JSON.parse(
       await readFile(supplementPath, 'utf8'),
     );
@@ -673,6 +808,33 @@ describe('reference text analysis draft task', () => {
     expect(tampered.body.error.code).toBe(
       'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
     );
+    const rejectedBenchmark = await request
+      .post('/api/reference-library/benchmark-cards')
+      .send(benchmarkRequest);
+    expect(rejectedBenchmark.status).toBe(400);
+    expect(rejectedBenchmark.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    const rejectedStylePack = await request
+      .post('/api/reference-library/style-packs')
+      .send(stylePackRequest);
+    expect(rejectedStylePack.status).toBe(400);
+    expect(rejectedStylePack.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    const rejectedResolution = await resolveReferenceGenerationContext({
+      repoRoot,
+      stylePackIds: [stylePack.body.data.id],
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+    });
+    expect(rejectedResolution).toMatchObject({
+      ok: false,
+      details: {
+        issue_code: 'style_pack_provenance_invalid',
+      },
+    });
   });
 
   it('rejects draft task creation before evidence execution is completed', async () => {

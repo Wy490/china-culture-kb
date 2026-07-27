@@ -5,6 +5,7 @@ import type {
   ReferenceSimilarityEvidenceRecord,
   ReferenceSimilarityEvidenceTrace,
   ReferenceStylePackRecord,
+  ReferenceSupplementProvenanceTrace,
   ReferenceTrace,
   StoryStructureType,
   VideoType,
@@ -16,6 +17,9 @@ import {
   getReferenceSimilarityEvidence,
   getReferenceStylePack,
 } from './reference-library-service.js';
+import {
+  verifyReferenceTextAnalysisCompositionProvenance,
+} from './reference-text-analysis-draft-task-service.js';
 
 export interface ReferenceGenerationStylePackContext {
   style_pack_id: string;
@@ -24,6 +28,7 @@ export interface ReferenceGenerationStylePackContext {
   source_analysis_ids: string[];
   source_benchmark_ids: string[];
   source_references: ReferenceGenerationSourceTrace[];
+  supplement_provenance_refs: ReferenceSupplementProvenanceTrace[];
   abstract_rules: string[];
   avoid_copying: string[];
   approved_by: string;
@@ -132,7 +137,10 @@ function blocked(
 async function verifyStylePackProvenance(input: {
   repoRoot: string;
   pack: ReferenceStylePackRecord;
-}): Promise<string | undefined> {
+}): Promise<{
+  issue?: string;
+  supplementProvenanceRefs: ReferenceSupplementProvenanceTrace[];
+}> {
   const { repoRoot, pack } = input;
   const benchmarks = await Promise.all(
     pack.source_benchmark_ids.map(benchmarkId =>
@@ -145,10 +153,16 @@ async function verifyStylePackProvenance(input: {
     benchmarks.flatMap(benchmark => benchmark.analysis_ids),
   );
   if (!sameMembers(pack.source_reference_ids, benchmarkReferenceIds)) {
-    return 'style pack source_reference_ids do not match its approved benchmark cards';
+    return {
+      issue: 'style pack source_reference_ids do not match its approved benchmark cards',
+      supplementProvenanceRefs: [],
+    };
   }
   if (!sameMembers(pack.source_analysis_ids, benchmarkAnalysisIds)) {
-    return 'style pack source_analysis_ids do not match its approved benchmark cards';
+    return {
+      issue: 'style pack source_analysis_ids do not match its approved benchmark cards',
+      supplementProvenanceRefs: [],
+    };
   }
 
   const analyses = await Promise.all(
@@ -156,18 +170,38 @@ async function verifyStylePackProvenance(input: {
       getReferenceAnalysis({ repoRoot, analysisId })),
   );
   if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
-    return 'every source analysis must remain approved at generation time';
+    return {
+      issue: 'every source analysis must remain approved at generation time',
+      supplementProvenanceRefs: [],
+    };
   }
   if (analyses.some(
     analysis => !pack.source_reference_ids.includes(analysis.reference_id),
   )) {
-    return 'a source analysis points outside the style pack reference set';
+    return {
+      issue: 'a source analysis points outside the style pack reference set',
+      supplementProvenanceRefs: [],
+    };
   }
+  const provenance = await Promise.all(
+    analyses
+      .filter(analysis => (
+        analysis.analysis_type === 'text'
+        && analysis.schema_version === 'reference-analysis-record/v2'
+      ))
+      .map(analysis => verifyReferenceTextAnalysisCompositionProvenance({
+        repoRoot,
+        analysisId: analysis.analysis_id,
+      })),
+  );
   await Promise.all(
     pack.source_reference_ids.map(referenceId =>
       getReferenceSource({ repoRoot, referenceId })),
   );
-  return undefined;
+  return {
+    supplementProvenanceRefs: provenance.flatMap(item =>
+      item.supplement_provenance ? [item.supplement_provenance] : []),
+  };
 }
 
 export async function resolveReferenceGenerationContext(input: {
@@ -262,18 +296,47 @@ export async function resolveReferenceGenerationContext(input: {
     }
 
     try {
-      const provenanceIssue = await verifyStylePackProvenance({
+      const provenance = await verifyStylePackProvenance({
         repoRoot: input.repoRoot,
         pack,
       });
-      if (provenanceIssue) {
+      if (provenance.issue) {
         return blocked(
           requestedStylePackIds,
           'style_pack_provenance_invalid',
-          provenanceIssue,
+          provenance.issue,
           { style_pack_id: stylePackId },
         );
       }
+      const sourceReferences = await Promise.all(
+        pack.source_reference_ids.map(async (referenceId) => {
+          const source = await getReferenceSource({
+            repoRoot: input.repoRoot,
+            referenceId,
+          });
+          return {
+            reference_id: source.reference_id,
+            rights_status: source.rights_status,
+            access_scope: source.access_scope,
+            ...(source.content_fingerprint
+              ? { content_fingerprint: source.content_fingerprint }
+              : {}),
+          } satisfies ReferenceGenerationSourceTrace;
+        }),
+      );
+      resolvedPacks.push({
+        style_pack_id: pack.id,
+        name: pack.name,
+        source_reference_ids: [...pack.source_reference_ids],
+        source_analysis_ids: [...pack.source_analysis_ids],
+        source_benchmark_ids: [...pack.source_benchmark_ids],
+        source_references: sourceReferences,
+        supplement_provenance_refs: provenance.supplementProvenanceRefs,
+        abstract_rules: abstractRules(pack),
+        avoid_copying: copyingBoundaries(pack),
+        approved_by: pack.approval.approved_by,
+        approved_at: pack.approval.approved_at,
+      });
     } catch (error) {
       return blocked(
         requestedStylePackIds,
@@ -282,35 +345,6 @@ export async function resolveReferenceGenerationContext(input: {
         { style_pack_id: stylePackId },
       );
     }
-
-    const sourceReferences = await Promise.all(
-      pack.source_reference_ids.map(async (referenceId) => {
-        const source = await getReferenceSource({
-          repoRoot: input.repoRoot,
-          referenceId,
-        });
-        return {
-          reference_id: source.reference_id,
-          rights_status: source.rights_status,
-          access_scope: source.access_scope,
-          ...(source.content_fingerprint
-            ? { content_fingerprint: source.content_fingerprint }
-            : {}),
-        } satisfies ReferenceGenerationSourceTrace;
-      }),
-    );
-    resolvedPacks.push({
-      style_pack_id: pack.id,
-      name: pack.name,
-      source_reference_ids: [...pack.source_reference_ids],
-      source_analysis_ids: [...pack.source_analysis_ids],
-      source_benchmark_ids: [...pack.source_benchmark_ids],
-      source_references: sourceReferences,
-      abstract_rules: abstractRules(pack),
-      avoid_copying: copyingBoundaries(pack),
-      approved_by: pack.approval.approved_by,
-      approved_at: pack.approval.approved_at,
-    });
   }
 
   const allowedReferenceIds = unique(
@@ -405,6 +439,9 @@ export function buildReferenceGenerationTrace(input: {
         ...reference,
         dimensions: [...reference.dimensions],
       })),
+    supplement_provenance_refs: pack.supplement_provenance_refs.map(
+      reference => ({ ...reference }),
+    ),
     source_story_structure: input.storyStructure,
   }));
 }

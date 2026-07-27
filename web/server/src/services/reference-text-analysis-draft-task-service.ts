@@ -17,6 +17,7 @@ import type {
   ReferenceTextAnalysisDraftSubmissionResult,
   ReferenceTextAnalysisDraftTaskRecord,
   ReferenceTextAnalysisExecutionRecord,
+  ReferenceSupplementProvenanceTrace,
   TextReferenceAnalysis,
 } from '@shared/types.js';
 import {
@@ -891,6 +892,78 @@ async function getVerifiedDraftAnalysis(input: {
     );
   }
   return analysis;
+}
+
+export async function verifyReferenceTextAnalysisCompositionProvenance(input: {
+  repoRoot: string;
+  analysisId: string;
+}): Promise<{
+  analysis_id: string;
+  supplement_provenance: ReferenceSupplementProvenanceTrace | null;
+}> {
+  const analysis = await getReferenceAnalysis({
+    repoRoot: input.repoRoot,
+    analysisId: input.analysisId,
+  });
+  if (
+    analysis.analysis_type !== 'text'
+    || analysis.schema_version !== 'reference-analysis-record/v2'
+  ) {
+    return {
+      analysis_id: analysis.analysis_id,
+      supplement_provenance: null,
+    };
+  }
+  if (!analysis.provenance) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_DRAFT_INTEGRITY_INVALID',
+      'Evidence-bound text analysis is missing immutable provenance',
+    );
+  }
+  const source = await loadCompletedSource({
+    repoRoot: input.repoRoot,
+    taskId: analysis.provenance.analysis_task_id,
+  });
+  const draftTask = await readDraftTask({
+    repoRoot: input.repoRoot,
+    draftTaskId: source.draftTaskId,
+  });
+  verifyDraftTask(draftTask, source);
+  if (
+    draftTask.status !== 'completed'
+    || draftTask.analysis_id !== analysis.analysis_id
+  ) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_DRAFT_INTEGRITY_INVALID',
+      'Evidence-bound text analysis does not match a completed draft task',
+    );
+  }
+  await getVerifiedDraftAnalysis({
+    repoRoot: input.repoRoot,
+    draftTask,
+    source,
+  });
+  if (!draftTask.supplement_request) {
+    return {
+      analysis_id: analysis.analysis_id,
+      supplement_provenance: null,
+    };
+  }
+  const supplement = await getVerifiedSupplement({
+    repoRoot: input.repoRoot,
+    draftTask,
+  });
+  return {
+    analysis_id: analysis.analysis_id,
+    supplement_provenance: {
+      analysis_id: analysis.analysis_id,
+      supplement_request_sha256:
+        draftTask.supplement_request.request_payload_sha256,
+      supplement_id: supplement.supplement_id,
+      supplement_payload_sha256: supplement.payload_sha256,
+      status: 'verified',
+    },
+  };
 }
 
 export async function submitReferenceTextAnalysisDraft(input: {

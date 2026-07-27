@@ -188,6 +188,27 @@ async function readSimilarityEvidenceFile(
   return record;
 }
 
+async function verifyEvidenceBoundTextAnalysisComposition(
+  repoRoot: string,
+  analyses: ReferenceAnalysisRecord[],
+): Promise<void> {
+  const evidenceBoundAnalysisIds = analyses
+    .filter(analysis => (
+      analysis.analysis_type === 'text'
+      && analysis.schema_version === 'reference-analysis-record/v2'
+    ))
+    .map(analysis => analysis.analysis_id);
+  if (evidenceBoundAnalysisIds.length === 0) return;
+  const {
+    verifyReferenceTextAnalysisCompositionProvenance,
+  } = await import('./reference-text-analysis-draft-task-service.js');
+  await Promise.all(evidenceBoundAnalysisIds.map(analysisId =>
+    verifyReferenceTextAnalysisCompositionProvenance({
+      repoRoot,
+      analysisId,
+    })));
+}
+
 async function readJsonFiles<T>(
   directory: string,
   reader: (filePath: string) => Promise<T>,
@@ -634,6 +655,7 @@ export async function createBenchmarkCard(input: {
       'Every analysis must be human-approved before benchmark composition',
     );
   }
+  await verifyEvidenceBoundTextAnalysisComposition(input.repoRoot, analyses);
   const referenceIds = unique(analyses.map(analysis => analysis.reference_id));
   if (referenceIds.length < 2) {
     throw new ReferenceLibraryError(
@@ -746,6 +768,7 @@ export async function createReferenceStylePack(input: {
       'Every source analysis must remain human-approved for style-pack composition',
     );
   }
+  await verifyEvidenceBoundTextAnalysisComposition(input.repoRoot, analyses);
   const reusablePrinciples = unique(benchmarkCards.map(card => card.principle));
   const avoidCopying = unique(analyses.flatMap(analysis => analysis.analysis.avoid_copying));
   const record = ReferenceStylePackRecordSchema.parse({
