@@ -846,6 +846,21 @@ describe('reference text analysis draft task', () => {
     expect(rejectedApprovalReplay.body.error.code).toBe(
       'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
     );
+    const rejectedBenchmarkDetail = await request.get(
+      `/api/reference-library/benchmark-cards/`
+      + `${benchmark.body.data.benchmark_id}`,
+    );
+    expect(rejectedBenchmarkDetail.status).toBe(400);
+    expect(rejectedBenchmarkDetail.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    const rejectedBenchmarkList = await request.get(
+      '/api/reference-library/benchmark-cards',
+    );
+    expect(rejectedBenchmarkList.status).toBe(400);
+    expect(rejectedBenchmarkList.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
     const rejectedBenchmark = await request
       .post('/api/reference-library/benchmark-cards')
       .send(benchmarkRequest);

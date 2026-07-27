@@ -714,6 +714,22 @@ export async function createBenchmarkCard(input: {
   return record;
 }
 
+async function verifyBenchmarkCardProvenance(
+  repoRoot: string,
+  cards: BenchmarkCard[],
+): Promise<void> {
+  const analysisIds = unique(cards.flatMap(card => card.analysis_ids));
+  const analyses = await Promise.all(analysisIds.map(analysisId =>
+    getReferenceAnalysis({ repoRoot, analysisId })));
+  if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_ANALYSIS_APPROVAL_CONFLICT',
+      'Every benchmark analysis must remain approved when the card is read',
+    );
+  }
+  await verifyEvidenceBoundTextAnalysisProvenance(repoRoot, analyses);
+}
+
 export async function getBenchmarkCard(input: {
   repoRoot: string;
   benchmarkId: string;
@@ -725,9 +741,11 @@ export async function getBenchmarkCard(input: {
     label: 'Reference benchmark',
   });
   try {
-    return await readBenchmarkCardFile(
+    const card = await readBenchmarkCardFile(
       path.join(benchmarkCardsDirectory(input.repoRoot), `${benchmarkId}.json`),
     );
+    await verifyBenchmarkCardProvenance(input.repoRoot, [card]);
+    return card;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new ReferenceLibraryError(
@@ -743,6 +761,7 @@ export async function listBenchmarkCards(input: {
   repoRoot: string;
 }): Promise<BenchmarkCard[]> {
   const cards = await readJsonFiles(benchmarkCardsDirectory(input.repoRoot), readBenchmarkCardFile);
+  await verifyBenchmarkCardProvenance(input.repoRoot, cards);
   return cards.sort((left, right) =>
     right.created_at.localeCompare(left.created_at)
     || left.benchmark_id.localeCompare(right.benchmark_id));
