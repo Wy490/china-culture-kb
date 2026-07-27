@@ -17,6 +17,11 @@ import type {
   ReferenceTextMaterialManifest,
   ReferenceTextMaterialRecord,
   ReferenceTextMaterialStatus,
+  ReferenceTextAnalysisChunkSubmissionResult,
+  ReferenceTextAnalysisExecutionRecord,
+  ReferenceTextAnalysisFinalizationResult,
+  ReferenceTextAnalysisNextChunkResult,
+  ReferenceTextAnalysisPartialObservations,
   PresentationStyle,
   StoryStructureType,
   TextReferenceAnalysis,
@@ -44,6 +49,21 @@ export interface CreateReferenceTextMaterialRequest {
 export interface CreateReferenceTextMaterialResult {
   material: ReferenceTextMaterialRecord
   idempotent_replay: boolean
+}
+
+export interface CreateReferenceTextAnalysisExecutionRequest {
+  executor: {
+    kind: 'codex' | 'operator'
+    executor_id: string
+  }
+  confirmation: 'source_text_treated_as_untrusted_data'
+}
+
+export interface SubmitReferenceTextAnalysisChunkRequest {
+  submission_key: string
+  submitted_by: string
+  chunk_content_sha256: string
+  observations: ReferenceTextAnalysisPartialObservations
 }
 
 export type CreateReferenceSourceRequest = Omit<
@@ -193,5 +213,52 @@ export function submitReferenceAnalysisTask(
   return apiPost<ReferenceAnalysisTaskSubmissionResult>(
     `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}/submissions`,
     request,
+  )
+}
+
+export function createReferenceTextAnalysisExecution(
+  taskId: string,
+  request: CreateReferenceTextAnalysisExecutionRequest,
+) {
+  return apiPost<ReferenceTextAnalysisExecutionRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}/text-execution`,
+    request,
+  )
+}
+
+export function getReferenceTextAnalysisExecution(taskId: string) {
+  return apiGet<ReferenceTextAnalysisExecutionRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}/text-execution`,
+  )
+}
+
+export function getReferenceTextAnalysisNextChunk(taskId: string) {
+  return apiGet<ReferenceTextAnalysisNextChunkResult>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}/text-execution/next-chunk`,
+  )
+}
+
+export function submitReferenceTextAnalysisChunk(
+  taskId: string,
+  chunkId: string,
+  request: SubmitReferenceTextAnalysisChunkRequest,
+) {
+  return apiPost<ReferenceTextAnalysisChunkSubmissionResult>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + `/text-execution/chunks/${encodeURIComponent(chunkId)}/submissions`,
+    request,
+  )
+}
+
+export function finalizeReferenceTextAnalysisExecution(
+  taskId: string,
+  finalizedBy: string,
+) {
+  return apiPost<ReferenceTextAnalysisFinalizationResult>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}/text-execution/finalize`,
+    {
+      finalized_by: finalizedBy,
+      confirmation: 'aggregate_completed_chunks_to_operator_evidence',
+    },
   )
 }

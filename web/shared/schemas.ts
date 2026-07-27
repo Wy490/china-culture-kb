@@ -296,17 +296,7 @@ const ReferenceSimilarityMarkerObservationSchema = z.object({
     .max(12)
     .refine(uniqueReferenceIds, 'distinctive_markers must be unique'),
 }).strict();
-export const ReferenceSimilarityEvidenceCreateRequestSchema = z.object({
-  source_content_fingerprint: ReferenceContentFingerprintSchema,
-  input_provenance: z.enum(['operator_submitted', 'fixture']),
-  authorization: z.object({
-    basis: z.enum(['user_owned', 'licensed', 'public_domain']),
-    authorization_reference: ReferenceNonEmptyTextSchema.max(500),
-    attested_by: ReferenceNonEmptyTextSchema.max(120),
-    attested_at: ReferenceTimestampSchema,
-    confirmation: z.literal('authorized_similarity_analysis_only'),
-  }).strict(),
-  observations: z.object({
+export const ReferenceSimilarityEvidenceObservationsSchema = z.object({
     excerpts: z.array(z.object({
       observation_id: ReferenceSimilarityObservationIdSchema,
       source_locator: ReferenceNonEmptyTextSchema.max(200),
@@ -356,7 +346,19 @@ export const ReferenceSimilarityEvidenceCreateRequestSchema = z.object({
       || observations.plot_beats.length > 0
       || observations.shot_sequence.length > 0,
     'at least one similarity observation is required',
-  ),
+  );
+
+export const ReferenceSimilarityEvidenceCreateRequestSchema = z.object({
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  input_provenance: z.enum(['operator_submitted', 'fixture']),
+  authorization: z.object({
+    basis: z.enum(['user_owned', 'licensed', 'public_domain']),
+    authorization_reference: ReferenceNonEmptyTextSchema.max(500),
+    attested_by: ReferenceNonEmptyTextSchema.max(120),
+    attested_at: ReferenceTimestampSchema,
+    confirmation: z.literal('authorized_similarity_analysis_only'),
+  }).strict(),
+  observations: ReferenceSimilarityEvidenceObservationsSchema,
 }).strict();
 
 export const ReferenceSimilarityEvidenceRecordSchema =
@@ -392,7 +394,158 @@ export const ReferenceAnalysisTaskCreateRequestSchema = z.object({
 
 export const ReferenceAnalysisTaskSubmissionSchema = z.object({
   submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
-  observations: ReferenceSimilarityEvidenceCreateRequestSchema.shape.observations,
+  observations: ReferenceSimilarityEvidenceObservationsSchema,
+}).strict();
+
+export const ReferenceTextAnalysisPartialObservationsSchema = z.object({
+  excerpts: z.array(z.object({
+    observation_id: ReferenceNonEmptyTextSchema.max(100),
+    source_locator: ReferenceNonEmptyTextSchema.max(160),
+    text: ReferenceNonEmptyTextSchema.min(15).max(500),
+  }).strict()).max(20).refine(
+    items => uniqueReferenceIds(items.map(item => item.observation_id)),
+    'excerpt observation_id values must be unique',
+  ),
+  character_profiles: z.array(z.object({
+    observation_id: ReferenceNonEmptyTextSchema.max(100),
+    label: ReferenceNonEmptyTextSchema.max(120),
+    distinctive_markers: z.array(ReferenceSimilarityMarkerSchema)
+      .min(2)
+      .max(12)
+      .refine(uniqueReferenceIds, 'distinctive_markers must be unique'),
+  }).strict()).max(50).refine(
+    items => uniqueReferenceIds(items.map(item => item.observation_id)),
+    'character profile observation_id values must be unique',
+  ),
+  plot_beats: z.array(z.object({
+    observation_id: ReferenceNonEmptyTextSchema.max(100),
+    order: z.number().int().min(1).max(500),
+    distinctive_markers: z.array(ReferenceSimilarityMarkerSchema)
+      .min(2)
+      .max(12)
+      .refine(uniqueReferenceIds, 'distinctive_markers must be unique'),
+  }).strict()).max(100)
+    .refine(
+      items => uniqueReferenceIds(items.map(item => item.observation_id)),
+      'plot beat observation_id values must be unique',
+    )
+    .refine(
+      items => new Set(items.map(item => item.order)).size === items.length,
+      'plot beat order values must be unique',
+    ),
+  shot_sequence: z.array(z.object({
+    observation_id: ReferenceNonEmptyTextSchema.max(100),
+    order: z.number().int().min(1).max(1_000),
+    distinctive_markers: z.array(ReferenceSimilarityMarkerSchema)
+      .min(2)
+      .max(12)
+      .refine(uniqueReferenceIds, 'distinctive_markers must be unique'),
+  }).strict()).max(500)
+    .refine(
+      items => uniqueReferenceIds(items.map(item => item.observation_id)),
+      'shot sequence observation_id values must be unique',
+    )
+    .refine(
+      items => new Set(items.map(item => item.order)).size === items.length,
+      'shot sequence order values must be unique',
+    ),
+}).strict();
+
+export const ReferenceTextAnalysisExecutionCreateRequestSchema = z.object({
+  executor: z.object({
+    kind: z.enum(['codex', 'operator']),
+    executor_id: ReferenceNonEmptyTextSchema.max(120),
+  }).strict(),
+  confirmation: z.literal('source_text_treated_as_untrusted_data'),
+}).strict();
+
+export const ReferenceTextAnalysisChunkSubmissionSchema = z.object({
+  submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
+  submitted_by: ReferenceNonEmptyTextSchema.max(120),
+  chunk_content_sha256: ReferenceContentFingerprintSchema,
+  observations: ReferenceTextAnalysisPartialObservationsSchema,
+}).strict();
+
+export const ReferenceTextAnalysisExecutionFinalizeRequestSchema = z.object({
+  finalized_by: ReferenceNonEmptyTextSchema.max(120),
+  confirmation: z.literal(
+    'aggregate_completed_chunks_to_operator_evidence',
+  ),
+}).strict();
+
+export const ReferenceTextAnalysisExecutionCheckpointSchema = z.object({
+  chunk_id: ReferenceTextMaterialChunkDescriptorSchema.shape.chunk_id,
+  index: ReferenceTextMaterialChunkDescriptorSchema.shape.index,
+  locator: ReferenceTextMaterialChunkDescriptorSchema.shape.locator,
+  content_sha256: ReferenceContentFingerprintSchema,
+  status: z.enum(['pending', 'completed']),
+  partial_observations_sha256: ReferenceContentFingerprintSchema.nullable(),
+  submission_key_sha256: ReferenceContentFingerprintSchema.nullable(),
+  completed_at: ReferenceTimestampSchema.nullable(),
+}).strict();
+
+export const ReferenceTextAnalysisExecutionRecordSchema = z.object({
+  schema_version: z.literal('reference-text-analysis-execution/v1'),
+  execution_id: z.string().regex(
+    /^reference-text-analysis-execution-[a-f0-9-]+$/,
+  ),
+  task_id: z.string().regex(/^reference-analysis-task-[a-f0-9-]+$/),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  material_id: ReferenceTextMaterialRecordSchema.shape.material_id,
+  material_manifest_sha256: ReferenceContentFingerprintSchema,
+  requested_dimensions:
+    ReferenceAnalysisTaskCreateRequestSchema.shape.requested_dimensions,
+  executor: ReferenceTextAnalysisExecutionCreateRequestSchema.shape.executor,
+  status: z.enum([
+    'pending',
+    'in_progress',
+    'ready_to_finalize',
+    'completed',
+  ]),
+  cursor: z.object({
+    completed_chunk_count: z.number().int().min(0).max(9_999),
+    next_chunk_id:
+      ReferenceTextMaterialChunkDescriptorSchema.shape.chunk_id.nullable(),
+  }).strict(),
+  checkpoints: z.array(
+    ReferenceTextAnalysisExecutionCheckpointSchema,
+  ).min(1).max(9_999),
+  manifest: z.object({
+    server_model_call_allowed: z.literal(false),
+    source_text_instruction_authority: z.literal('none'),
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+    automatic_approval_allowed: z.literal(false),
+    production_credit_eligible: z.literal(false),
+  }).strict(),
+  evidence_id: z.string()
+    .regex(/^reference-similarity-evidence-[a-f0-9-]+$/)
+    .nullable(),
+  evidence_payload_sha256: ReferenceContentFingerprintSchema.nullable(),
+  final_observations_sha256: ReferenceContentFingerprintSchema.nullable(),
+  created_at: ReferenceTimestampSchema,
+  updated_at: ReferenceTimestampSchema,
+  completed_at: ReferenceTimestampSchema.nullable(),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
+}).strict();
+
+export const ReferenceTextAnalysisPartialRecordSchema = z.object({
+  schema_version: z.literal('reference-text-analysis-partial/v1'),
+  execution_id: ReferenceTextAnalysisExecutionRecordSchema.shape.execution_id,
+  task_id: z.string().regex(/^reference-analysis-task-[a-f0-9-]+$/),
+  material_id: ReferenceTextMaterialRecordSchema.shape.material_id,
+  chunk_id: ReferenceTextMaterialChunkDescriptorSchema.shape.chunk_id,
+  chunk_content_sha256: ReferenceContentFingerprintSchema,
+  submitted_by: ReferenceNonEmptyTextSchema.max(120),
+  submission_key_sha256: ReferenceContentFingerprintSchema,
+  observations_sha256: ReferenceContentFingerprintSchema,
+  observations: ReferenceTextAnalysisPartialObservationsSchema,
+  created_at: ReferenceTimestampSchema,
+  prompt_injection_allowed: z.literal(false),
+  knowledge_writeback_allowed: z.literal(false),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
 }).strict();
 
 export const ReferenceAnalysisTaskRecordSchema = z.object({

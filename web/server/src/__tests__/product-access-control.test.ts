@@ -455,6 +455,73 @@ describe('product access middleware', () => {
     }
   });
 
+  it('binds text execution mutations to the authenticated material reviewer', async () => {
+    configureRequiredAccess([
+      { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },
+    ]);
+    const repoRoot = await mkdtemp(resolve(
+      tmpdir(),
+      'story-agent-reference-text-execution-access-',
+    ));
+    try {
+      const app = express();
+      app.use(express.json());
+      app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot));
+      app.use(errorHandler);
+      const request = supertest(app);
+      const taskId = 'reference-analysis-task-does-not-exist';
+      const base = `/api/reference-library/analysis-tasks/${taskId}/text-execution`;
+
+      const mismatchedCreation = await request
+        .post(base)
+        .set('authorization', bearer('research-token'))
+        .send({
+          executor: {
+            kind: 'operator',
+            executor_id: 'another-reviewer',
+          },
+          confirmation: 'source_text_treated_as_untrusted_data',
+        });
+      expect(mismatchedCreation.status).toBe(403);
+      expect(mismatchedCreation.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const matchingCreation = await request
+        .post(base)
+        .set('authorization', bearer('research-token'))
+        .send({
+          executor: {
+            kind: 'operator',
+            executor_id: 'research-1',
+          },
+          confirmation: 'source_text_treated_as_untrusted_data',
+        });
+      expect(matchingCreation.status).toBe(404);
+      expect(matchingCreation.body.error.code).toBe(
+        'REFERENCE_ANALYSIS_TASK_NOT_FOUND',
+      );
+
+      const mismatchedSubmission = await request
+        .post(`${base}/chunks/chunk-0001/submissions`)
+        .set('authorization', bearer('research-token'))
+        .send({
+          submitted_by: 'another-reviewer',
+        });
+      expect(mismatchedSubmission.status).toBe(403);
+      expect(mismatchedSubmission.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const mismatchedFinalization = await request
+        .post(`${base}/finalize`)
+        .set('authorization', bearer('research-token'))
+        .send({
+          finalized_by: 'another-reviewer',
+        });
+      expect(mismatchedFinalization.status).toBe(403);
+      expect(mismatchedFinalization.body.error.code).toBe('ACCESS_FORBIDDEN');
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it('reserves benchmark and style-pack composition for matching material signers', async () => {
     configureRequiredAccess([
       { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },

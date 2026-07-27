@@ -733,6 +733,98 @@ export interface ReferenceAnalysisTaskSubmissionResult {
   idempotent_replay: boolean;
 }
 
+export interface ReferenceTextAnalysisPartialObservations {
+  excerpts: ReferenceSimilarityEvidenceObservations['excerpts'];
+  character_profiles:
+    ReferenceSimilarityEvidenceObservations['character_profiles'];
+  plot_beats: ReferenceSimilarityEvidenceObservations['plot_beats'];
+  shot_sequence: ReferenceSimilarityEvidenceObservations['shot_sequence'];
+}
+
+export interface ReferenceTextAnalysisExecutionCheckpoint {
+  chunk_id: string;
+  index: number;
+  locator: string;
+  content_sha256: string;
+  status: 'pending' | 'completed';
+  partial_observations_sha256: string | null;
+  submission_key_sha256: string | null;
+  completed_at: string | null;
+}
+
+export interface ReferenceTextAnalysisExecutionRecord {
+  schema_version: 'reference-text-analysis-execution/v1';
+  execution_id: string;
+  task_id: string;
+  reference_id: string;
+  material_id: string;
+  material_manifest_sha256: string;
+  requested_dimensions: ReferenceSimilarityDimension[];
+  executor: {
+    kind: 'codex' | 'operator';
+    executor_id: string;
+  };
+  status: 'pending' | 'in_progress' | 'ready_to_finalize' | 'completed';
+  cursor: {
+    completed_chunk_count: number;
+    next_chunk_id: string | null;
+  };
+  checkpoints: ReferenceTextAnalysisExecutionCheckpoint[];
+  manifest: {
+    server_model_call_allowed: false;
+    source_text_instruction_authority: 'none';
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+    automatic_approval_allowed: false;
+    production_credit_eligible: false;
+  };
+  evidence_id: string | null;
+  evidence_payload_sha256: string | null;
+  final_observations_sha256: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
+export interface ReferenceTextAnalysisPartialRecord {
+  schema_version: 'reference-text-analysis-partial/v1';
+  execution_id: string;
+  task_id: string;
+  material_id: string;
+  chunk_id: string;
+  chunk_content_sha256: string;
+  submitted_by: string;
+  submission_key_sha256: string;
+  observations_sha256: string;
+  observations: ReferenceTextAnalysisPartialObservations;
+  created_at: string;
+  prompt_injection_allowed: false;
+  knowledge_writeback_allowed: false;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
+export interface ReferenceTextAnalysisNextChunkResult {
+  complete: boolean;
+  execution_id: string;
+  requested_dimensions: ReferenceSimilarityDimension[];
+  source_text_instruction_authority: 'none';
+  chunk: ReferenceTextMaterialChunk | null;
+}
+
+export interface ReferenceTextAnalysisChunkSubmissionResult {
+  execution: ReferenceTextAnalysisExecutionRecord;
+  checkpoint: ReferenceTextAnalysisExecutionCheckpoint;
+  idempotent_replay: boolean;
+}
+
+export interface ReferenceTextAnalysisFinalizationResult
+  extends ReferenceAnalysisTaskSubmissionResult {
+  execution: ReferenceTextAnalysisExecutionRecord;
+}
+
 export interface FilmReferenceSequenceBeat {
   start: string;
   end: string;

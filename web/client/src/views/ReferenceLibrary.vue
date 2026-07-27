@@ -2,7 +2,7 @@
   <main class="reference-workbench">
     <header class="hero">
       <div>
-        <p class="eyebrow">Reference Library · P1-C3</p>
+        <p class="eyebrow">Reference Library · P1-C4</p>
         <h1>参考资料分析任务台</h1>
         <p class="hero__summary">
           为已登记、已指纹绑定的合法参考资料创建来源绑定任务，并接收结构化分析 evidence。
@@ -274,6 +274,16 @@
                   </div>
                 </dl>
 
+                <ReferenceTextAnalysisExecutionWorkbench
+                  v-if="
+                    selectedTask.status === 'pending'
+                    && selectedTask.manifest.source_material_transport === 'stored_user_supplied'
+                  "
+                  :task="selectedTask"
+                  :actor-id="analysisActorId"
+                  @completed="handleAnalysisChanged"
+                />
+
                 <template v-if="selectedTask.status !== 'completed'">
                   <p class="helper">
                     JSON 必须且只能覆盖任务要求的维度。编辑区不会回显或保存参考原文；
@@ -344,6 +354,7 @@ import ReferenceAnalysisWorkbench from '@/components/reference-library/Reference
 import ReferenceBaselineWorkbench from '@/components/reference-library/ReferenceBaselineWorkbench.vue'
 import ReferenceCompositionWorkbench from '@/components/reference-library/ReferenceCompositionWorkbench.vue'
 import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
+import ReferenceTextAnalysisExecutionWorkbench from '@/components/reference-library/ReferenceTextAnalysisExecutionWorkbench.vue'
 import ReferenceTextMaterialWorkbench from '@/components/reference-library/ReferenceTextMaterialWorkbench.vue'
 import {
   createReferenceAnalysisTask,

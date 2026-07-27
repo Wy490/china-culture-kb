@@ -33,6 +33,13 @@ import {
   getReferenceTextMaterialManifest,
   getReferenceTextMaterialStatus,
 } from '../services/reference-text-material-service.js';
+import {
+  createReferenceTextAnalysisExecution,
+  finalizeReferenceTextAnalysisExecution,
+  getReferenceTextAnalysisExecution,
+  getReferenceTextAnalysisNextChunk,
+  submitReferenceTextAnalysisChunk,
+} from '../services/reference-text-analysis-execution-service.js';
 
 function resolveDefaultRepoRoot(): string {
   const configuredRoot = process.env.REFERENCE_LIBRARY_REPO_ROOT?.trim();
@@ -235,6 +242,102 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
       next(error);
     }
   });
+
+  router.post('/analysis-tasks/:taskId/text-execution', async (req, res, next) => {
+    try {
+      if (
+        !requiredActorMatchesClaims(req, [req.body?.executor?.executor_id])
+      ) {
+        res.status(403).json(fail(
+          ErrorCodes.ACCESS_FORBIDDEN,
+          'Text execution executor_id must match the authenticated material reviewer',
+        ));
+        return;
+      }
+      const result = await createReferenceTextAnalysisExecution({
+        repoRoot,
+        taskId: String(req.params.taskId),
+        request: req.body,
+      });
+      res.status(result.idempotent_replay ? 200 : 201).json(
+        success(result.execution),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/analysis-tasks/:taskId/text-execution', async (req, res, next) => {
+    try {
+      res.json(success(await getReferenceTextAnalysisExecution({
+        repoRoot,
+        taskId: String(req.params.taskId),
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get(
+    '/analysis-tasks/:taskId/text-execution/next-chunk',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextAnalysisNextChunk({
+          repoRoot,
+          taskId: String(req.params.taskId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-execution/chunks/:chunkId/submissions',
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.submitted_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Chunk submitted_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await submitReferenceTextAnalysisChunk({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          chunkId: String(req.params.chunkId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-execution/finalize',
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.finalized_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Text execution finalized_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await finalizeReferenceTextAnalysisExecution({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.post(
     '/references/:referenceId/text-material',
