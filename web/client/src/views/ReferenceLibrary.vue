@@ -2,7 +2,7 @@
   <main class="reference-workbench">
     <header class="hero">
       <div>
-        <p class="eyebrow">Reference Library · P1-C4</p>
+        <p class="eyebrow">Reference Library · P1-C5</p>
         <h1>参考资料分析任务台</h1>
         <p class="hero__summary">
           为已登记、已指纹绑定的合法参考资料创建来源绑定任务，并接收结构化分析 evidence。
@@ -329,6 +329,16 @@
                   <div><dt>真人评审完成</dt><dd class="truth-false">false</dd></div>
                   <div><dt>真实信用</dt><dd class="truth-false">false</dd></div>
                 </dl>
+
+                <ReferenceTextAnalysisDraftWorkbench
+                  v-if="
+                    selectedTask.status === 'completed'
+                    && selectedTask.manifest.source_material_transport === 'stored_user_supplied'
+                  "
+                  :task="selectedTask"
+                  :actor-id="analysisActorId"
+                  @completed="handleAnalysisChanged"
+                />
               </article>
             </div>
           </section>
@@ -354,6 +364,7 @@ import ReferenceAnalysisWorkbench from '@/components/reference-library/Reference
 import ReferenceBaselineWorkbench from '@/components/reference-library/ReferenceBaselineWorkbench.vue'
 import ReferenceCompositionWorkbench from '@/components/reference-library/ReferenceCompositionWorkbench.vue'
 import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
+import ReferenceTextAnalysisDraftWorkbench from '@/components/reference-library/ReferenceTextAnalysisDraftWorkbench.vue'
 import ReferenceTextAnalysisExecutionWorkbench from '@/components/reference-library/ReferenceTextAnalysisExecutionWorkbench.vue'
 import ReferenceTextMaterialWorkbench from '@/components/reference-library/ReferenceTextMaterialWorkbench.vue'
 import {

@@ -22,6 +22,8 @@ import type {
   ReferenceTextAnalysisFinalizationResult,
   ReferenceTextAnalysisNextChunkResult,
   ReferenceTextAnalysisPartialObservations,
+  ReferenceTextAnalysisDraftSubmissionResult,
+  ReferenceTextAnalysisDraftTaskRecord,
   PresentationStyle,
   StoryStructureType,
   TextReferenceAnalysis,
@@ -64,6 +66,21 @@ export interface SubmitReferenceTextAnalysisChunkRequest {
   submitted_by: string
   chunk_content_sha256: string
   observations: ReferenceTextAnalysisPartialObservations
+}
+
+export interface CreateReferenceTextAnalysisDraftTaskRequest {
+  executor: {
+    kind: 'codex' | 'operator'
+    executor_id: string
+  }
+  confirmation: 'draft_complete_text_analysis_from_verified_evidence'
+}
+
+export interface SubmitReferenceTextAnalysisDraftRequest {
+  submission_key: string
+  submitted_by: string
+  confirmation: 'submit_pending_text_reference_analysis'
+  analysis: TextReferenceAnalysis
 }
 
 export type CreateReferenceSourceRequest = Omit<
@@ -260,5 +277,34 @@ export function finalizeReferenceTextAnalysisExecution(
       finalized_by: finalizedBy,
       confirmation: 'aggregate_completed_chunks_to_operator_evidence',
     },
+  )
+}
+
+export function createReferenceTextAnalysisDraftTask(
+  taskId: string,
+  request: CreateReferenceTextAnalysisDraftTaskRequest,
+) {
+  return apiPost<ReferenceTextAnalysisDraftTaskRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task',
+    request,
+  )
+}
+
+export function getReferenceTextAnalysisDraftTask(taskId: string) {
+  return apiGet<ReferenceTextAnalysisDraftTaskRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task',
+  )
+}
+
+export function submitReferenceTextAnalysisDraft(
+  taskId: string,
+  request: SubmitReferenceTextAnalysisDraftRequest,
+) {
+  return apiPost<ReferenceTextAnalysisDraftSubmissionResult>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task/submissions',
+    request,
   )
 }

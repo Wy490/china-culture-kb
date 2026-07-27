@@ -517,6 +517,48 @@ describe('product access middleware', () => {
         });
       expect(mismatchedFinalization.status).toBe(403);
       expect(mismatchedFinalization.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const draftBase =
+        `/api/reference-library/analysis-tasks/${taskId}`
+        + '/text-analysis-draft-task';
+      const mismatchedDraftCreation = await request
+        .post(draftBase)
+        .set('authorization', bearer('research-token'))
+        .send({
+          executor: {
+            kind: 'operator',
+            executor_id: 'another-reviewer',
+          },
+          confirmation: 'draft_complete_text_analysis_from_verified_evidence',
+        });
+      expect(mismatchedDraftCreation.status).toBe(403);
+      expect(mismatchedDraftCreation.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const matchingDraftCreation = await request
+        .post(draftBase)
+        .set('authorization', bearer('research-token'))
+        .send({
+          executor: {
+            kind: 'operator',
+            executor_id: 'research-1',
+          },
+          confirmation: 'draft_complete_text_analysis_from_verified_evidence',
+        });
+      expect(matchingDraftCreation.status).toBe(404);
+      expect(matchingDraftCreation.body.error.code).toBe(
+        'REFERENCE_ANALYSIS_TASK_NOT_FOUND',
+      );
+
+      const mismatchedDraftSubmission = await request
+        .post(`${draftBase}/submissions`)
+        .set('authorization', bearer('research-token'))
+        .send({
+          submitted_by: 'another-reviewer',
+        });
+      expect(mismatchedDraftSubmission.status).toBe(403);
+      expect(mismatchedDraftSubmission.body.error.code).toBe(
+        'ACCESS_FORBIDDEN',
+      );
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

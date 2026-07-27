@@ -26,6 +26,7 @@ import type {
   ReferenceSourceRecord,
   ReferenceSimilarityEvidenceRecord,
   ReferenceStylePackRecord,
+  TextReferenceAnalysis,
   TextReferenceAnalysisRecord,
 } from '@shared/types.js';
 
@@ -508,6 +509,85 @@ export async function createTextReferenceAnalysis(input: {
     approval: approvalFromRequest(request.approval),
   };
   return await persistAnalysis(input.repoRoot, record) as TextReferenceAnalysisRecord;
+}
+
+export async function createEvidenceBoundTextReferenceAnalysis(input: {
+  repoRoot: string;
+  referenceId: string;
+  analysisId: string;
+  analysis: TextReferenceAnalysis;
+  analyzedBy: string;
+  provenance: NonNullable<TextReferenceAnalysisRecord['provenance']>;
+  now?: string;
+}): Promise<{
+  analysis: TextReferenceAnalysisRecord;
+  idempotent_replay: boolean;
+}> {
+  const source = await getReferenceSource({
+    repoRoot: input.repoRoot,
+    referenceId: input.referenceId,
+  });
+  if (!TEXT_MEDIA_TYPES.has(source.media_type)) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_MEDIA_TYPE_INVALID',
+      `Text analysis is not valid for media_type=${source.media_type}`,
+    );
+  }
+  if (
+    input.provenance.source_content_fingerprint
+      !== source.content_fingerprint
+  ) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_ANALYSIS_PROVENANCE_INVALID',
+      'Evidence-bound analysis provenance does not match the source fingerprint',
+    );
+  }
+  const record = ReferenceAnalysisRecordSchema.parse({
+    schema_version: 'reference-analysis-record/v2',
+    analysis_id: input.analysisId,
+    reference_id: source.reference_id,
+    analysis_type: 'text',
+    analysis: input.analysis,
+    analyzed_by: input.analyzedBy,
+    analyzed_at: input.now ?? new Date().toISOString(),
+    approval: { status: 'pending' },
+    provenance: input.provenance,
+    governance: {
+      prompt_injection_allowed: false,
+      knowledge_writeback_allowed: false,
+      production_credit_eligible: false,
+    },
+  }) as TextReferenceAnalysisRecord;
+  try {
+    const existing = await getReferenceAnalysis({
+      repoRoot: input.repoRoot,
+      analysisId: input.analysisId,
+    });
+    if (canonicalJson(existing) !== canonicalJson(record)) {
+      throw new ReferenceLibraryError(
+        'REFERENCE_ANALYSIS_CONFLICT',
+        'Evidence-bound text analysis already exists with different content',
+      );
+    }
+    return {
+      analysis: existing as TextReferenceAnalysisRecord,
+      idempotent_replay: true,
+    };
+  } catch (error) {
+    if (
+      !(error instanceof ReferenceLibraryError)
+      || error.code !== 'REFERENCE_ANALYSIS_NOT_FOUND'
+    ) {
+      throw error;
+    }
+  }
+  return {
+    analysis: await persistAnalysis(
+      input.repoRoot,
+      record,
+    ) as TextReferenceAnalysisRecord,
+    idempotent_replay: false,
+  };
 }
 
 export async function approveReferenceAnalysis(input: {

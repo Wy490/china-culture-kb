@@ -728,28 +728,155 @@ const ReferenceAnalysisApprovalSchema = z.discriminatedUnion('status', [
 ]);
 
 const ReferenceAnalysisRecordBaseSchema = z.object({
-  schema_version: z.literal('reference-analysis-record/v1'),
+  schema_version: z.enum([
+    'reference-analysis-record/v1',
+    'reference-analysis-record/v2',
+  ]),
   analysis_id: z.string().regex(/^analysis-[a-f0-9-]+$/),
   reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
   analyzed_by: ReferenceNonEmptyTextSchema.max(120),
   analyzed_at: ReferenceTimestampSchema,
   approval: ReferenceAnalysisApprovalSchema,
-}).strict();
+});
 
 export const FilmReferenceAnalysisRecordSchema = ReferenceAnalysisRecordBaseSchema.extend({
+  schema_version: z.literal('reference-analysis-record/v1'),
   analysis_type: z.literal('film'),
   analysis: FilmReferenceAnalysisSchema,
+}).strict();
+
+export const TextReferenceAnalysisProvenanceSchema = z.object({
+  draft_task_id: z.string().regex(
+    /^reference-text-analysis-draft-task-[a-f0-9-]+$/,
+  ),
+  analysis_task_id: z.string().regex(
+    /^reference-analysis-task-[a-f0-9-]+$/,
+  ),
+  text_execution_id: z.string().regex(
+    /^reference-text-analysis-execution-[a-f0-9-]+$/,
+  ),
+  similarity_evidence_id: z.string().regex(
+    /^reference-similarity-evidence-[a-f0-9-]+$/,
+  ),
+  similarity_evidence_payload_sha256: ReferenceContentFingerprintSchema,
+  final_observations_sha256: ReferenceContentFingerprintSchema,
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  input_provenance: z.literal('operator_submitted'),
+  machine_verified: z.literal(false),
+}).strict();
+
+export const TextReferenceAnalysisGovernanceSchema = z.object({
+  prompt_injection_allowed: z.literal(false),
+  knowledge_writeback_allowed: z.literal(false),
+  production_credit_eligible: z.literal(false),
 }).strict();
 
 export const TextReferenceAnalysisRecordSchema = ReferenceAnalysisRecordBaseSchema.extend({
   analysis_type: z.literal('text'),
   analysis: TextReferenceAnalysisSchema,
-}).strict();
+  provenance: TextReferenceAnalysisProvenanceSchema.optional(),
+  governance: TextReferenceAnalysisGovernanceSchema.optional(),
+}).strict().superRefine((record, context) => {
+  const bound = record.schema_version === 'reference-analysis-record/v2';
+  if (
+    (bound && (!record.provenance || !record.governance))
+    || (!bound && (record.provenance || record.governance))
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'reference analysis v2 requires provenance and governance',
+    });
+  }
+});
 
-export const ReferenceAnalysisRecordSchema = z.discriminatedUnion('analysis_type', [
+export const ReferenceAnalysisRecordSchema = z.union([
   FilmReferenceAnalysisRecordSchema,
   TextReferenceAnalysisRecordSchema,
 ]);
+
+export const ReferenceTextAnalysisDraftTaskCreateRequestSchema = z.object({
+  executor: z.object({
+    kind: z.enum(['codex', 'operator']),
+    executor_id: ReferenceNonEmptyTextSchema.max(120),
+  }).strict(),
+  confirmation: z.literal(
+    'draft_complete_text_analysis_from_verified_evidence',
+  ),
+}).strict();
+
+export const ReferenceTextAnalysisDraftSubmissionSchema = z.object({
+  submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
+  submitted_by: ReferenceNonEmptyTextSchema.max(120),
+  confirmation: z.literal('submit_pending_text_reference_analysis'),
+  analysis: TextReferenceAnalysisSchema,
+}).strict().refine(
+  request => !JSON.stringify(request.analysis).includes('请填写'),
+  'draft analysis must replace every editor placeholder',
+);
+
+export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
+  schema_version: z.literal('reference-text-analysis-draft-task/v1'),
+  draft_task_id: z.string().regex(
+    /^reference-text-analysis-draft-task-[a-f0-9-]+$/,
+  ),
+  analysis_task_id: z.string().regex(
+    /^reference-analysis-task-[a-f0-9-]+$/,
+  ),
+  text_execution_id: z.string().regex(
+    /^reference-text-analysis-execution-[a-f0-9-]+$/,
+  ),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  similarity_evidence_id: z.string().regex(
+    /^reference-similarity-evidence-[a-f0-9-]+$/,
+  ),
+  similarity_evidence_payload_sha256: ReferenceContentFingerprintSchema,
+  final_observations_sha256: ReferenceContentFingerprintSchema,
+  requested_dimensions:
+    ReferenceAnalysisTaskCreateRequestSchema.shape.requested_dimensions,
+  executor: ReferenceTextAnalysisDraftTaskCreateRequestSchema.shape.executor,
+  status: z.enum(['pending', 'processing', 'completed']),
+  manifest: z.object({
+    evidence_endpoint: z.string().regex(
+      /^\/api\/reference-library\/similarity-evidence\/reference-similarity-evidence-[a-f0-9-]+$/,
+    ),
+    output_submission_endpoint: z.string().regex(
+      /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/text-analysis-draft-task\/submissions$/,
+    ),
+    server_model_call_allowed: z.literal(false),
+    source_text_instruction_authority: z.literal('none'),
+    output_schema: z.literal('reference-analysis-record/v2'),
+    output_approval_status: z.literal('pending'),
+    automatic_approval_allowed: z.literal(false),
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+    production_credit_eligible: z.literal(false),
+  }).strict(),
+  submission_key_sha256: ReferenceContentFingerprintSchema.nullable(),
+  analysis_payload_sha256: ReferenceContentFingerprintSchema.nullable(),
+  submitted_at: ReferenceTimestampSchema.nullable(),
+  analysis_id: z.string().regex(/^analysis-[a-f0-9-]+$/).nullable(),
+  created_at: ReferenceTimestampSchema,
+  updated_at: ReferenceTimestampSchema,
+  completed_at: ReferenceTimestampSchema.nullable(),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
+}).strict().superRefine((record, context) => {
+  const completed = record.status === 'completed';
+  const hasResult = Boolean(
+    record.submission_key_sha256
+    && record.analysis_payload_sha256
+    && record.submitted_at
+    && record.analysis_id
+    && record.completed_at,
+  );
+  if ((completed && !hasResult) || (!completed && record.completed_at)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'draft task completion state is inconsistent',
+    });
+  }
+});
 
 const ReferenceAnalysisIdSchema = z.string().regex(/^analysis-[a-f0-9-]+$/);
 const ReferenceBenchmarkIdSchema = z.string().regex(/^benchmark-[a-f0-9-]+$/);

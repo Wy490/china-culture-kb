@@ -825,6 +825,45 @@ export interface ReferenceTextAnalysisFinalizationResult
   execution: ReferenceTextAnalysisExecutionRecord;
 }
 
+export interface ReferenceTextAnalysisDraftTaskRecord {
+  schema_version: 'reference-text-analysis-draft-task/v1';
+  draft_task_id: string;
+  analysis_task_id: string;
+  text_execution_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  similarity_evidence_id: string;
+  similarity_evidence_payload_sha256: string;
+  final_observations_sha256: string;
+  requested_dimensions: ReferenceSimilarityDimension[];
+  executor: {
+    kind: 'codex' | 'operator';
+    executor_id: string;
+  };
+  status: 'pending' | 'processing' | 'completed';
+  manifest: {
+    evidence_endpoint: string;
+    output_submission_endpoint: string;
+    server_model_call_allowed: false;
+    source_text_instruction_authority: 'none';
+    output_schema: 'reference-analysis-record/v2';
+    output_approval_status: 'pending';
+    automatic_approval_allowed: false;
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+    production_credit_eligible: false;
+  };
+  submission_key_sha256: string | null;
+  analysis_payload_sha256: string | null;
+  submitted_at: string | null;
+  analysis_id: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
 export interface FilmReferenceSequenceBeat {
   start: string;
   end: string;
@@ -897,7 +936,9 @@ export interface FilmReferenceAnalysisRecord {
 }
 
 export interface TextReferenceAnalysisRecord {
-  schema_version: 'reference-analysis-record/v1';
+  schema_version:
+    | 'reference-analysis-record/v1'
+    | 'reference-analysis-record/v2';
   analysis_id: string;
   reference_id: string;
   analysis_type: 'text';
@@ -905,6 +946,22 @@ export interface TextReferenceAnalysisRecord {
   analyzed_by: string;
   analyzed_at: string;
   approval: ReferenceAnalysisApproval;
+  provenance?: {
+    draft_task_id: string;
+    analysis_task_id: string;
+    text_execution_id: string;
+    similarity_evidence_id: string;
+    similarity_evidence_payload_sha256: string;
+    final_observations_sha256: string;
+    source_content_fingerprint: string;
+    input_provenance: 'operator_submitted';
+    machine_verified: false;
+  };
+  governance?: {
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+    production_credit_eligible: false;
+  };
 }
 
 export type ReferenceAnalysisRecord =
@@ -913,6 +970,12 @@ export type ReferenceAnalysisRecord =
 
 export interface ReferenceAnalysisApprovalResult {
   analysis: ReferenceAnalysisRecord;
+  idempotent_replay: boolean;
+}
+
+export interface ReferenceTextAnalysisDraftSubmissionResult {
+  draft_task: ReferenceTextAnalysisDraftTaskRecord;
+  analysis: TextReferenceAnalysisRecord;
   idempotent_replay: boolean;
 }
 

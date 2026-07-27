@@ -40,6 +40,11 @@ import {
   getReferenceTextAnalysisNextChunk,
   submitReferenceTextAnalysisChunk,
 } from '../services/reference-text-analysis-execution-service.js';
+import {
+  createReferenceTextAnalysisDraftTask,
+  getReferenceTextAnalysisDraftTask,
+  submitReferenceTextAnalysisDraft,
+} from '../services/reference-text-analysis-draft-task-service.js';
 
 function resolveDefaultRepoRoot(): string {
   const configuredRoot = process.env.REFERENCE_LIBRARY_REPO_ROOT?.trim();
@@ -328,6 +333,70 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
           return;
         }
         const result = await finalizeReferenceTextAnalysisExecution({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-analysis-draft-task',
+    async (req, res, next) => {
+      try {
+        if (
+          !requiredActorMatchesClaims(req, [req.body?.executor?.executor_id])
+        ) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Text analysis draft executor_id must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await createReferenceTextAnalysisDraftTask({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(
+          success(result.draftTask),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/analysis-tasks/:taskId/text-analysis-draft-task',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextAnalysisDraftTask({
+          repoRoot,
+          taskId: String(req.params.taskId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-analysis-draft-task/submissions',
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.submitted_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Text analysis draft submitted_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await submitReferenceTextAnalysisDraft({
           repoRoot,
           taskId: String(req.params.taskId),
           request: req.body,
