@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B17 sealed evidence artifact preflight 完成
+# Story Agent 开发交接：P1-B18 registry/composition v3 descriptor provenance 完成
 
 > 交接日期：2026-07-27
 >
@@ -44,6 +44,8 @@
 >
 > P1-B17 artifact preflight 提交：`66215966 feat(story-agent): preflight sealed evidence artifacts`
 >
+> P1-B18 descriptor registry 提交：`b230ede8 feat(story-agent): register sealed evidence descriptors`
+>
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
 > 当前工作区：功能与回归测试已提交；本交接最终提交后应为干净
@@ -76,7 +78,7 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；clean-checkout/CI 可先运行独立只读 preflight，错误 receipt、错误 bundle、传输漂移或错误文件名都会在恢复写盘前 fail-closed”的阶段。
+Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；registry/composition v3 可数据驱动发现 sealed descriptor 并把其 SHA 纳入 17/17 provenance，clean-checkout/CI 可先运行独立只读 preflight，错误 receipt、descriptor、bundle、传输漂移或文件名都会 fail-closed”的阶段。
 
 当前工程判断：
 
@@ -1731,16 +1733,150 @@ production_credit_granted=false
 
 `artifact_bytes_verified` 只表示当前读取到的字节与 committed descriptor 完全一致，不表示外部下载传输、来源合法性、rights、人审或 production credit 已通过。
 
-### 6.18 下一优先级
+### 6.18 P1-B18 registry/composition v3 descriptor provenance（2026-07-27）
 
-P1-B12 至 P1-B17 已把单个真实 sealed batch 的本地封存、确定性打包、提交态锁定、只读 preflight 和安全恢复闭环做完。真实 artifact store 接入需要用户先指定存储后端、凭据注入方式与保留策略；在此之前，不应自行创建伪远端或把本地 bundle 描述成已归档。
+功能提交：
+
+```text
+b230ede8 feat(story-agent): register sealed evidence descriptors
+```
+
+批次注册表升级为：
+
+```text
+story-agent-visual-asset-pressure-batch-registry/v3
+```
+
+新 v3 规则：
+
+- `sealed` 批次必须同时声明 `receipt_path` 与 `evidence_descriptor_path`；
+- `legacy_unsealed` 批次两者都不得声明；
+- v1/v2 注册表仍可读取并规范化，但旧 sealed 记录不会凭空获得 descriptor；
+- descriptor 路径必须是 Web root 内的安全相对路径；
+- batch ID 仍必须唯一。
+
+batch3 当前登记：
+
+```text
+receipt_path:
+server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json
+
+evidence_descriptor_path:
+server/scripts/story-agent-visual-asset-pressure-batch3-evidence-bundle-descriptor.json
+```
+
+composition 升级为：
+
+```text
+story-agent-visual-asset-pressure-batch-composition/v3
+```
+
+merge 在生成任何合并输出前会：
+
+1. 验证 sealed receipt 的 prompt/source SHA 与 PNG 尺寸；
+2. 解析 committed descriptor；
+3. 验证 descriptor batch ID；
+4. 验证 descriptor 绑定 receipt exact bytes SHA；
+5. 把 descriptor 文件自身的相对路径和 SHA 写入 composition provenance。
+
+composition verifier 会重新读取 descriptor，验证其文件 SHA、结构、batch ID 与 receipt SHA 绑定。即使攻击者同时重签 composition 中的 descriptor 文件 SHA，只要 descriptor 指向了不同 receipt，仍会以稳定 blocker 拒绝：
+
+```text
+composition_descriptor_receipt_sha256_mismatch:<batch_id>
+```
+
+真实十二世界 merge：
+
+```text
+batch_count=3
+seed_count=12
+manifest_asset_count=43
+binding_asset_count=89
+series_count=12
+unbound_shot_count=0
+production_credit_count=0
+composition_file_count=17
+```
+
+真实 canonical：
+
+```text
+status=ready
+case_count=12
+semantic_gate_passed_case_count=12
+composition_provenance.status=verified
+batch_count=3
+sealed_batch_count=1
+legacy_unsealed_batch_count=2
+file_count=17
+verified_file_count=17
+blockers=[]
+```
+
+P1-B17 preflight 现在默认读取 registry，并以：
+
+```text
+--registry
+--batch-id
+```
+
+发现 sealed batch 的 receipt/descriptor；显式 `--receipt` 或 `--descriptor` 若与 registry 不同会拒绝。bundle 仍可通过 `--bundle` 来自任意 CI 下载目录，但必须满足 descriptor 的 exact bytes 与 basename。
+
+真实 registry-driven preflight：
+
+```text
+status=verified
+registry_path=server/scripts/story-agent-visual-asset-pressure-batch-registry.json
+batch_id=imagegen-20260726-batch3
+artifact_bytes_verified=true
+evidence_files_written=false
+```
+
+receipt registry audit 也已在 v3 真实注册表上复跑：
+
+```text
+status=verified
+1 sealed + 2 legacy_unsealed
+sealed assets=8/8 verified
+```
+
+验证结果：
+
+```text
+registry/composition/preflight targeted:
+  3 files / 15 tests passed
+receipt/bundle/descriptor/preflight/manifest/registry/composition/pressure/ops targeted:
+  10 files / 41 tests passed
+server:
+  181 files passed, 1 skipped
+  1513 tests passed, 2 skipped
+server lint/typecheck passed
+server production build passed
+canonical ready / 12 cases / 1 sealed + 2 legacy / 17/17
+```
+
+固定边界未改变：
+
+```text
+image_provider_invoked_by_server=false
+external_location_declared=false
+external_artifact_download_verified_by_transport=false
+rights_granted=false
+human_review_performed=false
+video_generation_performed=false
+production_credit_granted=false
+```
+
+### 6.19 下一优先级
+
+P1-B12 至 P1-B18 已把单个真实 sealed batch 的本地封存、确定性打包、提交态锁定、注册表发现、composition provenance、只读 preflight 和安全恢复闭环做完。真实 artifact store 接入需要用户先指定存储后端、凭据注入方式与保留策略；在此之前，不应自行创建伪远端或把本地 bundle 描述成已归档。
 
 外部条件未具备前必须保持：
 
 1. 不自行选择或写入 artifact store URL，不请求、记录或提交凭据；
 2. 不把本地 ignored bundle 描述成已远端归档或已验证下载传输；
 3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`；
-4. receipt、bundle、descriptor 和 preflight 都只证明机器完整性，不代表 rights、人审或 production credit。
+4. receipt、bundle、descriptor、composition 和 preflight 都只证明机器完整性，不代表 rights、人审或 production credit。
 
 ## 7. 外部条件具备时才做
 
@@ -1818,6 +1954,7 @@ real external provider
 - P1-B15 deterministic sealed evidence bundle、receipt SHA 锁定、安全幂等恢复与零覆盖；
 - P1-B16 committed evidence bundle descriptor、receipt/bundle exact-byte 锁定与导出/恢复写盘前 fail-closed；
 - P1-B17 独立只读 artifact preflight、外部下载目录参数化输入、exact-byte/错名阻断与零 evidence 写入；
+- P1-B18 registry/composition v3、sealed descriptor 数据驱动发现、descriptor SHA/receipt 绑定与 17/17 provenance；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -2000,10 +2137,11 @@ de86b56c feat(story-agent): seal visual asset batch receipts
 655d64e6 feat(story-agent): lock sealed evidence bundles
 346315b3 test(story-agent): stabilize material drafting matrix
 66215966 feat(story-agent): preflight sealed evidence artifacts
+b230ede8 feat(story-agent): register sealed evidence descriptors
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验，以及 P1-B17 独立只读 artifact preflight 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight，以及 P1-B18 registry/composition v3 descriptor provenance 均已完成。不要重新实现。
 
-下一步真实 artifact store 上传/下载需用户选择后端并授权凭据注入与保留策略。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor/preflight 仍不代表 rights、人审或 production credit。
+下一步真实 artifact store 上传/下载需用户选择后端并授权凭据注入与保留策略。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor/composition/preflight 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
