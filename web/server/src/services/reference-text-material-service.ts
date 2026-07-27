@@ -6,6 +6,7 @@ import {
   ReferenceTextMaterialCreateRequestSchema,
   ReferenceTextMaterialManifestSchema,
   ReferenceTextMaterialRecordSchema,
+  ReferenceTextMaterialStatusSchema,
 } from '@shared/schemas.js';
 import type {
   ReferenceTextMaterialAuthorization,
@@ -13,6 +14,7 @@ import type {
   ReferenceTextMaterialChunkDescriptor,
   ReferenceTextMaterialManifest,
   ReferenceTextMaterialRecord,
+  ReferenceTextMaterialStatus,
 } from '@shared/types.js';
 import { getReferenceSource } from './reference-library-service.js';
 
@@ -298,6 +300,29 @@ export async function getReferenceTextMaterial(input: {
     );
   }
   return stored.record;
+}
+
+export async function getReferenceTextMaterialStatus(input: {
+  repoRoot: string;
+  referenceId: string;
+}): Promise<ReferenceTextMaterialStatus> {
+  try {
+    return ReferenceTextMaterialStatusSchema.parse({
+      available: true,
+      material: await getReferenceTextMaterial(input),
+    }) as ReferenceTextMaterialStatus;
+  } catch (error) {
+    if (
+      error instanceof ReferenceTextMaterialError
+      && error.code === 'REFERENCE_TEXT_MATERIAL_NOT_FOUND'
+    ) {
+      return ReferenceTextMaterialStatusSchema.parse({
+        available: false,
+        material: null,
+      }) as ReferenceTextMaterialStatus;
+    }
+    throw error;
+  }
 }
 
 function buildChunks(

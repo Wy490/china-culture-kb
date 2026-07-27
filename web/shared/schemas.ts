@@ -223,6 +223,20 @@ ReferenceTextMaterialCreateRequestSchema.omit({
   production_credit_granted: z.literal(false),
 }).strict();
 
+export const ReferenceTextMaterialStatusSchema = z.discriminatedUnion(
+  'available',
+  [
+    z.object({
+      available: z.literal(false),
+      material: z.null(),
+    }).strict(),
+    z.object({
+      available: z.literal(true),
+      material: ReferenceTextMaterialRecordSchema,
+    }).strict(),
+  ],
+);
+
 export const ReferenceTextMaterialChunkDescriptorSchema = z.object({
   chunk_id: z.string().regex(/^chunk-\d{4}$/),
   index: z.number().int().min(1).max(9_999),

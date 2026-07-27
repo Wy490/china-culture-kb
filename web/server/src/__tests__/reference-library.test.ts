@@ -96,6 +96,15 @@ describe('Reference Intelligence library', () => {
       user_reason: '逐块读取并创建可复核的结构化观察',
     });
 
+    const absentStatus = await request.get(
+      `/api/reference-library/references/${source.body.data.reference_id}/text-material/status`,
+    );
+    expect(absentStatus.status).toBe(200);
+    expect(absentStatus.body.data).toEqual({
+      available: false,
+      material: null,
+    });
+
     const uploaded = await request
       .post(`/api/reference-library/references/${source.body.data.reference_id}/text-material`)
       .send({
@@ -138,6 +147,21 @@ describe('Reference Intelligence library', () => {
     });
     expect(uploaded.body.data.material).not.toHaveProperty('content');
     expect(JSON.stringify(uploaded.body.data.material)).not.toContain(
+      '守门人把铜钥匙',
+    );
+
+    const availableStatus = await request.get(
+      `/api/reference-library/references/${source.body.data.reference_id}/text-material/status`,
+    );
+    expect(availableStatus.status).toBe(200);
+    expect(availableStatus.body.data).toMatchObject({
+      available: true,
+      material: {
+        material_id: uploaded.body.data.material.material_id,
+        content_sha256: contentFingerprint,
+      },
+    });
+    expect(JSON.stringify(availableStatus.body.data)).not.toContain(
       '守门人把铜钥匙',
     );
 

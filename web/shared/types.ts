@@ -559,6 +559,16 @@ export interface ReferenceTextMaterialRecord {
   production_credit_granted: false;
 }
 
+export type ReferenceTextMaterialStatus =
+  | {
+      available: false;
+      material: null;
+    }
+  | {
+      available: true;
+      material: ReferenceTextMaterialRecord;
+    };
+
 export interface ReferenceTextMaterialChunkDescriptor {
   chunk_id: string;
   index: number;

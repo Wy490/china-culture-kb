@@ -31,9 +31,12 @@ import {
   getReferenceTextMaterial,
   getReferenceTextMaterialChunk,
   getReferenceTextMaterialManifest,
+  getReferenceTextMaterialStatus,
 } from '../services/reference-text-material-service.js';
 
 function resolveDefaultRepoRoot(): string {
+  const configuredRoot = process.env.REFERENCE_LIBRARY_REPO_ROOT?.trim();
+  if (configuredRoot) return path.resolve(configuredRoot);
   const candidates = [
     process.cwd(),
     path.resolve(process.cwd(), '..'),
@@ -256,6 +259,20 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
           request: req.body,
         });
         res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/references/:referenceId/text-material/status',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextMaterialStatus({
+          repoRoot,
+          referenceId: String(req.params.referenceId),
+        })));
       } catch (error) {
         next(error);
       }

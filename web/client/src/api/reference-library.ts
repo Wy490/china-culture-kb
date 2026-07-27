@@ -12,6 +12,11 @@ import type {
   ReferenceSimilarityEvidenceObservations,
   ReferenceSourceRecord,
   ReferenceStylePackRecord,
+  ReferenceTextMaterialAuthorization,
+  ReferenceTextMaterialContentType,
+  ReferenceTextMaterialManifest,
+  ReferenceTextMaterialRecord,
+  ReferenceTextMaterialStatus,
   PresentationStyle,
   StoryStructureType,
   TextReferenceAnalysis,
@@ -28,6 +33,17 @@ export interface CreateReferenceAnalysisTaskRequest {
 export interface SubmitReferenceAnalysisTaskRequest {
   submission_key: string
   observations: ReferenceSimilarityEvidenceObservations
+}
+
+export interface CreateReferenceTextMaterialRequest {
+  content: string
+  content_type: ReferenceTextMaterialContentType
+  authorization: Omit<ReferenceTextMaterialAuthorization, 'machine_verified'>
+}
+
+export interface CreateReferenceTextMaterialResult {
+  material: ReferenceTextMaterialRecord
+  idempotent_replay: boolean
 }
 
 export type CreateReferenceSourceRequest = Omit<
@@ -89,6 +105,28 @@ export function getReferenceLibraryDetail(referenceId: string) {
 export function listReferenceAnalysisTasks(referenceId: string) {
   return apiGet<ReferenceAnalysisTaskRecord[]>(
     `/reference-library/references/${encodeURIComponent(referenceId)}/analysis-tasks`,
+  )
+}
+
+export function getReferenceTextMaterialStatus(referenceId: string) {
+  return apiGet<ReferenceTextMaterialStatus>(
+    `/reference-library/references/${encodeURIComponent(referenceId)}/text-material/status`,
+  )
+}
+
+export function getReferenceTextMaterialManifest(referenceId: string) {
+  return apiGet<ReferenceTextMaterialManifest>(
+    `/reference-library/references/${encodeURIComponent(referenceId)}/text-material/manifest`,
+  )
+}
+
+export function createReferenceTextMaterial(
+  referenceId: string,
+  request: CreateReferenceTextMaterialRequest,
+) {
+  return apiPost<CreateReferenceTextMaterialResult>(
+    `/reference-library/references/${encodeURIComponent(referenceId)}/text-material`,
+    request,
   )
 }
 
