@@ -1,6 +1,6 @@
-# Story Agent 开发交接：P1-B11 十二视觉世界与三批 provenance 完成
+# Story Agent 开发交接：P1-B16 sealed evidence bundle 描述符完成
 
-> 交接日期：2026-07-26
+> 交接日期：2026-07-27
 >
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 >
@@ -29,6 +29,18 @@
 > P1-B10 provenance ops/UI 提交：`9b9ba280 feat(story-agent): surface batch provenance status`
 >
 > P1-B11 十二世界扩容提交：`0a73c595 feat(story-agent): expand visual pressure to twelve worlds`
+>
+> P1-B12 receipt 封存提交：`de86b56c feat(story-agent): seal visual asset batch receipts`
+>
+> P1-B13 receipt 工具通用化提交：`4d3ac1d5 feat(story-agent): generalize receipt-backed manifests`
+>
+> P1-B14 registry 审计提交：`1b2c298a feat(story-agent): audit visual receipt registries`
+>
+> P1-B15 evidence bundle 提交：`8d3ea787 feat(story-agent): package sealed receipt evidence`
+>
+> P1-B16 evidence descriptor 提交：`655d64e6 feat(story-agent): lock sealed evidence bundles`
+>
+> P1-B16 全量门禁稳定性提交：`346315b3 test(story-agent): stabilize material drafting matrix`
 >
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
@@ -62,7 +74,7 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、合并输出与 canonical 审计结论之间均有逐文件 SHA-256 provenance，旧证据或输入替换会 fail-closed，并通过有界 ops/API/UI 摘要直接可见”的阶段。
+Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；错误 receipt、错误 bundle、传输漂移或错误文件名都会在恢复写盘前 fail-closed”的阶段。
 
 当前工程判断：
 
@@ -76,7 +88,7 @@ Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”�
 
 1. 尚未使用真实外部 Provider 凭据运行生产级矩阵；
 2. 尚未使用用户合法提供的真实材料运行 operator evidence、approved style pack 和 baseline 对照；
-3. 当前十二题材压力审计已证明素材互异、恢复语义和三批输入/输出 provenance；继续扩容前应优先把 ImageGen 调用与预期内容 SHA 固化为不可重签的批次 receipt。
+3. 当前 sealed batch 的本地证据已经可确定性导出、恢复和验证；外部 artifact store 的选型、上传/下载凭据与保留策略尚未由用户指定，旧两批也缺少可验证的真实历史调用记录，因此仍显式保留为 `legacy_unsealed`。
 
 ## 3. 已完成的核心链路
 
@@ -1485,11 +1497,151 @@ server production build passed
 canonical remains ready / 12 cases / 1 sealed + 2 legacy / 16/16
 ```
 
-### 6.16 下一优先级
+### 6.16 P1-B16 committed evidence bundle descriptor（2026-07-27）
 
-1. 新增提交内 evidence bundle descriptor，固定 batch ID、receipt SHA、bundle SHA、字节数和文件计数，让 clean-checkout CI 在恢复 blob 前先验证选中的 artifact 正是预期确定性 bundle；
-2. descriptor 只描述完整性，不内置外部 URL、凭据、rights 或 production credit；具体 artifact store 上传/下载仍需用户选择并授权；
-3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`，不得伪造封存。
+功能提交：
+
+```text
+655d64e6 feat(story-agent): lock sealed evidence bundles
+```
+
+全量门禁稳定性提交：
+
+```text
+346315b3 test(story-agent): stabilize material drafting matrix
+```
+
+新增 committed descriptor：
+
+```text
+web/server/scripts/
+  story-agent-visual-asset-pressure-batch3-evidence-bundle-descriptor.json
+
+schema:
+story-agent-visual-asset-pressure-receipt-evidence-descriptor/v1
+```
+
+descriptor 固定以下事实：
+
+```text
+batch_id:
+imagegen-20260726-batch3
+
+receipt SHA-256:
+cd274225063cba197da0057d4befb22b6e3b7f79c6de19c5e8e3daaf9a008d73
+
+bundle file name:
+imagegen-20260726-batch3-receipt-evidence-bundle.json
+
+bundle SHA-256:
+324c954603d26d692b2d14e46607f81e0ecaa3835d661ec2942168978abf3eb2
+
+bundle bytes:
+28,474,649
+
+files:
+16 = 8 prompts + 8 PNG sources
+
+decoded evidence bytes:
+21,351,766
+```
+
+新增：
+
+```text
+web/server/src/services/
+  story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.ts
+
+web/server/src/__tests__/
+  story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.test.ts
+```
+
+验证器不只比较 descriptor 字段，还会重新解析 committed receipt 与 bundle，并逐项验证：
+
+- receipt exact bytes SHA；
+- bundle exact bytes SHA 和字节数；
+- receipt、bundle、descriptor 三方 batch ID；
+- bundle 内嵌 receipt SHA；
+- bundle schema；
+- 文件总数、prompt/source 分类计数和 decoded evidence 总字节数；
+- descriptor 的 portable basename；
+- 固定机器边界全部为严格布尔值。
+
+导出与恢复 CLI 均新增：
+
+```text
+--descriptor
+```
+
+默认读取 committed batch3 descriptor。导出在创建/校验目标 bundle 前验证 descriptor；恢复在写入任何 evidence 文件前验证 descriptor。即使内容字节正确，bundle 路径 basename 与 descriptor 不同也会拒绝，防止 clean-checkout CI 选错 artifact。
+
+真实闭环结果：
+
+```text
+export:
+  status=verified_existing
+  descriptor_status=verified
+  output_sha256=324c954603d26d692b2d14e46607f81e0ecaa3835d661ec2942168978abf3eb2
+  output_byte_length=28474649
+
+restore:
+  descriptor_status=verified
+  status=verified_existing
+  file_count=16
+  restored_file_count=0
+  existing_file_count=16
+  blockers=[]
+
+registry audit:
+  status=verified
+  1 sealed + 2 legacy_unsealed
+  sealed assets=8/8 verified
+```
+
+测试同时覆盖 exact match、bundle 传输字节漂移、receipt 字节漂移、URL 形态文件名和越权 boundary 声明。
+
+全量门禁中发现 `project-service` 的 28 案例素材草拟矩阵贴近默认 5 秒上限，并且单文件运行依赖前序测试预热 production pack。现已先从真实仓库显式加载 8 类 pack，再切换临时 KB root，并为该大矩阵设置 20 秒专属上限。该测试单独运行与全量运行均通过。
+
+验证结果：
+
+```text
+descriptor + bundle:
+  2 files / 6 tests passed
+receipt/bundle/descriptor/manifest/registry/composition/pressure/ops targeted:
+  9 files / 36 tests passed
+project material drafting matrix standalone:
+  1 passed / 71 filtered
+server:
+  180 files passed, 1 skipped
+  1508 tests passed, 2 skipped
+server lint/typecheck passed
+server production build passed
+canonical remains ready / 12 cases / 1 sealed + 2 legacy / 16/16
+```
+
+固定边界：
+
+```text
+machine_validation_only=true
+external_location_declared=false
+rights_granted=false
+human_review_performed=false
+video_generation_performed=false
+production_credit_granted=false
+```
+
+descriptor 不含 URL、凭据、rights 授权、人审结论或 production credit。本轮没有上传外部 artifact。
+
+### 6.17 下一优先级
+
+当前可继续的纯本地工作只剩为 clean-checkout/CI 提供独立的 descriptor preflight 命令和调用示例；真实 artifact store 接入需要用户先指定存储后端、凭据注入方式与保留策略。
+
+外部条件未具备前必须保持：
+
+1. 不自行选择或写入 artifact store URL，不请求、记录或提交凭据；
+2. 不把本地 ignored bundle 描述成已远端归档或已验证下载传输；
+3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`；
+4. receipt、bundle 和 descriptor 都只证明机器完整性，不代表 rights、人审或 production credit。
 
 ## 7. 外部条件具备时才做
 
@@ -1565,6 +1717,7 @@ real external provider
 - P1-B13 通用 receipt-backed manifest builder、必填路径 CLI、只读 receipt inspection 与 batch3 零字节漂移迁移；
 - P1-B14 registry-level bounded receipt audit、sealed 全量验证与 legacy 显式枚举；
 - P1-B15 deterministic sealed evidence bundle、receipt SHA 锁定、安全幂等恢复与零覆盖；
+- P1-B16 committed evidence bundle descriptor、receipt/bundle exact-byte 锁定与导出/恢复写盘前 fail-closed；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -1593,6 +1746,7 @@ web/server/src/services/story-agent-visual-asset-pressure-batch-receipt-service.
 web/server/src/services/story-agent-visual-asset-pressure-receipt-manifest-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-registry-audit-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.ts
+web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
@@ -1604,6 +1758,7 @@ web/server/scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-export.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-evidence-restore.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json
+web/server/scripts/story-agent-visual-asset-pressure-batch3-evidence-bundle-descriptor.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-merge.mts
 web/server/scripts/story-agent-visual-asset-pressure.mts
@@ -1615,6 +1770,7 @@ web/server/src/__tests__/story-agent-visual-asset-pressure-batch-receipt-service
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-manifest-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-registry-audit-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.test.ts
+web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-composition-service.test.ts
 web/server/src/__tests__/api.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
@@ -1658,6 +1814,9 @@ npm run smoke:story-agent-cross-seed-images -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260726-batch3/manifest.json \
   --output generated/story-agent-cross-seed-image-assets-20260726-batch3/binding-report.json
 npm run smoke:story-agent-visual-asset-pressure-batch-merge
+npm run smoke:story-agent-visual-asset-pressure-receipt-evidence-export
+npm run smoke:story-agent-visual-asset-pressure-receipt-evidence-restore
+npm run smoke:story-agent-visual-asset-pressure-receipt-registry-audit
 npm run smoke:story-agent-visual-asset-pressure -- \
   --manifest generated/story-agent-cross-seed-image-assets-20260725-eight-world/manifest.json \
   --binding-report generated/story-agent-cross-seed-image-assets-20260725-eight-world/binding-report.json \
@@ -1667,6 +1826,7 @@ npm run smoke:story-agent-visual-asset-pressure -- \
 npx vitest run src/__tests__/ai-comic-series-visual-bible.test.ts
 npx vitest run src/__tests__/outline-service.test.ts -t "generic fast-hook"
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-batch-registry-service.test.ts
+npx vitest run src/__tests__/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.test.ts
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-composition-service.test.ts
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-service.test.ts
 npx vitest run src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
@@ -1732,10 +1892,12 @@ de86b56c feat(story-agent): seal visual asset batch receipts
 4d3ac1d5 feat(story-agent): generalize receipt-backed manifests
 1b2c298a feat(story-agent): audit visual receipt registries
 8d3ea787 feat(story-agent): package sealed receipt evidence
+655d64e6 feat(story-agent): lock sealed evidence bundles
+346315b3 test(story-agent): stabilize material drafting matrix
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit，以及 P1-B15 deterministic evidence bundle/restore 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore，以及 P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验均已完成。不要重新实现。
 
-下一步新增提交内 evidence bundle descriptor，固定 batch/receipt/bundle SHA 与计数；artifact store 上传/下载仍需用户选择并授权。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle 仍不代表 rights、人审或 production credit。
+下一步可补独立 descriptor preflight CLI 和 clean-checkout/CI 调用示例；artifact store 上传/下载仍需用户选择并授权。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
