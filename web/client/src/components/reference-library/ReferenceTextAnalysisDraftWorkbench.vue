@@ -2,7 +2,7 @@
   <section class="draft" data-testid="reference-text-analysis-draft">
     <header>
       <div>
-        <p>Evidence-bound draft · P1-C5</p>
+        <p>Evidence-bound draft · P1-C6</p>
         <h4>草拟 Pending TextReferenceAnalysis</h4>
       </div>
       <span v-if="draftTask">{{ statusLabel[draftTask.status] }}</span>
@@ -12,6 +12,7 @@
       <strong>只草拟，不批准</strong>
       <span>输入绑定 source fingerprint、execution 与 evidence SHA</span>
       <span>服务端不调用模型；缺失字段必须由 Codex/operator 补齐，不得猜造</span>
+      <span>证据不足时先登记结构化补充需求；补充响应不允许复制来源原文</span>
       <span>输出固定为 pending，仍需另一位 material:sign 评审者人工签署</span>
     </div>
 
@@ -51,7 +52,16 @@
         <div><dt>执行者</dt><dd>{{ draftTask.executor.kind }} · {{ draftTask.executor.executor_id }}</dd></div>
       </dl>
 
-      <template v-if="draftTask.status !== 'completed'">
+      <template v-if="draftTask.status === 'pending'">
+        <div
+          v-if="draftTask.supplement_request && draftTask.supplement_id"
+          class="supplement-bound"
+          data-testid="reference-text-analysis-supplement-bound"
+        >
+          <strong>补充证据已绑定</strong>
+          <span>{{ draftTask.supplement_id }}</span>
+          <span>最终 analysis provenance 将同时锁定需求 SHA 与响应 SHA。</span>
+        </div>
         <p class="helper">
           下方是结构模板，不是自动分析结果。所有“请填写”占位词必须替换后才能提交。
         </p>
@@ -72,6 +82,69 @@
         >
           {{ busy ? '正在封存 Pending Analysis…' : '提交 Pending Analysis' }}
         </button>
+
+        <div v-if="!draftTask.supplement_request" class="supplement-panel">
+          <strong>现有 Evidence 不足？</strong>
+          <p>
+            只声明缺失字段、原因和现有 observation ID；这里不提交猜测值，也不复制来源正文。
+          </p>
+          <label>
+            结构化补充需求 JSON
+            <textarea
+              v-model="supplementRequestJson"
+              rows="14"
+              spellcheck="false"
+              data-testid="reference-text-analysis-supplement-request-json"
+            />
+          </label>
+          <button
+            type="button"
+            class="secondary-button"
+            :disabled="busy"
+            data-testid="request-reference-text-analysis-supplement"
+            @click="declareSupplement"
+          >
+            {{ busy ? '正在登记需求…' : '登记 needs_supplement' }}
+          </button>
+        </div>
+      </template>
+
+      <template v-else-if="draftTask.status === 'needs_supplement'">
+        <div class="supplement-panel supplement-panel--active">
+          <strong>等待有界补充</strong>
+          <p>
+            必须逐项覆盖下列字段；只能提交 locator、摘要和限制，不得粘贴来源原文。
+          </p>
+          <ul>
+            <li
+              v-for="need in draftTask.supplement_request?.needs ?? []"
+              :key="need.field"
+            >
+              {{ need.field }} · {{ need.reason }}
+            </li>
+          </ul>
+          <label>
+            有界补充 JSON
+            <textarea
+              v-model="supplementJson"
+              rows="18"
+              spellcheck="false"
+              data-testid="reference-text-analysis-supplement-json"
+            />
+          </label>
+          <button
+            type="button"
+            :disabled="busy"
+            data-testid="submit-reference-text-analysis-supplement"
+            @click="submitSupplement"
+          >
+            {{ busy ? '正在封存补充…' : '提交补充并恢复草拟' }}
+          </button>
+        </div>
+      </template>
+
+      <template v-else-if="draftTask.status === 'processing'">
+        <p class="message">分析正在封存；使用原提交 key 重试可恢复完成态。</p>
       </template>
 
       <template v-else>
@@ -89,13 +162,17 @@
 import { ref, watch } from 'vue'
 import type {
   ReferenceAnalysisTaskRecord,
+  ReferenceTextAnalysisDraftSupplementItem,
   ReferenceTextAnalysisDraftTaskRecord,
+  ReferenceTextAnalysisSupplementNeed,
   TextReferenceAnalysis,
 } from '@shared/types'
 import {
   createReferenceTextAnalysisDraftTask,
   getReferenceTextAnalysisDraftTask,
+  requestReferenceTextAnalysisSupplement,
   submitReferenceTextAnalysisDraft,
+  submitReferenceTextAnalysisSupplement,
 } from '@/api/reference-library'
 
 const props = defineProps<{
@@ -111,6 +188,10 @@ const draftTask = ref<ReferenceTextAnalysisDraftTaskRecord | null>(null)
 const draftConfirmed = ref(false)
 const analysisJson = ref('')
 const submissionKey = ref('')
+const supplementRequestJson = ref('')
+const supplementRequestKey = ref('')
+const supplementJson = ref('')
+const supplementSubmissionKey = ref('')
 const loading = ref(false)
 const busy = ref(false)
 const errorMessage = ref('')
@@ -118,6 +199,7 @@ const notice = ref('')
 
 const statusLabel: Record<ReferenceTextAnalysisDraftTaskRecord['status'], string> = {
   pending: '待草拟',
+  needs_supplement: '待补充',
   processing: '封存中',
   completed: '待独立审核',
 }
@@ -144,16 +226,62 @@ function analysisTemplate(): TextReferenceAnalysis {
   }
 }
 
-function newSubmissionKey(): string {
+function newSubmissionKey(prefix = 'text-analysis-draft'): string {
   const suffix = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  return `text-analysis-draft:${suffix}`
+  return `${prefix}:${suffix}`
+}
+
+function supplementRequestTemplate(
+  evidenceId: string,
+): { needs: ReferenceTextAnalysisSupplementNeed[] } {
+  return {
+    needs: [{
+      field: 'scene_patterns',
+      reason: 'insufficient_source_coverage',
+      evidence_id: evidenceId,
+      evidence_observation_ids: [],
+      required_input: 'bounded_source_observations',
+    }],
+  }
+}
+
+function supplementTemplate(
+  needs: ReferenceTextAnalysisSupplementNeed[],
+): { items: ReferenceTextAnalysisDraftSupplementItem[] } {
+  return {
+    items: needs.map(need => ({
+      field: need.field,
+      source_locators: ['请替换为 sealed material locator'],
+      observation_summary: '请填写不含来源原文的有界观察摘要',
+      limitations: ['请填写该补充仍不能证明或复刻的内容'],
+    })),
+  }
 }
 
 function resetEditor(): void {
   analysisJson.value = JSON.stringify(analysisTemplate(), null, 2)
   submissionKey.value = newSubmissionKey()
+  supplementRequestKey.value = newSubmissionKey('text-analysis-supplement-request')
+  supplementSubmissionKey.value = newSubmissionKey('text-analysis-supplement')
+  supplementRequestJson.value = ''
+  supplementJson.value = ''
+}
+
+function resetSupplementEditors(
+  task: ReferenceTextAnalysisDraftTaskRecord,
+): void {
+  supplementRequestJson.value = JSON.stringify(
+    supplementRequestTemplate(task.similarity_evidence_id),
+    null,
+    2,
+  )
+  supplementJson.value = JSON.stringify(
+    supplementTemplate(task.supplement_request?.needs ?? []),
+    null,
+    2,
+  )
 }
 
 async function loadDraftTask(): Promise<void> {
@@ -172,6 +300,7 @@ async function loadDraftTask(): Promise<void> {
     return
   }
   draftTask.value = response.data
+  resetSupplementEditors(response.data)
 }
 
 async function createDraftTask(): Promise<void> {
@@ -195,7 +324,98 @@ async function createDraftTask(): Promise<void> {
     return
   }
   draftTask.value = response.data
+  resetSupplementEditors(response.data)
   notice.value = '草拟任务已建立；输出将固定为 pending。'
+}
+
+function parseSupplementNeeds(): ReferenceTextAnalysisSupplementNeed[] | null {
+  try {
+    const parsed = JSON.parse(supplementRequestJson.value) as {
+      needs?: ReferenceTextAnalysisSupplementNeed[]
+    }
+    if (!Array.isArray(parsed.needs) || parsed.needs.length === 0) {
+      throw new Error('补充需求必须包含非空 needs 数组')
+    }
+    return parsed.needs
+  } catch (error) {
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : '补充需求 JSON 无法解析'
+    return null
+  }
+}
+
+async function declareSupplement(): Promise<void> {
+  if (!draftTask.value || draftTask.value.status !== 'pending') return
+  const needs = parseSupplementNeeds()
+  if (!needs) return
+  busy.value = true
+  errorMessage.value = ''
+  notice.value = ''
+  const response = await requestReferenceTextAnalysisSupplement(
+    props.task.task_id,
+    {
+      submission_key: supplementRequestKey.value,
+      requested_by: props.actorId,
+      confirmation: 'declare_text_analysis_evidence_insufficient',
+      needs,
+    },
+  )
+  busy.value = false
+  if (!response.ok || !response.data) {
+    errorMessage.value = response.error?.message ?? '登记补充需求失败'
+    return
+  }
+  draftTask.value = response.data
+  resetSupplementEditors(response.data)
+  notice.value = '补充需求已锁定；补充前不会生成 analysis。'
+}
+
+function parseSupplementItems():
+  ReferenceTextAnalysisDraftSupplementItem[] | null {
+  try {
+    const parsed = JSON.parse(supplementJson.value) as {
+      items?: ReferenceTextAnalysisDraftSupplementItem[]
+    }
+    if (!Array.isArray(parsed.items) || parsed.items.length === 0) {
+      throw new Error('补充响应必须包含非空 items 数组')
+    }
+    if (JSON.stringify(parsed.items).includes('请填写')
+      || JSON.stringify(parsed.items).includes('请替换')) {
+      throw new Error('必须替换全部补充模板占位词后才能提交')
+    }
+    return parsed.items
+  } catch (error) {
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : '补充响应 JSON 无法解析'
+    return null
+  }
+}
+
+async function submitSupplement(): Promise<void> {
+  if (!draftTask.value || draftTask.value.status !== 'needs_supplement') return
+  const items = parseSupplementItems()
+  if (!items) return
+  busy.value = true
+  errorMessage.value = ''
+  notice.value = ''
+  const response = await submitReferenceTextAnalysisSupplement(
+    props.task.task_id,
+    {
+      submission_key: supplementSubmissionKey.value,
+      submitted_by: props.actorId,
+      confirmation: 'submit_bounded_supplement_without_source_excerpts',
+      items,
+    },
+  )
+  busy.value = false
+  if (!response.ok || !response.data) {
+    errorMessage.value = response.error?.message ?? '提交补充失败'
+    return
+  }
+  draftTask.value = response.data.draft_task
+  notice.value = `补充 ${response.data.supplement.supplement_id} 已封存；草拟任务已恢复。`
 }
 
 function parseAnalysis(): TextReferenceAnalysis | null {
@@ -363,6 +583,52 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: .45;
+}
+
+.secondary-button {
+  border: 1px solid #5d9ab1;
+  background: transparent;
+  color: #9dd5e4;
+}
+
+.supplement-panel,
+.supplement-bound {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(214, 166, 89, .42);
+  border-radius: 9px;
+  background: rgba(106, 76, 30, .14);
+  color: #c9c1b1;
+  font-size: 12px;
+}
+
+.supplement-panel--active {
+  border-color: rgba(120, 184, 202, .55);
+  background: rgba(54, 102, 118, .12);
+}
+
+.supplement-panel p,
+.supplement-panel ul {
+  margin: 0;
+}
+
+.supplement-panel ul {
+  padding-left: 18px;
+}
+
+.supplement-bound {
+  border-color: rgba(94, 182, 126, .4);
+  background: rgba(51, 112, 73, .12);
+}
+
+.supplement-bound strong {
+  color: #8bd9ac;
+}
+
+.supplement-bound span {
+  overflow-wrap: anywhere;
 }
 
 .message,

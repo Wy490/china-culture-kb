@@ -42,8 +42,11 @@ import {
 } from '../services/reference-text-analysis-execution-service.js';
 import {
   createReferenceTextAnalysisDraftTask,
+  getReferenceTextAnalysisSupplement,
   getReferenceTextAnalysisDraftTask,
+  requestReferenceTextAnalysisSupplement,
   submitReferenceTextAnalysisDraft,
+  submitReferenceTextAnalysisSupplement,
 } from '../services/reference-text-analysis-draft-task-service.js';
 
 function resolveDefaultRepoRoot(): string {
@@ -376,6 +379,68 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
     async (req, res, next) => {
       try {
         res.json(success(await getReferenceTextAnalysisDraftTask({
+          repoRoot,
+          taskId: String(req.params.taskId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-analysis-draft-task/supplement-request',
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.requested_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Supplement requested_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await requestReferenceTextAnalysisSupplement({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(
+          success(result.draftTask),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/analysis-tasks/:taskId/text-analysis-draft-task/supplement-submissions',
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.submitted_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Supplement submitted_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await submitReferenceTextAnalysisSupplement({
+          repoRoot,
+          taskId: String(req.params.taskId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/analysis-tasks/:taskId/text-analysis-draft-task/supplement',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextAnalysisSupplement({
           repoRoot,
           taskId: String(req.params.taskId),
         })));

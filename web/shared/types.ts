@@ -825,8 +825,67 @@ export interface ReferenceTextAnalysisFinalizationResult
   execution: ReferenceTextAnalysisExecutionRecord;
 }
 
+export type TextReferenceAnalysisField =
+  | 'source_units'
+  | 'character_wants'
+  | 'scene_patterns'
+  | 'must_keep'
+  | 'compression_options'
+  | 'adaptation_risks'
+  | 'reusable_principles'
+  | 'avoid_copying';
+
+export interface ReferenceTextAnalysisSupplementNeed {
+  field: TextReferenceAnalysisField;
+  reason:
+    | 'not_observed'
+    | 'conflicting_observations'
+    | 'insufficient_source_coverage';
+  evidence_id: string;
+  evidence_observation_ids: string[];
+  required_input: 'bounded_source_observations';
+}
+
+export interface ReferenceTextAnalysisSupplementRequestAudit {
+  request_submission_key_sha256: string;
+  request_payload_sha256: string;
+  requested_by: string;
+  requested_at: string;
+  needs: ReferenceTextAnalysisSupplementNeed[];
+}
+
+export interface ReferenceTextAnalysisDraftSupplementItem {
+  field: TextReferenceAnalysisField;
+  source_locators: string[];
+  observation_summary: string;
+  limitations: string[];
+}
+
+export interface ReferenceTextAnalysisDraftSupplementRecord {
+  schema_version: 'reference-text-analysis-draft-supplement/v1';
+  supplement_id: string;
+  draft_task_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  supplement_request_sha256: string;
+  submission_key_sha256: string;
+  submitted_by: string;
+  items: ReferenceTextAnalysisDraftSupplementItem[];
+  input_provenance: 'operator_submitted';
+  machine_verified: false;
+  payload_sha256: string;
+  created_at: string;
+  governance: {
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+    production_credit_eligible: false;
+  };
+}
+
 export interface ReferenceTextAnalysisDraftTaskRecord {
-  schema_version: 'reference-text-analysis-draft-task/v1';
+  schema_version:
+    | 'reference-text-analysis-draft-task/v1'
+    | 'reference-text-analysis-draft-task/v2';
   draft_task_id: string;
   analysis_task_id: string;
   text_execution_id: string;
@@ -840,10 +899,13 @@ export interface ReferenceTextAnalysisDraftTaskRecord {
     kind: 'codex' | 'operator';
     executor_id: string;
   };
-  status: 'pending' | 'processing' | 'completed';
+  status: 'pending' | 'needs_supplement' | 'processing' | 'completed';
   manifest: {
     evidence_endpoint: string;
     output_submission_endpoint: string;
+    supplement_request_endpoint?: string;
+    supplement_submission_endpoint?: string;
+    supplement_endpoint?: string;
     server_model_call_allowed: false;
     source_text_instruction_authority: 'none';
     output_schema: 'reference-analysis-record/v2';
@@ -853,6 +915,10 @@ export interface ReferenceTextAnalysisDraftTaskRecord {
     knowledge_writeback_allowed: false;
     production_credit_eligible: false;
   };
+  supplement_request?: ReferenceTextAnalysisSupplementRequestAudit | null;
+  supplement_id?: string | null;
+  supplement_payload_sha256?: string | null;
+  supplement_responded_at?: string | null;
   submission_key_sha256: string | null;
   analysis_payload_sha256: string | null;
   submitted_at: string | null;
@@ -956,6 +1022,9 @@ export interface TextReferenceAnalysisRecord {
     source_content_fingerprint: string;
     input_provenance: 'operator_submitted';
     machine_verified: false;
+    supplement_request_sha256?: string;
+    supplement_id?: string;
+    supplement_payload_sha256?: string;
   };
   governance?: {
     prompt_injection_allowed: false;
@@ -976,6 +1045,12 @@ export interface ReferenceAnalysisApprovalResult {
 export interface ReferenceTextAnalysisDraftSubmissionResult {
   draft_task: ReferenceTextAnalysisDraftTaskRecord;
   analysis: TextReferenceAnalysisRecord;
+  idempotent_replay: boolean;
+}
+
+export interface ReferenceTextAnalysisDraftSupplementSubmissionResult {
+  draft_task: ReferenceTextAnalysisDraftTaskRecord;
+  supplement: ReferenceTextAnalysisDraftSupplementRecord;
   idempotent_replay: boolean;
 }
 

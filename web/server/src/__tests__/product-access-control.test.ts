@@ -559,6 +559,28 @@ describe('product access middleware', () => {
       expect(mismatchedDraftSubmission.body.error.code).toBe(
         'ACCESS_FORBIDDEN',
       );
+
+      const mismatchedSupplementRequest = await request
+        .post(`${draftBase}/supplement-request`)
+        .set('authorization', bearer('research-token'))
+        .send({
+          requested_by: 'another-reviewer',
+        });
+      expect(mismatchedSupplementRequest.status).toBe(403);
+      expect(mismatchedSupplementRequest.body.error.code).toBe(
+        'ACCESS_FORBIDDEN',
+      );
+
+      const mismatchedSupplementSubmission = await request
+        .post(`${draftBase}/supplement-submissions`)
+        .set('authorization', bearer('research-token'))
+        .send({
+          submitted_by: 'another-reviewer',
+        });
+      expect(mismatchedSupplementSubmission.status).toBe(403);
+      expect(mismatchedSupplementSubmission.body.error.code).toBe(
+        'ACCESS_FORBIDDEN',
+      );
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

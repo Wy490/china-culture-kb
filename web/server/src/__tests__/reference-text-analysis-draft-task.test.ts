@@ -162,7 +162,7 @@ describe('reference text analysis draft task', () => {
     });
     expect(created.status).toBe(201);
     expect(created.body.data).toMatchObject({
-      schema_version: 'reference-text-analysis-draft-task/v1',
+      schema_version: 'reference-text-analysis-draft-task/v2',
       analysis_task_id: fixture.task.task_id,
       text_execution_id: fixture.execution.execution_id,
       reference_id: fixture.source.reference_id,
@@ -405,6 +405,274 @@ describe('reference text analysis draft task', () => {
         analysis_id: completed.body.data.analysis.analysis_id,
       },
     });
+  });
+
+  it('records bounded supplement needs and resumes the same draft task', async () => {
+    const { repoRoot, request } = await createRequest();
+    const fixture = await createCompletedExecution(request);
+    const base =
+      `/api/reference-library/analysis-tasks/${fixture.task.task_id}`
+      + '/text-analysis-draft-task';
+    const created = await request.post(base).send({
+      executor: {
+        kind: 'operator',
+        executor_id: 'operator-01',
+      },
+      confirmation: 'draft_complete_text_analysis_from_verified_evidence',
+    });
+    expect(created.status).toBe(201);
+
+    const legacyDraftPath = path.join(
+      repoRoot,
+      'references/creative/library/analysis-draft-tasks',
+      `${created.body.data.draft_task_id}.json`,
+    );
+    const legacyDraft = JSON.parse(await readFile(legacyDraftPath, 'utf8'));
+    legacyDraft.schema_version = 'reference-text-analysis-draft-task/v1';
+    delete legacyDraft.manifest.supplement_request_endpoint;
+    delete legacyDraft.manifest.supplement_submission_endpoint;
+    delete legacyDraft.manifest.supplement_endpoint;
+    delete legacyDraft.supplement_request;
+    delete legacyDraft.supplement_id;
+    delete legacyDraft.supplement_payload_sha256;
+    delete legacyDraft.supplement_responded_at;
+    await writeFile(
+      legacyDraftPath,
+      `${JSON.stringify(legacyDraft, null, 2)}\n`,
+    );
+
+    const evidenceObservationId =
+      fixture.evidence.observations.excerpts[0].observation_id;
+    const supplementRequest = {
+      submission_key: 'supplement-request-01',
+      requested_by: 'operator-01',
+      confirmation: 'declare_text_analysis_evidence_insufficient',
+      needs: [
+        {
+          field: 'scene_patterns',
+          reason: 'not_observed',
+          evidence_id: fixture.evidence.evidence_id,
+          evidence_observation_ids: [evidenceObservationId],
+          required_input: 'bounded_source_observations',
+        },
+        {
+          field: 'reusable_principles',
+          reason: 'insufficient_source_coverage',
+          evidence_id: fixture.evidence.evidence_id,
+          evidence_observation_ids: [evidenceObservationId],
+          required_input: 'bounded_source_observations',
+        },
+      ],
+    };
+    const declared = await request
+      .post(`${base}/supplement-request`)
+      .send(supplementRequest);
+    expect(declared.status).toBe(201);
+    expect(declared.body.data).toMatchObject({
+      schema_version: 'reference-text-analysis-draft-task/v2',
+      draft_task_id: created.body.data.draft_task_id,
+      status: 'needs_supplement',
+      supplement_request: {
+        requested_by: 'operator-01',
+        needs: supplementRequest.needs,
+      },
+      supplement_id: null,
+      supplement_payload_sha256: null,
+      human_review_complete: false,
+      production_credit_granted: false,
+    });
+    expect(JSON.stringify(declared.body.data)).not.toContain(
+      fixture.evidence.observations.excerpts[0].text,
+    );
+
+    const requestReplay = await request
+      .post(`${base}/supplement-request`)
+      .send(supplementRequest);
+    expect(requestReplay.status).toBe(200);
+    expect(requestReplay.body.data.supplement_request.request_payload_sha256)
+      .toBe(declared.body.data.supplement_request.request_payload_sha256);
+    const requestConflict = await request
+      .post(`${base}/supplement-request`)
+      .send({
+        ...supplementRequest,
+        submission_key: 'supplement-request-conflict',
+      });
+    expect(requestConflict.status).toBe(409);
+    expect(requestConflict.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+    );
+
+    const prematureAnalysis = await request
+      .post(`${base}/submissions`)
+      .send({
+        submission_key: 'premature-analysis-submission',
+        submitted_by: 'operator-01',
+        confirmation: 'submit_pending_text_reference_analysis',
+        analysis: textAnalysis(),
+      });
+    expect(prematureAnalysis.status).toBe(409);
+    expect(prematureAnalysis.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_REQUIRED',
+    );
+    const beforeSupplement = await request.get(
+      `/api/reference-library/references/${fixture.source.reference_id}`,
+    );
+    expect(beforeSupplement.body.data.analyses).toHaveLength(0);
+
+    const supplementSubmission = {
+      submission_key: 'supplement-response-01',
+      submitted_by: 'operator-01',
+      confirmation: 'submit_bounded_supplement_without_source_excerpts',
+      items: [
+        {
+          field: 'scene_patterns',
+          source_locators: ['characters:1-25', 'characters:27-50'],
+          observation_summary: '阻挡、证据出现、主动开门构成目标—阻力—转折链。',
+          limitations: ['未记录逐句台词，不能据此复刻原作表达。'],
+        },
+        {
+          field: 'reusable_principles',
+          source_locators: ['characters:27-50'],
+          observation_summary: '同一道具从阻挡转为承担，可抽象为功能反转原则。',
+          limitations: ['原则仅用于结构启发，不复制专名和事件排列。'],
+        },
+      ],
+    };
+    const incompleteSupplement = await request
+      .post(`${base}/supplement-submissions`)
+      .send({
+        ...supplementSubmission,
+        items: supplementSubmission.items.slice(0, 1),
+      });
+    expect(incompleteSupplement.status).toBe(400);
+    expect(incompleteSupplement.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INVALID',
+    );
+    const copiedExcerptSupplement = await request
+      .post(`${base}/supplement-submissions`)
+      .send({
+        ...supplementSubmission,
+        items: supplementSubmission.items.map((item, index) => (
+          index === 0
+            ? {
+                ...item,
+                observation_summary:
+                  fixture.evidence.observations.excerpts[0].text,
+              }
+            : item
+        )),
+      });
+    expect(copiedExcerptSupplement.status).toBe(400);
+    expect(copiedExcerptSupplement.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INVALID',
+    );
+
+    const supplemented = await request
+      .post(`${base}/supplement-submissions`)
+      .send(supplementSubmission);
+    expect(supplemented.status).toBe(201);
+    expect(supplemented.body.data).toMatchObject({
+      idempotent_replay: false,
+      draft_task: {
+        draft_task_id: created.body.data.draft_task_id,
+        status: 'pending',
+      },
+      supplement: {
+        schema_version: 'reference-text-analysis-draft-supplement/v1',
+        draft_task_id: created.body.data.draft_task_id,
+        reference_id: fixture.source.reference_id,
+        submitted_by: 'operator-01',
+        items: supplementSubmission.items,
+        input_provenance: 'operator_submitted',
+        machine_verified: false,
+        governance: {
+          prompt_injection_allowed: false,
+          knowledge_writeback_allowed: false,
+          production_credit_eligible: false,
+        },
+      },
+    });
+    expect(supplemented.body.data.draft_task.supplement_id).toBe(
+      supplemented.body.data.supplement.supplement_id,
+    );
+    expect(
+      supplemented.body.data.draft_task.supplement_payload_sha256,
+    ).toBe(supplemented.body.data.supplement.payload_sha256);
+
+    const supplementTaskPath = path.join(
+      repoRoot,
+      'references/creative/library/analysis-draft-tasks',
+      `${created.body.data.draft_task_id}.json`,
+    );
+    const persistedTask = JSON.parse(await readFile(supplementTaskPath, 'utf8'));
+    await writeFile(supplementTaskPath, `${JSON.stringify({
+      ...persistedTask,
+      status: 'needs_supplement',
+      supplement_id: null,
+      supplement_payload_sha256: null,
+      supplement_responded_at: null,
+    }, null, 2)}\n`);
+    const supplementRecovery = await request
+      .post(`${base}/supplement-submissions`)
+      .send(supplementSubmission);
+    expect(supplementRecovery.status).toBe(200);
+    expect(supplementRecovery.body.data).toMatchObject({
+      idempotent_replay: true,
+      draft_task: {
+        status: 'pending',
+        supplement_id: supplemented.body.data.supplement.supplement_id,
+      },
+    });
+    const readSupplement = await request.get(`${base}/supplement`);
+    expect(readSupplement.status).toBe(200);
+    expect(readSupplement.body.data.supplement_id).toBe(
+      supplemented.body.data.supplement.supplement_id,
+    );
+
+    const supplementPath = path.join(
+      repoRoot,
+      'references/creative/library/analysis-draft-tasks',
+      `${supplemented.body.data.supplement.supplement_id}.json`,
+    );
+    const persistedSupplement = await readFile(supplementPath, 'utf8');
+    expect(persistedSupplement).not.toContain(
+      fixture.evidence.observations.excerpts[0].text,
+    );
+
+    const completed = await request
+      .post(`${base}/submissions`)
+      .send({
+        submission_key: 'supplemented-analysis-submission',
+        submitted_by: 'operator-01',
+        confirmation: 'submit_pending_text_reference_analysis',
+        analysis: textAnalysis(),
+      });
+    expect(completed.status).toBe(201);
+    expect(completed.body.data.analysis).toMatchObject({
+      approval: { status: 'pending' },
+      provenance: {
+        supplement_request_sha256:
+          declared.body.data.supplement_request.request_payload_sha256,
+        supplement_id: supplemented.body.data.supplement.supplement_id,
+        supplement_payload_sha256:
+          supplemented.body.data.supplement.payload_sha256,
+      },
+    });
+
+    const tamperedSupplement = JSON.parse(
+      await readFile(supplementPath, 'utf8'),
+    );
+    tamperedSupplement.items[0].observation_summary =
+      '被篡改但仍符合 schema 的补充摘要。';
+    await writeFile(
+      supplementPath,
+      `${JSON.stringify(tamperedSupplement, null, 2)}\n`,
+    );
+    const tampered = await request.get(base);
+    expect(tampered.status).toBe(400);
+    expect(tampered.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
   });
 
   it('rejects draft task creation before evidence execution is completed', async () => {

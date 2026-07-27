@@ -2,7 +2,7 @@
   <main class="reference-workbench">
     <header class="hero">
       <div>
-        <p class="eyebrow">Reference Library · P1-C5</p>
+        <p class="eyebrow">Reference Library · P1-C6</p>
         <h1>参考资料分析任务台</h1>
         <p class="hero__summary">
           为已登记、已指纹绑定的合法参考资料创建来源绑定任务，并接收结构化分析 evidence。

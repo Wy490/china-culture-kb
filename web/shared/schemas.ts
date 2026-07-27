@@ -763,7 +763,25 @@ export const TextReferenceAnalysisProvenanceSchema = z.object({
   source_content_fingerprint: ReferenceContentFingerprintSchema,
   input_provenance: z.literal('operator_submitted'),
   machine_verified: z.literal(false),
-}).strict();
+  supplement_request_sha256: ReferenceContentFingerprintSchema.optional(),
+  supplement_id: z.string().regex(
+    /^reference-text-analysis-draft-supplement-[a-f0-9-]+$/,
+  ).optional(),
+  supplement_payload_sha256: ReferenceContentFingerprintSchema.optional(),
+}).strict().superRefine((record, context) => {
+  const supplementValues = [
+    record.supplement_request_sha256,
+    record.supplement_id,
+    record.supplement_payload_sha256,
+  ];
+  const present = supplementValues.filter(Boolean).length;
+  if (present !== 0 && present !== supplementValues.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'supplement provenance must be complete when present',
+    });
+  }
+});
 
 export const TextReferenceAnalysisGovernanceSchema = z.object({
   prompt_injection_allowed: z.literal(false),
@@ -814,8 +832,110 @@ export const ReferenceTextAnalysisDraftSubmissionSchema = z.object({
   'draft analysis must replace every editor placeholder',
 );
 
+export const TextReferenceAnalysisFieldSchema = z.enum([
+  'source_units',
+  'character_wants',
+  'scene_patterns',
+  'must_keep',
+  'compression_options',
+  'adaptation_risks',
+  'reusable_principles',
+  'avoid_copying',
+]);
+
+export const ReferenceTextAnalysisSupplementNeedSchema = z.object({
+  field: TextReferenceAnalysisFieldSchema,
+  reason: z.enum([
+    'not_observed',
+    'conflicting_observations',
+    'insufficient_source_coverage',
+  ]),
+  evidence_id: z.string().regex(
+    /^reference-similarity-evidence-[a-f0-9-]+$/,
+  ),
+  evidence_observation_ids: z.array(
+    ReferenceNonEmptyTextSchema.max(200),
+  ).max(100),
+  required_input: z.literal('bounded_source_observations'),
+}).strict();
+
+function uniqueTextAnalysisFields(
+  values: Array<{ field: string }>,
+): boolean {
+  return new Set(values.map(value => value.field)).size === values.length;
+}
+
+export const ReferenceTextAnalysisSupplementRequestSchema = z.object({
+  submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
+  requested_by: ReferenceNonEmptyTextSchema.max(120),
+  confirmation: z.literal(
+    'declare_text_analysis_evidence_insufficient',
+  ),
+  needs: z.array(ReferenceTextAnalysisSupplementNeedSchema)
+    .min(1)
+    .max(8)
+    .refine(uniqueTextAnalysisFields, 'supplement need fields must be unique'),
+}).strict();
+
+export const ReferenceTextAnalysisSupplementRequestAuditSchema = z.object({
+  request_submission_key_sha256: ReferenceContentFingerprintSchema,
+  request_payload_sha256: ReferenceContentFingerprintSchema,
+  requested_by: ReferenceNonEmptyTextSchema.max(120),
+  requested_at: ReferenceTimestampSchema,
+  needs: ReferenceTextAnalysisSupplementRequestSchema.shape.needs,
+}).strict();
+
+export const ReferenceTextAnalysisDraftSupplementItemSchema = z.object({
+  field: TextReferenceAnalysisFieldSchema,
+  source_locators: z.array(
+    ReferenceNonEmptyTextSchema.max(200),
+  ).min(1).max(100),
+  observation_summary: ReferenceNonEmptyTextSchema.max(1_000),
+  limitations: z.array(
+    ReferenceNonEmptyTextSchema.max(500),
+  ).max(20),
+}).strict();
+
+export const ReferenceTextAnalysisDraftSupplementSubmissionSchema = z.object({
+  submission_key: ReferenceNonEmptyTextSchema.min(8).max(200),
+  submitted_by: ReferenceNonEmptyTextSchema.max(120),
+  confirmation: z.literal(
+    'submit_bounded_supplement_without_source_excerpts',
+  ),
+  items: z.array(ReferenceTextAnalysisDraftSupplementItemSchema)
+    .min(1)
+    .max(8)
+    .refine(uniqueTextAnalysisFields, 'supplement item fields must be unique'),
+}).strict();
+
+export const ReferenceTextAnalysisDraftSupplementRecordSchema = z.object({
+  schema_version: z.literal(
+    'reference-text-analysis-draft-supplement/v1',
+  ),
+  supplement_id: z.string().regex(
+    /^reference-text-analysis-draft-supplement-[a-f0-9-]+$/,
+  ),
+  draft_task_id: z.string().regex(
+    /^reference-text-analysis-draft-task-[a-f0-9-]+$/,
+  ),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  supplement_request_sha256: ReferenceContentFingerprintSchema,
+  submission_key_sha256: ReferenceContentFingerprintSchema,
+  submitted_by: ReferenceNonEmptyTextSchema.max(120),
+  items: ReferenceTextAnalysisDraftSupplementSubmissionSchema.shape.items,
+  input_provenance: z.literal('operator_submitted'),
+  machine_verified: z.literal(false),
+  payload_sha256: ReferenceContentFingerprintSchema,
+  created_at: ReferenceTimestampSchema,
+  governance: TextReferenceAnalysisGovernanceSchema,
+}).strict();
+
 export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
-  schema_version: z.literal('reference-text-analysis-draft-task/v1'),
+  schema_version: z.enum([
+    'reference-text-analysis-draft-task/v1',
+    'reference-text-analysis-draft-task/v2',
+  ]),
   draft_task_id: z.string().regex(
     /^reference-text-analysis-draft-task-[a-f0-9-]+$/,
   ),
@@ -835,7 +955,12 @@ export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
   requested_dimensions:
     ReferenceAnalysisTaskCreateRequestSchema.shape.requested_dimensions,
   executor: ReferenceTextAnalysisDraftTaskCreateRequestSchema.shape.executor,
-  status: z.enum(['pending', 'processing', 'completed']),
+  status: z.enum([
+    'pending',
+    'needs_supplement',
+    'processing',
+    'completed',
+  ]),
   manifest: z.object({
     evidence_endpoint: z.string().regex(
       /^\/api\/reference-library\/similarity-evidence\/reference-similarity-evidence-[a-f0-9-]+$/,
@@ -843,6 +968,15 @@ export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
     output_submission_endpoint: z.string().regex(
       /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/text-analysis-draft-task\/submissions$/,
     ),
+    supplement_request_endpoint: z.string().regex(
+      /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/text-analysis-draft-task\/supplement-request$/,
+    ).optional(),
+    supplement_submission_endpoint: z.string().regex(
+      /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/text-analysis-draft-task\/supplement-submissions$/,
+    ).optional(),
+    supplement_endpoint: z.string().regex(
+      /^\/api\/reference-library\/analysis-tasks\/reference-analysis-task-[a-f0-9-]+\/text-analysis-draft-task\/supplement$/,
+    ).optional(),
     server_model_call_allowed: z.literal(false),
     source_text_instruction_authority: z.literal('none'),
     output_schema: z.literal('reference-analysis-record/v2'),
@@ -852,6 +986,14 @@ export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
     knowledge_writeback_allowed: z.literal(false),
     production_credit_eligible: z.literal(false),
   }).strict(),
+  supplement_request:
+    ReferenceTextAnalysisSupplementRequestAuditSchema.nullable().optional(),
+  supplement_id: z.string().regex(
+    /^reference-text-analysis-draft-supplement-[a-f0-9-]+$/,
+  ).nullable().optional(),
+  supplement_payload_sha256:
+    ReferenceContentFingerprintSchema.nullable().optional(),
+  supplement_responded_at: ReferenceTimestampSchema.nullable().optional(),
   submission_key_sha256: ReferenceContentFingerprintSchema.nullable(),
   analysis_payload_sha256: ReferenceContentFingerprintSchema.nullable(),
   submitted_at: ReferenceTimestampSchema.nullable(),
@@ -862,6 +1004,63 @@ export const ReferenceTextAnalysisDraftTaskRecordSchema = z.object({
   human_review_complete: z.literal(false),
   production_credit_granted: z.literal(false),
 }).strict().superRefine((record, context) => {
+  const isV2 =
+    record.schema_version === 'reference-text-analysis-draft-task/v2';
+  const hasV2Manifest = Boolean(
+    record.manifest.supplement_request_endpoint
+    && record.manifest.supplement_submission_endpoint
+    && record.manifest.supplement_endpoint,
+  );
+  const hasV2Fields = (
+    record.supplement_request !== undefined
+    && record.supplement_id !== undefined
+    && record.supplement_payload_sha256 !== undefined
+    && record.supplement_responded_at !== undefined
+  );
+  if (
+    (isV2 && (!hasV2Manifest || !hasV2Fields))
+    || (
+      !isV2
+      && (
+        hasV2Manifest
+        || hasV2Fields
+        || record.status === 'needs_supplement'
+      )
+    )
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'draft task supplement contract does not match schema version',
+    });
+  }
+  const hasSupplementResponse = Boolean(
+    record.supplement_id
+    && record.supplement_payload_sha256
+    && record.supplement_responded_at,
+  );
+  if (
+    isV2
+    && (
+      (
+        record.status === 'needs_supplement'
+        && (!record.supplement_request || hasSupplementResponse)
+      )
+      || (
+        record.supplement_request
+        && record.status !== 'needs_supplement'
+        && !hasSupplementResponse
+      )
+      || (
+        !record.supplement_request
+        && hasSupplementResponse
+      )
+    )
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'draft task supplement state is inconsistent',
+    });
+  }
   const completed = record.status === 'completed';
   const hasResult = Boolean(
     record.submission_key_sha256

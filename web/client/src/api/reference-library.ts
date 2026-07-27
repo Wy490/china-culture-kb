@@ -23,7 +23,11 @@ import type {
   ReferenceTextAnalysisNextChunkResult,
   ReferenceTextAnalysisPartialObservations,
   ReferenceTextAnalysisDraftSubmissionResult,
+  ReferenceTextAnalysisDraftSupplementItem,
+  ReferenceTextAnalysisDraftSupplementRecord,
+  ReferenceTextAnalysisDraftSupplementSubmissionResult,
   ReferenceTextAnalysisDraftTaskRecord,
+  ReferenceTextAnalysisSupplementNeed,
   PresentationStyle,
   StoryStructureType,
   TextReferenceAnalysis,
@@ -81,6 +85,20 @@ export interface SubmitReferenceTextAnalysisDraftRequest {
   submitted_by: string
   confirmation: 'submit_pending_text_reference_analysis'
   analysis: TextReferenceAnalysis
+}
+
+export interface RequestReferenceTextAnalysisSupplementRequest {
+  submission_key: string
+  requested_by: string
+  confirmation: 'declare_text_analysis_evidence_insufficient'
+  needs: ReferenceTextAnalysisSupplementNeed[]
+}
+
+export interface SubmitReferenceTextAnalysisSupplementRequest {
+  submission_key: string
+  submitted_by: string
+  confirmation: 'submit_bounded_supplement_without_source_excerpts'
+  items: ReferenceTextAnalysisDraftSupplementItem[]
 }
 
 export type CreateReferenceSourceRequest = Omit<
@@ -306,5 +324,34 @@ export function submitReferenceTextAnalysisDraft(
     `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
       + '/text-analysis-draft-task/submissions',
     request,
+  )
+}
+
+export function requestReferenceTextAnalysisSupplement(
+  taskId: string,
+  request: RequestReferenceTextAnalysisSupplementRequest,
+) {
+  return apiPost<ReferenceTextAnalysisDraftTaskRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task/supplement-request',
+    request,
+  )
+}
+
+export function submitReferenceTextAnalysisSupplement(
+  taskId: string,
+  request: SubmitReferenceTextAnalysisSupplementRequest,
+) {
+  return apiPost<ReferenceTextAnalysisDraftSupplementSubmissionResult>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task/supplement-submissions',
+    request,
+  )
+}
+
+export function getReferenceTextAnalysisSupplement(taskId: string) {
+  return apiGet<ReferenceTextAnalysisDraftSupplementRecord>(
+    `/reference-library/analysis-tasks/${encodeURIComponent(taskId)}`
+      + '/text-analysis-draft-task/supplement',
   )
 }

@@ -2,13 +2,18 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  ReferenceTextAnalysisDraftSupplementRecordSchema,
+  ReferenceTextAnalysisDraftSupplementSubmissionSchema,
   ReferenceTextAnalysisDraftSubmissionSchema,
   ReferenceTextAnalysisDraftTaskCreateRequestSchema,
   ReferenceTextAnalysisDraftTaskRecordSchema,
+  ReferenceTextAnalysisSupplementRequestSchema,
 } from '@shared/schemas.js';
 import type {
   ReferenceAnalysisTaskRecord,
   ReferenceSimilarityEvidenceRecord,
+  ReferenceTextAnalysisDraftSupplementRecord,
+  ReferenceTextAnalysisDraftSupplementSubmissionResult,
   ReferenceTextAnalysisDraftSubmissionResult,
   ReferenceTextAnalysisDraftTaskRecord,
   ReferenceTextAnalysisExecutionRecord,
@@ -63,6 +68,10 @@ function draftTaskPath(repoRoot: string, draftTaskId: string): string {
   return path.join(draftTasksDirectory(repoRoot), `${draftTaskId}.json`);
 }
 
+function supplementPath(repoRoot: string, supplementId: string): string {
+  return path.join(draftTasksDirectory(repoRoot), `${supplementId}.json`);
+}
+
 async function atomicWriteJson(filePath: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   const temporaryPath = `${filePath}.tmp-${process.pid}-${randomUUID()}`;
@@ -71,6 +80,17 @@ async function atomicWriteJson(filePath: string, value: unknown): Promise<void> 
     flag: 'wx',
   });
   await rename(temporaryPath, filePath);
+}
+
+async function immutableWriteJson(
+  filePath: string,
+  value: unknown,
+): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  });
 }
 
 function draftTaskId(
@@ -84,6 +104,25 @@ function draftTaskId(
 
 function analysisId(draftId: string): string {
   return `analysis-${sha256(draftId).slice(0, 32)}`;
+}
+
+function supplementId(
+  draftId: string,
+  supplementRequestSha256: string,
+): string {
+  return `reference-text-analysis-draft-supplement-${
+    sha256(`${draftId}:${supplementRequestSha256}`).slice(0, 32)}`;
+}
+
+function supplementEndpoints(taskId: string) {
+  const base =
+    `/api/reference-library/analysis-tasks/${taskId}`
+    + '/text-analysis-draft-task';
+  return {
+    supplement_request_endpoint: `${base}/supplement-request`,
+    supplement_submission_endpoint: `${base}/supplement-submissions`,
+    supplement_endpoint: `${base}/supplement`,
+  };
 }
 
 async function loadCompletedSource(input: {
@@ -255,6 +294,120 @@ function verifyDraftTask(
   }
 }
 
+function supplementRequestPayload(input: {
+  requested_by: string;
+  needs: unknown;
+}): string {
+  return JSON.stringify({
+    requested_by: input.requested_by,
+    needs: input.needs,
+  });
+}
+
+function evidenceObservationIds(
+  evidence: ReferenceSimilarityEvidenceRecord,
+): Set<string> {
+  return new Set([
+    ...evidence.observations.excerpts,
+    ...evidence.observations.character_profiles,
+    ...evidence.observations.plot_beats,
+    ...evidence.observations.shot_sequence,
+  ].map(observation => observation.observation_id));
+}
+
+function supplementPayload(
+  record: Omit<
+    ReferenceTextAnalysisDraftSupplementRecord,
+    'payload_sha256'
+  >,
+): string {
+  return JSON.stringify(record);
+}
+
+async function readSupplement(input: {
+  repoRoot: string;
+  supplementId: string;
+}): Promise<ReferenceTextAnalysisDraftSupplementRecord> {
+  try {
+    const record = ReferenceTextAnalysisDraftSupplementRecordSchema.parse(
+      JSON.parse(await readFile(
+        supplementPath(input.repoRoot, input.supplementId),
+        'utf8',
+      )),
+    ) as ReferenceTextAnalysisDraftSupplementRecord;
+    const {
+      payload_sha256: payloadSha256,
+      ...payload
+    } = record;
+    if (sha256(supplementPayload(payload)) !== payloadSha256) {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+        'Text analysis supplement payload hash does not match its content',
+      );
+    }
+    return record;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_NOT_FOUND',
+        `Text analysis supplement not found: ${input.supplementId}`,
+      );
+    }
+    throw error;
+  }
+}
+
+function verifySupplement(
+  supplement: ReferenceTextAnalysisDraftSupplementRecord,
+  draftTask: ReferenceTextAnalysisDraftTaskRecord,
+): void {
+  if (
+    !draftTask.supplement_request
+    || supplement.supplement_id !== draftTask.supplement_id
+    || supplement.draft_task_id !== draftTask.draft_task_id
+    || supplement.reference_id !== draftTask.reference_id
+    || supplement.source_content_fingerprint
+      !== draftTask.source_content_fingerprint
+    || supplement.supplement_request_sha256
+      !== draftTask.supplement_request.request_payload_sha256
+    || supplement.payload_sha256 !== draftTask.supplement_payload_sha256
+    || supplement.created_at !== draftTask.supplement_responded_at
+    || supplement.submitted_by !== draftTask.executor.executor_id
+    || supplement.input_provenance !== 'operator_submitted'
+    || supplement.machine_verified !== false
+    || supplement.governance.prompt_injection_allowed !== false
+    || supplement.governance.knowledge_writeback_allowed !== false
+    || supplement.governance.production_credit_eligible !== false
+  ) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+      'Text analysis supplement no longer matches its draft task',
+    );
+  }
+}
+
+async function getVerifiedSupplement(input: {
+  repoRoot: string;
+  draftTask: ReferenceTextAnalysisDraftTaskRecord;
+}): Promise<ReferenceTextAnalysisDraftSupplementRecord> {
+  if (
+    !input.draftTask.supplement_id
+    || !input.draftTask.supplement_payload_sha256
+    || !input.draftTask.supplement_responded_at
+  ) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_NOT_FOUND',
+      'Text analysis draft task has no completed supplement',
+    );
+  }
+  const supplement = await readSupplement({
+    repoRoot: input.repoRoot,
+    supplementId: input.draftTask.supplement_id,
+  });
+  verifySupplement(supplement, input.draftTask);
+  return supplement;
+}
+
 export async function createReferenceTextAnalysisDraftTask(input: {
   repoRoot: string;
   taskId: string;
@@ -294,7 +447,7 @@ export async function createReferenceTextAnalysisDraftTask(input: {
   }
   const now = input.now ?? new Date().toISOString();
   const record = ReferenceTextAnalysisDraftTaskRecordSchema.parse({
-    schema_version: 'reference-text-analysis-draft-task/v1',
+    schema_version: 'reference-text-analysis-draft-task/v2',
     draft_task_id: source.draftTaskId,
     analysis_task_id: source.analysisTask.task_id,
     text_execution_id: source.execution.execution_id,
@@ -314,6 +467,7 @@ export async function createReferenceTextAnalysisDraftTask(input: {
       output_submission_endpoint:
         `/api/reference-library/analysis-tasks/${source.analysisTask.task_id}`
         + '/text-analysis-draft-task/submissions',
+      ...supplementEndpoints(source.analysisTask.task_id),
       server_model_call_allowed: false,
       source_text_instruction_authority: 'none',
       output_schema: 'reference-analysis-record/v2',
@@ -323,6 +477,10 @@ export async function createReferenceTextAnalysisDraftTask(input: {
       knowledge_writeback_allowed: false,
       production_credit_eligible: false,
     },
+    supplement_request: null,
+    supplement_id: null,
+    supplement_payload_sha256: null,
+    supplement_responded_at: null,
     submission_key_sha256: null,
     analysis_payload_sha256: null,
     submitted_at: null,
@@ -337,6 +495,295 @@ export async function createReferenceTextAnalysisDraftTask(input: {
   return { draftTask: record, idempotent_replay: false };
 }
 
+function upgradeDraftTaskToV2(
+  draftTask: ReferenceTextAnalysisDraftTaskRecord,
+): ReferenceTextAnalysisDraftTaskRecord {
+  if (
+    draftTask.schema_version === 'reference-text-analysis-draft-task/v2'
+  ) {
+    return draftTask;
+  }
+  return ReferenceTextAnalysisDraftTaskRecordSchema.parse({
+    ...draftTask,
+    schema_version: 'reference-text-analysis-draft-task/v2',
+    manifest: {
+      ...draftTask.manifest,
+      ...supplementEndpoints(draftTask.analysis_task_id),
+    },
+    supplement_request: null,
+    supplement_id: null,
+    supplement_payload_sha256: null,
+    supplement_responded_at: null,
+  }) as ReferenceTextAnalysisDraftTaskRecord;
+}
+
+export async function requestReferenceTextAnalysisSupplement(input: {
+  repoRoot: string;
+  taskId: string;
+  request: unknown;
+  now?: string;
+}): Promise<{
+  draftTask: ReferenceTextAnalysisDraftTaskRecord;
+  idempotent_replay: boolean;
+}> {
+  const request = ReferenceTextAnalysisSupplementRequestSchema.parse(
+    input.request,
+  );
+  const source = await loadCompletedSource(input);
+  let draftTask = await readDraftTask({
+    repoRoot: input.repoRoot,
+    draftTaskId: source.draftTaskId,
+  });
+  verifyDraftTask(draftTask, source);
+  if (request.requested_by !== draftTask.executor.executor_id) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_DRAFT_EXECUTOR_INVALID',
+      'Supplement requested_by must match the assigned draft executor',
+    );
+  }
+  const observationIds = evidenceObservationIds(source.evidence);
+  if (request.needs.some(need => (
+    need.evidence_id !== source.evidence.evidence_id
+    || need.evidence_observation_ids.some(id => !observationIds.has(id))
+  ))) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INVALID',
+      'Supplement needs must reference the bound evidence and known observation IDs',
+    );
+  }
+  const requestSubmissionKeySha256 = sha256(request.submission_key);
+  const requestPayloadSha256 = sha256(supplementRequestPayload(request));
+  if (draftTask.supplement_request) {
+    if (
+      draftTask.supplement_request.request_submission_key_sha256
+        !== requestSubmissionKeySha256
+      || draftTask.supplement_request.request_payload_sha256
+        !== requestPayloadSha256
+    ) {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+        'Draft task already has a different supplement request',
+      );
+    }
+    return { draftTask, idempotent_replay: true };
+  }
+  if (draftTask.status !== 'pending') {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+      'Supplement can only be requested while the draft task is pending',
+    );
+  }
+  const now = input.now ?? new Date().toISOString();
+  draftTask = upgradeDraftTaskToV2(draftTask);
+  draftTask = ReferenceTextAnalysisDraftTaskRecordSchema.parse({
+    ...draftTask,
+    status: 'needs_supplement',
+    supplement_request: {
+      request_submission_key_sha256: requestSubmissionKeySha256,
+      request_payload_sha256: requestPayloadSha256,
+      requested_by: request.requested_by,
+      requested_at: now,
+      needs: request.needs,
+    },
+    updated_at: now,
+  }) as ReferenceTextAnalysisDraftTaskRecord;
+  await atomicWriteJson(
+    draftTaskPath(input.repoRoot, draftTask.draft_task_id),
+    draftTask,
+  );
+  return { draftTask, idempotent_replay: false };
+}
+
+function validateSupplementItems(
+  draftTask: ReferenceTextAnalysisDraftTaskRecord,
+  items: Array<{ field: string }>,
+): void {
+  const expected = draftTask.supplement_request?.needs
+    .map(need => need.field)
+    .sort() ?? [];
+  const actual = items.map(item => item.field).sort();
+  if (
+    expected.length !== actual.length
+    || expected.some((field, index) => field !== actual[index])
+  ) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INVALID',
+      'Supplement items must cover every requested field exactly once',
+    );
+  }
+}
+
+function rejectCopiedEvidenceExcerpts(
+  evidence: ReferenceSimilarityEvidenceRecord,
+  items: unknown,
+): void {
+  const serialized = JSON.stringify(items);
+  if (
+    evidence.observations.excerpts.some(
+      excerpt => excerpt.text.length >= 8 && serialized.includes(excerpt.text),
+    )
+  ) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INVALID',
+      'Supplement must summarize observations without copying evidence excerpts',
+    );
+  }
+}
+
+export async function submitReferenceTextAnalysisSupplement(input: {
+  repoRoot: string;
+  taskId: string;
+  request: unknown;
+  now?: string;
+}): Promise<ReferenceTextAnalysisDraftSupplementSubmissionResult> {
+  const request = ReferenceTextAnalysisDraftSupplementSubmissionSchema.parse(
+    input.request,
+  );
+  const source = await loadCompletedSource(input);
+  let draftTask = await readDraftTask({
+    repoRoot: input.repoRoot,
+    draftTaskId: source.draftTaskId,
+  });
+  verifyDraftTask(draftTask, source);
+  if (request.submitted_by !== draftTask.executor.executor_id) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_DRAFT_EXECUTOR_INVALID',
+      'Supplement submitted_by must match the assigned draft executor',
+    );
+  }
+  if (!draftTask.supplement_request) {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_REQUIRED',
+      'Draft task has no supplement request to resolve',
+    );
+  }
+  validateSupplementItems(draftTask, request.items);
+  rejectCopiedEvidenceExcerpts(source.evidence, request.items);
+  const submissionKeySha256 = sha256(request.submission_key);
+  if (draftTask.supplement_id) {
+    const supplement = await getVerifiedSupplement({
+      repoRoot: input.repoRoot,
+      draftTask,
+    });
+    if (
+      supplement.submission_key_sha256 !== submissionKeySha256
+      || JSON.stringify(supplement.items) !== JSON.stringify(request.items)
+    ) {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+        'Draft task already has a different supplement response',
+      );
+    }
+    return {
+      draft_task: draftTask,
+      supplement,
+      idempotent_replay: true,
+    };
+  }
+  if (draftTask.status !== 'needs_supplement') {
+    throw new ReferenceTextAnalysisDraftTaskError(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+      'Supplement response requires a needs_supplement draft task',
+    );
+  }
+  const supplementIdValue = supplementId(
+    draftTask.draft_task_id,
+    draftTask.supplement_request.request_payload_sha256,
+  );
+  let supplement: ReferenceTextAnalysisDraftSupplementRecord;
+  let idempotentReplay = false;
+  try {
+    supplement = await readSupplement({
+      repoRoot: input.repoRoot,
+      supplementId: supplementIdValue,
+    });
+    idempotentReplay = true;
+    if (
+      supplement.draft_task_id !== draftTask.draft_task_id
+      || supplement.supplement_request_sha256
+        !== draftTask.supplement_request.request_payload_sha256
+      || supplement.submission_key_sha256 !== submissionKeySha256
+      || supplement.submitted_by !== request.submitted_by
+      || JSON.stringify(supplement.items) !== JSON.stringify(request.items)
+    ) {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_CONFLICT',
+        'Persisted supplement differs from this submission',
+      );
+    }
+  } catch (error) {
+    if (
+      !(error instanceof ReferenceTextAnalysisDraftTaskError)
+      || error.code !== 'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_NOT_FOUND'
+    ) {
+      throw error;
+    }
+    const now = input.now ?? new Date().toISOString();
+    const payload = {
+      schema_version:
+        'reference-text-analysis-draft-supplement/v1' as const,
+      supplement_id: supplementIdValue,
+      draft_task_id: draftTask.draft_task_id,
+      reference_id: draftTask.reference_id,
+      source_content_fingerprint: draftTask.source_content_fingerprint,
+      supplement_request_sha256:
+        draftTask.supplement_request.request_payload_sha256,
+      submission_key_sha256: submissionKeySha256,
+      submitted_by: request.submitted_by,
+      items: request.items,
+      input_provenance: 'operator_submitted' as const,
+      machine_verified: false as const,
+      created_at: now,
+      governance: {
+        prompt_injection_allowed: false as const,
+        knowledge_writeback_allowed: false as const,
+        production_credit_eligible: false as const,
+      },
+    };
+    supplement = ReferenceTextAnalysisDraftSupplementRecordSchema.parse({
+      ...payload,
+      payload_sha256: sha256(supplementPayload(payload)),
+    }) as ReferenceTextAnalysisDraftSupplementRecord;
+    await immutableWriteJson(
+      supplementPath(input.repoRoot, supplement.supplement_id),
+      supplement,
+    );
+  }
+  draftTask = ReferenceTextAnalysisDraftTaskRecordSchema.parse({
+    ...draftTask,
+    status: 'pending',
+    supplement_id: supplement.supplement_id,
+    supplement_payload_sha256: supplement.payload_sha256,
+    supplement_responded_at: supplement.created_at,
+    updated_at: supplement.created_at,
+  }) as ReferenceTextAnalysisDraftTaskRecord;
+  await atomicWriteJson(
+    draftTaskPath(input.repoRoot, draftTask.draft_task_id),
+    draftTask,
+  );
+  return {
+    draft_task: draftTask,
+    supplement,
+    idempotent_replay: idempotentReplay,
+  };
+}
+
+export async function getReferenceTextAnalysisSupplement(input: {
+  repoRoot: string;
+  taskId: string;
+}): Promise<ReferenceTextAnalysisDraftSupplementRecord> {
+  const source = await loadCompletedSource(input);
+  const draftTask = await readDraftTask({
+    repoRoot: input.repoRoot,
+    draftTaskId: source.draftTaskId,
+  });
+  verifyDraftTask(draftTask, source);
+  return await getVerifiedSupplement({
+    repoRoot: input.repoRoot,
+    draftTask,
+  });
+}
+
 export async function getReferenceTextAnalysisDraftTask(input: {
   repoRoot: string;
   taskId: string;
@@ -347,6 +794,12 @@ export async function getReferenceTextAnalysisDraftTask(input: {
     draftTaskId: source.draftTaskId,
   });
   verifyDraftTask(draftTask, source);
+  if (draftTask.supplement_id) {
+    await getVerifiedSupplement({
+      repoRoot: input.repoRoot,
+      draftTask,
+    });
+  }
   if (draftTask.status === 'completed') {
     await getVerifiedDraftAnalysis({
       repoRoot: input.repoRoot,
@@ -410,6 +863,24 @@ async function getVerifiedDraftAnalysis(input: {
       !== source.analysisTask.source_snapshot.content_fingerprint
     || provenance?.input_provenance !== 'operator_submitted'
     || provenance?.machine_verified !== false
+    || (
+      draftTask.supplement_request
+      && (
+        provenance?.supplement_request_sha256
+          !== draftTask.supplement_request.request_payload_sha256
+        || provenance?.supplement_id !== draftTask.supplement_id
+        || provenance?.supplement_payload_sha256
+          !== draftTask.supplement_payload_sha256
+      )
+    )
+    || (
+      !draftTask.supplement_request
+      && (
+        provenance?.supplement_request_sha256 !== undefined
+        || provenance?.supplement_id !== undefined
+        || provenance?.supplement_payload_sha256 !== undefined
+      )
+    )
     || governance?.prompt_injection_allowed !== false
     || governance?.knowledge_writeback_allowed !== false
     || governance?.production_credit_eligible !== false
@@ -442,6 +913,19 @@ export async function submitReferenceTextAnalysisDraft(input: {
       'REFERENCE_TEXT_ANALYSIS_DRAFT_EXECUTOR_INVALID',
       'Draft submitted_by must match the assigned draft executor',
     );
+  }
+  let supplement: ReferenceTextAnalysisDraftSupplementRecord | null = null;
+  if (draftTask.supplement_request) {
+    if (!draftTask.supplement_id || draftTask.status === 'needs_supplement') {
+      throw new ReferenceTextAnalysisDraftTaskError(
+        'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_REQUIRED',
+        'Draft task must resolve its supplement request before analysis submission',
+      );
+    }
+    supplement = await getVerifiedSupplement({
+      repoRoot: input.repoRoot,
+      draftTask,
+    });
   }
   const submissionKeySha256 = sha256(request.submission_key);
   const payloadSha256 = analysisPayloadSha256(request.analysis);
@@ -512,6 +996,14 @@ export async function submitReferenceTextAnalysisDraft(input: {
         source.analysisTask.source_snapshot.content_fingerprint,
       input_provenance: 'operator_submitted',
       machine_verified: false,
+      ...(supplement && draftTask.supplement_request
+        ? {
+            supplement_request_sha256:
+              draftTask.supplement_request.request_payload_sha256,
+            supplement_id: supplement.supplement_id,
+            supplement_payload_sha256: supplement.payload_sha256,
+          }
+        : {}),
     },
     now: draftTask.submitted_at!,
   });

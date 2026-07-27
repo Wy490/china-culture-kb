@@ -43,6 +43,7 @@ export function errorHandler(
 function deriveStatus(code: string): number {
   if (code.includes('NOT_FOUND')) return 404;
   if (code.includes('CONFLICT')) return 409;
+  if (code.includes('REQUIRED')) return 409;
   if (code.includes('INVALID')) return 400;
   return 500;
 }
