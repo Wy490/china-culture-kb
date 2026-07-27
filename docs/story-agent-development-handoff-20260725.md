@@ -1256,9 +1256,97 @@ server/client lint and typecheck passed
 Web production build passed
 ```
 
-### 6.14 下一优先级
+### 6.14 P1-B14 registry-level 只读 receipt audit（2026-07-27）
 
-1. 增加 registry-level 只读 receipt audit，一次枚举 sealed/legacy_unsealed 并验证全部 sealed receipt，供 CI/preflight 使用且不生成 merged outputs；
+完成提交：
+
+```text
+1b2c298a feat(story-agent): audit visual receipt registries
+```
+
+新增：
+
+```text
+web/server/src/services/story-agent-visual-asset-pressure-receipt-registry-audit-service.ts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts
+web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-registry-audit-service.test.ts
+```
+
+运行：
+
+```bash
+cd /Users/wuyu/Desktop/china-culture-kb/web/server
+npm run smoke:story-agent-visual-asset-pressure-receipt-registry-audit
+```
+
+审计行为：
+
+```text
+read registry v1/v2
+  → normalize v1 as legacy_unsealed
+  → enumerate every batch
+  → skip verification only for explicit legacy_unsealed
+  → read and verify every declared sealed receipt
+  → check receipt batch_id
+  → verify exact prompt/source SHA and PNG dimensions
+  → emit bounded batch/count summary
+```
+
+输出不包含逐图 prompt/source path、SHA 或 provider call ID；receipt 原始 blocker 会被收敛为有界错误码。它明确声明：
+
+```text
+machine_validation_only=true
+image_provider_invoked_by_server=false
+merged_outputs_generated=false
+video_generation_performed=false
+production_credit_granted=false
+```
+
+真实 registry 审计结果：
+
+```text
+status: verified
+3 batches
+1 sealed / 1 verified sealed
+2 legacy_unsealed
+8 receipt assets / 8 verified
+0 blockers
+```
+
+每批结果：
+
+```text
+imagegen-20260723-baseline: legacy_unsealed / not_applicable
+imagegen-20260725-batch2:   legacy_unsealed / not_applicable
+imagegen-20260726-batch3:   sealed / 8/8
+```
+
+测试覆盖：
+
+- sealed + legacy 混合注册表；
+- prompt/source 漂移 fail-closed；
+- receipt batch ID 不匹配；
+- registry schema 非法；
+- bounded 输出不泄露 prompt path 或 SHA 字段。
+
+验证结果：
+
+```text
+receipt/manifest/registry/composition/pressure/ops targeted:
+  7 files / 30 tests passed
+server:
+  178 files passed, 1 skipped
+  1502 tests passed, 2 skipped
+server lint/typecheck passed
+server production build passed
+canonical remains ready / 12 cases / 1 sealed + 2 legacy / 16/16
+```
+
+注意：`web/generated/` 不提交 Git，clean-checkout CI 若没有恢复对应 evidence artifact，会按设计 fail-closed；当前命令是已有 evidence workspace 的只读 preflight，不得用缺失文件的 CI 结果声称 receipt 无效或重新创建 receipt。
+
+### 6.15 下一优先级
+
+1. 若要把 registry receipt audit 接入 clean-checkout CI，先定义受控 evidence artifact 的恢复与 SHA 锁定流程；不得把缺失的 `web/generated` 内容替换成 fixture 后仍称为真实 sealed evidence；
 2. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`，不得伪造封存；
 3. 真实外部 Provider、合法参考材料和 production credit 仍只在外部条件具备时推进。
 
@@ -1334,6 +1422,7 @@ real external provider
 - P1-B11 第三批四世界、8 张内置 ImageGen 源图、十二世界合并审计与 3 批 15/15 provenance；
 - P1-B12 committed immutable batch receipt、registry/composition v2、第三批 sealed 与旧批次 `legacy_unsealed`、3 批 16/16 provenance；
 - P1-B13 通用 receipt-backed manifest builder、必填路径 CLI、只读 receipt inspection 与 batch3 零字节漂移迁移；
+- P1-B14 registry-level bounded receipt audit、sealed 全量验证与 legacy 显式枚举；
 - legacy `kb_generate_script` 的扩展。
 
 ## 9. 下一对话建议读取的文件
@@ -1360,6 +1449,7 @@ web/server/src/services/story-agent-visual-asset-pressure-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-ops-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-receipt-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-manifest-service.ts
+web/server/src/services/story-agent-visual-asset-pressure-receipt-registry-audit-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
@@ -1367,6 +1457,7 @@ web/server/scripts/story-agent-visual-asset-pressure-batch2-manifest.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch3-prepare.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-manifest.mts
 web/server/scripts/story-agent-visual-asset-pressure-receipt-inspect.mts
+web/server/scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-registry.json
 web/server/scripts/story-agent-visual-asset-pressure-batch-merge.mts
@@ -1377,6 +1468,7 @@ web/server/src/__tests__/outline-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-batch-registry-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-batch-receipt-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-manifest-service.test.ts
+web/server/src/__tests__/story-agent-visual-asset-pressure-receipt-registry-audit-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-composition-service.test.ts
 web/server/src/__tests__/api.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
@@ -1492,10 +1584,11 @@ a50a157f feat(story-agent): verify visual batch composition
 0a73c595 feat(story-agent): expand visual pressure to twelve worlds
 de86b56c feat(story-agent): seal visual asset batch receipts
 4d3ac1d5 feat(story-agent): generalize receipt-backed manifests
+1b2c298a feat(story-agent): audit visual receipt registries
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate，以及 P1-B13 通用 receipt-backed manifest/inspection 工具均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具，以及 P1-B14 registry-level 只读 receipt audit 均已完成。不要重新实现。
 
-下一步优先增加 registry-level 只读 receipt audit，一次枚举 `sealed/legacy_unsealed` 并验证全部 sealed receipt，不写 merged outputs。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt 仍不代表 rights、人审或 production credit。
+下一步若要接入 clean-checkout CI，先定义受控 evidence artifact 的恢复与 SHA 锁定，不得以 fixture 替代真实 sealed evidence。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
