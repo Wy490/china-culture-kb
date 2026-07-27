@@ -663,16 +663,37 @@ describe('reference text analysis draft task', () => {
       },
     });
 
+    const approvalRequest = {
+      approved_by: 'reviewer-01',
+      approved_at: '2026-07-27T13:30:00.000Z',
+      confirmation: 'human_reviewed_reference_analysis',
+    };
+    const originalSupplement = await readFile(supplementPath, 'utf8');
+    const preApprovalTamper = JSON.parse(originalSupplement);
+    preApprovalTamper.items[0].observation_summary =
+      '批准前被篡改但仍符合 schema 的补充摘要。';
+    await writeFile(
+      supplementPath,
+      `${JSON.stringify(preApprovalTamper, null, 2)}\n`,
+    );
+    const rejectedApproval = await request
+      .post(
+        `/api/reference-library/analyses/`
+        + `${completed.body.data.analysis.analysis_id}/approval`,
+      )
+      .send(approvalRequest);
+    expect(rejectedApproval.status).toBe(400);
+    expect(rejectedApproval.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    await writeFile(supplementPath, originalSupplement);
+
     const approved = await request
       .post(
         `/api/reference-library/analyses/`
         + `${completed.body.data.analysis.analysis_id}/approval`,
       )
-      .send({
-        approved_by: 'reviewer-01',
-        approved_at: '2026-07-27T13:30:00.000Z',
-        confirmation: 'human_reviewed_reference_analysis',
-      });
+      .send(approvalRequest);
     expect(approved.status).toBe(201);
     const comparisonSource = await request
       .post('/api/reference-library/references')
@@ -806,6 +827,16 @@ describe('reference text analysis draft task', () => {
     const tampered = await request.get(base);
     expect(tampered.status).toBe(400);
     expect(tampered.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    const rejectedApprovalReplay = await request
+      .post(
+        `/api/reference-library/analyses/`
+        + `${completed.body.data.analysis.analysis_id}/approval`,
+      )
+      .send(approvalRequest);
+    expect(rejectedApprovalReplay.status).toBe(400);
+    expect(rejectedApprovalReplay.body.error.code).toBe(
       'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
     );
     const rejectedBenchmark = await request
