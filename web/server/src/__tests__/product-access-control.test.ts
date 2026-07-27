@@ -395,6 +395,66 @@ describe('product access middleware', () => {
     }
   });
 
+  it('reserves authorized reference text ingestion for matching material signers', async () => {
+    configureRequiredAccess([
+      { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },
+      { token: 'reviewer-token', actor_id: 'reviewer-1', role: 'cultural_fact_reviewer' },
+    ]);
+    const repoRoot = await mkdtemp(resolve(
+      tmpdir(),
+      'story-agent-reference-text-material-access-',
+    ));
+    try {
+      const app = express();
+      app.use(express.json());
+      app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot));
+      app.use(errorHandler);
+      const request = supertest(app);
+      const endpoint =
+        '/api/reference-library/references/reference-does-not-exist/text-material';
+      const body = {
+        content: '用户自有剧本节选',
+        content_type: 'text/plain',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'user-attestation-20260727',
+          attested_by: 'reviewer-1',
+          attested_at: '2026-07-27T10:00:00.000Z',
+          confirmation: 'authorized_reference_text_ingest',
+        },
+      };
+
+      const researchDenied = await request
+        .post(endpoint)
+        .set('authorization', bearer('research-token'))
+        .send(body);
+      expect(researchDenied.status).toBe(403);
+      expect(researchDenied.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const mismatchedReviewer = await request
+        .post(endpoint)
+        .set('authorization', bearer('reviewer-token'))
+        .send({
+          ...body,
+          authorization: {
+            ...body.authorization,
+            attested_by: 'another-reviewer',
+          },
+        });
+      expect(mismatchedReviewer.status).toBe(403);
+      expect(mismatchedReviewer.body.error.code).toBe('ACCESS_FORBIDDEN');
+
+      const reviewerAllowed = await request
+        .post(endpoint)
+        .set('authorization', bearer('reviewer-token'))
+        .send(body);
+      expect(reviewerAllowed.status).toBe(404);
+      expect(reviewerAllowed.body.error.code).toBe('REFERENCE_NOT_FOUND');
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it('reserves benchmark and style-pack composition for matching material signers', async () => {
     configureRequiredAccess([
       { token: 'research-token', actor_id: 'research-1', role: 'research_editor' },

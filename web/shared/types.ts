@@ -520,6 +520,89 @@ export interface ReferenceSourceRecord {
   updated_at: string;
 }
 
+export type ReferenceTextMaterialContentType =
+  | 'text/plain'
+  | 'text/markdown';
+
+export interface ReferenceTextMaterialAuthorization {
+  basis: Extract<
+    ReferenceRightsStatus,
+    'user_owned' | 'licensed' | 'public_domain'
+  >;
+  authorization_reference: string;
+  attested_by: string;
+  attested_at: string;
+  confirmation: 'authorized_reference_text_ingest';
+  machine_verified: false;
+}
+
+export interface ReferenceTextMaterialRecord {
+  schema_version: 'reference-text-material/v1';
+  material_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  content_sha256: string;
+  content_type: ReferenceTextMaterialContentType;
+  byte_length: number;
+  character_count: number;
+  line_count: number;
+  authorization: ReferenceTextMaterialAuthorization;
+  created_at: string;
+  governance: {
+    source_material_transport: 'stored_user_supplied';
+    server_download_allowed: false;
+    prompt_injection_allowed: false;
+    knowledge_writeback_allowed: false;
+    production_credit_eligible: false;
+  };
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
+export interface ReferenceTextMaterialChunkDescriptor {
+  chunk_id: string;
+  index: number;
+  locator: string;
+  start_character: number;
+  end_character: number;
+  character_count: number;
+  byte_length: number;
+  content_sha256: string;
+}
+
+export interface ReferenceTextMaterialManifest {
+  schema_version: 'reference-text-material-manifest/v1';
+  material_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  content_type: ReferenceTextMaterialContentType;
+  byte_length: number;
+  character_count: number;
+  line_count: number;
+  chunk_character_limit: 12000;
+  chunk_count: number;
+  chunks: ReferenceTextMaterialChunkDescriptor[];
+  chunk_endpoint_template: string;
+  content_included: false;
+  prompt_injection_allowed: false;
+  knowledge_writeback_allowed: false;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
+export interface ReferenceTextMaterialChunk
+  extends ReferenceTextMaterialChunkDescriptor {
+  schema_version: 'reference-text-material-chunk/v1';
+  material_id: string;
+  reference_id: string;
+  source_content_fingerprint: string;
+  text: string;
+  prompt_injection_allowed: false;
+  knowledge_writeback_allowed: false;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
 export type ReferenceSimilarityDimension =
   | 'excerpt'
   | 'character_design'

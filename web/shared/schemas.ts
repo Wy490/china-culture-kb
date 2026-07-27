@@ -179,6 +179,99 @@ export const ReferenceSourceRecordSchema = ReferenceSourceCreateRequestSchema.ex
   updated_at: ReferenceTimestampSchema,
 }).strict();
 
+export const ReferenceTextMaterialAuthorizationInputSchema = z.object({
+  basis: z.enum(['user_owned', 'licensed', 'public_domain']),
+  authorization_reference: ReferenceNonEmptyTextSchema.max(500),
+  attested_by: ReferenceNonEmptyTextSchema.max(120),
+  attested_at: ReferenceTimestampSchema,
+  confirmation: z.literal('authorized_reference_text_ingest'),
+}).strict();
+
+export const ReferenceTextMaterialCreateRequestSchema = z.object({
+  content: z.string()
+    .min(1)
+    .max(500_000)
+    .refine(value => value.trim().length > 0, 'content must not be blank'),
+  content_type: z.enum(['text/plain', 'text/markdown']),
+  authorization: ReferenceTextMaterialAuthorizationInputSchema,
+}).strict();
+
+export const ReferenceTextMaterialRecordSchema =
+ReferenceTextMaterialCreateRequestSchema.omit({
+  content: true,
+}).extend({
+  schema_version: z.literal('reference-text-material/v1'),
+  material_id: z.string().regex(/^reference-text-material-[a-f0-9]{32}$/),
+  reference_id: z.string().regex(/^reference-[a-f0-9-]+$/),
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  content_sha256: ReferenceContentFingerprintSchema,
+  byte_length: z.number().int().min(1).max(1_500_000),
+  character_count: z.number().int().min(1).max(500_000),
+  line_count: z.number().int().min(1).max(500_001),
+  authorization: ReferenceTextMaterialAuthorizationInputSchema.extend({
+    machine_verified: z.literal(false),
+  }).strict(),
+  created_at: ReferenceTimestampSchema,
+  governance: z.object({
+    source_material_transport: z.literal('stored_user_supplied'),
+    server_download_allowed: z.literal(false),
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+    production_credit_eligible: z.literal(false),
+  }).strict(),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
+}).strict();
+
+export const ReferenceTextMaterialChunkDescriptorSchema = z.object({
+  chunk_id: z.string().regex(/^chunk-\d{4}$/),
+  index: z.number().int().min(1).max(9_999),
+  locator: z.string().regex(/^characters:\d+-\d+$/),
+  start_character: z.number().int().min(1),
+  end_character: z.number().int().min(1),
+  character_count: z.number().int().min(1).max(12_000),
+  byte_length: z.number().int().min(1).max(48_000),
+  content_sha256: ReferenceContentFingerprintSchema,
+}).strict();
+
+export const ReferenceTextMaterialManifestSchema = z.object({
+  schema_version: z.literal('reference-text-material-manifest/v1'),
+  material_id: ReferenceTextMaterialRecordSchema.shape.material_id,
+  reference_id: ReferenceTextMaterialRecordSchema.shape.reference_id,
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  content_type: z.enum(['text/plain', 'text/markdown']),
+  byte_length: z.number().int().min(1).max(1_500_000),
+  character_count: z.number().int().min(1).max(500_000),
+  line_count: z.number().int().min(1).max(500_001),
+  chunk_character_limit: z.literal(12_000),
+  chunk_count: z.number().int().min(1).max(9_999),
+  chunks: z.array(ReferenceTextMaterialChunkDescriptorSchema).min(1).max(9_999),
+  chunk_endpoint_template: z.string().regex(
+    /^\/api\/reference-library\/references\/reference-[a-f0-9-]+\/text-material\/chunks\/\{chunk_id\}$/,
+  ),
+  content_included: z.literal(false),
+  prompt_injection_allowed: z.literal(false),
+  knowledge_writeback_allowed: z.literal(false),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
+}).strict();
+
+export const ReferenceTextMaterialChunkSchema =
+ReferenceTextMaterialChunkDescriptorSchema.extend({
+  schema_version: z.literal('reference-text-material-chunk/v1'),
+  material_id: ReferenceTextMaterialRecordSchema.shape.material_id,
+  reference_id: ReferenceTextMaterialRecordSchema.shape.reference_id,
+  source_content_fingerprint: ReferenceContentFingerprintSchema,
+  text: z.string().min(1).refine(
+    value => Array.from(value).length <= 12_000,
+    'text must contain at most 12000 Unicode characters',
+  ),
+  prompt_injection_allowed: z.literal(false),
+  knowledge_writeback_allowed: z.literal(false),
+  human_review_complete: z.literal(false),
+  production_credit_granted: z.literal(false),
+}).strict();
+
 const ReferenceSimilarityMarkerSchema = ReferenceNonEmptyTextSchema.max(120);
 const ReferenceSimilarityObservationIdSchema =
   ReferenceNonEmptyTextSchema.max(120);

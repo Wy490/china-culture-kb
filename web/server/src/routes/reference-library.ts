@@ -26,6 +26,12 @@ import {
   listReferenceAnalysisTasks,
   submitReferenceAnalysisTask,
 } from '../services/reference-analysis-task-service.js';
+import {
+  createReferenceTextMaterial,
+  getReferenceTextMaterial,
+  getReferenceTextMaterialChunk,
+  getReferenceTextMaterialManifest,
+} from '../services/reference-text-material-service.js';
 
 function resolveDefaultRepoRoot(): string {
   const candidates = [
@@ -226,6 +232,78 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
       next(error);
     }
   });
+
+  router.post(
+    '/references/:referenceId/text-material',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        if (
+          !requiredActorMatchesClaims(
+            req,
+            [req.body?.authorization?.attested_by],
+          )
+        ) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Text material attested_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await createReferenceTextMaterial({
+          repoRoot,
+          referenceId: String(req.params.referenceId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/references/:referenceId/text-material',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextMaterial({
+          repoRoot,
+          referenceId: String(req.params.referenceId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/references/:referenceId/text-material/manifest',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextMaterialManifest({
+          repoRoot,
+          referenceId: String(req.params.referenceId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get(
+    '/references/:referenceId/text-material/chunks/:chunkId',
+    async (req, res, next) => {
+      try {
+        res.json(success(await getReferenceTextMaterialChunk({
+          repoRoot,
+          referenceId: String(req.params.referenceId),
+          chunkId: String(req.params.chunkId),
+        })));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/references/:referenceId', async (req, res, next) => {
     try {
