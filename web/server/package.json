@@ -22,6 +22,7 @@
     "smoke:story-agent-visual-asset-pressure-batch3-manifest": "tsx scripts/story-agent-visual-asset-pressure-receipt-manifest.mts --catalog generated/story-agent-cross-seed-image-assets-20260726-batch3/identity-catalog.json --receipt server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json --output generated/story-agent-cross-seed-image-assets-20260726-batch3/manifest.json --style-map-output generated/story-agent-cross-seed-image-assets-20260726-batch3/style-map.json",
     "smoke:story-agent-visual-asset-pressure-receipt-manifest": "tsx scripts/story-agent-visual-asset-pressure-receipt-manifest.mts",
     "smoke:story-agent-visual-asset-pressure-receipt-inspect": "tsx scripts/story-agent-visual-asset-pressure-receipt-inspect.mts",
+    "smoke:story-agent-visual-asset-pressure-receipt-registry-audit": "tsx scripts/story-agent-visual-asset-pressure-receipt-registry-audit.mts",
     "smoke:story-agent-visual-asset-pressure-batch-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure-eight-world-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure": "tsx scripts/story-agent-visual-asset-pressure.mts",
