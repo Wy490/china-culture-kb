@@ -1,0 +1,19 @@
+{
+  "schema_version": "story-agent-visual-asset-pressure-receipt-evidence-descriptor/v1",
+  "batch_id": "imagegen-20260726-batch3",
+  "receipt_content_sha256": "cd274225063cba197da0057d4befb22b6e3b7f79c6de19c5e8e3daaf9a008d73",
+  "bundle_file_name": "imagegen-20260726-batch3-receipt-evidence-bundle.json",
+  "bundle_schema_version": "story-agent-visual-asset-pressure-receipt-evidence-bundle/v1",
+  "bundle_content_sha256": "324c954603d26d692b2d14e46607f81e0ecaa3835d661ec2942168978abf3eb2",
+  "bundle_byte_length": 28474649,
+  "file_count": 16,
+  "prompt_file_count": 8,
+  "source_file_count": 8,
+  "total_evidence_byte_count": 21351766,
+  "machine_validation_only": true,
+  "external_location_declared": false,
+  "rights_granted": false,
+  "human_review_performed": false,
+  "video_generation_performed": false,
+  "production_credit_granted": false
+}

@@ -1,9 +1,13 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, relative, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path'
 import {
   buildStoryAgentVisualAssetPressureReceiptEvidenceBundle,
 } from '../src/services/story-agent-visual-asset-pressure-receipt-evidence-bundle-service.js'
+import {
+  parseStoryAgentVisualAssetPressureReceiptEvidenceDescriptor,
+  verifyStoryAgentVisualAssetPressureReceiptEvidenceDescriptor,
+} from '../src/services/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.js'
 
 function argumentValue(name: string): string | undefined {
   const index = process.argv.indexOf(name)
@@ -28,6 +32,12 @@ const receiptPath = resolve(
   argumentValue('--receipt')
     ?? 'server/scripts/story-agent-visual-asset-pressure-batch3-receipt.json',
 )
+const descriptorPath = resolve(
+  webRoot,
+  argumentValue('--descriptor')
+    ?? 'server/scripts/'
+      + 'story-agent-visual-asset-pressure-batch3-evidence-bundle-descriptor.json',
+)
 const outputPath = resolve(
   webRoot,
   argumentValue('--output')
@@ -35,6 +45,10 @@ const outputPath = resolve(
       + 'imagegen-20260726-batch3-receipt-evidence-bundle.json',
 )
 const receiptRelativePath = webRelativePath(receiptPath, 'receipt path')
+const descriptorRelativePath = webRelativePath(
+  descriptorPath,
+  'descriptor path',
+)
 const outputRelativePath = webRelativePath(outputPath, 'output path')
 if (!outputRelativePath.startsWith('generated/')) {
   throw new Error('evidence bundle output must stay beneath web/generated')
@@ -43,14 +57,35 @@ if (receiptPath === outputPath) {
   throw new Error('receipt and evidence bundle output paths must be distinct')
 }
 
-const receiptBytes = await readFile(receiptPath)
+const [receiptBytes, descriptorBytes] = await Promise.all([
+  readFile(receiptPath),
+  readFile(descriptorPath),
+])
 const receipt = JSON.parse(receiptBytes.toString('utf8')) as unknown
+const descriptor = parseStoryAgentVisualAssetPressureReceiptEvidenceDescriptor(
+  JSON.parse(descriptorBytes.toString('utf8')) as unknown,
+)
+if (basename(outputPath) !== descriptor.bundle_file_name) {
+  throw new Error('evidence bundle output file name differs from descriptor')
+}
 const bundle = await buildStoryAgentVisualAssetPressureReceiptEvidenceBundle({
   receipt,
   receipt_bytes: receiptBytes,
   web_root: webRoot,
 })
 const outputBytes = Buffer.from(`${JSON.stringify(bundle)}\n`)
+const descriptorVerification =
+  await verifyStoryAgentVisualAssetPressureReceiptEvidenceDescriptor({
+    descriptor,
+    receipt_bytes: receiptBytes,
+    bundle_bytes: outputBytes,
+  })
+if (descriptorVerification.status !== 'verified') {
+  throw new Error(
+    `evidence descriptor blocked export: ${
+      descriptorVerification.blockers.join(',')}`,
+  )
+}
 await mkdir(dirname(outputPath), { recursive: true })
 let outputStatus: 'created' | 'verified_existing' = 'created'
 try {
@@ -69,6 +104,8 @@ console.log(JSON.stringify({
   status: outputStatus,
   batch_id: bundle.batch_id,
   receipt_path: receiptRelativePath,
+  descriptor_path: descriptorRelativePath,
+  descriptor_status: descriptorVerification.status,
   output_path: outputRelativePath,
   output_sha256: sha256(outputBytes),
   output_byte_length: outputBytes.length,
