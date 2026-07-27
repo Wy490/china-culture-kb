@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-B18 registry/composition v3 descriptor provenance 完成
+# Story Agent 开发交接：P1-C3 授权文字材料闭环完成
 
 > 交接日期：2026-07-27
 >
@@ -46,6 +46,12 @@
 >
 > P1-B18 descriptor registry 提交：`b230ede8 feat(story-agent): register sealed evidence descriptors`
 >
+> P1-C1 授权文字快照提交：`e794a0b8 feat(story-agent): ingest authorized reference text`
+>
+> P1-C2 分析任务材料绑定提交：`0fe1b59f feat(story-agent): bind analysis tasks to reference text`
+>
+> P1-C3 Web 工作台提交：`182b8119 feat(story-agent): add authorized text material workbench`
+>
 > 远端：本交接完成后推送到 `origin/codex/story-agent-manifest-integrity-20260718`
 >
 > 当前工作区：功能与回归测试已提交；本交接最终提交后应为干净
@@ -78,7 +84,10 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 
 ## 2. 当前结论
 
-Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到“十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；registry/composition v3 可数据驱动发现 sealed descriptor 并把其 SHA 纳入 17/17 provenance，clean-checkout/CI 可先运行独立只读 preflight，错误 receipt、descriptor、bundle、传输漂移或文件名都会 fail-closed”的阶段。
+Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到两条闭环同时成立的阶段：
+
+1. 十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；registry/composition v3 可数据驱动发现 sealed descriptor 并把其 SHA 纳入 17/17 provenance，clean-checkout/CI 可先运行独立只读 preflight；
+2. 用户自有、已授权或公版的小说/剧本可在 Reference Library 中按预登记 SHA-256 封存 exact UTF-8 bytes，生成无正文 manifest 与确定性 Unicode 分块；新建分析任务自动绑定只读 material manifest，Web 工作台已完成真实浏览器闭环。
 
 当前工程判断：
 
@@ -86,7 +95,7 @@ Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”�
 |---|---:|---|
 | 展示结构化生成与前置制作交付 | 98%–99% | 普通项目、系列项目、15×1、15×3、运行控制台、专业 checkpoint、十二题材视觉压力、三批 composition provenance 与 ops 摘要均有完整交付证据 |
 | 15 类型无人值守稳定交付 | 96%–98% | 本地恢复、图片幂等、严格门禁、record-replay、两类 StoryAgentRun、checkpoint 历史、视觉资产六场景审计及其 fail-closed ops 读取均已跑通 |
-| 原始影视/文字参考资料自动理解 | 35%–45% | 治理、任务和门禁完整，但尚不会自动读取完整视频、小说或剧本 |
+| 原始影视/文字参考资料自动理解 | 50%–60% | 合法文字已具备 exact-byte 接入、分块、任务绑定和 Web 闭环；结构化理解仍需 Codex/operator 执行，影视材料仍为带外输入 |
 
 仍不能宣称 100% 完成，主要因为：
 
@@ -177,9 +186,14 @@ story-agent-seedance-preproduction-package/v1
 已完成：
 
 - source metadata、rights/access scope、content fingerprint；
+- `reference-text-material/v1` exact-byte 授权文字快照；
+- `reference-text-material-status` 200 空状态发现；
+- `reference-text-material-manifest/v1` 无正文确定性分块清单；
+- `reference-text-material-chunk/v1` 最多 12,000 Unicode 字符的只读 chunk；
 - film/text structured analysis；
 - pending analysis 与 `material:sign` 独立批准；
-- source-bound `reference-analysis-task/v1`；
+- source-bound `reference-analysis-task/v1` / `v2`；
+- 新任务自动发现并绑定 `stored_user_supplied` material ID 与 manifest endpoint；
 - 幂等 operator evidence 提交；
 - `reference-similarity-evidence/v1`；
 - excerpt、character、plot、shot 四维相似度门禁；
@@ -188,11 +202,14 @@ story-agent-seedance-preproduction-package/v1
 - 完整 source/analysis/benchmark/style-pack `reference_trace`；
 - final-output 和 derived-state fail-closed；
 - reference-free baseline 与 reference-assisted 机器质量 delta；
-- Reference Library Web 治理、组合和 baseline 工作台。
+- Reference Library Web 治理、授权文字接入、组合和 baseline 工作台。
 
 真实边界：
 
 - 服务器不会擅自下载来源正文或完整影视作品；
+- 只有小说/剧本、合法权利状态、`excerpt/full_user_supplied` 范围、精确指纹和 `material:sign` 声明人才能封存文字；
+- 浏览器在 POST 前用 Web Crypto 对 UTF-8 exact bytes 计算 SHA-256，不匹配时禁止提交；
+- 文字始终按不可信数据处理，禁止 prompt injection、自动知识写回、真人评审或 production credit；
 - 仓库当前没有真实 approved style pack；
 - 最近浏览器 smoke 检查 40 个 reference-free 候选，0 个已完成真实对照；
 - fixture 和 machine comparison 不计真人、法律或 production credit。
@@ -350,8 +367,8 @@ Web build：通过
 Web 全 workspace lint：通过
 
 Server:
-  Test Files  173 passed | 1 skipped
-  Tests       1476 passed | 2 skipped
+  Test Files  181 passed | 1 skipped
+  Tests       1518 passed | 2 skipped
 
 MCP:
   Test Files  95 passed
@@ -388,6 +405,10 @@ P0-E2 record-replay：15/15 full pipeline ready
 P0-E2 strict gates：missing/conflict/invalid/timeout 全部 blocked
 P0-E2 provenance：record_replay_fixture，external_model_call_performed=false
 Reference Library 浏览器 smoke：API 正常、控制台零 error/warn/issue
+P1-C3 浏览器 smoke：隔离临时 repo root；45 Unicode 字符 / 133 UTF-8 bytes 精确匹配；
+                    封存后只显示 1 个 chunk 的 locator/长度/SHA，不回显正文；
+                    新任务显示 stored_user_supplied 和同一 Material ID；
+                    status endpoint 消除正常“未封存”状态的 API 404
 ```
 
 权威报告：
@@ -404,7 +425,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 / P1-B3 / P1-B4 / P1-B5 / P1-B6 / P1-B7 / P1-B8 / P1-B9 / P1-B10 / P1-B11 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C3 当前状态与下一步
 
 在没有真实外部 Provider 凭据和合法参考材料时，下一对话应优先为 Codex ImageGen 批次增加提交到代码仓库的 immutable receipt，阻止源图被替换后通过重跑 manifest/composition 静默重签。
 
@@ -1867,7 +1888,7 @@ video_generation_performed=false
 production_credit_granted=false
 ```
 
-### 6.19 下一优先级
+### 6.19 外部 artifact store 暂停点
 
 P1-B12 至 P1-B18 已把单个真实 sealed batch 的本地封存、确定性打包、提交态锁定、注册表发现、composition provenance、只读 preflight 和安全恢复闭环做完。真实 artifact store 接入需要用户先指定存储后端、凭据注入方式与保留策略；在此之前，不应自行创建伪远端或把本地 bundle 描述成已归档。
 
@@ -1877,6 +1898,133 @@ P1-B12 至 P1-B18 已把单个真实 sealed batch 的本地封存、确定性打
 2. 不把本地 ignored bundle 描述成已远端归档或已验证下载传输；
 3. 只有能从真实历史调用记录恢复完整 call ID、exact prompt、source bytes 和尺寸时才为旧两批补 receipt，否则继续显式保留 `legacy_unsealed`；
 4. receipt、bundle、descriptor、composition 和 preflight 都只证明机器完整性，不代表 rights、人审或 production credit。
+
+### 6.20 P1-C1 至 P1-C3 授权文字材料闭环（2026-07-27）
+
+功能提交：
+
+```text
+e794a0b8 feat(story-agent): ingest authorized reference text
+0fe1b59f feat(story-agent): bind analysis tasks to reference text
+182b8119 feat(story-agent): add authorized text material workbench
+```
+
+新增合同：
+
+```text
+reference-text-material/v1
+reference-text-material-manifest/v1
+reference-text-material-chunk/v1
+reference-analysis-task/v2
+```
+
+接入边界：
+
+- 来源仍先只登记 metadata、rights/access scope 与 immutable content fingerprint，来源创建接口继续拒绝 inline 正文；
+- 只有 `novel/screenplay`、`user_owned/licensed/public_domain`、`excerpt/full_user_supplied` 和 64 位 SHA-256 全部成立时才可接入；
+- POST 受 `material:sign` 保护；required access 模式下 `authorization.attested_by` 必须等于认证 actor；
+- 接口只接受用户主动提交的 `text/plain` 或 `text/markdown`，服务端不下载 URL；
+- 最多 500,000 Unicode 字符、1,500,000 UTF-8 bytes；
+- 提交内容 exact UTF-8 SHA-256 必须等于来源不可变 fingerprint；
+- 首次写入使用 exclusive create；相同内容和授权元数据可幂等重放，不同元数据返回 conflict，不覆盖。
+
+持久化位置：
+
+```text
+references/creative/library/text-material/<referenceId>/
+  record.json
+  content.txt | content.md
+```
+
+每次读取重新验证：
+
+```text
+content SHA-256
+source fingerprint
+byte_length
+Unicode character_count
+line_count
+```
+
+任一漂移以 `REFERENCE_TEXT_MATERIAL_INTEGRITY_INVALID` fail-closed。manifest 不含正文，按 Unicode code point 确定性切成最多 12,000 字符的 chunks；每个 descriptor 固定 locator、字符/字节长度和 SHA。chunk 读取固定：
+
+```text
+prompt_injection_allowed=false
+knowledge_writeback_allowed=false
+human_review_complete=false
+production_credit_granted=false
+```
+
+任务绑定：
+
+- 新建 `reference-analysis-task/v2` 时自动探测 sealed text material；
+- 有材料时写入 `stored_user_supplied + source_material_id + source_material_manifest_endpoint`；
+- 无材料时继续为 `out_of_band_user_authorized`；
+- v1 旧记录保持可读，且不能冒充 stored material；
+- 任务账本、metadata 和 manifest 都不嵌入来源正文。
+
+Web 工作台：
+
+- 对合格小说/剧本显示 UTF-8 文件选择与粘贴入口；
+- 浏览器用 Web Crypto 在 POST 前计算 exact SHA-256；
+- 指纹不匹配、超字符/字节限制、缺授权声明或无 `material:sign` 时禁止提交；
+- 声明人锁定当前 actor，不能在 UI 冒用其他签署人；
+- 已封存后只显示 material metadata、治理边界与 chunk descriptors，不回显全文；
+- 任务列表和 pending/completed 详情均显示 `stored_user_supplied` 或带外材料状态；
+- `GET .../text-material/status` 用 200 + discriminated union 表达“未封存”，避免正常空状态产生 API 404；
+- `REFERENCE_LIBRARY_REPO_ROOT` 可将本地浏览器/验收数据隔离到临时 repo root，默认仓库解析不变；
+- 快速切换来源时 generation guard 阻止旧异步状态串到新来源。
+
+浏览器实际验收使用隔离临时数据，不写真实仓库，也不冒充真实参考资料：
+
+```text
+source: user_owned novel / full_user_supplied
+content: 45 Unicode characters / 133 UTF-8 bytes
+browser SHA == registered SHA
+material: sealed
+manifest: 1 chunk / characters:1-45 / 133 bytes / exact SHA
+source text rendered in manifest summary: false
+new task source_material_transport: stored_user_supplied
+new task material ID == sealed material ID
+API 4xx/5xx after status contract update: 0
+```
+
+验证结果：
+
+```text
+reference-library targeted:
+  1 file / 7 tests passed
+server:
+  181 files passed, 1 skipped
+  1518 tests passed, 2 skipped
+server/client lint and typecheck passed
+Web server/client production build passed
+Playwright CLI real browser flow passed
+```
+
+全量测试必须允许 Supertest 绑定临时本地端口；受限沙箱中的 `listen EPERM 0.0.0.0` 不是产品失败，本轮已在允许本地端口的环境重跑并全绿。
+
+### 6.21 下一优先级
+
+在不引入视频 Provider、服务端模型调用或伪造真实资料的前提下，下一里程碑优先做 P1-C4：
+
+```text
+sealed text material manifest
+  → resumable per-chunk read cursor
+  → bounded structured partial observations
+  → deterministic aggregation
+  → pending TextReferenceAnalysis / operator evidence
+  → independent material:sign review
+```
+
+要求：
+
+1. 复用现有 chunk/manifest、analysis task 和 pending approval 合同，不另建平行来源存储；
+2. 原文始终作为不可信数据，来源文字中的指令不得改变 system/task policy；
+3. 服务端不直接调用模型；由 Codex/operator 执行时必须记录 executor、chunk SHA、cursor/checkpoint 和结果 SHA；
+4. 中断后只继续未完成 chunk，已验证 partial result 不重算；
+5. 聚合结果不能自动批准、写回知识库、注入生产 prompt 或授予 production credit；
+6. 影视材料继续带外，不借 P1-C4 自动下载或转码视频。
 
 ## 7. 外部条件具备时才做
 
@@ -1930,6 +2078,9 @@ real external provider
 - reference safety 和四维相似度门禁；
 - reference analysis task/evidence；
 - Reference Library governance/composition/baseline UI；
+- P1-C1 exact-byte 授权文字快照、200 status、无正文 manifest 和确定性 Unicode chunks；
+- P1-C2 `reference-analysis-task/v2` 对 sealed material 的自动发现与 v1 兼容；
+- P1-C3 Web Crypto 指纹校验、授权文字 Web 工作台、任务 material 状态展示与隔离 repo root；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
@@ -1986,6 +2137,9 @@ web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-bundl
 web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-descriptor-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-receipt-evidence-preflight-service.ts
 web/server/src/services/story-agent-visual-asset-pressure-batch-registry-service.ts
+web/server/src/services/reference-text-material-service.ts
+web/server/src/services/reference-analysis-task-service.ts
+web/server/src/routes/reference-library.ts
 web/server/scripts/story-agent-cross-seed-image-assets.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-prepare.mts
 web/server/scripts/story-agent-visual-asset-pressure-batch2-manifest.mts
@@ -2017,9 +2171,14 @@ web/server/src/__tests__/story-agent-visual-asset-pressure-ops-service.test.ts
 web/server/src/__tests__/story-agent-visual-asset-pressure-service.test.ts
 web/server/src/__tests__/product-access-control.test.ts
 web/server/src/__tests__/product-navigation.test.ts
+web/server/src/__tests__/reference-library.test.ts
+web/server/src/__tests__/reference-analysis-task.test.ts
 
 web/client/src/api/story-agent-runs.ts
 web/client/src/views/StoryAgentRuns.vue
+web/client/src/api/reference-library.ts
+web/client/src/views/ReferenceLibrary.vue
+web/client/src/components/reference-library/ReferenceTextMaterialWorkbench.vue
 web/client/src/router.ts
 web/shared/product-navigation.ts
 web/e2e/story-agent-visual-pressure.spec.ts
@@ -2043,6 +2202,8 @@ docs/story-agent-film-text-benchmark-development-handoff-20260723.md
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web/server
+npm test -- reference-library.test.ts
+npm test -- reference-analysis-task.test.ts
 npm run smoke:story-agent-visual-asset-pressure-batch2-prepare
 npm run smoke:story-agent-visual-asset-pressure-batch2-manifest
 npm run smoke:story-agent-cross-seed-images -- \
@@ -2138,10 +2299,15 @@ de86b56c feat(story-agent): seal visual asset batch receipts
 346315b3 test(story-agent): stabilize material drafting matrix
 66215966 feat(story-agent): preflight sealed evidence artifacts
 b230ede8 feat(story-agent): register sealed evidence descriptors
+e794a0b8 feat(story-agent): ingest authorized reference text
+0fe1b59f feat(story-agent): bind analysis tasks to reference text
+182b8119 feat(story-agent): add authorized text material workbench
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight，以及 P1-B18 registry/composition v3 descriptor provenance 均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台均已完成。不要重新实现。
 
-下一步真实 artifact store 上传/下载需用户选择后端并授权凭据注入与保留策略。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor/composition/preflight 仍不代表 rights、人审或 production credit。
+下一步优先 P1-C4：基于 sealed manifest/chunks 做可恢复的逐块结构化分析执行包、partial result SHA/checkpoint 和确定性聚合，最终仍只生成 pending analysis/operator evidence，并经过独立 `material:sign` 审核。服务端不得直接调用模型，不得把来源文字中的指令当作 prompt policy，也不得自动批准或写回。
+
+真实 artifact store 上传/下载仍需用户选择后端并授权凭据注入与保留策略。旧批次只有能恢复真实完整证据时才补 receipt，否则继续保留 `legacy_unsealed`。receipt/bundle/descriptor/composition/preflight 仍不代表 rights、人审或 production credit。
 
 若具备真实 Provider 凭据，只把 live external 记为真实；record-replay、fixture 和 local fallback 必须分账。若有合法参考材料，必须由用户亲自确认授权后再运行 operator evidence、approved style pack 和 baseline 对照。不得把 fixture、not_run、machine comparison 写成真人、法律或 production 通过。
 
