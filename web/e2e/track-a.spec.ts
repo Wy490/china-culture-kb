@@ -8,23 +8,40 @@ const expectedConsoleErrors = new WeakMap<Page, Set<string>>()
 
 type ProjectListItem = {
   project_id?: unknown
+  current_story_id?: unknown
 }
 
-async function firstReadableProjectId(request: APIRequestContext, token: string): Promise<string> {
+async function createFixtureProject(request: APIRequestContext, token: string): Promise<string> {
   const headers = { authorization: `Bearer ${token}` }
-  const response = await request.get('/api/projects', { headers })
-  expect(response.ok(), await response.text()).toBe(true)
-  const envelope = await response.json() as { data?: ProjectListItem[] }
-  const projectIds = (envelope.data ?? [])
-    .map(item => item.project_id)
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+  const generateResponse = await request.post('/api/stories/generate', {
+    headers,
+    data: {
+      outline: '一个年轻修复师回到古城，发现祖父留下的旧戏台图纸，决定用一场原创漫剧唤回街坊对非遗戏曲的记忆。',
+      original_user_query: 'Track A 自包含原创非遗守护短剧',
+      video_type: 'ai_comic_drama',
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      target_video_duration: '1分钟',
+      output_gears_segments: true,
+    },
+  })
+  expect(generateResponse.ok(), await generateResponse.text()).toBe(true)
+  const generated = await generateResponse.json() as { data?: { storyId?: unknown } }
+  const storyId = generated.data?.storyId
+  expect(typeof storyId).toBe('string')
 
-  for (const projectId of projectIds.slice(0, 20)) {
-    const readiness = await request.get(`/api/projects/${encodeURIComponent(projectId)}/production-readiness`, { headers })
-    if (readiness.ok()) return projectId
-  }
+  const projectsResponse = await request.get('/api/projects', { headers })
+  expect(projectsResponse.ok(), await projectsResponse.text()).toBe(true)
+  const projects = await projectsResponse.json() as { data?: ProjectListItem[] }
+  const projectId = (projects.data ?? []).find(item => item.current_story_id === storyId)?.project_id
+  expect(typeof projectId).toBe('string')
 
-  throw new Error('No read-only project with a production-readiness report is available for Track A E2E.')
+  const readiness = await request.get(
+    `/api/projects/${encodeURIComponent(projectId as string)}/production-readiness`,
+    { headers },
+  )
+  expect(readiness.ok(), await readiness.text()).toBe(true)
+  return projectId as string
 }
 
 async function selectRole(page: Page, roleLabel: string): Promise<void> {
@@ -100,7 +117,7 @@ test('2/6 单片与漫剧系列在创作工作区内切换', async ({ page }) =>
 })
 
 test('3/6 项目详情只呈现一个主 NEXT，且不授予真实完成信用', async ({ page, request }) => {
-  const projectId = await firstReadableProjectId(request, PLAYWRIGHT_ACCESS_TOKENS.creator)
+  const projectId = await createFixtureProject(request, PLAYWRIGHT_ACCESS_TOKENS.creator)
   await page.goto(`/projects/${encodeURIComponent(projectId)}`)
 
   const workflow = page.getByTestId('project-workflow')

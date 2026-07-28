@@ -2634,6 +2634,14 @@ git diff --check passed
 - Playwright 现使用 Node `tmpdir()` 解析当前平台临时目录，并按测试进程隔离审计
   JSONL。访问控制策略、审计必需条件和 503 fail-closed 行为均未放宽；与 CI 同口径
   `CI=true` 的 Track A 本地完整回归 11/11 通过。
+- 第五次远端 CI 已确认上述 503 消失且服务端全量继续通过；剩余硬失败是项目详情
+  Track A 隐式依赖开发机被忽略的 `web/generated` 项目，而 GitHub 干净检出没有
+  readiness 可读项目；
+- 浏览器回归现为每个测试进程使用独立临时 generated root，项目详情用真实
+  `/api/stories/generate` 在 `STORY_GEN_LOCAL_ONLY=1` 下创建自包含原创 fixture，再从
+  项目列表解析其 project ID 并复核 readiness。测试不再读取开发机运行产物，不调用
+  外部模型，也不把 fixture 计为真人审核或正式发布信用；干净根同口径 Track A
+  11/11 通过。
 
 6 条图片运行核查结论：
 

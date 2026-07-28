@@ -20,6 +20,10 @@ const accessAuditPath = resolve(
   tmpdir(),
   `story-agent-track-a-access-audit-${process.pid}.jsonl`,
 )
+const generatedRoot = resolve(
+  tmpdir(),
+  `story-agent-track-a-generated-${process.pid}`,
+)
 
 export default defineConfig({
   testDir: './e2e',
@@ -49,6 +53,7 @@ export default defineConfig({
       PORT: String(serverPort),
       VITE_DEV_PORT: String(clientPort),
       VITE_API_PROXY_TARGET: `http://localhost:${serverPort}`,
+      WEB_GENERATED_ROOT: generatedRoot,
       STORY_GEN_LOCAL_ONLY: '1',
       STORY_AGENT_ACCESS_MODE: 'required',
       STORY_AGENT_ACCESS_REGISTRY_JSON: PLAYWRIGHT_ACCESS_REGISTRY_JSON,
