@@ -399,11 +399,11 @@ Web 全 workspace lint：通过
 
 Server:
   Test Files  183 passed | 1 skipped
-  Tests       1526 passed | 2 skipped
+  Tests       1527 passed | 2 skipped
 
 MCP:
-  Test Files  95 passed
-  Tests       503 passed
+  Test Files  97 passed
+  Tests       511 passed
 
 git diff --check：通过
 ```
@@ -474,7 +474,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C14 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C15 当前状态与下一步
 
 P1-C12 的最后分块 requested-dimension 聚合 preflight 与完整隔离浏览器恢复链、P1-C11 的 style-pack 读取与共享 provenance 验证、P1-C10 的 benchmark 读取 preflight、P1-C9 的已批准详情读取 preflight、P1-C8 的批准前 provenance preflight 与 P1-C7 的下游 composition provenance 复核已经完成；P1-C6 的结构化补充与同一 draft task 恢复、P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 也已完成，不要重做。
 
@@ -2589,9 +2589,70 @@ server/client full workspace lint and typecheck passed
 git diff --check passed
 ```
 
-### 6.29 下一优先级
+### 6.29 P1-C15 巡检闭环与工作台渐进加载（2026-07-28）
 
-P1-C14 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
+本轮把“服务端全量测试未取得最终结果”和 6 条长期 `awaiting_imagegen`
+从不可判定状态收敛为可复核结论。
+
+服务端 / CI 根因与修复：
+
+- GitHub 最近 5 次 CI 实际都在全量测试之前结束，不是 Vitest 卡死；最新失败证据为
+  `stage8_operations_zero_credit_policy_invalid`；
+- 根因是 evaluator readiness 已在历史提交中更新，但 signature、finalization、
+  durable release 与 operations 的 committed SHA provenance 未按依赖顺序重封；
+- 使用仓库内确定性 `--write` 生成器顺序刷新四份 readiness 报告，没有放宽
+  fail-closed、真人盲评、签名、release 或 production credit 边界；
+- 修复后服务端全量 Vitest 两次完整结束，分别为 `110.90s` 与 `109.95s`，均为
+  183 files passed / 1 skipped、1527 tests passed / 2 skipped；
+- Track A 首次继续执行时暴露项目页加载耦合：`story-agent-generated-health` 已在
+  7.3 秒返回，但另外三个重型请求超过 45 秒未返回，旧 `Promise.all` 使已返回的
+  generation activity 卡片仍不可见；
+- 项目页现保持请求并发，但每个结果独立落屏；慢的 MVP/portfolio/series 请求不再
+  阻塞项目列表、governance 或 generated health；
+- manifest preflight 浏览器断言改为依据 canonical
+  `attempt_history_unavailable` diagnosis，而不是错误地把 diagnosis 与
+  `attempt_audit_readiness.status=uninitialized` 绑定。账本 `ready` 与当前历史不足以
+  确认“未发起”可以同时成立。
+
+6 条图片运行核查结论：
+
+| 旧运行 | 原任务数 | 当前结论 |
+|---|---:|---|
+| `image-run-019b9408a4a10992407c7e3f` | 3 | 同源后续 `image-run-2bdae3331be2f23f36b0fbf2` 已 complete / ready；旧“鼓”任务不再是当前 shot-bound expected asset |
+| `image-run-13aa57fa9e7bbd03e4ad3184` | 4 | 同源后续 `image-run-70b4fc568d43e32648bdc3a7` 已 complete / ready；旧道具任务不再是当前 expected asset |
+| `image-run-169f3b7bf140f29d3b6e829f` | 2 | 同源后续 `image-run-fb12cd7638d4ed211eaa1d2e` 已 complete / ready |
+| `image-run-9705e848f450a63c2b8ba4cf` | 2 | 同源后续 `image-run-9c7d211b2706da14f2cc8e1e` 已 complete / ready |
+| `image-run-9ca283ab7f6909ce30cb959f` | 6 | 同源后续 `image-run-36b2c3fb2a2b28c736a255f9` 已 complete / ready；3 个核心资产 exact task/prompt 已 verified |
+| `image-run-c109131815db5aae0350b2cd` | 3 | 唯一仍可执行的真实待办：周敦颐、王逵、分宁县衙 |
+
+前 5 条是保留的 immutable 历史请求，不是仍在等待 Provider callback 的活跃队列；
+监控不得只按旧 `run.json.status` 计为长期待回传，必须先按同一 `source_id` 的最新
+preproduction acceptance 与 complete run 判定是否已 superseded。
+
+`image-run-c109131815db5aae0350b2cd` 也不是“已提交后长期无回传”：其 request 明确为
+`provider_invoked=false`、`executor=codex_imagegen`，目录无 `result.json`、无 output、
+无 attempt。它是尚未由 Codex 调用 ImageGen 的三任务请求；如继续执行，必须生成三张
+独立资产、保留各自 `prompt_sha256`，再经 canonical import API/MCP 导入，不能手改账本
+或把其他周敦颐项目图片按标题近似复用。
+
+验证结果：
+
+```text
+Stage 8 signature/finalization/durable-release/operations deterministic checks passed
+Professional text capability/progress contract check passed
+Story Agent governance checkpoint/dry-run check passed
+server full run 1: 183 passed / 1 skipped; 1527 passed / 2 skipped; 110.90s
+server full run 2: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.95s
+manifest-preflight targeted Playwright: 1/1 passed
+Track A Playwright: 11/11 passed
+MCP full: 97 files / 511 tests
+MCP production build passed
+knowledge base lint: 34 files / 262 entries passed
+```
+
+### 6.30 下一优先级
+
+P1-C15 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
 和 MCP command surface 已闭环。下一步优先等待用户合法提供真实材料并亲自确认授权，
 再通过 MCP 或 Web 运行 operator evidence、独立 analysis approval、benchmark/style
 pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture

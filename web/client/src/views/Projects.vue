@@ -2269,30 +2269,45 @@ async function loadProjects() {
   loading.value = true
   error.value = ''
   projectMessage.value = ''
-  const [storyRes, seriesRes, mvpStatusRes, backlogHandoffRes, portfolioRes, generatedGovernanceRes, generatedHealthRes] = await Promise.all([
-    listProjects(),
-    listAiComicSeriesProjects(showArchivedSeries.value),
-    getStoryAgentMvpStatus({ includeArchivedSeries: showArchivedSeries.value, generatedLimit: 12, portfolioLimit: 12 }),
-    getStoryAgentBacklogHandoff({ limit: 12 }),
-    getProductionReadinessPortfolio({ includeArchivedSeries: showArchivedSeries.value, limit: 12 }),
-    getStoryAgentGeneratedGovernancePlan({ limit: 12 }),
-    getStoryAgentGeneratedHealth({ limit: 12 }),
-  ])
-  if (storyRes.ok && storyRes.data) projects.value = storyRes.data
-  if (seriesRes.ok && seriesRes.data) seriesProjects.value = seriesRes.data
-  if (mvpStatusRes.ok && mvpStatusRes.data) storyAgentMvpStatus.value = mvpStatusRes.data
-  if (backlogHandoffRes.ok && backlogHandoffRes.data) storyAgentBacklogHandoff.value = backlogHandoffRes.data
-  if (portfolioRes.ok && portfolioRes.data) productionPortfolio.value = portfolioRes.data
-  if (generatedGovernanceRes.ok && generatedGovernanceRes.data) generatedGovernancePlan.value = generatedGovernanceRes.data
-  if (generatedHealthRes.ok && generatedHealthRes.data) generatedHealth.value = generatedHealthRes.data
-  if (!storyRes.ok) error.value = storyRes.error?.message ?? '加载单片项目失败'
-  if (!seriesRes.ok) error.value = seriesRes.error?.message ?? '加载漫剧系列失败'
-  if (!mvpStatusRes.ok) error.value = mvpStatusRes.error?.message ?? '加载 Story Agent MVP 状态失败'
-  if (!backlogHandoffRes.ok) error.value = backlogHandoffRes.error?.message ?? '加载 Story Agent backlog handoff 失败'
-  if (!portfolioRes.ok) error.value = portfolioRes.error?.message ?? '加载生产指挥总览失败'
-  if (!generatedGovernanceRes.ok) error.value = generatedGovernanceRes.error?.message ?? '加载 generated 治理计划失败'
-  if (!generatedHealthRes.ok) error.value = generatedHealthRes.error?.message ?? '加载生成项目体检失败'
-  loading.value = false
+  await Promise.all([
+    listProjects().then((res) => {
+      if (res.ok && res.data) projects.value = res.data
+      else error.value = res.error?.message ?? '加载单片项目失败'
+    }),
+    listAiComicSeriesProjects(showArchivedSeries.value).then((res) => {
+      if (res.ok && res.data) seriesProjects.value = res.data
+      else error.value = res.error?.message ?? '加载漫剧系列失败'
+    }),
+    getStoryAgentMvpStatus({
+      includeArchivedSeries: showArchivedSeries.value,
+      generatedLimit: 12,
+      portfolioLimit: 12,
+    }).then((res) => {
+      if (res.ok && res.data) storyAgentMvpStatus.value = res.data
+      else error.value = res.error?.message ?? '加载 Story Agent MVP 状态失败'
+    }),
+    getStoryAgentBacklogHandoff({ limit: 12 }).then((res) => {
+      if (res.ok && res.data) storyAgentBacklogHandoff.value = res.data
+      else error.value = res.error?.message ?? '加载 Story Agent backlog handoff 失败'
+    }),
+    getProductionReadinessPortfolio({
+      includeArchivedSeries: showArchivedSeries.value,
+      limit: 12,
+    }).then((res) => {
+      if (res.ok && res.data) productionPortfolio.value = res.data
+      else error.value = res.error?.message ?? '加载生产指挥总览失败'
+    }),
+    getStoryAgentGeneratedGovernancePlan({ limit: 12 }).then((res) => {
+      if (res.ok && res.data) generatedGovernancePlan.value = res.data
+      else error.value = res.error?.message ?? '加载 generated 治理计划失败'
+    }),
+    getStoryAgentGeneratedHealth({ limit: 12 }).then((res) => {
+      if (res.ok && res.data) generatedHealth.value = res.data
+      else error.value = res.error?.message ?? '加载生成项目体检失败'
+    }),
+  ]).finally(() => {
+    loading.value = false
+  })
 }
 
 async function loadStoryAgentMvpStatus() {

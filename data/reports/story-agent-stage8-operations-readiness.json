@@ -26,11 +26,11 @@
     "human_blind_review_pass_project_count": 0,
     "professional_pass_count": 0
   },
-  "handoff_canonical_sha256": "91d536ab85fee38965deb9195c08362cda499cb47a070af6d6b9cf526ca8bed8",
+  "handoff_canonical_sha256": "b3f55a07e601bf03fc90103ef42a1e21c439f4292fbf741dbef599a9019c26de",
   "source_bindings": [
     {
       "path": "data/reports/story-agent-stage8-blind-review-evaluator-readiness.json",
-      "sha256": "1110e3c0de3c1300ae7ed90e1c3a205fea7f4293b57289a7d18d9af2ee259278"
+      "sha256": "a831e5562653db74eed9084b5cf199449384f1a3955e7d4733443b2b84d317ea"
     },
     {
       "path": "data/reports/story-agent-stage8-blind-review-readiness.json",
@@ -38,15 +38,15 @@
     },
     {
       "path": "data/reports/story-agent-stage8-blind-review-signature-readiness.json",
-      "sha256": "5f0023bd59d058fe459debbb7ea8ac1a8f40583f8a7ea324cd6791e50d5c2ea7"
+      "sha256": "4fa8ec0cf249a3d1a846062d8dd80623c695528fed2edeb28f61695934741507"
     },
     {
       "path": "data/reports/story-agent-stage8-durable-release-readiness.json",
-      "sha256": "ea4925beb2c80bbd4acb9c680c1c0e07ac88635c6b28c4b530d174e2769ae38f"
+      "sha256": "553ceffe8482d9f9145e26ecf139db9ce22f9829e4a05d7f96cd2212422e583e"
     },
     {
       "path": "data/reports/story-agent-stage8-finalization-preflight-readiness.json",
-      "sha256": "ef9da75a3ab47557fe172038d01dd035a50bea50697363f18136d5fbe45db8ed"
+      "sha256": "876c5dd5b6ce482f4be95e1e2b54b271edb9534abfbc38cbe597c4da801b35a7"
     }
   ],
   "lanes": [

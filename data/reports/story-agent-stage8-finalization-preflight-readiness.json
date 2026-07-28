@@ -40,11 +40,11 @@
     },
     {
       "path": "data/reports/story-agent-stage8-blind-review-evaluator-readiness.json",
-      "sha256": "1110e3c0de3c1300ae7ed90e1c3a205fea7f4293b57289a7d18d9af2ee259278"
+      "sha256": "a831e5562653db74eed9084b5cf199449384f1a3955e7d4733443b2b84d317ea"
     },
     {
       "path": "data/reports/story-agent-stage8-blind-review-signature-readiness.json",
-      "sha256": "5f0023bd59d058fe459debbb7ea8ac1a8f40583f8a7ea324cd6791e50d5c2ea7"
+      "sha256": "4fa8ec0cf249a3d1a846062d8dd80623c695528fed2edeb28f61695934741507"
     },
     {
       "path": "data/professional-benchmarks/all-format-stage8-finalization-trust-policy.json",

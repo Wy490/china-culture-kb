@@ -120,7 +120,7 @@ test('manifest operator queue 只读预检会清空旧结果并保持零发布�
   const activityDiagnostic = page.getByTestId('generation-activity-diagnostic')
   await expect(activityDiagnostic).toBeVisible({ timeout: 45_000 })
   const activityText = await activityDiagnostic.innerText()
-  if (activityText.includes('尝试账本 uninitialized')) {
+  if (activityText.includes('attempt_history_unavailable')) {
     expect(activityText).toContain('生成尝试历史不可观测')
     expect(activityText).toContain('不能确认未发起')
     expect(activityText).toContain('不能确认链路故障')

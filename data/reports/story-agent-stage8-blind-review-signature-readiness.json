@@ -39,7 +39,7 @@
     },
     {
       "path": "data/reports/story-agent-stage8-blind-review-evaluator-readiness.json",
-      "sha256": "1110e3c0de3c1300ae7ed90e1c3a205fea7f4293b57289a7d18d9af2ee259278"
+      "sha256": "a831e5562653db74eed9084b5cf199449384f1a3955e7d4733443b2b84d317ea"
     },
     {
       "path": "web/server/src/services/stage8-blind-review-signature-service.ts",
