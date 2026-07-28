@@ -42,7 +42,22 @@ interface RunFixture {
 }
 
 function runtimeReadyManifest(): CharacterStoryBenchmarkExecutionManifest {
-  return structuredClone(storedManifest);
+  const manifest = structuredClone(storedManifest);
+  const strictBridgePath = path.join(
+    repoRoot,
+    'web',
+    'server',
+    'scripts',
+    'professional-character-benchmark-bridge.mjs',
+  );
+  const strictBridgeRealpath = fs.realpathSync(strictBridgePath);
+  manifest.strict_readiness.strict_bridge_manifest_path = strictBridgePath;
+  manifest.strict_readiness.strict_bridge_realpath = strictBridgeRealpath;
+  manifest.strict_readiness.strict_bridge_sha256 = createHash('sha256')
+    .update(fs.readFileSync(strictBridgeRealpath))
+    .digest('hex');
+  manifest.strict_readiness.strict_bridge_readable = true;
+  return manifest;
 }
 
 function prepare(inputManifest = runtimeReadyManifest()): RunFixture {

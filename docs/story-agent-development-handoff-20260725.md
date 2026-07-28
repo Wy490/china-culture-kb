@@ -2624,6 +2624,9 @@ git diff --check passed
 - 矩阵测试使用 30 秒预算，SQLite fixture 改用 Node `tmpdir()` 下的独立可清理目录，
   benchmark fixture 在测试启动时绑定当前 checkout 的 strict bridge realpath 与真实
   SHA。四个相关文件在 `CI=true` 下 53/53 通过，服务端全量再次 1527/1527 通过。
+- 第三次远端 CI 已把失败收敛到另一个独立 benchmark-run fixture；它同样直接复制了
+  开发机 strict bridge 绝对锚点。该 fixture 也改为运行时绑定当前 checkout，定向
+  `CI=true` 回归 37/37 通过。
 
 6 条图片运行核查结论：
 
@@ -2657,6 +2660,7 @@ server full run 2: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.95s
 server full CI=true: 183 passed / 1 skipped; 1527 passed / 2 skipped; 112.54s
 server full CI=true after cross-platform fixes: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.69s
 CI-focused cross-platform regression: 4 files / 53 tests passed
+benchmark-run cross-platform regression: 1 file / 37 tests passed
 manifest-preflight targeted Playwright: 1/1 passed
 Track A Playwright: 11/11 passed
 MCP full: 97 files / 511 tests
