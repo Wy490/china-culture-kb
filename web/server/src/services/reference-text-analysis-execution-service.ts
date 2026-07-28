@@ -406,6 +406,21 @@ function validatePartialDimensions(
   }
 }
 
+function observedDimensions(
+  observations: ReferenceTextAnalysisPartialObservations,
+): Set<ReferenceSimilarityDimension> {
+  const dimensions = new Set<ReferenceSimilarityDimension>();
+  if (observations.excerpts.length > 0) dimensions.add('excerpt');
+  if (observations.character_profiles.length > 0) {
+    dimensions.add('character_design');
+  }
+  if (observations.plot_beats.length > 0) dimensions.add('plot_structure');
+  if (observations.shot_sequence.length > 0) {
+    dimensions.add('shot_sequence');
+  }
+  return dimensions;
+}
+
 async function readPartial(input: {
   repoRoot: string;
   taskId: string;
@@ -455,6 +470,41 @@ function samePartialSubmission(
     && partial.submission_key_sha256 === input.submissionKeySha256
     && partial.chunk_content_sha256 === input.chunkContentSha256
     && partial.observations_sha256 === input.observationsSha256;
+}
+
+async function verifyFinalSubmissionCoversDimensions(input: {
+  repoRoot: string;
+  execution: ReferenceTextAnalysisExecutionRecord;
+  checkpointIndex: number;
+  observations: ReferenceTextAnalysisPartialObservations;
+}): Promise<void> {
+  const otherCheckpoints = input.execution.checkpoints.filter(
+    (_checkpoint, index) => index !== input.checkpointIndex,
+  );
+  if (otherCheckpoints.some(checkpoint => checkpoint.status === 'pending')) {
+    return;
+  }
+  const dimensions = observedDimensions(input.observations);
+  for (const checkpoint of otherCheckpoints) {
+    const partial = await readPartial({
+      repoRoot: input.repoRoot,
+      taskId: input.execution.task_id,
+      chunkId: checkpoint.chunk_id,
+    });
+    if (!partial) continue;
+    for (const dimension of observedDimensions(partial.observations)) {
+      dimensions.add(dimension);
+    }
+  }
+  if (
+    input.execution.requested_dimensions.every(
+      dimension => dimensions.has(dimension),
+    )
+  ) return;
+  throw new ReferenceTextAnalysisExecutionError(
+    'REFERENCE_TEXT_ANALYSIS_FINAL_OBSERVATIONS_INVALID',
+    'The final chunk cannot be sealed until observations cover every requested dimension',
+  );
 }
 
 export async function submitReferenceTextAnalysisChunk(input: {
@@ -510,6 +560,12 @@ export async function submitReferenceTextAnalysisChunk(input: {
     execution.requested_dimensions,
     request.observations,
   );
+  await verifyFinalSubmissionCoversDimensions({
+    repoRoot: input.repoRoot,
+    execution,
+    checkpointIndex,
+    observations: request.observations,
+  });
   const submissionKeySha256 = sha256(request.submission_key);
   const observationsSha256 = sha256(JSON.stringify(request.observations));
   const existing = await readPartial({ ...input, chunkId });

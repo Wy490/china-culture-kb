@@ -303,6 +303,93 @@ describe('reference text analysis execution', () => {
     expect(persisted).not.toContain(firstObservations.excerpts[0].text);
   });
 
+  it('keeps the final chunk retryable until all requested dimensions are covered', async () => {
+    const { request } = await createRequest();
+    const fixture = await createSealedTask(request);
+    const base = `/api/reference-library/analysis-tasks/${fixture.task.task_id}/text-execution`;
+    const created = await request.post(base).send({
+      executor: {
+        kind: 'operator',
+        executor_id: 'operator-01',
+      },
+      confirmation: 'source_text_treated_as_untrusted_data',
+    });
+    expect(created.status).toBe(201);
+
+    const first = await request.get(`${base}/next-chunk`);
+    const submittedFirst = await request
+      .post(`${base}/chunks/chunk-0001/submissions`)
+      .send({
+        submission_key: 'empty-first-chunk',
+        submitted_by: 'operator-01',
+        chunk_content_sha256: first.body.data.chunk.content_sha256,
+        observations: emptyObservations(),
+      });
+    expect(submittedFirst.status).toBe(201);
+    expect(submittedFirst.body.data.execution).toMatchObject({
+      status: 'in_progress',
+      cursor: {
+        completed_chunk_count: 1,
+        next_chunk_id: 'chunk-0002',
+      },
+    });
+
+    const second = await request.get(`${base}/next-chunk`);
+    const rejectedEmptyFinal = await request
+      .post(`${base}/chunks/chunk-0002/submissions`)
+      .send({
+        submission_key: 'empty-final-chunk',
+        submitted_by: 'operator-01',
+        chunk_content_sha256: second.body.data.chunk.content_sha256,
+        observations: emptyObservations(),
+      });
+    expect(rejectedEmptyFinal.status).toBe(400);
+    expect(rejectedEmptyFinal.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_FINAL_OBSERVATIONS_INVALID',
+    );
+
+    const retryable = await request.get(`${base}/next-chunk`);
+    expect(retryable.status).toBe(200);
+    expect(retryable.body.data).toMatchObject({
+      complete: false,
+      chunk: {
+        chunk_id: 'chunk-0002',
+        content_sha256: second.body.data.chunk.content_sha256,
+      },
+    });
+    const submittedFinal = await request
+      .post(`${base}/chunks/chunk-0002/submissions`)
+      .send({
+        submission_key: 'observed-final-chunk',
+        submitted_by: 'operator-01',
+        chunk_content_sha256: second.body.data.chunk.content_sha256,
+        observations: {
+          ...emptyObservations(),
+          excerpts: [{
+            observation_id: 'final-excerpt',
+            source_locator: '第二分块',
+            text: '这是满足最终请求维度所需的可核验摘录观察，不包含任何执行指令。',
+          }],
+          plot_beats: [{
+            observation_id: 'final-beat',
+            order: 1,
+            distinctive_markers: ['第二分块开始', '第二分块结束'],
+          }],
+        },
+      });
+    expect(submittedFinal.status).toBe(201);
+    expect(submittedFinal.body.data.execution.status).toBe(
+      'ready_to_finalize',
+    );
+
+    const finalized = await request.post(`${base}/finalize`).send({
+      finalized_by: 'operator-01',
+      confirmation: 'aggregate_completed_chunks_to_operator_evidence',
+    });
+    expect(finalized.status).toBe(201);
+    expect(finalized.body.data.execution.status).toBe('completed');
+  });
+
   it('recovers finalization after evidence completion and rejects unsafe inputs', async () => {
     const { repoRoot, request } = await createRequest();
     const fixture = await createSealedTask(request);

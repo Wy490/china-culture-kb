@@ -1,6 +1,6 @@
-# Story Agent 开发交接：P1-C11 style-pack 读取 provenance preflight 完成
+# Story Agent 开发交接：P1-C12 最终分块可恢复性 preflight 完成
 
-> 交接日期：2026-07-27
+> 交接日期：2026-07-28
 >
 > 仓库：`/Users/wuyu/Desktop/china-culture-kb`
 >
@@ -66,11 +66,13 @@
 >
 > P1-C10 benchmark 读取 provenance preflight 提交：`6da8b3e6 feat(story-agent): verify benchmark card provenance`
 >
-> P1-C11 style-pack 读取 provenance preflight 提交：本交接所在功能提交
+> P1-C11 style-pack 读取 provenance preflight 提交：`4ed25423 feat(story-agent): verify style pack provenance`
+>
+> P1-C12 最终分块可恢复性 preflight 提交：本交接所在功能提交
 >
 > 远端：用户已明确授权将当前相关分支全部推送到 GitHub；本交接提交与 push 完成后应与远端同步
 >
-> 当前工作区：P1-C11 功能、回归与交接将在同一提交完成；提交后应为干净
+> 当前工作区：P1-C12 功能、回归与交接将在同一提交完成；提交后应为干净
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 
@@ -103,7 +105,7 @@ Story Agent 在图片资产和 Seedance 前置制作包处结束。真实视频�
 Story Agent 已从“不同题材视觉资产拥有统一机器审计证据”推进到两条闭环同时成立的阶段：
 
 1. 十二个视觉世界、三批输入、receipt、deterministic evidence bundle 与 committed descriptor 形成逐字节完整性链；registry/composition v3 可数据驱动发现 sealed descriptor 并把其 SHA 纳入 17/17 provenance，clean-checkout/CI 可先运行独立只读 preflight；
-2. 用户自有、已授权或公版的小说/剧本可在 Reference Library 中按预登记 SHA-256 封存 exact UTF-8 bytes，生成无正文 manifest 与确定性 Unicode 分块；新建分析任务自动绑定只读 material manifest，并可由 Codex/operator 使用无服务端模型调用的逐块 checkpoint、partial SHA 和确定性聚合闭环生成 operator evidence，再建立 source/execution/evidence-bound 草拟任务；证据不足时进入结构化 `needs_supplement`，补充记录按 SHA 封存并恢复同一任务，最终只生成带完整 provenance 的 pending `TextReferenceAnalysis`；独立 `material:sign` 首次批准和幂等重放都会先复核全链；来源详情、benchmark 和 style-pack 详情/列表不会展示 provenance 已漂移的 approved v2 analysis；canonical prompt 前再次复核同一共享 style-pack provenance，并只把有界 supplement ID/SHA/status 写入 `reference_trace`。
+2. 用户自有、已授权或公版的小说/剧本可在 Reference Library 中按预登记 SHA-256 封存 exact UTF-8 bytes，生成无正文 manifest 与确定性 Unicode 分块；新建分析任务自动绑定只读 material manifest，并可由 Codex/operator 使用无服务端模型调用的逐块 checkpoint、partial SHA 和确定性聚合闭环生成 operator evidence；最后一个未完成 chunk 在不可变写入前会聚合检查所有 requested dimensions，覆盖不足时保持可重试，避免 finalize 死锁；随后可建立 source/execution/evidence-bound 草拟任务，证据不足时进入结构化 `needs_supplement`，补充记录按 SHA 封存并恢复同一任务，最终只生成带完整 provenance 的 pending `TextReferenceAnalysis`；独立 `material:sign` 首次批准和幂等重放都会先复核全链；来源详情、benchmark 和 style-pack 详情/列表不会展示 provenance 已漂移的 approved v2 analysis；canonical prompt 前再次复核同一共享 style-pack provenance，并只把有界 supplement ID/SHA/status 写入 `reference_trace`。
 
 当前工程判断：
 
@@ -468,9 +470,9 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C11 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C12 当前状态与下一步
 
-P1-C11 的 style-pack 读取与共享 provenance 验证、P1-C10 的 benchmark 读取 preflight、P1-C9 的已批准详情读取 preflight、P1-C8 的批准前 provenance preflight 与 P1-C7 的下游 composition provenance 复核已经完成；P1-C6 的结构化补充与同一 draft task 恢复、P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 也已完成，不要重做。
+P1-C12 的最后分块 requested-dimension 聚合 preflight 与完整隔离浏览器恢复链、P1-C11 的 style-pack 读取与共享 provenance 验证、P1-C10 的 benchmark 读取 preflight、P1-C9 的已批准详情读取 preflight、P1-C8 的批准前 provenance preflight 与 P1-C7 的下游 composition provenance 复核已经完成；P1-C6 的结构化补充与同一 draft task 恢复、P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 也已完成，不要重做。
 
 ### 6.1 已完成：从全新生成请求启动 run
 
@@ -2446,9 +2448,72 @@ server/client full workspace lint and typecheck passed
 git diff --check passed
 ```
 
-### 6.26 下一优先级
+### 6.26 P1-C12 最终分块可恢复性 preflight 与完整浏览器回归（2026-07-28）
 
-P1-C11 后本地可验证的补充 provenance、独立批准入口、来源/benchmark/style-pack 读取和 generation-time 复核闭环已经完成。下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
+浏览器实际回归发现并修复了 P1-C4 的一个不可恢复边界：
+
+```text
+最后一个 chunk 使用默认空 observations
+  → partial 被 exclusive write 封存
+  → execution 进入 ready_to_finalize
+  → finalize 要求至少一条观察且覆盖全部 requested_dimensions
+  → 已封存 partial 不可修改，execution 永久卡住
+```
+
+修复语义：
+
+- 中间 chunk 仍允许提交空 observations，不强迫操作员为无关分块猜造证据；
+- 当前提交是最后一个 pending chunk 时，服务端先聚合既有 verified partials 与当前请求的维度；
+- 聚合结果必须覆盖任务全部 `requested_dimensions`，否则以
+  `REFERENCE_TEXT_ANALYSIS_FINAL_OBSERVATIONS_INVALID` 返回 400；
+- 拒绝发生在 partial exclusive write 和 checkpoint 更新之前，因此最后 chunk 继续由
+  `next-chunk` 返回，操作员可补齐后使用同一 UI 正常重试；
+- 已有 partial 提供一部分维度、最后 chunk 提供剩余维度的合法多块执行保持兼容。
+
+隔离浏览器回归使用
+`REFERENCE_LIBRARY_REPO_ROOT=/private/tmp/china-culture-ref-ui-smoke-p1c12.*`，
+没有写入仓库 Reference Library，也没有把 fixture 当作真实材料或授权验收：
+
+```text
+source: user_owned novel / full_user_supplied
+fixture text: 38 Unicode characters / 112 UTF-8 bytes / 2 lines
+sealed manifest: 1 chunk / exact SHA / source text not rendered
+task: stored_user_supplied
+empty final chunk: 400 + remains chunk-0001 retryable
+valid excerpt retry: ready_to_finalize → completed operator evidence
+draft: pending → needs_supplement → bounded supplement → pending
+analysis: pending / no automatic approval / no knowledge writeback / no production credit
+browser console errors: 0
+```
+
+验证结果：
+
+```text
+P1-C12 red contract:
+  empty final chunk was accepted with 201
+
+P1-C12 green contract:
+  empty final chunk rejected before persistence
+  next-chunk remains retryable
+  completed dimensions can be aggregated across partials
+
+targeted Reference Library:
+  3 files / 15 tests passed
+
+server:
+  183 files passed, 1 skipped
+  1527 tests passed, 2 skipped
+
+MCP:
+  95 files / 503 tests passed
+
+Web and MCP production build passed
+server/client full workspace lint and typecheck passed
+```
+
+### 6.27 下一优先级
+
+P1-C12 后本地可验证的补充 provenance、独立批准入口、来源/benchmark/style-pack 读取、generation-time 复核与文字执行最后分块可恢复性闭环已经完成。下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
 
 外部 artifact store 仍等待用户选择后端、凭据注入方式与保留策略。旧两批没有完整历史证据时继续保持 `legacy_unsealed`。
 
@@ -2515,6 +2580,7 @@ real external provider
 - P1-C9 来源详情对 approved v2 analysis 的读取时 provenance preflight；
 - P1-C10 benchmark card 详情/列表对绑定 approved v2 analysis 的读取时 provenance preflight；
 - P1-C11 style-pack 详情/列表读取 preflight 与 Library/Generation 共享 provenance 验证器；
+- P1-C12 最后 pending chunk 写盘前 requested-dimension 聚合 preflight、拒绝后可重试与 P1-C4→P1-C6 完整隔离浏览器回归；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
@@ -2751,8 +2817,9 @@ f414e3ed feat(story-agent): verify supplemented analysis provenance
 ca2bee5e feat(story-agent): preflight text analysis approvals
 a18b99cc feat(story-agent): verify approved analysis details
 6da8b3e6 feat(story-agent): verify benchmark card provenance
+4ed25423 feat(story-agent): verify style pack provenance
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证、P1-C12 最后分块维度覆盖 preflight 和完整隔离浏览器恢复链均已完成。不要重新实现。
 
 下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照。没有真实材料时不得用 fixture approval、machine comparison 或 not_run 冒充真人、法律或 production 通过。
 
