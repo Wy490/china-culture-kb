@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createStoryProjectRepository,
   getStoryProjectRepositoryConfigInfo,
@@ -12,10 +15,16 @@ import {
 
 const sqliteRuntimeAvailable = isNodeSqliteRuntimeAvailable();
 const sqliteIt = sqliteRuntimeAvailable ? it : it.skip;
+let temporaryRoot = '';
+
+beforeEach(() => {
+  temporaryRoot = mkdtempSync(resolve(tmpdir(), 'story-project-provider-'));
+});
 
 afterEach(() => {
   delete process.env.STORY_PROJECT_REPOSITORY_PROVIDER;
   delete process.env.STORY_PROJECT_SQLITE_PATH;
+  if (temporaryRoot) rmSync(temporaryRoot, { recursive: true, force: true });
 });
 
 describe('story project repository provider boundary', () => {
@@ -40,14 +49,14 @@ describe('story project repository provider boundary', () => {
       production_persistence_ready: false,
     });
     expect(config.warnings.join('\n')).toContain('不代表外部数据库');
-    expect(createStoryProjectRepository('/private/tmp/story-project-provider-test')).toBeInstanceOf(
+    expect(createStoryProjectRepository(resolve(temporaryRoot, 'file-projects'))).toBeInstanceOf(
       FileProjectRepository,
     );
   });
 
   sqliteIt('selects the embedded SQLite provider without claiming external production storage', () => {
     process.env.STORY_PROJECT_REPOSITORY_PROVIDER = 'sqlite';
-    process.env.STORY_PROJECT_SQLITE_PATH = '/private/tmp/story-project-provider-test.sqlite3';
+    process.env.STORY_PROJECT_SQLITE_PATH = resolve(temporaryRoot, 'projects.sqlite3');
 
     const config = getStoryProjectRepositoryConfigInfo();
 
@@ -70,7 +79,7 @@ describe('story project repository provider boundary', () => {
     });
     expect(config.warnings.join('\n')).toContain('不代表外部数据库');
     expect(config.warnings.join('\n')).toContain('真实断电演练');
-    expect(createStoryProjectRepository('/private/tmp/story-project-provider-root')).toBeInstanceOf(
+    expect(createStoryProjectRepository(resolve(temporaryRoot, 'sqlite-projects'))).toBeInstanceOf(
       SqliteProjectRepository,
     );
   });
@@ -86,7 +95,7 @@ describe('story project repository provider boundary', () => {
       configuration_valid: false,
       production_persistence_ready: false,
     });
-    expect(() => createStoryProjectRepository('/private/tmp/story-project-provider-test')).toThrow(
+    expect(() => createStoryProjectRepository(resolve(temporaryRoot, 'unsupported-projects'))).toThrow(
       StoryProjectRepositoryProviderConfigurationError,
     );
   });

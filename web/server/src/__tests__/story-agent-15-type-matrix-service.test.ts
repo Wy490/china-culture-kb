@@ -171,5 +171,5 @@ describe('Story Agent 15-type preproduction matrix', () => {
     expect(idempotent.ok).toBe(true);
     expect(idempotent.data?.skipped_idempotent_task_count)
       .toBe(idempotent.data?.processed_task_count);
-  });
+  }, 30_000);
 });

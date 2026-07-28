@@ -41,6 +41,20 @@ beforeAll(async () => {
   testManifest.strict_readiness.selected_model_cli_realpath = cliRealpath;
   testManifest.strict_readiness.selected_model_cli_sha256 = createHash('sha256').update(cliBody).digest('hex');
   testManifest.strict_readiness.selected_model_cli_executable = true;
+  const strictBridgePath = path.join(
+    repoRoot,
+    'web',
+    'server',
+    'scripts',
+    'professional-character-benchmark-bridge.mjs',
+  );
+  const strictBridgeRealpath = await realpath(strictBridgePath);
+  testManifest.strict_readiness.strict_bridge_manifest_path = strictBridgePath;
+  testManifest.strict_readiness.strict_bridge_realpath = strictBridgeRealpath;
+  testManifest.strict_readiness.strict_bridge_sha256 = createHash('sha256')
+    .update(await fs.promises.readFile(strictBridgeRealpath))
+    .digest('hex');
+  testManifest.strict_readiness.strict_bridge_readable = true;
   testManifest.strict_readiness.technical_ready = true;
   testManifest.strict_readiness.blockers = [];
   testManifest.summary.strict_cli_anchor_ready_count = testManifest.packages.length;

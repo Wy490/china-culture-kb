@@ -2618,6 +2618,12 @@ git diff --check passed
   已启动，继而产生 GEARS config 与 callback auth 的级联假失败；
 - 只为这 3 个已知重型聚合端点测试设置 30 秒测试预算；业务请求超时、断言、鉴权和
   fail-closed 逻辑均未放宽。使用 GitHub 同口径 `CI=true` 的服务端全量回归已完整通过。
+- 第二次远端 CI 清除上述级联失败后继续揭示：15 类型矩阵集成测试也超过默认 5 秒；
+  SQLite provider 测试硬编码 macOS `/private/tmp`；controlled benchmark 测试沿用开发机
+  strict bridge 绝对路径，使 Linux checkout 的 realpath/SHA 锚点必然不匹配；
+- 矩阵测试使用 30 秒预算，SQLite fixture 改用 Node `tmpdir()` 下的独立可清理目录，
+  benchmark fixture 在测试启动时绑定当前 checkout 的 strict bridge realpath 与真实
+  SHA。四个相关文件在 `CI=true` 下 53/53 通过，服务端全量再次 1527/1527 通过。
 
 6 条图片运行核查结论：
 
@@ -2649,6 +2655,8 @@ Story Agent governance checkpoint/dry-run check passed
 server full run 1: 183 passed / 1 skipped; 1527 passed / 2 skipped; 110.90s
 server full run 2: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.95s
 server full CI=true: 183 passed / 1 skipped; 1527 passed / 2 skipped; 112.54s
+server full CI=true after cross-platform fixes: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.69s
+CI-focused cross-platform regression: 4 files / 53 tests passed
 manifest-preflight targeted Playwright: 1/1 passed
 Track A Playwright: 11/11 passed
 MCP full: 97 files / 511 tests
