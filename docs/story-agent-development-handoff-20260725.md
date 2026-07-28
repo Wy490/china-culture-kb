@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-C13 产品首页完成
+# Story Agent 开发交接：P1-C14 授权文字分析 MCP 命令面完成
 
 > 交接日期：2026-07-28
 >
@@ -70,11 +70,13 @@
 >
 > P1-C12 最终分块可恢复性 preflight 提交：`fab5d6ec fix(story-agent): keep final analysis chunks retryable`
 >
-> P1-C13 产品首页提交：本交接所在功能提交
+> P1-C13 产品首页提交：`370adf59 feat(story-agent): launch production home`
+>
+> P1-C14 授权文字分析 MCP 命令面提交：本交接所在功能提交
 >
 > 远端：用户已明确授权将当前相关分支全部推送到 GitHub；本交接提交与 push 完成后应与远端同步
 >
-> 当前工作区：P1-C13 功能、回归与交接将在同一提交完成；提交后应为干净
+> 当前工作区：P1-C14 功能、回归与交接将在同一提交完成；提交后应为干净
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 
@@ -472,7 +474,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C13 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C14 当前状态与下一步
 
 P1-C12 的最后分块 requested-dimension 聚合 preflight 与完整隔离浏览器恢复链、P1-C11 的 style-pack 读取与共享 provenance 验证、P1-C10 的 benchmark 读取 preflight、P1-C9 的已批准详情读取 preflight、P1-C8 的批准前 provenance preflight 与 P1-C7 的下游 composition provenance 复核已经完成；P1-C6 的结构化补充与同一 draft task 恢复、P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 也已完成，不要重做。
 
@@ -2537,9 +2539,63 @@ visible copy audit passed
 git diff --check passed
 ```
 
-### 6.28 下一优先级
+### 6.28 P1-C14 授权文字分析 MCP 命令面（2026-07-28）
 
-P1-C12 后本地可验证的补充 provenance、独立批准入口、来源/benchmark/style-pack 读取、generation-time 复核与文字执行最后分块可恢复性闭环已经完成。下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
+P1-C1 至 P1-C12 原有 Web/API 闭环已进入 canonical MCP Story Agent 工具链。新增
+12 个工具，MCP command surface 从 27 个扩展为 39 个：
+
+```text
+kb_get_reference_analysis_task
+kb_start_reference_text_analysis_execution
+kb_get_reference_text_analysis_execution
+kb_get_reference_text_analysis_next_chunk
+kb_submit_reference_text_analysis_chunk
+kb_finalize_reference_text_analysis_execution
+kb_start_reference_text_analysis_draft
+kb_get_reference_text_analysis_draft
+kb_request_reference_text_analysis_supplement
+kb_submit_reference_text_analysis_supplement
+kb_get_reference_text_analysis_supplement
+kb_submit_reference_text_analysis_draft
+```
+
+实现边界：
+
+- MCP 不复制分析、持久化或批准逻辑，全部调用 canonical Web application service；
+- `STORY_AGENT_BASE_URL` 只接受无凭据、无 query/hash 的 HTTP(S) URL；
+- 可选 bearer token 继续使用 `STORY_AGENT_MCP_ACCESS_TOKEN`，actor ID 由应用服务与
+  authenticated material reviewer claims 复核；
+- start/finalize/draft/supplement 的 confirmation 常量由桥接层固定写入，调用方不能弱化；
+- chunk ID、task ID、submission key、SHA-256 和 actor ID 在发请求前先做有界校验；
+- 返回统一 `mcp-reference-text-analysis-bridge/v1` 元数据，逐次声明正文无指令权、
+  服务端未调用模型、MCP 未直接写仓库、未自动批准、未写知识库且未授予 production
+  credit；
+- MVP Web 与 MCP 状态证据同步记录 `tool_count=39` 和
+  `reference_text_analysis_tools=12`，防止注册表与完成度报告漂移。
+
+验证结果：
+
+```text
+red: reference-text-analysis MCP module missing
+green: Reference Text MCP 4/4
+server Reference execution/draft: 2 files / 8 tests
+server MVP API contract: 1 passed / 231 skipped
+server Domain Pack source contract: 7/7
+server full: 183 files passed / 1 skipped; 1527 tests passed / 2 skipped
+MCP full: 97 files / 511 tests
+MCP production build passed
+Web production build passed
+server/client full workspace lint and typecheck passed
+git diff --check passed
+```
+
+### 6.29 下一优先级
+
+P1-C14 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
+和 MCP command surface 已闭环。下一步优先等待用户合法提供真实材料并亲自确认授权，
+再通过 MCP 或 Web 运行 operator evidence、独立 analysis approval、benchmark/style
+pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture
+冒充真实验收。
 
 外部 artifact store 仍等待用户选择后端、凭据注入方式与保留策略。旧两批没有完整历史证据时继续保持 `legacy_unsealed`。
 
@@ -2607,6 +2663,8 @@ real external provider
 - P1-C10 benchmark card 详情/列表对绑定 approved v2 analysis 的读取时 provenance preflight；
 - P1-C11 style-pack 详情/列表读取 preflight 与 Library/Generation 共享 provenance 验证器；
 - P1-C12 最后 pending chunk 写盘前 requested-dimension 聚合 preflight、拒绝后可重试与 P1-C4→P1-C6 完整隔离浏览器回归；
+- P1-C13 Story Agent 产品首页与真实素材/项目统计入口；
+- P1-C14 授权文字分析 12 个 canonical MCP bridge、39-tool 状态证据与 no-credit 边界；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
@@ -2844,8 +2902,10 @@ ca2bee5e feat(story-agent): preflight text analysis approvals
 a18b99cc feat(story-agent): verify approved analysis details
 6da8b3e6 feat(story-agent): verify benchmark card provenance
 4ed25423 feat(story-agent): verify style pack provenance
+fab5d6ec fix(story-agent): keep final analysis chunks retryable
+370adf59 feat(story-agent): launch production home
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证、P1-C12 最后分块维度覆盖 preflight 和完整隔离浏览器恢复链均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证、P1-C12 最后分块维度覆盖 preflight 和完整隔离浏览器恢复链、P1-C13 产品首页、P1-C14 授权文字分析 12 个 canonical MCP 工具与 39-tool 状态证据均已完成。不要重新实现。
 
 下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照。没有真实材料时不得用 fixture approval、machine comparison 或 not_run 冒充真人、法律或 production 通过。
 
