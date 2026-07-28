@@ -2642,6 +2642,14 @@ git diff --check passed
   项目列表解析其 project ID 并复核 readiness。测试不再读取开发机运行产物，不调用
   外部模型，也不把 fixture 计为真人审核或正式发布信用；干净根同口径 Track A
   11/11 通过。
+- 第六次远端 CI 已越过 Track A，并把干净检出的下一处隐式依赖暴露在
+  `governance_audit`：脚本读取一份位于被忽略 `web/generated` 目录的 2026-07-10
+  GEARS callback handoff，因此在 GitHub 第 18/21 步触发 `ENOENT`；
+- 新增 committed governance baseline，只保存项目 ID、四个计数、原始 schema/path/
+  SHA-256 和零真实外部 artifact/零 production credit 边界，不复制 72KB callback
+  payload、URL 或项目内容。governance dry-run 与专业文本审计统一读取该快照，并
+  fail-closed 校验来源 SHA、仓库跟踪状态、5 个本地验收/5 个待外部 artifact 与零
+  external-ready；两项合同检查均通过。
 
 6 条图片运行核查结论：
 

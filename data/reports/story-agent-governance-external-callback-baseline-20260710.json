@@ -1,0 +1,21 @@
+{
+  "schema_version": "story-agent-governance-external-callback-baseline/v1",
+  "captured_at": "2026-07-10T14:27:12.923Z",
+  "source_artifact": {
+    "path": "web/generated/projects/20260702-story-5zhd4151f8c7--ai_comic_drama/production-board/gears-external-callback-handoff.json",
+    "schema_version": "project-gears-external-callback-handoff/v1",
+    "sha256": "c2a72ee7c7de70d31b1d9ecfb8491aeb03285e362a7588c715a30df3c3fa078d",
+    "repository_tracked": false,
+    "snapshot_scope": "governance counters only; callback payloads, URLs and project content omitted"
+  },
+  "project": {
+    "project_id": "20260702-story-5zhd4151f8c7--ai_comic_drama",
+    "title": "周敦颐分宁断案"
+  },
+  "total_job_count": 5,
+  "external_ready_count": 0,
+  "local_acceptance_ready_count": 5,
+  "pending_external_artifact_count": 5,
+  "real_external_artifact_verified": false,
+  "production_credit_granted": false
+}

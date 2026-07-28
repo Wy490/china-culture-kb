@@ -13,7 +13,7 @@ const generatedAt = new Date().toISOString();
 
 const paths = {
   queue: 'data/reports/story-agent-monitor-remediation-queue-20260710.json',
-  callbackHandoff: 'web/generated/projects/20260702-story-5zhd4151f8c7--ai_comic_drama/production-board/gears-external-callback-handoff.json',
+  callbackHandoff: 'data/reports/story-agent-governance-external-callback-baseline-20260710.json',
   checkpoint: 'data/reports/story-agent-version-checkpoint-20260710.json',
   archiveManifest: 'data/reports/story-agent-soft-archive-manifest-20260710.json',
   relinkTriage: 'data/reports/story-agent-relink-triage-20260710.json',
@@ -325,7 +325,24 @@ function validateOutputs({ checkpoint, archiveManifest, relinkTriage, handoff })
   if (relinkTriage.summary.safe_auto_relink_count !== 0 || relinkTriage.summary.guessed_relink_count !== 0) {
     throw new Error('Unsafe relink evidence was promoted');
   }
-  if (handoff.total_job_count !== 5 || handoff.pending_external_artifact_count !== 5 || handoff.external_ready_count !== 0) {
+  if (handoff.schema_version !== 'story-agent-governance-external-callback-baseline/v1') {
+    throw new Error('Target project external artifact baseline schema drifted');
+  }
+  if (
+    handoff.source_artifact?.schema_version !== 'project-gears-external-callback-handoff/v1'
+    || !/^[a-f0-9]{64}$/.test(handoff.source_artifact?.sha256 ?? '')
+    || handoff.source_artifact?.repository_tracked !== false
+  ) {
+    throw new Error('Target project external artifact baseline provenance is invalid');
+  }
+  if (
+    handoff.total_job_count !== 5
+    || handoff.pending_external_artifact_count !== 5
+    || handoff.external_ready_count !== 0
+    || handoff.local_acceptance_ready_count !== 5
+    || handoff.real_external_artifact_verified !== false
+    || handoff.production_credit_granted !== false
+  ) {
     throw new Error('Target project external artifact baseline drifted');
   }
   if (checkpoint.excluded_paths.includes(paths.checkpoint) === false) {
