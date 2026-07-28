@@ -11,15 +11,11 @@ import type {
   VideoType,
 } from '@shared/types.js';
 import {
-  getBenchmarkCard,
-  getReferenceAnalysis,
   getReferenceSource,
   getReferenceSimilarityEvidence,
   getReferenceStylePack,
+  verifyReferenceStylePackProvenance,
 } from './reference-library-service.js';
-import {
-  verifyReferenceTextAnalysisCompositionProvenance,
-} from './reference-text-analysis-draft-task-service.js';
 
 export interface ReferenceGenerationStylePackContext {
   style_pack_id: string;
@@ -85,11 +81,6 @@ function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-function sameMembers(left: string[], right: string[]): boolean {
-  return left.length === right.length
-    && left.every(value => right.includes(value));
-}
-
 function abstractRules(pack: ReferenceStylePackRecord): string[] {
   return unique([
     ...pack.reusable_principles,
@@ -131,76 +122,6 @@ function blocked(
       reason,
       ...extra,
     },
-  };
-}
-
-async function verifyStylePackProvenance(input: {
-  repoRoot: string;
-  pack: ReferenceStylePackRecord;
-}): Promise<{
-  issue?: string;
-  supplementProvenanceRefs: ReferenceSupplementProvenanceTrace[];
-}> {
-  const { repoRoot, pack } = input;
-  const benchmarks = await Promise.all(
-    pack.source_benchmark_ids.map(benchmarkId =>
-      getBenchmarkCard({ repoRoot, benchmarkId })),
-  );
-  const benchmarkReferenceIds = unique(
-    benchmarks.flatMap(benchmark => benchmark.reference_ids),
-  );
-  const benchmarkAnalysisIds = unique(
-    benchmarks.flatMap(benchmark => benchmark.analysis_ids),
-  );
-  if (!sameMembers(pack.source_reference_ids, benchmarkReferenceIds)) {
-    return {
-      issue: 'style pack source_reference_ids do not match its approved benchmark cards',
-      supplementProvenanceRefs: [],
-    };
-  }
-  if (!sameMembers(pack.source_analysis_ids, benchmarkAnalysisIds)) {
-    return {
-      issue: 'style pack source_analysis_ids do not match its approved benchmark cards',
-      supplementProvenanceRefs: [],
-    };
-  }
-
-  const analyses = await Promise.all(
-    pack.source_analysis_ids.map(analysisId =>
-      getReferenceAnalysis({ repoRoot, analysisId })),
-  );
-  if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
-    return {
-      issue: 'every source analysis must remain approved at generation time',
-      supplementProvenanceRefs: [],
-    };
-  }
-  if (analyses.some(
-    analysis => !pack.source_reference_ids.includes(analysis.reference_id),
-  )) {
-    return {
-      issue: 'a source analysis points outside the style pack reference set',
-      supplementProvenanceRefs: [],
-    };
-  }
-  const provenance = await Promise.all(
-    analyses
-      .filter(analysis => (
-        analysis.analysis_type === 'text'
-        && analysis.schema_version === 'reference-analysis-record/v2'
-      ))
-      .map(analysis => verifyReferenceTextAnalysisCompositionProvenance({
-        repoRoot,
-        analysisId: analysis.analysis_id,
-      })),
-  );
-  await Promise.all(
-    pack.source_reference_ids.map(referenceId =>
-      getReferenceSource({ repoRoot, referenceId })),
-  );
-  return {
-    supplementProvenanceRefs: provenance.flatMap(item =>
-      item.supplement_provenance ? [item.supplement_provenance] : []),
   };
 }
 
@@ -261,6 +182,7 @@ export async function resolveReferenceGenerationContext(input: {
       pack = await getReferenceStylePack({
         repoRoot: input.repoRoot,
         stylePackId,
+        verifyProvenance: false,
       });
     } catch (error) {
       return blocked(
@@ -296,18 +218,10 @@ export async function resolveReferenceGenerationContext(input: {
     }
 
     try {
-      const provenance = await verifyStylePackProvenance({
+      const provenance = await verifyReferenceStylePackProvenance({
         repoRoot: input.repoRoot,
         pack,
       });
-      if (provenance.issue) {
-        return blocked(
-          requestedStylePackIds,
-          'style_pack_provenance_invalid',
-          provenance.issue,
-          { style_pack_id: stylePackId },
-        );
-      }
       const sourceReferences = await Promise.all(
         pack.source_reference_ids.map(async (referenceId) => {
           const source = await getReferenceSource({

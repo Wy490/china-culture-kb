@@ -861,6 +861,20 @@ describe('reference text analysis draft task', () => {
     expect(rejectedBenchmarkList.body.error.code).toBe(
       'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
     );
+    const rejectedStylePackDetail = await request.get(
+      `/api/reference-library/style-packs/${stylePack.body.data.id}`,
+    );
+    expect(rejectedStylePackDetail.status).toBe(400);
+    expect(rejectedStylePackDetail.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
+    const rejectedStylePackList = await request.get(
+      '/api/reference-library/style-packs',
+    );
+    expect(rejectedStylePackList.status).toBe(400);
+    expect(rejectedStylePackList.body.error.code).toBe(
+      'REFERENCE_TEXT_ANALYSIS_SUPPLEMENT_INTEGRITY_INVALID',
+    );
     const rejectedBenchmark = await request
       .post('/api/reference-library/benchmark-cards')
       .send(benchmarkRequest);

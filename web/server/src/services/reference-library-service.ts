@@ -26,6 +26,7 @@ import type {
   ReferenceSourceRecord,
   ReferenceSimilarityEvidenceRecord,
   ReferenceStylePackRecord,
+  ReferenceSupplementProvenanceTrace,
   TextReferenceAnalysis,
   TextReferenceAnalysisRecord,
 } from '@shared/types.js';
@@ -105,6 +106,11 @@ function validateRecordId(input: {
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
+}
+
+function sameMembers(left: string[], right: string[]): boolean {
+  return left.length === right.length
+    && left.every(value => right.includes(value));
 }
 
 async function atomicWriteJson(filePath: string, value: unknown): Promise<void> {
@@ -191,22 +197,24 @@ async function readSimilarityEvidenceFile(
 async function verifyEvidenceBoundTextAnalysisProvenance(
   repoRoot: string,
   analyses: ReferenceAnalysisRecord[],
-): Promise<void> {
+): Promise<ReferenceSupplementProvenanceTrace[]> {
   const evidenceBoundAnalysisIds = analyses
     .filter(analysis => (
       analysis.analysis_type === 'text'
       && analysis.schema_version === 'reference-analysis-record/v2'
     ))
     .map(analysis => analysis.analysis_id);
-  if (evidenceBoundAnalysisIds.length === 0) return;
+  if (evidenceBoundAnalysisIds.length === 0) return [];
   const {
     verifyReferenceTextAnalysisCompositionProvenance,
   } = await import('./reference-text-analysis-draft-task-service.js');
-  await Promise.all(evidenceBoundAnalysisIds.map(analysisId =>
+  const provenance = await Promise.all(evidenceBoundAnalysisIds.map(analysisId =>
     verifyReferenceTextAnalysisCompositionProvenance({
       repoRoot,
       analysisId,
     })));
+  return provenance.flatMap(item =>
+    item.supplement_provenance ? [item.supplement_provenance] : []);
 }
 
 async function readJsonFiles<T>(
@@ -838,9 +846,65 @@ export async function createReferenceStylePack(input: {
   return record;
 }
 
+export async function verifyReferenceStylePackProvenance(input: {
+  repoRoot: string;
+  pack: ReferenceStylePackRecord;
+}): Promise<{
+  supplementProvenanceRefs: ReferenceSupplementProvenanceTrace[];
+}> {
+  const benchmarks = await Promise.all(
+    input.pack.source_benchmark_ids.map(benchmarkId =>
+      getBenchmarkCard({ repoRoot: input.repoRoot, benchmarkId })),
+  );
+  const benchmarkReferenceIds = unique(
+    benchmarks.flatMap(benchmark => benchmark.reference_ids),
+  );
+  const benchmarkAnalysisIds = unique(
+    benchmarks.flatMap(benchmark => benchmark.analysis_ids),
+  );
+  if (!sameMembers(input.pack.source_reference_ids, benchmarkReferenceIds)) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_STYLE_PACK_PROVENANCE_INVALID',
+      'Style pack source_reference_ids do not match its approved benchmark cards',
+    );
+  }
+  if (!sameMembers(input.pack.source_analysis_ids, benchmarkAnalysisIds)) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_STYLE_PACK_PROVENANCE_INVALID',
+      'Style pack source_analysis_ids do not match its approved benchmark cards',
+    );
+  }
+  const analyses = await Promise.all(
+    input.pack.source_analysis_ids.map(analysisId =>
+      getReferenceAnalysis({ repoRoot: input.repoRoot, analysisId })),
+  );
+  if (analyses.some(analysis => analysis.approval.status !== 'approved')) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_ANALYSIS_APPROVAL_CONFLICT',
+      'Every source analysis must remain approved when the style pack is read',
+    );
+  }
+  if (analyses.some(
+    analysis => !input.pack.source_reference_ids.includes(analysis.reference_id),
+  )) {
+    throw new ReferenceLibraryError(
+      'REFERENCE_STYLE_PACK_PROVENANCE_INVALID',
+      'A source analysis points outside the style pack reference set',
+    );
+  }
+  const supplementProvenanceRefs =
+    await verifyEvidenceBoundTextAnalysisProvenance(input.repoRoot, analyses);
+  await Promise.all(
+    input.pack.source_reference_ids.map(referenceId =>
+      getReferenceSource({ repoRoot: input.repoRoot, referenceId })),
+  );
+  return { supplementProvenanceRefs };
+}
+
 export async function getReferenceStylePack(input: {
   repoRoot: string;
   stylePackId: string;
+  verifyProvenance?: boolean;
 }): Promise<ReferenceStylePackRecord> {
   const stylePackId = validateRecordId({
     id: input.stylePackId,
@@ -849,9 +913,16 @@ export async function getReferenceStylePack(input: {
     label: 'Reference style pack',
   });
   try {
-    return await readReferenceStylePackFile(
+    const pack = await readReferenceStylePackFile(
       path.join(referenceStylePacksDirectory(input.repoRoot), `${stylePackId}.json`),
     );
+    if (input.verifyProvenance !== false) {
+      await verifyReferenceStylePackProvenance({
+        repoRoot: input.repoRoot,
+        pack,
+      });
+    }
+    return pack;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new ReferenceLibraryError(
@@ -870,6 +941,10 @@ export async function listReferenceStylePacks(input: {
     referenceStylePacksDirectory(input.repoRoot),
     readReferenceStylePackFile,
   );
+  await Promise.all(records.map(pack => verifyReferenceStylePackProvenance({
+    repoRoot: input.repoRoot,
+    pack,
+  })));
   return records.sort((left, right) =>
     right.created_at.localeCompare(left.created_at)
     || left.id.localeCompare(right.id));
