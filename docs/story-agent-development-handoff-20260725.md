@@ -1,4 +1,4 @@
-# Story Agent 开发交接：P1-C12 最终分块可恢复性 preflight 完成
+# Story Agent 开发交接：P1-C13 产品首页完成
 
 > 交接日期：2026-07-28
 >
@@ -68,11 +68,13 @@
 >
 > P1-C11 style-pack 读取 provenance preflight 提交：`4ed25423 feat(story-agent): verify style pack provenance`
 >
-> P1-C12 最终分块可恢复性 preflight 提交：本交接所在功能提交
+> P1-C12 最终分块可恢复性 preflight 提交：`fab5d6ec fix(story-agent): keep final analysis chunks retryable`
+>
+> P1-C13 产品首页提交：本交接所在功能提交
 >
 > 远端：用户已明确授权将当前相关分支全部推送到 GitHub；本交接提交与 push 完成后应与远端同步
 >
-> 当前工作区：P1-C12 功能、回归与交接将在同一提交完成；提交后应为干净
+> 当前工作区：P1-C13 功能、回归与交接将在同一提交完成；提交后应为干净
 >
 > 历史长交接：`docs/story-agent-development-handoff-20260724.md`
 
@@ -470,7 +472,7 @@ web/generated/story-agent-p0e2-reliability-matrix/reliability-report.json
 
 不要把 `persistent-lifecycle-report.json` 或 `playable-media-report.json` 当作当前目标证据；它们属于后来划出 Story Agent 范围的视频/后期实验。
 
-## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C12 当前状态与下一步
+## 6. P1-B2 至 P1-B18、P1-C1 至 P1-C13 当前状态与下一步
 
 P1-C12 的最后分块 requested-dimension 聚合 preflight 与完整隔离浏览器恢复链、P1-C11 的 style-pack 读取与共享 provenance 验证、P1-C10 的 benchmark 读取 preflight、P1-C9 的已批准详情读取 preflight、P1-C8 的批准前 provenance preflight 与 P1-C7 的下游 composition provenance 复核已经完成；P1-C6 的结构化补充与同一 draft task 恢复、P1-B12 至 P1-B18 的 immutable receipt、bundle、descriptor、registry/composition 与 preflight 也已完成，不要重做。
 
@@ -2511,7 +2513,31 @@ Web and MCP production build passed
 server/client full workspace lint and typecheck passed
 ```
 
-### 6.27 下一优先级
+### 6.27 P1-C13 Story Agent 产品首页（2026-07-28）
+
+根路由 `/` 已从通用功能卡片页升级为 Story Agent 正式产品入口，并继续使用现有真实 API
+读取素材与项目统计，不引入静态伪数据：
+
+- 主视觉明确“可信素材 → Story Blueprint → 专业剧本 → 场景/GEARS → 视觉资产 →
+  Seedance 交付”的六阶段链路；
+- 显式标注“完整前置制作包，不虚构成片结果”，保持固定产品止点；
+- 保留 15 类型、素材库统计、项目统计和最近项目动态数据；
+- 提供单片短片、项目指挥、文化素材、漫剧系列与 Agent 运行记录入口；
+- 增加结构先于文风、证据边界清晰、执行过程可恢复三条生产纪律；
+- 使用暖纸色、朱砂、墨绿的中国文化视觉语言，并覆盖桌面、平板、移动端与
+  `prefers-reduced-motion`；
+- 现有 visible-copy 合同继续成立，入口标准命名仍为“单片短片”和“漫剧系列”。
+
+验证结果：
+
+```text
+client production build passed
+client vue-tsc / lint passed
+visible copy audit passed
+git diff --check passed
+```
+
+### 6.28 下一优先级
 
 P1-C12 后本地可验证的补充 provenance、独立批准入口、来源/benchmark/style-pack 读取、generation-time 复核与文字执行最后分块可恢复性闭环已经完成。下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
 
