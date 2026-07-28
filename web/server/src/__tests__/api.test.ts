@@ -3890,7 +3890,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('Domain pack expansion candidates');
       expect(res.body.data.markdown).toContain('Story Agent command surface: ready · 100%');
       expect(res.body.data.markdown).toContain('Delivery contract');
-    });
+    }, 30_000);
 
     it('does not count local callback URLs as real external GEARS callback readiness', async () => {
       const previous = {
@@ -3948,7 +3948,7 @@ describe('System API', () => {
         if (previous.appBaseUrl === undefined) delete process.env.APP_BASE_URL;
         else process.env.APP_BASE_URL = previous.appBaseUrl;
       }
-    });
+    }, 30_000);
 
     it('preserves the legacy type catalog through explicit china_culture routing', async () => {
       const legacyRes = await request.get('/api/system/types');
@@ -5999,7 +5999,7 @@ describe('System API', () => {
         if (previous.callbackBaseUrl === undefined) delete process.env.GEARS_CALLBACK_BASE_URL;
         else process.env.GEARS_CALLBACK_BASE_URL = previous.callbackBaseUrl;
       }
-    });
+    }, 30_000);
   });
 
   describe('GET /api/system/gears-execution-worker-evidence-signoff', () => {

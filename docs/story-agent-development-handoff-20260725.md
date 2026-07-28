@@ -2613,6 +2613,11 @@ git diff --check passed
   `attempt_history_unavailable` diagnosis，而不是错误地把 diagnosis 与
   `attempt_audit_readiness.status=uninitialized` 绑定。账本 `ready` 与当前历史不足以
   确认“未发起”可以同时成立。
+- 首次修复提交触发的远端 CI 已能越过 provenance 预检，但 GitHub 较慢的全量环境使
+  3 个重型 API 集成测试超过 Vitest 默认 5 秒；超时请求尚在清理环境变量时后续测试
+  已启动，继而产生 GEARS config 与 callback auth 的级联假失败；
+- 只为这 3 个已知重型聚合端点测试设置 30 秒测试预算；业务请求超时、断言、鉴权和
+  fail-closed 逻辑均未放宽。使用 GitHub 同口径 `CI=true` 的服务端全量回归已完整通过。
 
 6 条图片运行核查结论：
 
@@ -2643,6 +2648,7 @@ Professional text capability/progress contract check passed
 Story Agent governance checkpoint/dry-run check passed
 server full run 1: 183 passed / 1 skipped; 1527 passed / 2 skipped; 110.90s
 server full run 2: 183 passed / 1 skipped; 1527 passed / 2 skipped; 109.95s
+server full CI=true: 183 passed / 1 skipped; 1527 passed / 2 skipped; 112.54s
 manifest-preflight targeted Playwright: 1/1 passed
 Track A Playwright: 11/11 passed
 MCP full: 97 files / 511 tests
