@@ -2627,6 +2627,13 @@ git diff --check passed
 - 第三次远端 CI 已把失败收敛到另一个独立 benchmark-run fixture；它同样直接复制了
   开发机 strict bridge 绝对锚点。该 fixture 也改为运行时绑定当前 checkout，定向
   `CI=true` 回归 37/37 通过。
+- 第四次远端 CI 已确认服务端全量 Vitest 在 GitHub Ubuntu 完整通过；随后 Track A
+  浏览器回归的受保护接口统一返回 503。根因是 Playwright 把 required-access 审计
+  文件硬编码到 macOS `/private/tmp`，服务端在 Ubuntu 上按 fail-closed 规则拒绝
+  不可写审计路径；
+- Playwright 现使用 Node `tmpdir()` 解析当前平台临时目录，并按测试进程隔离审计
+  JSONL。访问控制策略、审计必需条件和 503 fail-closed 行为均未放宽；与 CI 同口径
+  `CI=true` 的 Track A 本地完整回归 11/11 通过。
 
 6 条图片运行核查结论：
 
@@ -2662,7 +2669,7 @@ server full CI=true after cross-platform fixes: 183 passed / 1 skipped; 1527 pas
 CI-focused cross-platform regression: 4 files / 53 tests passed
 benchmark-run cross-platform regression: 1 file / 37 tests passed
 manifest-preflight targeted Playwright: 1/1 passed
-Track A Playwright: 11/11 passed
+Track A Playwright (CI=true after portable audit-path fix): 11/11 passed
 MCP full: 97 files / 511 tests
 MCP production build passed
 knowledge base lint: 34 files / 262 entries passed

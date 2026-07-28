@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os'
+import { resolve } from 'node:path'
 import { defineConfig, devices } from 'playwright/test'
 import { PLAYWRIGHT_ACCESS_REGISTRY_JSON } from './e2e/product-access-fixtures'
 
@@ -14,6 +16,10 @@ function resolvePort(name: string, fallback: number): number {
 const clientPort = resolvePort('STORY_AGENT_E2E_CLIENT_PORT', 5173)
 const serverPort = resolvePort('STORY_AGENT_E2E_SERVER_PORT', 3000)
 const baseURL = `http://localhost:${clientPort}`
+const accessAuditPath = resolve(
+  tmpdir(),
+  `story-agent-track-a-access-audit-${process.pid}.jsonl`,
+)
 
 export default defineConfig({
   testDir: './e2e',
@@ -47,7 +53,7 @@ export default defineConfig({
       STORY_AGENT_ACCESS_MODE: 'required',
       STORY_AGENT_ACCESS_REGISTRY_JSON: PLAYWRIGHT_ACCESS_REGISTRY_JSON,
       STORY_AGENT_ACCESS_AUDIT_REQUIRED: 'true',
-      STORY_AGENT_ACCESS_AUDIT_JSONL: '/private/tmp/story-agent-track-a-access-audit.jsonl',
+      STORY_AGENT_ACCESS_AUDIT_JSONL: accessAuditPath,
       STORY_AGENT_ACCESS_AUDIT_ROTATION_MODE: 'size_external_retention',
       STORY_AGENT_ACCESS_AUDIT_MAX_BYTES: '10485760',
       STORY_AGENT_ACCESS_AUDIT_RETENTION_DAYS: '30',
