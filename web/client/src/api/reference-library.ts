@@ -7,6 +7,11 @@ import type {
   ReferenceAnalysisTaskRecord,
   ReferenceAnalysisTaskSubmissionResult,
   ReferenceLibraryDetail,
+  ReferencePrivateVideoAuthorization,
+  ReferencePrivateVideoMediaType,
+  ReferencePrivateVideoSampleIngestResult,
+  ReferencePrivateVideoSampleRecord,
+  ReferencePrivateVideoTranscriptSubmissionResult,
   ReferenceSimilarityAuthorization,
   ReferenceSimilarityDimension,
   ReferenceSimilarityEvidenceObservations,
@@ -55,6 +60,30 @@ export interface CreateReferenceTextMaterialRequest {
 export interface CreateReferenceTextMaterialResult {
   material: ReferenceTextMaterialRecord
   idempotent_replay: boolean
+}
+
+export interface CreateReferencePrivateVideoSampleRequest {
+  title: string
+  media_type: ReferencePrivateVideoMediaType
+  local_video_path: string
+  rights_status: ReferencePrivateVideoAuthorization['basis']
+  access_scope: 'excerpt' | 'full_user_supplied'
+  user_reason: string
+  authorization: Omit<ReferencePrivateVideoAuthorization, 'machine_verified'>
+  thumbnail_time_seconds?: number
+  extract_thumbnail?: boolean
+  extract_audio_wav?: boolean
+}
+
+export interface SubmitReferencePrivateVideoTranscriptRequest {
+  transcript_text: string
+  transcript_format: 'text/plain' | 'text/srt' | 'text/vtt'
+  transcribed_by: string
+  transcribed_at: string
+  method: 'local_manual' | 'local_model'
+  tool_name?: string
+  tool_version?: string
+  confirmation: 'local_private_transcription_only'
 }
 
 export interface CreateReferenceTextAnalysisExecutionRequest {
@@ -181,6 +210,31 @@ export function createReferenceTextMaterial(
 ) {
   return apiPost<CreateReferenceTextMaterialResult>(
     `/reference-library/references/${encodeURIComponent(referenceId)}/text-material`,
+    request,
+  )
+}
+
+export function createReferencePrivateVideoSample(
+  request: CreateReferencePrivateVideoSampleRequest,
+) {
+  return apiPost<ReferencePrivateVideoSampleIngestResult>(
+    '/reference-library/private-video-samples',
+    request,
+  )
+}
+
+export function getReferencePrivateVideoSample(sampleId: string) {
+  return apiGet<ReferencePrivateVideoSampleRecord>(
+    `/reference-library/private-video-samples/${encodeURIComponent(sampleId)}`,
+  )
+}
+
+export function submitReferencePrivateVideoTranscript(
+  sampleId: string,
+  request: SubmitReferencePrivateVideoTranscriptRequest,
+) {
+  return apiPost<ReferencePrivateVideoTranscriptSubmissionResult>(
+    `/reference-library/private-video-samples/${encodeURIComponent(sampleId)}/transcript`,
     request,
   )
 }

@@ -2,15 +2,16 @@
   <main class="reference-workbench">
     <header class="hero">
       <div>
-        <p class="eyebrow">Reference Library · P1-C6</p>
+        <p class="eyebrow">Reference Library · P1-D6</p>
         <h1>参考资料分析任务台</h1>
         <p class="hero__summary">
-          为已登记、已指纹绑定的合法参考资料创建来源绑定任务，并接收结构化分析 evidence。
+          为已登记、已指纹绑定的合法参考资料创建来源绑定任务，并接收本地私有视频样本 evidence。
         </p>
       </div>
       <div class="hero__truth-lock" data-testid="reference-truth-lock">
         <strong>边界锁</strong>
         <span>服务端不抓取来源 URL</span>
+        <span>原视频只走本机私有目录</span>
         <span>机器不核验授权真伪</span>
         <span>不授予真人评审或生产信用</span>
       </div>
@@ -20,8 +21,8 @@
       <article>
         <span class="boundary-grid__icon">01</span>
         <div>
-          <strong>只接收主动提供的文字</strong>
-          <p>小说/剧本可按精确指纹封存；影视材料仍为带外输入，本工作台不抓取 URL。</p>
+          <strong>只接收主动提供的材料</strong>
+          <p>小说/剧本可按精确指纹封存；影视样本只接收本机绝对路径，不抓取 URL。</p>
         </div>
       </article>
       <article>
@@ -44,6 +45,12 @@
     <p v-if="notice" class="notice notice--success" role="status">{{ notice }}</p>
 
     <ReferenceSourceIntake @created="handleSourceCreated" />
+
+    <ReferencePrivateVideoSampleWorkbench
+      :can-sign="canApproveAnalysis"
+      :actor-id="analysisActorId"
+      @created="handlePrivateVideoSampleCreated"
+    />
 
     <ReferenceCompositionWorkbench
       :sources="sources"
@@ -363,6 +370,7 @@ import type {
 import ReferenceAnalysisWorkbench from '@/components/reference-library/ReferenceAnalysisWorkbench.vue'
 import ReferenceBaselineWorkbench from '@/components/reference-library/ReferenceBaselineWorkbench.vue'
 import ReferenceCompositionWorkbench from '@/components/reference-library/ReferenceCompositionWorkbench.vue'
+import ReferencePrivateVideoSampleWorkbench from '@/components/reference-library/ReferencePrivateVideoSampleWorkbench.vue'
 import ReferenceSourceIntake from '@/components/reference-library/ReferenceSourceIntake.vue'
 import ReferenceTextAnalysisDraftWorkbench from '@/components/reference-library/ReferenceTextAnalysisDraftWorkbench.vue'
 import ReferenceTextAnalysisExecutionWorkbench from '@/components/reference-library/ReferenceTextAnalysisExecutionWorkbench.vue'
@@ -591,6 +599,10 @@ async function handleAnalysisChanged(): Promise<void> {
 async function handleTextMaterialSealed(): Promise<void> {
   notice.value = '授权文字材料已封存；此后新建的分析任务将绑定只读分块 manifest。'
   await loadSelectedSource(false)
+}
+
+function handlePrivateVideoSampleCreated(): void {
+  notice.value = '本地私有视频样本已封存；真实样本仍需独立授权与人工分析批准后才可进入后续对照。'
 }
 
 async function handleCreateTask(): Promise<void> {

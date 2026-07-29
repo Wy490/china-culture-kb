@@ -2788,13 +2788,46 @@ MCP build passed
 server lint/typecheck passed
 ```
 
-### 6.32 下一优先级
+### 6.32 P1-D6 本地私有视频样本 Web 工作台（2026-07-29）
+
+本轮把 P1-D1～D5 的本地私有视频样本能力接到 Reference Library 前端工作台，
+使 operator 在真实样本稍后到位时可以通过浏览器完成本机路径 ingest、状态读取与本地
+transcript 封存；页面本身不提供文件上传，不抓取 URL，不回显 transcript 正文。
+
+实现边界：
+
+- `web/client/src/api/reference-library.ts` 新增 private-video ingest / get / transcript 三个
+  API client 函数，复用 Web API canonical 合同；
+- 新增 `ReferencePrivateVideoSampleWorkbench.vue`，只接收本机绝对路径字符串，前端预检
+  URL / `file:` URI / 相对路径，后端仍执行最终 fail-closed 校验；
+- 工作台创建请求固定写入 `authorized_private_video_ingest`，`attested_by` 使用当前
+  material reviewer actor，提交前要求人工勾选本地私有封存确认；
+- 状态摘要只展示 sample id、ignored 私有相对路径、SHA-256、字节数、ffprobe/ffmpeg
+  派生物状态与 no-credit governance，不展示用户原始源路径；
+- transcript 表单固定写入 `local_private_transcription_only`，提交后清空编辑区，状态页
+  只展示 transcript id、格式、哈希、字节/行数和私有相对路径，不回显正文；
+- Reference Library 首页边界文案更新为 P1-D6，明确“原视频只走本机私有目录”、
+  “不上传第三方”与“不授予真人评审或生产信用”。
+
+验证结果：
+
+```text
+client lint/typecheck: passed
+client production build: passed
+client visible-copy audit: passed
+web workspace lint: server tsc + scripts tsc + client vue-tsc passed
+browser smoke (local dev, cultural_fact_reviewer preview): Reference Library rendered,
+  private video workbench present, local path input present, ingest button disabled before valid input,
+  no page-level alert
+```
+
+### 6.33 下一优先级
 
 P1-C15 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
 和 MCP command surface 已闭环；P1-D1～D5 的本地私有视频样本接入、ffprobe/ffmpeg
-派生证据、本地 transcript 封存、CLI/Web API/MCP 三入口和 no-credit 边界也已具备。
+派生证据、本地 transcript 封存、CLI/Web API/MCP/Web 工作台入口和 no-credit 边界也已具备。
 下一步优先等待用户合法提供真实视频样本并亲自确认授权，再通过本地 CLI、Web API 或
-MCP 运行真实样本 ingest，随后再进入 operator evidence、独立 analysis approval、
+MCP/Web 工作台运行真实样本 ingest，随后再进入 operator evidence、独立 analysis approval、
 benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用
 fixture 冒充真实验收。
 
