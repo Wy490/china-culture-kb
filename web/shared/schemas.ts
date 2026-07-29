@@ -1750,9 +1750,11 @@ export const StoryGenerateRequestSchema = z.object({
   },
   { message: 'truth_mode is not compatible with the selected video_type', path: ['truth_mode'] },
 ).refine(
-  (data) => !data.reference_baseline_story_id || (data.style_pack_ids?.length ?? 0) > 0,
+  (data) => !data.reference_baseline_story_id
+    || (data.style_pack_ids?.length ?? 0) > 0
+    || Boolean(data.reference_generation_recipe),
   {
-    message: 'reference_baseline_story_id requires at least one style_pack_id',
+    message: 'reference_baseline_story_id requires a style_pack_id or reference_generation_recipe',
     path: ['reference_baseline_story_id'],
   },
 ).refine(
@@ -1793,6 +1795,21 @@ export const ReferenceGenerationRecipeRecommendationRequestSchema = z.object({
     values => new Set(values).size === values.length,
     'material_features must be unique',
   ).optional(),
+}).strict();
+
+export const ReferenceRecipeComparisonDraftRequestSchema = z.object({
+  baseline_story_id: z.string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),
+  recipe_id: z.enum([
+    'feature_long_goal_payoff',
+    'feature_epoch_character_mosaic',
+    'feature_moral_pressure',
+    'promo_space_emotion',
+    'promo_mnemonic_reveal',
+    'promo_collective_montage',
+    'series_strategy_chapters',
+    'series_ritual_relationships',
+  ]),
 }).strict();
 
 export const ReferenceBaselineReplayDraftRequestSchema = z.object({

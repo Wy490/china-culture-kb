@@ -19,6 +19,7 @@ type ComparableStory = Pick<
   | 'client_type'
   | 'target_audience'
   | 'communication_goal'
+  | 'reference_generation_recipe'
   | 'reference_trace'
   | 'quality_report'
 >;
@@ -96,6 +97,9 @@ export function validateReferenceBaselineCompatibility(
     trace.application_status === 'external_prompt_injected'
   ))) {
     mismatches.push('baseline_reference_free');
+  }
+  if (baseline.reference_generation_recipe) {
+    mismatches.push('baseline_recipe_free');
   }
   return mismatches;
 }

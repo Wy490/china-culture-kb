@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`859007d5 feat(story-agent): persist generation recipe contracts`
+> 功能基线：`34d6c1ad feat(story-agent): recommend generation recipes`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -358,9 +358,28 @@ Story Studio 已增加“创作配方”选择器。应用配方会同步：
   明确 `generation_performed: false`、`recipe_applied: false`；
 - 推荐输入、结果和 UI 均不包含公开研究候选作品标题或内容。
 
-仍未完成：
+### 6.3 本轮完成：P1-E3 同输入配方效果对照
 
-- 还没有 reference-free / recipe-assisted 的同输入质量对照。
+创作配方现在可以在不需要真实参考视频的前提下执行严格同输入机器对照：
+
+- 以已持久化、带机器质量报告且无配方的故事作为 baseline；
+- 服务端生成 `reference-recipe-comparison-draft/v1`，draft 阶段不调用模型；
+- replay 请求只增加 canonical `reference-generation-recipe/v1` 和 baseline ID；
+- 正式生成前复验来源输入、模型、成片类型、表现形式、叙事结构、中心事件、时长、
+  创作合同和 baseline 无配方边界；
+- style pack 与 recipe comparison 必须二选一，禁止混合处理污染因果；
+- 生成后持久化 `story-recipe-effect-comparison/v1`；
+- 固定比较结构、因果、可视化程度、连续性和合同完整度五类机器指标；
+- 结果给出 baseline 分、recipe-assisted 分、delta、证据信号和机器 verdict；
+- verdict 只表示机器指标变化，不测真人偏好，不下法律结论，不授予 production credit；
+- Story Studio baseline 模式支持准备只读配方 replay draft；
+- StoryResult / 项目当前版本展示五维机器对照；
+- MCP 新增 `kb_prepare_story_recipe_comparison`，只准备 draft，不执行生成；
+- 最终生成仍统一走 `kb_story_agent_generate` / Web canonical pipeline，因此项目版本和
+  Story Agent run 继续保存请求与对照结果。
+
+P1-E1 / E2 / E3 配方路线图已完成。真实参考样本、人工偏好和生产验收仍受既有权利与
+人工证据边界约束。
 
 ## 7. 关键代码位置
 
@@ -386,6 +405,10 @@ web/server/src/__tests__/reference-generation-recipe-recommendation.test.ts
 
 配方推荐 MCP
 mcp-server/src/tools/story-agent-recipe-recommendations.ts
+
+配方同输入对照
+web/server/src/services/reference-recipe-effect-comparison-service.ts
+web/server/src/services/reference-baseline-replay-service.ts
 
 Reference Library 页面
 web/client/src/views/ReferenceLibrary.vue
@@ -500,6 +523,35 @@ Repository audit
   git diff --check passed
 ```
 
+P1-E3 新增验证：
+
+```text
+Targeted comparison / baseline / API
+  4 files / 11 tests passed, 236 unrelated API tests skipped
+
+Server full regression
+  187 files passed, 1 skipped
+  1553 tests passed, 2 skipped
+
+MCP full regression
+  101 files / 525 tests passed
+  TypeScript build passed
+
+Web lint / production build / visible-copy audit
+  all passed
+
+Browser smoke
+  existing recipe-free local-engine baseline loaded
+  compatible recipe adoption enabled replay draft preparation
+  draft returned no_generation_performed=true
+  final generation became available only after draft validation
+  final generation was not clicked
+  story project count remained 321; no smoke project persisted
+
+Repository audit
+  git diff --check passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
@@ -508,7 +560,7 @@ Repository audit
 branch: codex/story-agent-manifest-integrity-20260718
 functional baseline: 859007d5
 handoff HEAD: run git log -1 --oneline
-remote: expected ahead 7 after the P1-E2 local commit
+remote: expected ahead 8 after the P1-E3 local commit
 worktree: clean
 push: not performed
 ```
@@ -538,18 +590,13 @@ npm run dev
 
 ## 10. 下一开发优先级
 
-### P1-E3 配方效果对照
+P1-E1 / E2 / E3 已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产
+验收。下一轮可按产品需要选择：
 
-在不需要真实参考视频的前提下，用相同主题运行：
-
-```text
-reference-free
-vs.
-recipe-assisted
-```
-
-只比较机器可验证的结构、可视化程度、因果、连续性和合同完整度，不记真人偏好或
-production credit。
+- 为配方对照增加组合筛选、历史列表和机器指标趋势；
+- 扩展更多成片类型的 canonical 配方；
+- 继续 Story Agent 其他产品 backlog；
+- 等待用户提供合法真实样本后进入人工分析链。
 
 ### 真实样本到位后
 
@@ -584,8 +631,8 @@ git diff --check
 git status --short --branch
 ```
 
-完成 P1-E3 里程碑后，再运行受影响的 comparison、generation、project persistence、
-API 与 MCP 测试；不要每次小改都重复整套全量 CI。
+后续修改配方路线时，运行受影响的 recommendation、comparison、generation、
+project persistence、API 与 MCP 测试；不要每次小改都重复整套全量 CI。
 
 ## 12. 可复制到下一对话的启动指令
 
@@ -622,10 +669,12 @@ project version / story-agent-run / result provenance、Web/MCP 和旧项目兼�
 P1-E2 已完成：服务端 canonical 确定性推荐、1～3 个兼容配方、解释原因、可拒绝与
 手动切换、机构/事实型材料不足返回零建议、Story Studio 和 MCP bridge 均已闭环。
 
-下一优先级是 P1-E3：建立同输入 reference-free / recipe-assisted 对照运行与机器可验证
-比较合同，只比较结构、可视化程度、因果、连续性和合同完整度；不得把机器对照冒充
-真人偏好、法律结论或 production credit。先写 comparison contract、同输入约束与
-fail-closed 测试，再实现 canonical 服务、持久化账本和 Web/MCP 只读结果。
+P1-E3 已完成：无配方 baseline、canonical 配方 replay draft、正式生成前 same-input
+复验、五维机器 comparison、Story Studio / StoryResult / 项目持久化和 MCP draft
+入口均已闭环；机器 verdict 不等于真人偏好、法律结论或 production credit。
+
+P1-E1 / E2 / E3 路线图完成。下一步必须根据新的产品优先级推进；没有用户真实合法
+样本时，不得伪造后续 reference analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

@@ -27,6 +27,15 @@ type MaterialFeature =
   | 'ritual_or_relationship_material'
   | 'rhythmic_short_scene_material'
   | 'limited_or_unverified_material';
+export type ReferenceGenerationRecipeId =
+  | 'feature_long_goal_payoff'
+  | 'feature_epoch_character_mosaic'
+  | 'feature_moral_pressure'
+  | 'promo_space_emotion'
+  | 'promo_mnemonic_reveal'
+  | 'promo_collective_montage'
+  | 'series_strategy_chapters'
+  | 'series_ritual_relationships';
 
 export interface StoryAgentRecipeRecommendationInput {
   creation_path: CreationPath;
@@ -62,6 +71,25 @@ export interface StoryAgentRecipeRecommendationBridgeMetadata {
 
 export type StoryAgentRecipeRecommendationToolResult = StoryAgentApiEnvelope & {
   mcp_bridge: StoryAgentRecipeRecommendationBridgeMetadata;
+};
+
+export interface StoryAgentRecipeComparisonDraftInput {
+  baseline_story_id: string;
+  recipe_id: ReferenceGenerationRecipeId;
+}
+
+export type StoryAgentRecipeComparisonDraftToolResult = StoryAgentApiEnvelope & {
+  mcp_bridge: {
+    schema_version: 'mcp-story-agent-recipe-comparison-draft/v1';
+    canonical_tool: 'kb_prepare_story_recipe_comparison';
+    canonical_service: true;
+    application_endpoint: string;
+    authoritative_request_schema: 'ReferenceRecipeComparisonDraftRequestSchema';
+    generation_performed: false;
+    same_input_server_revalidation_required: true;
+    machine_comparison_only: true;
+    production_credit_granted: false;
+  };
 };
 
 function storyAgentBaseUrl(): string {
@@ -143,6 +171,42 @@ export async function recommendStoryAgentRecipes(
       recommendation_only: true,
       generation_performed: false,
       recipe_applied: false,
+    },
+  };
+}
+
+export async function prepareStoryAgentRecipeComparison(
+  input: StoryAgentRecipeComparisonDraftInput,
+): Promise<StoryAgentRecipeComparisonDraftToolResult> {
+  const applicationEndpoint = `${storyAgentBaseUrl()}/api/stories/reference-generation-recipe-comparison-drafts`;
+  const response = await fetch(applicationEndpoint, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...accessTokenHeader(),
+    },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const envelope = await readApiEnvelope(response);
+  if (!response.ok || !envelope.ok) {
+    const code = envelope.error?.code?.trim() || 'STORY_AGENT_RECIPE_COMPARISON_DRAFT_FAILED';
+    const message = envelope.error?.message?.trim()
+      || `Story Agent application service 对照草案失败（HTTP ${response.status}）`;
+    throw new Error(`${code}: ${message}`);
+  }
+  return {
+    ...envelope,
+    mcp_bridge: {
+      schema_version: 'mcp-story-agent-recipe-comparison-draft/v1',
+      canonical_tool: 'kb_prepare_story_recipe_comparison',
+      canonical_service: true,
+      application_endpoint: applicationEndpoint,
+      authoritative_request_schema: 'ReferenceRecipeComparisonDraftRequestSchema',
+      generation_performed: false,
+      same_input_server_revalidation_required: true,
+      machine_comparison_only: true,
+      production_credit_granted: false,
     },
   };
 }

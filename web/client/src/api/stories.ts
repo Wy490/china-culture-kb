@@ -90,6 +90,8 @@ import type {
   ReferenceBaselineReplayDraftRequest,
   ReferenceGenerationRecipeRecommendationRequest,
   ReferenceGenerationRecipeRecommendationResult,
+  ReferenceRecipeComparisonDraft,
+  ReferenceRecipeComparisonDraftRequest,
   ReferenceStylePackCatalogItem,
 } from '@shared/types'
 
@@ -117,6 +119,15 @@ export function recommendReferenceGenerationRecipes(
 ) {
   return apiPost<ReferenceGenerationRecipeRecommendationResult>(
     '/stories/reference-generation-recipe-recommendations',
+    req,
+  )
+}
+
+export function createReferenceRecipeComparisonDraft(
+  req: ReferenceRecipeComparisonDraftRequest,
+) {
+  return apiPost<ReferenceRecipeComparisonDraft>(
+    '/stories/reference-generation-recipe-comparison-drafts',
     req,
   )
 }

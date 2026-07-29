@@ -62,6 +62,49 @@
       </div>
     </section>
 
+    <section v-if="result.recipe_effect_comparison" class="story-result__section">
+      <h3 class="story-result__section-title">创作配方同输入机器对照</h3>
+      <div class="story-result__reference-audit" data-testid="recipe-effect-comparison">
+        <div class="story-result__baseline-score">
+          <article>
+            <span>无配方 Baseline</span>
+            <strong>{{ formatReferenceScore(result.recipe_effect_comparison.baseline_machine_score) }}</strong>
+          </article>
+          <article>
+            <span>配方辅助</span>
+            <strong>{{ formatReferenceScore(result.recipe_effect_comparison.recipe_assisted_machine_score) }}</strong>
+          </article>
+          <article>
+            <span>Aggregate Delta</span>
+            <strong :class="referenceDeltaClass(result.recipe_effect_comparison.aggregate_delta)">
+              {{ formatReferenceDelta(result.recipe_effect_comparison.aggregate_delta) }}
+            </strong>
+          </article>
+          <article>
+            <span>机器结论</span>
+            <strong>{{ recipeEffectVerdictLabel(result.recipe_effect_comparison.machine_verdict) }}</strong>
+          </article>
+        </div>
+        <dl class="story-result__baseline-comparison">
+          <div
+            v-for="dimension in result.recipe_effect_comparison.dimensions"
+            :key="dimension.dimension"
+          >
+            <dt>{{ recipeEffectDimensionLabel(dimension.dimension) }}</dt>
+            <dd>
+              {{ formatReferenceScore(dimension.baseline_score) }}
+              → {{ formatReferenceScore(dimension.recipe_assisted_score) }}
+              · {{ formatReferenceDelta(dimension.delta) }}
+            </dd>
+          </div>
+        </dl>
+        <p class="story-result__reference-boundary">
+          same_input_verified = true · machine_comparison_only = true ·
+          human_preference_measured = false · production_credit_granted = false
+        </p>
+      </div>
+    </section>
+
     <section v-if="result.reference_safety_report" class="story-result__section">
       <h3 class="story-result__section-title">Reference 安全与 Baseline 对照</h3>
       <div class="story-result__reference-audit">
@@ -126,6 +169,9 @@
             comparison_credit_granted = false
           </p>
         </div>
+        <p v-else-if="result.recipe_effect_comparison" class="story-result__reference-boundary">
+          本次运行使用创作配方机器对照；Approved Style Pack baseline comparison 未运行。
+        </p>
         <p v-else class="story-result__reference-boundary">
           Baseline comparison 未运行；单次机器生成不会自动获得对照或人工信用。
         </p>
@@ -888,6 +934,8 @@ import type {
   StoryQualityGateStatus,
   StoryMachineReviewStatus,
   StoryReferenceBaselineQualityDimension,
+  StoryRecipeEffectDimensionId,
+  StoryRecipeEffectComparison,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
 import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
@@ -1127,6 +1175,27 @@ function referenceDimensionLabel(
     family_quality_checks: '类型族检查',
     story_publishable: '故事可发布',
   }[dimension]
+}
+
+function recipeEffectDimensionLabel(dimension: StoryRecipeEffectDimensionId): string {
+  return {
+    structure: '结构',
+    causality: '因果',
+    visualization: '可视化程度',
+    continuity: '连续性',
+    contract_completeness: '合同完整度',
+  }[dimension]
+}
+
+function recipeEffectVerdictLabel(
+  verdict: StoryRecipeEffectComparison['machine_verdict'],
+): string {
+  return {
+    improved: '机器指标提升',
+    mixed: '指标有升有降',
+    no_material_change: '无显著变化',
+    regressed: '机器指标回退',
+  }[verdict]
 }
 
 const fullTextParagraphs = computed(() => {

@@ -14290,6 +14290,59 @@ export interface ReferenceBaselineReplayDraft {
   real_credit_granted: false;
 }
 
+export interface ReferenceRecipeComparisonDraftRequest {
+  baseline_story_id: string;
+  recipe_id: ReferenceGenerationRecipeId;
+}
+
+export interface ReferenceRecipeComparisonDraft {
+  schema_version: 'reference-recipe-comparison-draft/v1';
+  baseline_story_id: string;
+  recipe: ReferenceGenerationRecipeContract;
+  generation_request: StoryGenerateRequest;
+  baseline_summary: ReferenceBaselineReplayDraft['baseline_summary'];
+  no_generation_performed: true;
+  same_input_server_revalidation_required: true;
+  machine_comparison_only: true;
+  human_preference_measured: false;
+  production_credit_granted: false;
+}
+
+export type StoryRecipeEffectDimensionId =
+  | 'structure'
+  | 'causality'
+  | 'visualization'
+  | 'continuity'
+  | 'contract_completeness';
+
+export interface StoryRecipeEffectQualityDimension {
+  dimension: StoryRecipeEffectDimensionId;
+  baseline_score: number;
+  recipe_assisted_score: number;
+  delta: number;
+  evidence: string[];
+}
+
+export interface StoryRecipeEffectComparison {
+  schema_version: 'story-recipe-effect-comparison/v1';
+  status: 'completed';
+  baseline_story_id: string;
+  recipe_assisted_story_id: string;
+  recipe: ReferenceGenerationRecipeContract;
+  baseline_machine_score: number;
+  recipe_assisted_machine_score: number;
+  aggregate_delta: number;
+  dimensions: StoryRecipeEffectQualityDimension[];
+  machine_verdict: 'improved' | 'mixed' | 'no_material_change' | 'regressed';
+  boundary: {
+    same_input_verified: true;
+    machine_comparison_only: true;
+    human_preference_measured: false;
+    legal_conclusion_reached: false;
+    production_credit_granted: false;
+  };
+}
+
 export interface ReferenceGenerationSafetyReport {
   schema_version: 'story-reference-generation-safety/v1';
   status: 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';
@@ -14342,6 +14395,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   effective_engine?: 'local_story_engine' | 'external_model' | 'local_fallback';
   external_model_call_performed?: boolean;
   model_execution_evidence?: 'local_only' | 'live_external_command' | 'record_replay_fixture';
+  recipe_effect_comparison?: StoryRecipeEffectComparison;
   generation_reason?: string;
   generation_source?: string;
   generation_mode?: GenerationMode;

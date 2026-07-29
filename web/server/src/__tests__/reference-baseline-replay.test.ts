@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StoryGenerateResult } from '@shared/types.js';
 import {
   buildReferenceBaselineReplayRequest,
+  buildReferenceRecipeComparisonReplayRequest,
   validateReferenceBaselineReplaySource,
 } from '../services/reference-baseline-replay-service.js';
 
@@ -111,5 +112,29 @@ describe('reference baseline replay', () => {
         source_story_structure: 'three_act_drama',
       }],
     }))).toThrowError('reference_free');
+  });
+
+  it('builds a recipe-only replay and rejects an already recipe-assisted baseline', () => {
+    const request = buildReferenceRecipeComparisonReplayRequest({
+      baseline: baselineStory(),
+      recipeId: 'feature_moral_pressure',
+      sourceMode: 'knowledge_entry',
+    });
+
+    expect(request).toMatchObject({
+      entry_name: '周敦颐——理学开山鼻祖',
+      video_type: 'historical_drama',
+      presentation_style: 'cinematic',
+      reference_baseline_story_id: '20260725-story-baseline-01',
+      reference_generation_recipe: {
+        schema_version: 'reference-generation-recipe/v1',
+        recipe_id: 'feature_moral_pressure',
+      },
+    });
+    expect(request.style_pack_ids).toBeUndefined();
+
+    expect(() => validateReferenceBaselineReplaySource(baselineStory({
+      reference_generation_recipe: request.reference_generation_recipe,
+    }))).toThrowError('recipe_free');
   });
 });

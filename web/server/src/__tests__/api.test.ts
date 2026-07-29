@@ -1418,6 +1418,33 @@ describe('POST /api/stories/reference-generation-recipe-recommendations', () => 
   });
 });
 
+describe('POST /api/stories/reference-generation-recipe-comparison-drafts', () => {
+  it('fails closed when the persisted baseline is unavailable', async () => {
+    const response = await request
+      .post('/api/stories/reference-generation-recipe-comparison-drafts')
+      .send({
+        baseline_story_id: '20260730-story-missing01',
+        recipe_id: 'feature_long_goal_payoff',
+      });
+
+    expect(response.status).toBe(400);
+    expectFailure(response.body, 'VALIDATION_ERROR');
+    expect(response.body.error.message).toContain('unavailable');
+  });
+
+  it('validates the canonical recipe id before baseline lookup', async () => {
+    const response = await request
+      .post('/api/stories/reference-generation-recipe-comparison-drafts')
+      .send({
+        baseline_story_id: '20260730-story-missing01',
+        recipe_id: 'unknown-recipe',
+      });
+
+    expect(response.status).toBe(400);
+    expectFailure(response.body, 'VALIDATION_ERROR');
+  });
+});
+
 describe('GET /api/system/story-generation-capabilities', () => {
   it('returns the non-executing model availability and engine boundary contract', async () => {
     const res = await request.get('/api/system/story-generation-capabilities');

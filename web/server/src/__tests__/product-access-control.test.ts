@@ -1801,6 +1801,17 @@ describe('high-risk write isolation', () => {
       .send({});
     expect(creatorReplayDraft.status).toBe(400);
 
+    const researchRecipeComparison = await request
+      .post('/api/stories/reference-generation-recipe-comparison-drafts')
+      .set('authorization', bearer('research-secret'))
+      .send({});
+    expect(researchRecipeComparison.status).toBe(403);
+    const creatorRecipeComparison = await request
+      .post('/api/stories/reference-generation-recipe-comparison-drafts')
+      .set('authorization', bearer('creator-secret'))
+      .send({});
+    expect(creatorRecipeComparison.status).toBe(400);
+
     const researchStoryAgentRun = await request.post('/api/story-agent/runs')
       .set('authorization', bearer('research-secret'))
       .send({});

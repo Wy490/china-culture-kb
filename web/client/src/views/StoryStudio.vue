@@ -406,7 +406,7 @@
             Baseline 使用的模型 {{ baselineStory.model_profile_id }} 当前不可用；为保持同模型边界，最终生成已禁用。
           </p>
           <div class="story-studio__baseline-packs">
-            <strong>选择兼容的 Approved Style Pack</strong>
+            <strong>选择一种对照处理：Approved Style Pack 或下方创作配方</strong>
             <label v-for="pack in compatibleReferenceStylePacks" :key="pack.id">
               <input
                 v-model="selectedReferenceStylePackIds"
@@ -421,20 +421,20 @@
               </span>
             </label>
             <p v-if="compatibleReferenceStylePacks.length === 0">
-              当前没有同时兼容 baseline 成片类型、表现形式与故事结构的 approved style pack。
+              当前没有兼容的 approved style pack；仍可在下方采用兼容创作配方进行机器对照。
             </p>
           </div>
           <button
             type="button"
             class="btn btn--search"
-            :disabled="!selectedReferenceStylePackIds.length || preparingBaselineDraft || generating"
+            :disabled="(!selectedReferenceStylePackIds.length && !appliedReferenceGenerationRecipeId) || preparingBaselineDraft || generating"
             data-testid="prepare-reference-baseline-draft"
             @click="prepareBaselineDraft"
           >
             {{ preparingBaselineDraft ? '正在校验…' : '准备同输入 Replay Draft' }}
           </button>
           <p v-if="baselineDraft" class="story-studio__baseline-ready" role="status">
-            Draft 已就绪：未调用模型；最终生成仍将 fail closed 复验 baseline 与 style-pack provenance。
+            Draft 已就绪：未调用模型；最终生成仍将 fail closed 复验 same-input、baseline 与所选处理合同。
           </p>
         </template>
       </section>
@@ -832,6 +832,7 @@ import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   createReferenceBaselineReplayDraft,
+  createReferenceRecipeComparisonDraft,
   getReferenceStylePackCatalog,
   getStory,
   recommendReferenceGenerationRecipes,
@@ -879,6 +880,7 @@ import type {
   ReferenceGenerationRecipeMaterialFeature,
   ReferenceGenerationRecipeRecommendation,
   ReferenceGenerationRecipeRecommendationResult,
+  ReferenceRecipeComparisonDraft,
   ReferenceStylePackCatalogItem,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
@@ -1134,7 +1136,7 @@ const baselineStoryId = ref('')
 const baselineStory = ref<StoryGenerateResult | null>(null)
 const referenceStylePacks = ref<ReferenceStylePackCatalogItem[]>([])
 const selectedReferenceStylePackIds = ref<string[]>([])
-const baselineDraft = ref<ReferenceBaselineReplayDraft | null>(null)
+const baselineDraft = ref<ReferenceBaselineReplayDraft | ReferenceRecipeComparisonDraft | null>(null)
 const baselineLoading = ref(false)
 const baselineError = ref('')
 const preparingBaselineDraft = ref(false)
@@ -1684,14 +1686,25 @@ async function loadBaselineWorkflow(storyId: string): Promise<void> {
 }
 
 async function prepareBaselineDraft(): Promise<void> {
-  if (!baselineStoryId.value || !selectedReferenceStylePackIds.value.length) return
+  if (!baselineStoryId.value) return
+  const recipeId = appliedReferenceGenerationRecipeId.value
+  if (!recipeId && !selectedReferenceStylePackIds.value.length) return
+  if (recipeId && selectedReferenceStylePackIds.value.length) {
+    baselineError.value = '同一次对照只能选择一种处理：请保留创作配方或 Approved Style Pack。'
+    return
+  }
   preparingBaselineDraft.value = true
   baselineError.value = ''
   baselineDraft.value = null
-  const response = await createReferenceBaselineReplayDraft({
-    baseline_story_id: baselineStoryId.value,
-    style_pack_ids: [...selectedReferenceStylePackIds.value],
-  })
+  const response = recipeId
+    ? await createReferenceRecipeComparisonDraft({
+        baseline_story_id: baselineStoryId.value,
+        recipe_id: recipeId,
+      })
+    : await createReferenceBaselineReplayDraft({
+        baseline_story_id: baselineStoryId.value,
+        style_pack_ids: [...selectedReferenceStylePackIds.value],
+      })
   preparingBaselineDraft.value = false
   if (!response.ok || !response.data) {
     baselineError.value = response.error?.message ?? 'Replay draft 校验失败'
@@ -1779,6 +1792,7 @@ watch(selectedModelProfileId, (value) => {
 watch(selectedReferenceGenerationRecipeId, () => {
   appliedReferenceGenerationRecipeId.value = ''
   referenceRecipeMessage.value = ''
+  baselineDraft.value = null
 })
 
 watch(

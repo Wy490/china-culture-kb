@@ -189,15 +189,18 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const centralEvent = selectCentralEvent(entry, boldEvents, videoType, selected_event);
   let referenceBaselineStory;
   if (request.reference_baseline_story_id) {
-    if (!referenceGenerationResolution.context) {
+    if (
+      !referenceGenerationResolution.context
+      && !referenceGenerationRecipeResolution.context
+    ) {
       return {
         ok: false as const,
         code: ErrorCodes.VALIDATION_ERROR,
-        message: 'reference_baseline_story_id requires at least one applied style_pack_id',
+        message: 'reference_baseline_story_id requires an applied style pack or generation recipe',
         details: {
           schema_version: 'story-reference-baseline-gate/v1' as const,
           status: 'blocked' as const,
-          issue_code: 'reference_assisted_generation_required' as const,
+          issue_code: 'assisted_generation_required' as const,
           baseline_story_id: request.reference_baseline_story_id,
         },
       };

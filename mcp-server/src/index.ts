@@ -16,7 +16,10 @@ import { collect } from './tools/collect.js';
 import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
-import { recommendStoryAgentRecipes } from './tools/story-agent-recipe-recommendations.js';
+import {
+  prepareStoryAgentRecipeComparison,
+  recommendStoryAgentRecipes,
+} from './tools/story-agent-recipe-recommendations.js';
 import { exportStoryAgentPreproduction } from './tools/export-story-agent-preproduction.js';
 import {
   exportStoryAgentImageRequest,
@@ -346,6 +349,30 @@ server.tool(
   },
   async (input) => {
     const result = await recommendStoryAgentRecipes(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_prepare_story_recipe_comparison',
+  '为已持久化的无配方 baseline 准备同输入 recipe-assisted replay draft。只生成草案、不调用模型；正式生成仍由 canonical 服务复验同源、同模型、同类型、同表现和无配方 baseline。结果只用于机器指标对照。',
+  {
+    baseline_story_id: z.string()
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+      .describe('已持久化且带机器质量报告的无配方 baseline story ID'),
+    recipe_id: z.enum([
+      'feature_long_goal_payoff',
+      'feature_epoch_character_mosaic',
+      'feature_moral_pressure',
+      'promo_space_emotion',
+      'promo_mnemonic_reveal',
+      'promo_collective_montage',
+      'series_strategy_chapters',
+      'series_ritual_relationships',
+    ]).describe('与 baseline 成片类型和表现形式兼容的 canonical 配方 ID'),
+  },
+  async (input) => {
+    const result = await prepareStoryAgentRecipeComparison(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

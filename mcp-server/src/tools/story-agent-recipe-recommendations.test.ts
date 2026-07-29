@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { recommendStoryAgentRecipes } from './story-agent-recipe-recommendations.js';
+import {
+  prepareStoryAgentRecipeComparison,
+  recommendStoryAgentRecipes,
+} from './story-agent-recipe-recommendations.js';
 import type { StoryAgentRecipeRecommendationInput } from './story-agent-recipe-recommendations.js';
 
 const originalBaseUrl = process.env.STORY_AGENT_BASE_URL;
@@ -106,5 +109,45 @@ describe('recommendStoryAgentRecipes', () => {
       truth_mode: 'institutional_verified',
     })).rejects.toThrow('VALIDATION_ERROR: material_features must be unique');
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+});
+
+describe('prepareStoryAgentRecipeComparison', () => {
+  it('prepares a canonical no-generation replay draft', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999/';
+    const webEnvelope = {
+      ok: true,
+      data: {
+        schema_version: 'reference-recipe-comparison-draft/v1',
+        baseline_story_id: '20260730-story-baseline01',
+        no_generation_performed: true,
+      },
+      error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(webEnvelope), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = {
+      baseline_story_id: '20260730-story-baseline01',
+      recipe_id: 'feature_long_goal_payoff' as const,
+    };
+
+    const result = await prepareStoryAgentRecipeComparison(request);
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual(request);
+    expect(result.mcp_bridge).toEqual({
+      schema_version: 'mcp-story-agent-recipe-comparison-draft/v1',
+      canonical_tool: 'kb_prepare_story_recipe_comparison',
+      canonical_service: true,
+      application_endpoint:
+        'http://127.0.0.1:3999/api/stories/reference-generation-recipe-comparison-drafts',
+      authoritative_request_schema: 'ReferenceRecipeComparisonDraftRequestSchema',
+      generation_performed: false,
+      same_input_server_revalidation_required: true,
+      machine_comparison_only: true,
+      production_credit_granted: false,
+    });
   });
 });

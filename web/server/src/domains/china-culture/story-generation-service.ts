@@ -28,6 +28,7 @@ import {
   combineQualityReports,
   evaluateReferenceGenerationSafety,
 } from '../../services/reference-quality-service.js';
+import { buildStoryRecipeEffectComparison } from '../../services/reference-recipe-effect-comparison-service.js';
 
 export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {}
 
@@ -168,6 +169,15 @@ export async function generateAndStoreChinaCultureStory(
     baseline_story: preparation.referenceBaselineStory,
   });
   storyData.reference_safety_report = referenceSafety;
+  if (
+    preparation.referenceBaselineStory
+    && storyData.reference_generation_recipe
+  ) {
+    storyData.recipe_effect_comparison = buildStoryRecipeEffectComparison({
+      baseline: preparation.referenceBaselineStory,
+      recipeAssisted: storyData,
+    });
+  }
   if (storyData.quality_report) {
     storyData.quality_report = combineQualityReports(
       storyData.quality_report,

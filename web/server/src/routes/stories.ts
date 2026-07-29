@@ -6,6 +6,7 @@ import {
   GearsDeliveryUpdateRequestSchema,
   ReferenceBaselineReplayDraftRequestSchema,
   ReferenceGenerationRecipeRecommendationRequestSchema,
+  ReferenceRecipeComparisonDraftRequestSchema,
   StoryPlanRequestSchema,
   StoryGenerateRequestSchema,
   StoryIdParamSchema,
@@ -22,6 +23,7 @@ import {
 import type {
   ReferenceBaselineReplayDraftRequest,
   ReferenceGenerationRecipeRecommendationRequest,
+  ReferenceRecipeComparisonDraftRequest,
   StoryGenerateRequest,
   VideoType,
 } from '@shared/types.js';
@@ -37,7 +39,10 @@ import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 import { resolveStoryVideoType } from '../platform/story-generation-policy.js';
 import { runWithStoryGenerationAttemptAudit } from '../services/story-generation-attempt-audit-service.js';
 import { listReferenceStylePacks } from '../services/reference-library-service.js';
-import { createReferenceBaselineReplayDraft } from '../services/reference-baseline-replay-service.js';
+import {
+  createReferenceBaselineReplayDraft,
+  createReferenceRecipeComparisonDraft,
+} from '../services/reference-baseline-replay-service.js';
 import { recommendReferenceGenerationRecipes } from '../services/reference-generation-recipe-recommendation-service.js';
 import { storyRepositoryRoot } from '../platform/story-storage-root.js';
 
@@ -166,6 +171,23 @@ storiesRouter.post(
     try {
       const request = req.body as ReferenceGenerationRecipeRecommendationRequest;
       res.json(success(recommendReferenceGenerationRecipes(request)));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+storiesRouter.post(
+  '/reference-generation-recipe-comparison-drafts',
+  requireStoryCreate,
+  validateBody(ReferenceRecipeComparisonDraftRequestSchema),
+  async (req, res, next) => {
+    try {
+      const request = req.body as ReferenceRecipeComparisonDraftRequest;
+      res.json(success(await createReferenceRecipeComparisonDraft({
+        baselineStoryId: request.baseline_story_id,
+        recipeId: request.recipe_id,
+      })));
     } catch (error) {
       next(error);
     }

@@ -41,6 +41,7 @@ export function errorHandler(
 }
 
 function deriveStatus(code: string): number {
+  if (code === ErrorCodes.VALIDATION_ERROR) return 400;
   if (code.includes('NOT_FOUND')) return 404;
   if (code.includes('CONFLICT')) return 409;
   if (code.includes('REQUIRED')) return 409;
