@@ -607,7 +607,14 @@ const VIDEO_TYPE_PATTERN_MAP: Record<VideoType, NarrativePatternId[]> = {
   character_story: ['hero_choice', 'historical_causal_story', 'source_fidelity_adaptation', 'wuxia_chivalric_epic', 'wuxia_revenge_journey', 'character_arc_adaptation', 'novel_scene_compression', 'mortal_growth', 'mystery_reveal', 'ensemble_threads'],
   historical_drama: ['historical_causal_story', 'hero_choice', 'source_fidelity_adaptation', 'wuxia_court_jianghu', 'wuxia_chivalric_epic', 'theme_preserving_adaptation', 'cinematic_setpiece_adaptation', 'power_strategy', 'mystery_reveal'],
   legend_story: ['folk_legend_trial', 'object_clue_journey', 'children_fable', 'mystery_reveal'],
-  culture_promo: ['brand_symbol', 'object_clue_journey', 'ritual_process', 'city_day_journey'],
+  culture_promo: [
+    'brand_symbol',
+    'object_clue_journey',
+    'ritual_process',
+    'city_day_journey',
+    'space_walkthrough',
+    'social_hook_contrast',
+  ],
   heritage_promo: ['craft_mastery', 'ritual_process', 'object_clue_journey', 'brand_symbol'],
   city_brand_promo: ['city_day_journey', 'brand_symbol', 'object_clue_journey', 'poetic_landscape'],
   scene_short: ['space_walkthrough', 'object_clue_journey', 'poetic_landscape', 'mystery_reveal'],
@@ -618,7 +625,7 @@ const VIDEO_TYPE_PATTERN_MAP: Record<VideoType, NarrativePatternId[]> = {
   education_training: ['training_loop', 'knowledge_gap_explainer', 'craft_mastery'],
   children_story: ['children_fable', 'folk_legend_trial', 'mortal_growth'],
   social_short: ['social_hook_contrast', 'platform_short_drama_hook', 'mystery_reveal', 'brand_symbol', 'knowledge_gap_explainer'],
-  ai_comic_drama: ['platform_short_drama_hook', 'cinematic_setpiece_adaptation', 'hero_choice', 'dialogue_scene_adaptation', 'serial_hook_adaptation', 'character_arc_adaptation', 'source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'worldbuilding_grounding', 'wuxia_chivalric_epic', 'wuxia_lone_blade_mystery', 'wuxia_sect_growth', 'wuxia_revenge_journey', 'wuxia_court_jianghu', 'wuxia_romance_honor', 'mortal_growth', 'mystery_reveal', 'power_strategy', 'infinite_mission'],
+  ai_comic_drama: ['platform_short_drama_hook', 'cinematic_setpiece_adaptation', 'hero_choice', 'dialogue_scene_adaptation', 'serial_hook_adaptation', 'character_arc_adaptation', 'source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'worldbuilding_grounding', 'ensemble_threads', 'wuxia_chivalric_epic', 'wuxia_lone_blade_mystery', 'wuxia_sect_growth', 'wuxia_revenge_journey', 'wuxia_court_jianghu', 'wuxia_romance_honor', 'mortal_growth', 'mystery_reveal', 'power_strategy', 'infinite_mission'],
 };
 
 const DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE: Record<VideoType, number> = {

@@ -2821,11 +2821,78 @@ browser smoke (local dev, cultural_fact_reviewer preview): Reference Library ren
   no page-level alert
 ```
 
-### 6.33 下一优先级
+### 6.33 公开候选研究与非复制创作配方（2026-07-29）
+
+本轮按用户要求从正版播放页、作品官方页、权威榜单和行业奖项页登记电影、宣传片与
+央视经典剧候选，并把可复用机制接入 Story Studio。公开页面只用于候选发现和元数据
+登记，没有下载原视频、抓取正文、上传第三方或伪造逐镜头时间码。
+
+研究候选：
+
+- 国内电影榜单参考豆瓣 Top 250 当前首页前三：
+  《肖申克的救赎》《霸王别姬》《阿甘正传》；
+- 国外电影榜单参考 IMDb Top 250 当前前三：
+  《肖申克的救赎》《教父》《蝙蝠侠：黑暗骑士》；
+- 宣传片不存在稳定统一的“互联网评分前三”，改用 D&AD 等行业奖项证据：
+  Apple《Welcome Home》、Metro Trains《Dumb Ways to Die》、
+  Nike《You Can't Stop Us》；
+- 电视剧采用央视官方节目页：
+  1994 版《三国演义》与 1987 版《红楼梦》。
+
+Reference Library 新增 10 条 `research_only + metadata_only` 来源记录。全部没有
+`content_fingerprint`，因此不能创建合法分析任务、不能进入 approved analysis、
+benchmark/style pack 或 prompt 注入链；页面实测均显示“缺少合法任务条件”。
+
+`web/shared/reference-generation-recipes.ts` 新增 8 个与作品标题解耦的创作配方：
+
+```text
+《肖申克的救赎》
+  → 长线目标与延迟回收
+《霸王别姬》/《阿甘正传》
+  → 人物命运与时代拼图
+《教父》/《蝙蝠侠：黑暗骑士》
+  → 权力压力与道德两难
+Apple《Welcome Home》
+  → 空间变化与情绪品牌片
+Metro Trains《Dumb Ways to Die》
+  → 记忆旋律与结尾揭示
+Nike《You Can't Stop Us》
+  → 群像动作与主题蒙太奇
+央视1994版《三国演义》
+  → 历史权谋章回连续剧
+央视1987版《红楼梦》
+  → 礼俗群像关系连续剧
+```
+
+每个配方只组合现有 `video_type`、`presentation_style`、`narrative_pattern_ids`、
+`story_priority`、`genre_strictness`、tone 和 communication goal，并带三条以上
+`reusable_mechanisms` 与 `avoid_copying`。canonical 配方中不包含候选作品标题，
+也不包含角色、台词、情节、镜头、美术或音乐资产。
+
+Story Studio 新增“创作配方”选择器和“应用配方”动作。应用后会同步成片类型、表现
+形式、叙事结构、剧情/资料优先级、类型严格度、语气与传播目标；页面明确提示
+“只使用抽象机制，不注入研究候选作品内容”。为支持组合，
+`culture_promo` 增加 `space_walkthrough` / `social_hook_contrast`，
+`ai_comic_drama` 增加 `ensemble_threads`，均来自既有叙事结构库。
+
+验证结果：
+
+```text
+reference generation recipes: 1 file / 3 tests passed
+narrative pattern library: 1 file / 9 tests passed
+client lint/typecheck passed
+client production build passed
+browser smoke: 8 recipes rendered and “群像动作与主题蒙太奇” applied successfully
+browser smoke: Reference Library rendered 10 research-only metadata candidates
+no source video downloaded; no approved analysis/benchmark/style pack/production credit created
+```
+
+### 6.34 下一优先级
 
 P1-C15 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
 和 MCP command surface 已闭环；P1-D1～D5 的本地私有视频样本接入、ffprobe/ffmpeg
-派生证据、本地 transcript 封存、CLI/Web API/MCP/Web 工作台入口和 no-credit 边界也已具备。
+派生证据、本地 transcript 封存、CLI/Web API/MCP/Web 工作台入口和 no-credit 边界也已具备；
+公开候选的 research-only 元数据登记和 8 个非复制创作配方也已完成。
 下一步优先等待用户合法提供真实视频样本并亲自确认授权，再通过本地 CLI、Web API 或
 MCP/Web 工作台运行真实样本 ingest，随后再进入 operator evidence、独立 analysis approval、
 benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用

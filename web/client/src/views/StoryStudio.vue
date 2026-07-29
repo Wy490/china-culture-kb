@@ -439,6 +439,53 @@
         </template>
       </section>
 
+      <section class="story-studio__field">
+        <label class="story-studio__label" for="reference-generation-recipe">创作配方</label>
+        <div class="story-studio__recipe-row">
+          <select
+            id="reference-generation-recipe"
+            v-model="selectedReferenceGenerationRecipeId"
+            class="story-studio__select"
+            data-testid="reference-generation-recipe"
+          >
+            <option value="">按素材自动推荐</option>
+            <optgroup
+              v-for="group in referenceGenerationRecipeGroups"
+              :key="group.category"
+              :label="group.label"
+            >
+              <option
+                v-for="recipe in group.recipes"
+                :key="recipe.id"
+                :value="recipe.id"
+              >
+                {{ recipe.label }}
+              </option>
+            </optgroup>
+          </select>
+          <button
+            type="button"
+            class="btn btn--search"
+            :disabled="!selectedReferenceGenerationRecipe"
+            data-testid="apply-reference-generation-recipe"
+            @click="applyReferenceGenerationRecipe"
+          >
+            应用配方
+          </button>
+        </div>
+        <div v-if="selectedReferenceGenerationRecipe" class="story-studio__recipe-summary">
+          <strong>{{ selectedReferenceGenerationRecipe.label }}</strong>
+          <span>{{ selectedReferenceGenerationRecipe.summary }}</span>
+          <small>
+            {{ videoTypeLabel(selectedReferenceGenerationRecipe.video_type) }}
+            · {{ selectedReferenceGenerationRecipe.narrative_pattern_ids.map(narrativePatternLabel).join(' / ') }}
+          </small>
+        </div>
+        <p v-if="referenceRecipeMessage" class="story-studio__recipe-message" role="status">
+          {{ referenceRecipeMessage }}
+        </p>
+      </section>
+
       <!-- Video type selector (grouped) — always visible -->
       <section class="story-studio__field">
         <div class="story-studio__label">成片类型</div>
@@ -714,7 +761,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   createReferenceBaselineReplayDraft,
@@ -764,11 +811,21 @@ import type {
   ReferenceStylePackCatalogItem,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
+import {
+  REFERENCE_GENERATION_RECIPES,
+  type ReferenceGenerationRecipeCategory,
+  type ReferenceGenerationRecipeId,
+} from '@shared/reference-generation-recipes'
 import StoryPlan from '@/components/StoryPlan.vue'
 import StoryResult from '@/components/StoryResult.vue'
 
 const route = useRoute()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
+const REFERENCE_GENERATION_RECIPE_GROUP_LABELS: Record<ReferenceGenerationRecipeCategory, string> = {
+  feature_film: '电影机制',
+  promo: '宣传片机制',
+  classic_series: '经典连续剧机制',
+}
 
 const KNOWLEDGE_DOMAIN_LABELS: Record<KnowledgeDomain, string> = {
   core_china_culture: '主库',
@@ -1009,6 +1066,8 @@ const baselineDraft = ref<ReferenceBaselineReplayDraft | null>(null)
 const baselineLoading = ref(false)
 const baselineError = ref('')
 const preparingBaselineDraft = ref(false)
+const selectedReferenceGenerationRecipeId = ref<ReferenceGenerationRecipeId | ''>('')
+const referenceRecipeMessage = ref('')
 
 const canUseOutlineOnly = computed(() => {
   return creationPath.value === 'original'
@@ -1129,6 +1188,20 @@ const recommendedNarrativePatternsForSelectedVideoType = computed<RecommendedNar
 const recommendedNarrativePatternIdSet = computed(() => {
   return new Set(recommendedNarrativePatternsForSelectedVideoType.value.map(item => item.pattern_id))
 })
+
+const referenceGenerationRecipeGroups = (
+  Object.keys(REFERENCE_GENERATION_RECIPE_GROUP_LABELS) as ReferenceGenerationRecipeCategory[]
+).map(category => ({
+  category,
+  label: REFERENCE_GENERATION_RECIPE_GROUP_LABELS[category],
+  recipes: REFERENCE_GENERATION_RECIPES.filter(recipe => recipe.category === category),
+}))
+
+const selectedReferenceGenerationRecipe = computed(() => (
+  REFERENCE_GENERATION_RECIPES.find(
+    recipe => recipe.id === selectedReferenceGenerationRecipeId.value,
+  ) ?? null
+))
 
 const recentStoryPreview = computed(() => recentStoryProjects.value.slice(0, 5))
 const creationUseCaseOptions = CREATION_USE_CASE_OPTIONS
@@ -1549,6 +1622,21 @@ function handleSelectVideoType(vt: VideoType) {
   selectedPresentationStyle.value = VIDEO_TYPE_CONFIG[vt].default_presentation_style
 }
 
+async function applyReferenceGenerationRecipe() {
+  const recipe = selectedReferenceGenerationRecipe.value
+  if (!recipe) return
+
+  handleSelectVideoType(recipe.video_type)
+  await nextTick()
+  selectedPresentationStyle.value = recipe.presentation_style
+  selectedNarrativePatternIds.value = [...recipe.narrative_pattern_ids]
+  storyPriority.value = recipe.story_priority
+  genreStrictness.value = recipe.genre_strictness
+  tone.value = recipe.tone
+  communicationGoal.value = recipe.communication_goal
+  referenceRecipeMessage.value = `已应用「${recipe.label}」；只使用抽象机制，不注入研究候选作品内容。`
+}
+
 function alignCreationContractWithVideoType(vt: VideoType) {
   if (
     vt === 'historical_drama'
@@ -1937,6 +2025,42 @@ async function handleGenerate() {
 .story-studio__pattern-list {
   display: grid;
   gap: 8px;
+}
+
+.story-studio__recipe-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.story-studio__recipe-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d7dde2;
+  border-left: 4px solid #2c7a7b;
+  border-radius: 6px;
+  background: #f7fbfb;
+}
+
+.story-studio__recipe-summary strong {
+  color: #1f5f60;
+  font-size: 14px;
+}
+
+.story-studio__recipe-summary span,
+.story-studio__recipe-summary small {
+  color: #526575;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.story-studio__recipe-message {
+  margin: 8px 0 0;
+  color: #1f6f43;
+  font-size: 12px;
 }
 
 .story-studio__pattern-recommendations {
