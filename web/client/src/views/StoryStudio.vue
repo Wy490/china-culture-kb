@@ -448,7 +448,7 @@
             class="story-studio__select"
             data-testid="reference-generation-recipe"
           >
-            <option value="">按素材自动推荐</option>
+            <option value="">不使用创作配方</option>
             <optgroup
               v-for="group in referenceGenerationRecipeGroups"
               :key="group.category"
@@ -479,6 +479,12 @@
           <small>
             {{ videoTypeLabel(selectedReferenceGenerationRecipe.video_type) }}
             · {{ selectedReferenceGenerationRecipe.narrative_pattern_ids.map(narrativePatternLabel).join(' / ') }}
+          </small>
+          <small>
+            抽象机制：{{ selectedReferenceGenerationRecipe.reusable_mechanisms.join('；') }}
+          </small>
+          <small>
+            禁止复制：{{ selectedReferenceGenerationRecipe.avoid_copying.join('；') }}
           </small>
         </div>
         <p v-if="referenceRecipeMessage" class="story-studio__recipe-message" role="status">
@@ -813,6 +819,7 @@ import type {
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
 import {
   REFERENCE_GENERATION_RECIPES,
+  buildReferenceGenerationRecipeContract,
   type ReferenceGenerationRecipeCategory,
   type ReferenceGenerationRecipeId,
 } from '@shared/reference-generation-recipes'
@@ -1067,6 +1074,7 @@ const baselineLoading = ref(false)
 const baselineError = ref('')
 const preparingBaselineDraft = ref(false)
 const selectedReferenceGenerationRecipeId = ref<ReferenceGenerationRecipeId | ''>('')
+const appliedReferenceGenerationRecipeId = ref<ReferenceGenerationRecipeId | ''>('')
 const referenceRecipeMessage = ref('')
 
 const canUseOutlineOnly = computed(() => {
@@ -1220,6 +1228,16 @@ function creationContractRequestFields() {
     target_audience: targetAudience.value.trim() || undefined,
     communication_goal: communicationGoal.value.trim() || undefined,
   }
+}
+
+function referenceGenerationRecipeRequestFields() {
+  const recipeId = appliedReferenceGenerationRecipeId.value
+  return recipeId
+    ? {
+        reference_generation_recipe:
+          buildReferenceGenerationRecipeContract(recipeId),
+      }
+    : {}
 }
 
 function sourceMaterialModeForRequest(): SourceMaterialMode | undefined {
@@ -1552,6 +1570,11 @@ watch(selectedModelProfileId, (value) => {
   }
 })
 
+watch(selectedReferenceGenerationRecipeId, () => {
+  appliedReferenceGenerationRecipeId.value = ''
+  referenceRecipeMessage.value = ''
+})
+
 watch(selectedVideoType, (videoType) => {
   applyRecommendedNarrativePatterns(planResult.value)
   if (videoType) alignCreationContractWithVideoType(videoType)
@@ -1634,6 +1657,7 @@ async function applyReferenceGenerationRecipe() {
   genreStrictness.value = recipe.genre_strictness
   tone.value = recipe.tone
   communicationGoal.value = recipe.communication_goal
+  appliedReferenceGenerationRecipeId.value = recipe.id
   referenceRecipeMessage.value = `已应用「${recipe.label}」；只使用抽象机制，不注入研究候选作品内容。`
 }
 
@@ -1702,6 +1726,7 @@ async function handleGenerate() {
       auto_repair: autoRepair.value,
       source_material_mode: sourceMaterialModeForRequest(),
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      ...referenceGenerationRecipeRequestFields(),
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
       ...creationContractRequestFields(),
@@ -1746,6 +1771,7 @@ async function handleGenerate() {
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0
         ? selectedNarrativePatternIds.value
         : ['source_fidelity_adaptation', 'chapter_slice_adaptation', 'novel_scene_compression', 'character_arc_adaptation'],
+      ...referenceGenerationRecipeRequestFields(),
       ...creationContractRequestFields(),
     })
     if (res.ok && res.data) {
@@ -1773,6 +1799,7 @@ async function handleGenerate() {
       auto_repair: autoRepair.value,
       source_material_mode: sourceMaterialModeForRequest(),
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      ...referenceGenerationRecipeRequestFields(),
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
       ...creationContractRequestFields(),
@@ -1814,6 +1841,7 @@ async function handleGenerate() {
       auto_repair: autoRepair.value,
       source_material_mode: sourceMaterialModeForRequest(),
       narrative_pattern_ids: selectedNarrativePatternIds.value.length > 0 ? selectedNarrativePatternIds.value : undefined,
+      ...referenceGenerationRecipeRequestFields(),
       localized_target_region: localizedTargetRegion.value.trim() || undefined,
       localization_mode: localizationMode.value,
       ...creationContractRequestFields(),

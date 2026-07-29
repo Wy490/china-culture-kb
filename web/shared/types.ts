@@ -1451,6 +1451,25 @@ export type StoryMaterialReadinessPolicy =
   | 'allow_draft_with_risks'
   | 'require_script_ready';
 
+export type ReferenceGenerationRecipeId =
+  | 'feature_long_goal_payoff'
+  | 'feature_epoch_character_mosaic'
+  | 'feature_moral_pressure'
+  | 'promo_space_emotion'
+  | 'promo_mnemonic_reveal'
+  | 'promo_collective_montage'
+  | 'series_strategy_chapters'
+  | 'series_ritual_relationships';
+
+export interface ReferenceGenerationRecipeContract {
+  schema_version: 'reference-generation-recipe/v1';
+  recipe_id: ReferenceGenerationRecipeId;
+  recipe_version: '1.0.0';
+  reusable_mechanisms: string[];
+  avoid_copying: string[];
+  payload_sha256: string;
+}
+
 export interface StoryGenerateRequest {
   domain?: string;
   entry_name?: string;
@@ -1481,6 +1500,7 @@ export interface StoryGenerateRequest {
   style_pack_ids?: string[];
   reference_similarity_evidence_ids?: string[];
   reference_baseline_story_id?: string;
+  reference_generation_recipe?: ReferenceGenerationRecipeContract;
   narrative_pattern_ids?: NarrativePatternId[];
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;
@@ -14315,6 +14335,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   story_structure?: StoryStructureType;
   story_blueprint?: StoryBlueprint;
   reference_trace?: ReferenceTrace[];
+  reference_generation_recipe?: ReferenceGenerationRecipeContract;
   reference_safety_report?: ReferenceGenerationSafetyReport;
   repair_trace?: StoryRepairTrace[];
   production_board_repair_trace?: StoryProductionBoardRepairTrace[];

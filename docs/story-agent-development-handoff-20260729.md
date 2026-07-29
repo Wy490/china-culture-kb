@@ -322,17 +322,29 @@ Story Studio 已增加“创作配方”选择器。应用配方会同步：
 
 生成配置不包含候选作品标题、角色、对白、情节、镜头、美术或音乐。
 
-### 6.1 尚未闭环的配方能力
+### 6.1 本轮完成：P1-E1 一等生成合同
 
-目前配方是前端参数组合器，还不是完整的一等生成合同：
+创作配方已经从前端参数组合器升级为可审计的一等生成合同：
 
-- `recipe_id` 尚未随生成请求持久化；
-- `reusable_mechanisms` / `avoid_copying` 尚未作为有界抽象约束进入生成请求；
-- 项目版本、story-agent-run 和结果页尚未展示配方 provenance；
+- 共享 `StoryGenerateRequest` 增加可选
+  `reference_generation_recipe/v1`；
+- 合同固定保存 `recipe_id`、`recipe_version`、抽象机制快照、禁仿边界和
+  `payload_sha256`；
+- 服务端按 canonical 配方目录重新解析并复算 SHA-256，拒绝未知 ID、内容篡改、
+  成片类型不兼容和表现形式不兼容；
+- 生成 prompt 只注入 `reusable_mechanisms` 和 `avoid_copying`，不注入公开研究候选
+  标题、角色、对白、情节、镜头、美术或音乐；
+- 生成结果、项目初始版本和 `story-agent-run/v2` 输入账本保存同一份 canonical
+  provenance；
+- Story Studio、StoryResult、项目当前版本和 Story Agent Runs 控制台展示配方机制、
+  禁仿边界、版本与 payload SHA；
+- Web API 和 MCP canonical 入口均支持该合同；
+- 旧请求和无配方项目继续兼容。
+
+仍未完成：
+
 - 尚未根据题材、类型和创作路径自动推荐配方；
 - 还没有 reference-free / recipe-assisted 的同输入质量对照。
-
-这是无真实样本条件下的下一开发优先级。
 
 ## 7. 关键代码位置
 
@@ -403,6 +415,35 @@ Repository audit
 
 浏览器控制台只有既有 `/favicon.ico` 404，不是本轮功能错误。
 
+P1-E1 新增验证：
+
+```text
+recipe contract + recipe catalog + prompt + narrative patterns + API
+  5 files / 263 tests passed
+
+MCP canonical generation + run bridge
+  2 files / 7 tests passed
+  MCP TypeScript build passed
+
+Web workspace lint
+  server tsc + scripts tsc + client vue-tsc passed
+
+Web production build
+  server tsup + client vue-tsc/vite passed
+
+Client visible-copy audit
+  9 files / 17 checks passed
+
+Browser smoke
+  canonical recipe applied
+  request carried reference-generation-recipe/v1 + SHA-256
+  result provenance rendered
+  generation request was intercepted; no smoke project was persisted
+
+Repository audit
+  git diff --check passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
@@ -411,22 +452,19 @@ Repository audit
 branch: codex/story-agent-manifest-integrity-20260718
 functional baseline: 183b122a
 handoff HEAD: run git log -1 --oneline
-remote: ahead 5
+remote: expected ahead 6 after the P1-E1 local commit
 worktree: clean
 push: not performed
 ```
 
-交接时本机开发地址：
+交接时浏览器冒烟使用过以下临时地址，验证后进程已停止：
 
 ```text
 Story Studio
-http://localhost:15181/story/new
-
-Reference Library
-http://localhost:15181/reference-library
+http://localhost:15191/story/new
 
 API
-http://localhost:13006
+http://localhost:13016
 ```
 
 新对话不要假设旧进程仍存活。需要时启动：
@@ -443,18 +481,6 @@ npm run dev
 如果端口占用，先检查现有服务；不要未经确认杀死不明进程，也可以改用其他前端端口。
 
 ## 10. 下一开发优先级
-
-### P1-E1 配方成为一等生成合同
-
-建议测试驱动完成：
-
-1. 扩展共享生成请求合同，增加可选 `reference_generation_recipe`：
-   `recipe_id`、版本、抽象机制快照、禁仿边界和 payload SHA-256。
-2. 服务端根据 canonical 配方目录重新解析，拒绝客户端篡改机制或禁仿内容。
-3. 把配方约束编译为有界生成输入，只允许抽象机制，不允许研究候选标题或内容。
-4. 在 project version、story-agent-run 和生成结果中记录配方 provenance。
-5. UI 展示“使用了哪种机制”和“明确禁止复制什么”，但不展示参考作品作为仿写目标。
-6. 添加篡改、未知 recipe id、类型不兼容和旧项目兼容测试。
 
 ### P1-E2 自动推荐而不是强制套用
 
@@ -511,8 +537,8 @@ git diff --check
 git status --short --branch
 ```
 
-完成 P1-E1 里程碑后，再运行受影响的 generation request、project version、
-story-agent-run、API 与 MCP 测试；不要每次小改都重复整套全量 CI。
+完成 P1-E2 里程碑后，再运行受影响的 recommendation、generation request、UI、
+API 与 MCP 测试；不要每次小改都重复整套全量 CI。
 
 ## 12. 可复制到下一对话的启动指令
 
@@ -539,13 +565,16 @@ story-agent-run、API 与 MCP 测试；不要每次小改都重复整套全量 C
 style pack 或 production credit。
 
 当前 10 条影视/宣传片/电视剧候选只是 research_only + metadata_only。
-8 个创作配方只使用抽象机制，不得把候选作品角色、对白、情节、镜头、美术或音乐
-注入生成。
+8 个创作配方已成为 reference-generation-recipe/v1 一等合同，只使用抽象机制，不得把
+候选作品角色、对白、情节、镜头、美术或音乐注入生成。
 
-下一优先级是 P1-E1：把创作配方从前端参数组合器升级为一等生成合同。
-先写失败测试，再扩展共享请求合同；服务端必须 canonical 解析 recipe_id、拒绝篡改，
-把 recipe id、版本、抽象机制快照、avoid-copying 边界和哈希持久化到 project version
-与 story-agent-run，并在结果页展示 provenance。保持旧项目和无配方生成兼容。
+P1-E1 已完成：服务端 canonical 解析、SHA-256 与防篡改、prompt 有界注入、
+project version / story-agent-run / result provenance、Web/MCP 和旧项目兼容均已闭环。
+
+下一优先级是 P1-E2：根据创作路径、成片类型、题材、叙事目标和素材特征返回 1～3 个
+配方建议。建议必须解释原因、允许不使用或手动切换，并让机构/事实型任务优先真实性，
+不得为套配方牺牲材料和权利边界。先写 recommendation contract 与兼容性失败测试，再
+实现服务端 canonical 推荐和 Story Studio 展示。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

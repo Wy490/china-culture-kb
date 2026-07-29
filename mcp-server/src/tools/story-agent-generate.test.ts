@@ -48,6 +48,22 @@ describe('storyAgentGenerate', () => {
         'reference-similarity-evidence-20260724-a1b2c3d4e5f6',
       ],
       reference_baseline_story_id: '20260724-story-baseline-01',
+      reference_generation_recipe: {
+        schema_version: 'reference-generation-recipe/v1',
+        recipe_id: 'feature_moral_pressure',
+        recipe_version: '1.0.0',
+        reusable_mechanisms: [
+          '每个主要角色都拥有公开目标、真实目标和可交换筹码',
+          '每轮胜利必须暴露新的成本或更高层压力',
+          '在仪式、会议或公共行动中交叉呈现私人关系与权力后果',
+        ],
+        avoid_copying: [
+          '不得复刻具体犯罪家族、超级英雄或反派设定',
+          '不得复刻标志性仪式、交叉剪辑桥段或对白',
+          '不得用无铺垫反转替代信息差与人物选择',
+        ],
+        payload_sha256: '48d7034e1a8569bf81b46888c07fc0a4fa691337b28029db48e4300bb551bd6a',
+      },
     };
     const result = await storyAgentGenerate(request);
 

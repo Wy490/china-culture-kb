@@ -33,6 +33,9 @@ import {
   type StoryProjectMeta,
   type StoryGenerateResult,
 } from '@shared/types.js';
+import {
+  buildReferenceGenerationRecipeContract,
+} from '@shared/reference-generation-recipes.js';
 
 const ORIGINAL_KB_ROOT = process.env.KB_ROOT;
 const ORIGINAL_WEB_GENERATED_ROOT = process.env.WEB_GENERATED_ROOT;
@@ -676,6 +679,58 @@ describe('Story Agent top-level run API', () => {
 
     expect(conflicted.status).toBe(409);
     expectFailure(conflicted.body, 'STORY_AGENT_RUN_INPUT_CONFLICT');
+  });
+
+  it('persists canonical recipe provenance in the run, story, and project version', async () => {
+    const recipe = buildReferenceGenerationRecipeContract(
+      'feature_long_goal_payoff',
+    );
+    const started = await request
+      .post('/api/story-agent/runs/generate')
+      .send({
+        idempotency_key: 'api-generation-recipe-provenance-001',
+        generation_request: {
+          domain: 'china_culture',
+          entry_name: '周敦颐——理学开山鼻祖',
+          video_type: 'character_story',
+          presentation_style: 'cinematic',
+          model_profile_id: 'local_story_engine',
+          narrative_pattern_ids: [
+            'mortal_growth',
+            'hero_choice',
+            'mystery_reveal',
+          ],
+          reference_generation_recipe: recipe,
+        },
+      });
+
+    expect(started.status).toBe(200);
+    expectSuccess(started.body);
+    expect(started.body.data.input_contract.generation_request
+      .reference_generation_recipe).toEqual(recipe);
+
+    const storyId = started.body.data.generation_checkpoint.story_id as string;
+    const projectId = started.body.data.generation_checkpoint.project_id as string;
+    const [storyResponse, projectResponse] = await Promise.all([
+      request.get(`/api/stories/${storyId}`),
+      request.get(`/api/projects/${projectId}`),
+    ]);
+
+    expect(storyResponse.status).toBe(200);
+    expect(storyResponse.body.data.reference_generation_recipe).toEqual(recipe);
+    expect(projectResponse.status).toBe(200);
+    expect(projectResponse.body.data.current_story.reference_generation_recipe)
+      .toEqual(recipe);
+
+    const snapshotPath = resolve(
+      generationRunTestRoot,
+      'projects',
+      projectId,
+      'versions',
+      `${projectResponse.body.data.project.current_version_id}.json`,
+    );
+    const snapshot = JSON.parse(await readFile(snapshotPath, 'utf8'));
+    expect(snapshot.story.reference_generation_recipe).toEqual(recipe);
   });
 
   it('recovers a generated story/project checkpoint when the final run ledger update was lost', async () => {

@@ -152,6 +152,7 @@ export async function generateAndStoreChinaCultureStory(
     storyData = {
       ...transformedStory,
       _request_meta: storyData._request_meta,
+      reference_generation_recipe: storyData.reference_generation_recipe,
       reference_trace: storyData.reference_trace,
     };
   }

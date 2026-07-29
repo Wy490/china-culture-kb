@@ -20,6 +20,48 @@
       <GearsVideoStatus v-if="showGearsVideoStatus" :video="result.gears_video" />
     </header>
 
+    <section v-if="result.reference_generation_recipe" class="story-result__section">
+      <h3 class="story-result__section-title">创作配方 Provenance</h3>
+      <div class="story-result__contract">
+        <div class="story-result__contract-summary">
+          <article>
+            <span>配方</span>
+            <strong>{{ referenceRecipeLabel }}</strong>
+          </article>
+          <article>
+            <span>版本</span>
+            <strong>{{ result.reference_generation_recipe.recipe_version }}</strong>
+          </article>
+          <article>
+            <span>Payload SHA-256</span>
+            <strong>{{ result.reference_generation_recipe.payload_sha256.slice(0, 12) }}…</strong>
+          </article>
+        </div>
+        <div class="story-result__field-list">
+          <strong>使用的抽象机制</strong>
+          <ul>
+            <li
+              v-for="mechanism in result.reference_generation_recipe.reusable_mechanisms"
+              :key="mechanism"
+            >
+              {{ mechanism }}
+            </li>
+          </ul>
+        </div>
+        <div class="story-result__field-list">
+          <strong>明确禁止复制</strong>
+          <ul>
+            <li
+              v-for="boundary in result.reference_generation_recipe.avoid_copying"
+              :key="boundary"
+            >
+              {{ boundary }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section v-if="result.reference_safety_report" class="story-result__section">
       <h3 class="story-result__section-title">Reference 安全与 Baseline 对照</h3>
       <div class="story-result__reference-audit">
@@ -848,6 +890,7 @@ import type {
   StoryReferenceBaselineQualityDimension,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG } from '@shared/types'
+import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
 import GearsActions from './GearsActions.vue'
 import GearsWebhookStatus from './GearsWebhookStatus.vue'
 import GearsVideoStatus from './GearsVideoStatus.vue'
@@ -1046,6 +1089,13 @@ const effectiveEngineLabel = computed(() => {
   if (props.result?.effective_engine === 'external_model') return '外部模型 adapter'
   if (props.result?.effective_engine === 'local_fallback') return '本地回退引擎'
   return '本地故事引擎'
+})
+
+const referenceRecipeLabel = computed(() => {
+  const recipeId = props.result?.reference_generation_recipe?.recipe_id
+  if (!recipeId) return ''
+  return REFERENCE_GENERATION_RECIPES.find(recipe => recipe.id === recipeId)?.label
+    ?? recipeId
 })
 
 const baselineComparison = computed(() => (

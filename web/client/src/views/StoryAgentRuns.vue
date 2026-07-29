@@ -187,6 +187,37 @@
             </div>
           </dl>
 
+          <section
+            v-if="selectedReferenceGenerationRecipe"
+            class="run-console__blockers"
+            data-testid="story-agent-run-reference-generation-recipe"
+          >
+            <h3>创作配方 Provenance</h3>
+            <p>
+              {{ referenceGenerationRecipeLabel }}
+              · v{{ selectedReferenceGenerationRecipe.recipe_version }}
+              · SHA {{ selectedReferenceGenerationRecipe.payload_sha256.slice(0, 12) }}…
+            </p>
+            <strong>使用的抽象机制</strong>
+            <ul>
+              <li
+                v-for="mechanism in selectedReferenceGenerationRecipe.reusable_mechanisms"
+                :key="mechanism"
+              >
+                {{ mechanism }}
+              </li>
+            </ul>
+            <strong>明确禁止复制</strong>
+            <ul>
+              <li
+                v-for="boundary in selectedReferenceGenerationRecipe.avoid_copying"
+                :key="boundary"
+              >
+                {{ boundary }}
+              </li>
+            </ul>
+          </section>
+
           <section v-if="selectedRun.blockers.length || selectedRun.retryable_failures.length" class="run-console__blockers">
             <h3>当前阻塞</h3>
             <ul>
@@ -338,6 +369,7 @@ import {
   resumeStoryAgentRun,
 } from '@/api/story-agent-runs'
 import { getStoryAgentVisualAssetPressureOpsStatus } from '@/api/system'
+import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
 
 const filters = reactive({
   status: '' as '' | NonNullable<StoryAgentRunListQuery['status']>,
@@ -357,6 +389,20 @@ const imageResultJson = ref('')
 const visualAssetPressure = ref<StoryAgentVisualAssetPressureOpsStatus | null>(null)
 const pressureLoading = ref(false)
 const pressureError = ref('')
+
+const selectedReferenceGenerationRecipe = computed(() => (
+  selectedRun.value?.schema_version === 'story-agent-run/v2'
+    ? selectedRun.value.input_contract.generation_request.reference_generation_recipe
+      ?? null
+    : null
+))
+
+const referenceGenerationRecipeLabel = computed(() => {
+  const recipeId = selectedReferenceGenerationRecipe.value?.recipe_id
+  if (!recipeId) return ''
+  return REFERENCE_GENERATION_RECIPES.find(recipe => recipe.id === recipeId)?.label
+    ?? recipeId
+})
 
 const detailTitle = computed(() => {
   if (!selectedRun.value) return ''

@@ -23,6 +23,7 @@ import { resolveStoryGenerationModelProfile } from '../../services/model-catalog
 import { getProductionMaterialPack } from '../../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../../services/production-material-readiness-service.js';
 import { validateReferenceBaselineCompatibility } from '../../services/reference-baseline-comparison-service.js';
+import { resolveReferenceGenerationRecipeContract } from '../../services/reference-generation-recipe-service.js';
 import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
@@ -49,6 +50,20 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
   const targetDuration = target_video_duration ?? VIDEO_TYPE_CONFIG[videoType].default_duration;
   const productionMaterialPack = getProductionMaterialPack(videoType, { sourceDomain: 'china_culture' });
+  const referenceGenerationRecipeResolution =
+    resolveReferenceGenerationRecipeContract({
+      request,
+      videoType,
+      presentationStyle,
+    });
+  if (!referenceGenerationRecipeResolution.ok) {
+    return {
+      ok: false as const,
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: referenceGenerationRecipeResolution.message,
+      details: referenceGenerationRecipeResolution.details,
+    };
+  }
 
   const sourceResolution = await resolveChinaCultureStorySource(request);
   if (!sourceResolution.ok) return sourceResolution;
@@ -263,6 +278,8 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     knowledgePackToUse,
     materialPackToUse,
     storyStructure,
+    referenceGenerationRecipe:
+      referenceGenerationRecipeResolution.context,
     referenceGenerationContext: referenceGenerationResolution.context,
     referenceSimilarityEvidence:
       referenceGenerationResolution.similarityEvidence,

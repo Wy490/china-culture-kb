@@ -2,6 +2,8 @@ import type {
   GenreStrictness,
   NarrativePatternId,
   PresentationStyle,
+  ReferenceGenerationRecipeContract,
+  ReferenceGenerationRecipeId,
   StoryGenerationPriority,
   VideoType,
 } from './types.js';
@@ -11,15 +13,7 @@ export type ReferenceGenerationRecipeCategory =
   | 'promo'
   | 'classic_series';
 
-export type ReferenceGenerationRecipeId =
-  | 'feature_long_goal_payoff'
-  | 'feature_epoch_character_mosaic'
-  | 'feature_moral_pressure'
-  | 'promo_space_emotion'
-  | 'promo_mnemonic_reveal'
-  | 'promo_collective_montage'
-  | 'series_strategy_chapters'
-  | 'series_ritual_relationships';
+export type { ReferenceGenerationRecipeId } from './types.js';
 
 export interface ReferenceGenerationRecipe {
   id: ReferenceGenerationRecipeId;
@@ -251,3 +245,44 @@ export const REFERENCE_GENERATION_RECIPES: ReferenceGenerationRecipe[] = [
     ],
   },
 ];
+
+export const REFERENCE_GENERATION_RECIPE_VERSION = '1.0.0' as const;
+
+const REFERENCE_GENERATION_RECIPE_PAYLOAD_SHA256: Record<
+  ReferenceGenerationRecipeId,
+  string
+> = {
+  feature_long_goal_payoff: 'd259b451b425835b869b8472548edadba5534415c1dd0cf6302980e54613ea64',
+  feature_epoch_character_mosaic: '2e7342bc3209727cc269a596c1ba6b676fee0da9b032eed1e899462ddda1e14f',
+  feature_moral_pressure: '48d7034e1a8569bf81b46888c07fc0a4fa691337b28029db48e4300bb551bd6a',
+  promo_space_emotion: 'c41e9c25b7734e66540d42e37de04d64a096f26ffadb625123994f5ba3cc19cc',
+  promo_mnemonic_reveal: '299f2eb149dcca7f20090a779cfd98b32fab91110f69914dc81e2b94da7af565',
+  promo_collective_montage: '08aa2f93c254b45922184c0e1789ca96bf78bd50cf4a5f70e9a60668d17828b0',
+  series_strategy_chapters: '36442de5dbb0f84e018e0a2093b9b99c1232be43d11a192b1a10833e5a595ad6',
+  series_ritual_relationships: '99409049b84791fc20a32881fd300aa7b0800382c384dc24d99eb9e8ef978f69',
+};
+
+export function referenceGenerationRecipePayload(
+  recipe: ReferenceGenerationRecipe,
+): Omit<ReferenceGenerationRecipeContract, 'payload_sha256'> {
+  return {
+    schema_version: 'reference-generation-recipe/v1',
+    recipe_id: recipe.id,
+    recipe_version: REFERENCE_GENERATION_RECIPE_VERSION,
+    reusable_mechanisms: [...recipe.reusable_mechanisms],
+    avoid_copying: [...recipe.avoid_copying],
+  };
+}
+
+export function buildReferenceGenerationRecipeContract(
+  recipeId: ReferenceGenerationRecipeId,
+): ReferenceGenerationRecipeContract {
+  const recipe = REFERENCE_GENERATION_RECIPES.find(item => item.id === recipeId);
+  if (!recipe) {
+    throw new Error(`Unknown reference generation recipe "${recipeId}"`);
+  }
+  return {
+    ...referenceGenerationRecipePayload(recipe),
+    payload_sha256: REFERENCE_GENERATION_RECIPE_PAYLOAD_SHA256[recipe.id],
+  };
+}

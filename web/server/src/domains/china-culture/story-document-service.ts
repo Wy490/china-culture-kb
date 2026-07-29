@@ -115,6 +115,8 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
     material_sufficiency: materialSufficiency,
     production_material_pack: productionMaterialPack,
     production_material_readiness: productionMaterialReadiness,
+    reference_generation_recipe:
+      input.preparation.referenceGenerationRecipe,
     reference_trace: input.referenceTrace,
     memory_mosaic_seed: input.memoryMosaicSeed,
     knowledge_pack: knowledgePackToUse,
@@ -167,6 +169,8 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
         input.request.reference_similarity_evidence_ids ?? [],
       reference_baseline_story_id:
         input.request.reference_baseline_story_id ?? null,
+      reference_generation_recipe:
+        input.preparation.referenceGenerationRecipe ?? null,
       reference_generation_context_schema_version:
         input.preparation.referenceGenerationContext?.schema_version ?? null,
     },

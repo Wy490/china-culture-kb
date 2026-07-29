@@ -28,6 +28,7 @@ import type {
   StoryDetectedCharacter,
   StoryBlueprint,
   StoryAdaptationAnalysis,
+  ReferenceGenerationRecipeContract,
   WitnessMemory,
 } from '@shared/types.js';
 import type { GenreStoryMatrixResolution } from './genre-story-profiles.js';
@@ -104,6 +105,7 @@ export interface StoryGenerationPromptPackage {
     ending_image: string;
   };
   story_blueprint?: StoryBlueprint;
+  reference_generation_recipe?: ReferenceGenerationRecipeContract;
   reference_style_context?: ReferenceGenerationContext;
   output_contract: {
     must_provide: string[];
@@ -732,6 +734,7 @@ export function buildStoryGenerationPromptPackage(input: {
   storyBlueprint?: StoryBlueprint;
   adaptationAnalysis?: StoryAdaptationAnalysis;
   genreMatrix?: GenreStoryMatrixResolution;
+  referenceGenerationRecipe?: ReferenceGenerationRecipeContract;
   referenceGenerationContext?: ReferenceGenerationContext;
 }): StoryGenerationPromptPackage {
   const isMemoryMosaic = input.storyStructure === 'memory_mosaic_biography';
@@ -813,6 +816,7 @@ export function buildStoryGenerationPromptPackage(input: {
         }
       : undefined,
     story_blueprint: input.storyBlueprint,
+    reference_generation_recipe: input.referenceGenerationRecipe,
     reference_style_context: input.referenceGenerationContext,
     output_contract: {
       must_provide: ['title', 'logline', 'theme', 'full_text', 'scene_breakdown'],
@@ -859,6 +863,10 @@ export function buildStoryGenerationPromptPackage(input: {
             ]
           : []),
         ...(input.storyBlueprint?.type_specific_requirements ?? []),
+        ...(input.referenceGenerationRecipe?.reusable_mechanisms ?? [])
+          .map(rule => `配方抽象机制：${rule}`),
+        ...(input.referenceGenerationRecipe?.avoid_copying ?? [])
+          .map(rule => `配方禁仿边界：${rule}`),
         ...(input.referenceGenerationContext?.reusable_principles ?? [])
           .map(rule => `参考原则：${rule}`),
         ...(input.referenceGenerationContext?.avoid_copying ?? [])

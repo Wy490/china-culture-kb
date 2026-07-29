@@ -56,6 +56,7 @@ export async function executeChinaCultureStoryGeneration(input: {
     memoryMosaicSeed: localGeneration.memoryMosaicSeed,
     storyBlueprint: preparation.preliminaryStoryBlueprint,
     adaptationAnalysis: preparation.adaptationAnalysis,
+    referenceGenerationRecipe: preparation.referenceGenerationRecipe,
     referenceGenerationContext: preparation.referenceGenerationContext,
   });
   const adapterResult = await generateStoryWithAdapter({

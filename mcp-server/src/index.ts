@@ -374,6 +374,23 @@ server.tool(
       .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
       .optional()
       .describe('同输入、同模型且未应用参考风格的已持久化 baseline story ID；只做生成后机器质量对照'),
+    reference_generation_recipe: z.object({
+      schema_version: z.literal('reference-generation-recipe/v1'),
+      recipe_id: z.enum([
+        'feature_long_goal_payoff',
+        'feature_epoch_character_mosaic',
+        'feature_moral_pressure',
+        'promo_space_emotion',
+        'promo_mnemonic_reveal',
+        'promo_collective_montage',
+        'series_strategy_chapters',
+        'series_ritual_relationships',
+      ]),
+      recipe_version: z.literal('1.0.0'),
+      reusable_mechanisms: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
+      avoid_copying: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
+      payload_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    }).strict().optional().describe('canonical 创作配方快照；Web 服务端会按 recipe_id 复验全部字段与 SHA-256'),
     narrative_pattern_ids: z.array(z.string()).max(6).optional().describe('叙事模式 ID'),
     reference_strength: z.enum(['light', 'medium', 'strong']).optional().describe('参考强度'),
     genre_strictness: z.enum(['loose', 'balanced', 'strict']).optional().describe('流派严格度'),

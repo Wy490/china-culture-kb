@@ -1706,6 +1706,23 @@ export const StoryGenerateRequestSchema = z.object({
   reference_baseline_story_id: z.string()
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
     .optional(),
+  reference_generation_recipe: z.object({
+    schema_version: z.literal('reference-generation-recipe/v1'),
+    recipe_id: z.enum([
+      'feature_long_goal_payoff',
+      'feature_epoch_character_mosaic',
+      'feature_moral_pressure',
+      'promo_space_emotion',
+      'promo_mnemonic_reveal',
+      'promo_collective_montage',
+      'series_strategy_chapters',
+      'series_ritual_relationships',
+    ]),
+    recipe_version: z.literal('1.0.0'),
+    reusable_mechanisms: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
+    avoid_copying: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
+    payload_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict().optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),

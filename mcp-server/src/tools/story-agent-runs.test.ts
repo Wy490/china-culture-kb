@@ -42,6 +42,22 @@ describe('Story Agent top-level run MCP bridge', () => {
         entry_name: '周敦颐——理学开山鼻祖',
         video_type: 'character_story',
         model_profile_id: 'local_story_engine',
+        reference_generation_recipe: {
+          schema_version: 'reference-generation-recipe/v1',
+          recipe_id: 'feature_long_goal_payoff',
+          recipe_version: '1.0.0',
+          reusable_mechanisms: [
+            '给主角一个长期可执行目标，并让每次小行动同时承担生存与推进功能',
+            '让道具、习惯或空间细节在后段获得新含义',
+            '把人物价值放进不可撤回的选择与后果中完成',
+          ],
+          avoid_copying: [
+            '不得复刻具体越狱、监禁或救赎情节',
+            '不得复刻识别性人物关系、台词或道具组合',
+            '不得用相同结局揭示替代原创因果',
+          ],
+          payload_sha256: 'd259b451b425835b869b8472548edadba5534415c1dd0cf6302980e54613ea64',
+        },
       },
     };
 
