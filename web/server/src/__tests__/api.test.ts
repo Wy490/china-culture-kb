@@ -3704,8 +3704,9 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=39'),
+        expect.stringContaining('tool_count=42'),
         'reference_text_analysis_tools=12',
+        'private_video_sample_tools=3',
         expect.stringContaining('kb_story_agent_generate'),
         expect.stringContaining('kb_get_story_agent_backlog_handoff'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
@@ -3719,6 +3720,9 @@ describe('System API', () => {
         expect.stringContaining('kb_finalize_reference_text_analysis_execution'),
         expect.stringContaining('kb_request_reference_text_analysis_supplement'),
         expect.stringContaining('kb_submit_reference_text_analysis_draft'),
+        expect.stringContaining('kb_ingest_reference_private_video_sample'),
+        expect.stringContaining('kb_get_reference_private_video_sample'),
+        expect.stringContaining('kb_submit_reference_private_video_transcript'),
         'media_execution=gears_v2',
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'content_command_layer')?.evidence).toEqual(expect.arrayContaining([

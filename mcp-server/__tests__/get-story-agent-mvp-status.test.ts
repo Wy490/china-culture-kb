@@ -383,7 +383,7 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.domain_pack_expansion_writeback_needs_revision_count).toBe(0);
     expect(result.summary.story_agent_command_surface_status).toBe('ready');
     expect(result.summary.story_agent_command_surface_percent).toBe(100);
-    expect(result.summary.mcp_story_agent_tool_count).toBe(39);
+    expect(result.summary.mcp_story_agent_tool_count).toBe(42);
     expect(result.summary.mcp_story_agent_loop_percent).toBe(100);
     expect(result.summary.content_command_layer_percent).toBe(100);
     expect(result.summary.production_delivery_contract_percent).toBe(100);
@@ -461,8 +461,9 @@ describe('kb_get_story_agent_mvp_status', () => {
     ]));
     expect(result.progress.find(slice => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
       'implementation_progress=100',
-      expect.stringContaining('tool_count=39'),
+      expect.stringContaining('tool_count=42'),
       'reference_text_analysis_tools=12',
+      'private_video_sample_tools=3',
       expect.stringContaining('kb_story_agent_generate'),
       expect.stringContaining('kb_get_story_agent_backlog_handoff'),
       expect.stringContaining('kb_get_production_material_pack_health'),
@@ -479,6 +480,9 @@ describe('kb_get_story_agent_mvp_status', () => {
       expect.stringContaining('kb_finalize_reference_text_analysis_execution'),
       expect.stringContaining('kb_request_reference_text_analysis_supplement'),
       expect.stringContaining('kb_submit_reference_text_analysis_draft'),
+      expect.stringContaining('kb_ingest_reference_private_video_sample'),
+      expect.stringContaining('kb_get_reference_private_video_sample'),
+      expect.stringContaining('kb_submit_reference_private_video_transcript'),
       'media_execution=gears_v2',
     ]));
     expect(result.progress.find(slice => slice.key === 'content_command_layer')?.evidence).toEqual(expect.arrayContaining([

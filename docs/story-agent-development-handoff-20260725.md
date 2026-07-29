@@ -2570,8 +2570,9 @@ kb_submit_reference_text_analysis_draft
 - 返回统一 `mcp-reference-text-analysis-bridge/v1` 元数据，逐次声明正文无指令权、
   服务端未调用模型、MCP 未直接写仓库、未自动批准、未写知识库且未授予 production
   credit；
-- MVP Web 与 MCP 状态证据同步记录 `tool_count=39` 和
-  `reference_text_analysis_tools=12`，防止注册表与完成度报告漂移。
+- P1-C14 当轮 MVP Web 与 MCP 状态证据同步记录 `tool_count=39` 和
+  `reference_text_analysis_tools=12`；P1-D command surface 继续递增当前工具数，防止
+  注册表与完成度报告漂移。
 
 验证结果：
 
@@ -2746,14 +2747,56 @@ server full: 183 files passed / 1 skipped; 1530 tests passed / 2 skipped; 111.19
 git diff --check passed
 ```
 
-### 6.31 下一优先级
+### 6.31 P1-D5 本地私有视频样本 MCP 桥接（2026-07-29）
+
+本轮把 P1-D1～D4 的本地私有视频样本能力补齐到 MCP command surface。MCP 仍只是
+canonical Web application service 的薄桥，不直接复制 ffprobe/ffmpeg、私有目录写盘、
+授权复核或 transcript 封存逻辑。
+
+新增 MCP 工具：
+
+```text
+kb_ingest_reference_private_video_sample
+kb_get_reference_private_video_sample
+kb_submit_reference_private_video_transcript
+```
+
+实现边界：
+
+- `STORY_AGENT_BASE_URL` 继续只接受无凭据、无 query/hash 的 HTTP(S) URL；
+- 可选 bearer token 继续使用 `STORY_AGENT_MCP_ACCESS_TOKEN`，material actor claim 仍由
+  Web/API 的 `material:review/sign` 权限与 actor 一致性检查终审；
+- MCP 预先拒绝 URL/URI、相对 `local_video_path`、畸形 `sample_id`、空 actor 和无界
+  transcript 文本；
+- ingest 的 `authorized_private_video_ingest` 和 transcript 的
+  `local_private_transcription_only` confirmation 由桥接层固定写入，调用方不能弱化；
+- 返回统一 `mcp-reference-private-video-sample-bridge/v1` 元数据，逐次声明 local private
+  mode、MCP 未调用模型、未运行 ffmpeg、未直接写仓库、未自动批准、未写知识库、未上传
+  第三方且未授予 production credit；
+- Web 与 MCP 的 Story Agent MVP 状态同步把 command surface 从 `tool_count=39` 更新到
+  `tool_count=42`，保留 `reference_text_analysis_tools=12`，新增
+  `private_video_sample_tools=3`。
+
+验证结果：
+
+```text
+red: MCP MVP status still expected 39 after adding private-video tools
+green: Reference private video MCP + MVP status targeted: 2 files / 7 tests passed
+Web MVP API targeted: 1 file / 4 tests passed / 228 skipped
+MCP full: 99 files / 517 tests passed
+MCP build passed
+server lint/typecheck passed
+```
+
+### 6.32 下一优先级
 
 P1-C15 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
-和 MCP command surface 已闭环；P1-D1～D4 的本地私有视频样本接入、ffprobe/ffmpeg
-派生证据、本地 transcript 封存和 no-credit 边界也已具备。下一步优先等待用户合法
-提供真实视频样本并亲自确认授权，再通过本地 CLI 或 Web API 运行真实样本 ingest，
-随后再进入 operator evidence、独立 analysis approval、benchmark/style pack 和
-reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
+和 MCP command surface 已闭环；P1-D1～D5 的本地私有视频样本接入、ffprobe/ffmpeg
+派生证据、本地 transcript 封存、CLI/Web API/MCP 三入口和 no-credit 边界也已具备。
+下一步优先等待用户合法提供真实视频样本并亲自确认授权，再通过本地 CLI、Web API 或
+MCP 运行真实样本 ingest，随后再进入 operator evidence、独立 analysis approval、
+benchmark/style pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用
+fixture 冒充真实验收。
 
 外部 artifact store 仍等待用户选择后端、凭据注入方式与保留策略。旧两批没有完整历史证据时继续保持 `legacy_unsealed`。
 
@@ -2823,6 +2866,8 @@ real external provider
 - P1-C12 最后 pending chunk 写盘前 requested-dimension 聚合 preflight、拒绝后可重试与 P1-C4→P1-C6 完整隔离浏览器回归；
 - P1-C13 Story Agent 产品首页与真实素材/项目统计入口；
 - P1-C14 授权文字分析 12 个 canonical MCP bridge、39-tool 状态证据与 no-credit 边界；
+- P1-D1～D5 本地私有视频样本 ingest、ffprobe/ffmpeg 派生、本地 transcript 封存、
+  CLI/Web API/MCP 三入口、42-tool 状态证据与 no-credit 边界；
 - P1-B1 项目绑定 `story-agent-run/v1`；
 - P1-B2 生成请求绑定 `story-agent-run/v2`、幂等冲突与 generation checkpoint；
 - P1-B2 bounded run list、ownership 过滤与 StoryAgentRun Web 控制台；
@@ -3063,7 +3108,7 @@ a18b99cc feat(story-agent): verify approved analysis details
 fab5d6ec fix(story-agent): keep final analysis chunks retryable
 370adf59 feat(story-agent): launch production home
 
-P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证、P1-C12 最后分块维度覆盖 preflight 和完整隔离浏览器恢复链、P1-C13 产品首页、P1-C14 授权文字分析 12 个 canonical MCP 工具与 39-tool 状态证据均已完成。不要重新实现。
+P0-A 到 P0-E2、P1-A1 到 P1-A2c、Reference Library governance/composition/baseline UI、P1-B1 项目绑定 story-agent-run/v1、P1-B2 生成请求与运行控制台、P1-B3 四个专业工作流 checkpoint、P1-B4 四题材视觉资产压力审计、P1-B5 canonical ops/API/控制台可发现性、P1-B6 八视觉世界 ImageGen 扩容与通用题材语义防污染、P1-B7 数据驱动批次注册表和响应式浏览器 smoke、P1-B8 三态 Playwright 双视口回归、P1-B9 视觉批次 composition provenance 与 canonical/ops fail-closed 校验、P1-B10 有界 provenance ops/UI 展示、P1-B11 第三批四世界/十二世界合并审计、P1-B12 committed immutable receipt / sealed batch gate、P1-B13 通用 receipt-backed manifest/inspection 工具、P1-B14 registry-level 只读 receipt audit、P1-B15 deterministic evidence bundle/restore、P1-B16 committed evidence descriptor / 写盘前 exact-byte 校验、P1-B17 独立只读 artifact preflight、P1-B18 registry/composition v3 descriptor provenance，以及 P1-C1 exact-byte 授权文字快照、P1-C2 analysis task material binding、P1-C3 Web 工作台、P1-C4 可续跑逐块观察/partial SHA/checkpoint/确定性 operator evidence 聚合、P1-C5 evidence-bound pending TextReferenceAnalysis 草拟与不可变 provenance、P1-C6 结构化 supplement 与同一 draft task 恢复、P1-C7 benchmark/style-pack/generation-time 全链复核和 bounded supplement trace、P1-C8 首次批准与批准重放 provenance preflight、P1-C9 approved v2 来源详情读取 preflight、P1-C10 benchmark card 详情/列表读取 preflight、P1-C11 style-pack 详情/列表读取与共享 generation provenance 验证、P1-C12 最后分块维度覆盖 preflight 和完整隔离浏览器恢复链、P1-C13 产品首页、P1-C14 授权文字分析 12 个 canonical MCP 工具与 39-tool 当轮状态证据、P1-D1～D5 本地私有视频样本 CLI/Web API/MCP 三入口与 42-tool 当前状态证据均已完成。不要重新实现。
 
 下一步优先等待用户合法提供真实材料并亲自确认授权，再运行 operator evidence、独立 analysis approval、benchmark/style pack 和 reference-free/reference-assisted 对照。没有真实材料时不得用 fixture approval、machine comparison 或 not_run 冒充真人、法律或 production 通过。
 

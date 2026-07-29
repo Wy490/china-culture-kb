@@ -74,6 +74,9 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_submit_reference_text_analysis_supplement',
   'kb_get_reference_text_analysis_supplement',
   'kb_submit_reference_text_analysis_draft',
+  'kb_ingest_reference_private_video_sample',
+  'kb_get_reference_private_video_sample',
+  'kb_submit_reference_private_video_transcript',
 ] as const;
 
 const PRODUCTION_DELIVERY_CONTRACT_SURFACES = [
@@ -1323,12 +1326,13 @@ function progressSlices(
       label: 'MCP Story Agent loop',
       status: 'ready',
       percent: 100,
-      detail: 'MCP now exposes the full Story Agent command loop: knowledge context, blueprint, validation, delivery export, repair prompt, controlled version write, recoverable authorized-text analysis, generated governance, readiness automation, MVP status, and GEARS evidence signoff.',
+      detail: 'MCP now exposes the full Story Agent command loop: knowledge context, blueprint, validation, delivery export, repair prompt, controlled version write, recoverable authorized-text analysis, local-private video sample intake, generated governance, readiness automation, MVP status, and GEARS evidence signoff.',
       evidence: [
         'implementation_progress=100',
         `tool_count=${MCP_STORY_AGENT_LOOP_TOOLS.length}`,
         `tools=${MCP_STORY_AGENT_LOOP_TOOLS.join(',')}`,
         'reference_text_analysis_tools=12',
+        'private_video_sample_tools=3',
         'safe_write=kb_update_project_version',
         'repair_apply_requires_repaired_story_json=true',
         'media_execution=gears_v2',
@@ -1618,6 +1622,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- Story Agent command surface: ${report.summary.story_agent_command_surface_status} · ${report.summary.story_agent_command_surface_percent}%`,
     `- MCP Story Agent tools: ${report.summary.mcp_story_agent_tool_count}`,
     '- MCP authorized text analysis tools: 12',
+    '- MCP private video sample tools: 3',
     `- MCP Story Agent loop: ${report.summary.mcp_story_agent_loop_percent}%`,
     `- content command layer: ${report.summary.content_command_layer_percent}%`,
     `- production delivery contract: ${report.summary.production_delivery_contract_percent}%`,

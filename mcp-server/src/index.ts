@@ -43,6 +43,11 @@ import {
   submitReferenceTextAnalysisDraft,
   submitReferenceTextAnalysisSupplement,
 } from './tools/reference-text-analysis.js';
+import {
+  getReferencePrivateVideoSample,
+  ingestReferencePrivateVideoSample,
+  submitReferencePrivateVideoTranscript,
+} from './tools/reference-private-video-samples.js';
 import { getProjectContext } from './tools/get-project-context.js';
 import { generateStoryBlueprint } from './tools/generate-story-blueprint.js';
 import { validateGenreStory } from './tools/validate-genre-story.js';
@@ -744,6 +749,63 @@ server.tool(
   },
   async (input) => {
     const result = await submitReferenceTextAnalysisDraft(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+// Reference Library private video samples — canonical local-private application bridge
+server.tool(
+  'kb_ingest_reference_private_video_sample',
+  '通过 canonical Web/API 在本地私有模式封存用户授权视频样本；MCP 不直接运行 ffmpeg、不写仓库、不上传第三方、不返回源路径或 transcript 正文。',
+  {
+    title: z.string().trim().min(1).max(200),
+    media_type: z.enum(['film', 'episode', 'promo', 'tutorial']),
+    local_video_path: z.string().trim().min(1).max(2_000)
+      .describe('仓库外的绝对本机视频路径；canonical Web service 终审并复制到 ignored 私有目录'),
+    rights_status: z.enum(['user_owned', 'licensed', 'public_domain']),
+    access_scope: z.enum(['excerpt', 'full_user_supplied']),
+    user_reason: z.string().trim().min(1).max(1_000),
+    authorization_reference: z.string().trim().min(1).max(500),
+    attested_by: z.string().trim().min(1).max(120),
+    attested_at: z.string().datetime({ offset: true }),
+    thumbnail_time_seconds: z.number().min(0).max(36_000).optional(),
+    extract_thumbnail: z.boolean().optional(),
+    extract_audio_wav: z.boolean().optional(),
+  },
+  async (input) => {
+    const result = await ingestReferencePrivateVideoSample(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_get_reference_private_video_sample',
+  '读取本地私有视频样本 record、ffprobe/ffmpeg 派生状态和 transcript metadata；不返回原视频、源路径或 transcript 正文。',
+  {
+    sample_id: z.string().regex(/^reference-private-video-[a-f0-9]{24}$/),
+  },
+  async (input) => {
+    const result = await getReferencePrivateVideoSample(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_submit_reference_private_video_transcript',
+  '向已封存的本地私有视频样本提交本地转写文本；canonical API 只保存 private transcript 文件和 SHA metadata，不自动批准或授予 production credit。',
+  {
+    sample_id: z.string().regex(/^reference-private-video-[a-f0-9]{24}$/),
+    transcript_text: z.string().min(1).max(500_000)
+      .describe('本地转写正文；Web API 封存后只返回 metadata，MCP bridge 不在结果中返回正文'),
+    transcript_format: z.enum(['text/plain', 'text/srt', 'text/vtt']),
+    transcribed_by: z.string().trim().min(1).max(120),
+    transcribed_at: z.string().datetime({ offset: true }),
+    method: z.enum(['local_manual', 'local_model']),
+    tool_name: z.string().trim().min(1).max(120).optional(),
+    tool_version: z.string().trim().min(1).max(120).optional(),
+  },
+  async (input) => {
+    const result = await submitReferencePrivateVideoTranscript(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );
