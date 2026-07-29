@@ -29,6 +29,7 @@
     "smoke:story-agent-visual-asset-pressure-batch-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure-eight-world-merge": "tsx scripts/story-agent-visual-asset-pressure-batch-merge.mts",
     "smoke:story-agent-visual-asset-pressure": "tsx scripts/story-agent-visual-asset-pressure.mts",
+    "smoke:reference-private-video-intake": "tsx scripts/reference-private-video-sample-intake.mts",
     "smoke:story-agent-seedance-preproduction": "tsx scripts/story-agent-seedance-preproduction-smoke.mts",
     "smoke:story-agent-15-type-preproduction": "tsx scripts/story-agent-15-type-preproduction-matrix.mts",
     "smoke:story-agent-15-type-import-images": "tsx scripts/story-agent-15-type-image-import.mts",

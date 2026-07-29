@@ -8,21 +8,69 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createJsonBodyParser } from '../middleware/json-body.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { createReferenceLibraryRouter } from '../routes/reference-library.js';
+import type { PrivateVideoCommandRunner } from '../services/reference-private-video-sample-service.js';
 
 const temporaryRoots: string[] = [];
 
-function sha256(value: string): string {
+function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-async function createRequest() {
+async function createRequest(options: {
+  privateVideoCommandRunner?: PrivateVideoCommandRunner;
+} = {}) {
   const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'story-agent-reference-library-'));
   temporaryRoots.push(repoRoot);
   const app = express();
   app.use(createJsonBodyParser());
-  app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot));
+  app.use('/api/reference-library', createReferenceLibraryRouter(repoRoot, options));
   app.use(errorHandler);
   return { repoRoot, request: supertest(app) };
+}
+
+function fakePrivateVideoRunner(): PrivateVideoCommandRunner {
+  return async (command, args) => {
+    if (command === 'ffprobe') {
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          format: {
+            format_name: 'mov,mp4,m4a,3gp,3g2,mj2',
+            duration: '12.500000',
+            bit_rate: '1800000',
+          },
+          streams: [
+            {
+              codec_type: 'video',
+              codec_name: 'h264',
+              width: 1920,
+              height: 1080,
+              duration: '12.500000',
+              avg_frame_rate: '24/1',
+            },
+            {
+              codec_type: 'audio',
+              codec_name: 'aac',
+              sample_rate: '48000',
+              channels: 2,
+              duration: '12.480000',
+            },
+          ],
+        }),
+        stderr: '',
+      };
+    }
+    const outputPath = args.at(-1);
+    if (typeof outputPath === 'string') {
+      await writeFile(
+        outputPath,
+        command === 'ffmpeg' && outputPath.endsWith('.wav')
+          ? Buffer.from('local wav derivative')
+          : Buffer.from('local jpeg derivative'),
+      );
+    }
+    return { exitCode: 0, stdout: '', stderr: '' };
+  };
 }
 
 afterEach(async () => {
@@ -72,6 +120,304 @@ describe('Reference Intelligence library', () => {
       `${created.body.data.reference_id}.json`,
     ), 'utf8'));
     expect(persisted).toEqual(created.body.data);
+  });
+
+  it('seals local private video samples without persisting source paths or granting credit', async () => {
+    const sourceRoot = await mkdtemp(path.join(os.tmpdir(), 'story-agent-private-video-source-'));
+    temporaryRoots.push(sourceRoot);
+    const sourcePath = path.join(sourceRoot, 'authorized-sample.mp4');
+    const videoBytes = Buffer.from('private video bytes from user supplied sample');
+    await writeFile(sourcePath, videoBytes);
+    const { repoRoot, request } = await createRequest({
+      privateVideoCommandRunner: fakePrivateVideoRunner(),
+    });
+
+    const created = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '用户授权私有样片',
+        media_type: 'episode',
+        local_video_path: sourcePath,
+        rights_status: 'user_owned',
+        access_scope: 'full_user_supplied',
+        user_reason: '在本地提取镜头节奏和转写，不上传第三方',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'private-video-attestation-20260729',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+
+    expect(created.status).toBe(201);
+    expect(created.body.data).toMatchObject({
+      idempotent_replay: false,
+      sample: {
+        schema_version: 'reference-private-video-sample/v1',
+        title: '用户授权私有样片',
+        media_type: 'episode',
+        source_video: {
+          original_filename: 'authorized-sample.mp4',
+          content_sha256: sha256(videoBytes),
+          byte_length: videoBytes.length,
+        },
+        ffprobe: {
+          status: 'ready',
+          duration_seconds: 12.5,
+          video_streams: [{
+            codec_type: 'video',
+            codec_name: 'h264',
+            width: 1920,
+            height: 1080,
+          }],
+          audio_streams: [{
+            codec_type: 'audio',
+            codec_name: 'aac',
+            channels: 2,
+          }],
+        },
+        ffmpeg_derivatives: {
+          thumbnail: { status: 'ready', kind: 'thumbnail_jpeg' },
+          audio_wav: { status: 'ready', kind: 'audio_wav_16khz_mono' },
+        },
+        transcript: { status: 'not_submitted' },
+        governance: {
+          local_private_mode: true,
+          source_video_in_git: false,
+          source_path_persisted: false,
+          server_download_allowed: false,
+          third_party_upload_allowed: false,
+          external_model_call_performed: false,
+          ffprobe_allowed: true,
+          ffmpeg_allowed: true,
+          local_transcription_allowed: true,
+          prompt_injection_allowed: false,
+          knowledge_writeback_allowed: false,
+          production_credit_eligible: false,
+          human_review_complete: false,
+          production_credit_granted: false,
+        },
+      },
+    });
+    const serialized = JSON.stringify(created.body.data);
+    expect(serialized).not.toContain(sourcePath);
+    expect(serialized).not.toContain('local_video_path');
+    expect(serialized).not.toContain('sourceRoot');
+    expect(serialized).not.toContain('/private-video-source-');
+
+    const storedOriginalPath = path.join(
+      repoRoot,
+      created.body.data.sample.source_video.stored_private_relative_path,
+    );
+    expect(await readFile(storedOriginalPath)).toEqual(videoBytes);
+    expect(created.body.data.sample.source_video.stored_private_relative_path)
+      .toContain('references/creative/private-video-samples/');
+    await expect(readFile(path.join(
+      repoRoot,
+      'references/creative/library/references',
+      `${created.body.data.sample.sample_id}.json`,
+    ), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+
+    const replay = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '用户授权私有样片',
+        media_type: 'episode',
+        local_video_path: sourcePath,
+        rights_status: 'user_owned',
+        access_scope: 'full_user_supplied',
+        user_reason: '在本地提取镜头节奏和转写，不上传第三方',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'private-video-attestation-20260729',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+    expect(replay.status).toBe(200);
+    expect(replay.body.data.idempotent_replay).toBe(true);
+
+    const conflict = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '用户授权私有样片',
+        media_type: 'episode',
+        local_video_path: sourcePath,
+        rights_status: 'user_owned',
+        access_scope: 'full_user_supplied',
+        user_reason: '在本地提取镜头节奏和转写，不上传第三方',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'different-attestation',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe('REFERENCE_PRIVATE_VIDEO_SAMPLE_CONFLICT');
+  });
+
+  it('rejects unsafe private video source paths before copying originals', async () => {
+    const { repoRoot, request } = await createRequest({
+      privateVideoCommandRunner: fakePrivateVideoRunner(),
+    });
+    const inRepoPath = path.join(repoRoot, 'raw-user-video.mp4');
+    await writeFile(inRepoPath, 'repo-local source must be rejected');
+
+    const rejectedInRepo = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '仓库内原视频',
+        media_type: 'film',
+        local_video_path: inRepoPath,
+        rights_status: 'licensed',
+        access_scope: 'excerpt',
+        user_reason: '不能把仓库路径当作私有原片来源',
+        authorization: {
+          basis: 'licensed',
+          authorization_reference: 'license-20260729',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+    expect(rejectedInRepo.status).toBe(400);
+    expect(rejectedInRepo.body.error.code).toBe(
+      'REFERENCE_PRIVATE_VIDEO_SOURCE_PATH_INVALID',
+    );
+
+    const rejectedUrl = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '远程 URL 原视频',
+        media_type: 'film',
+        local_video_path: 'https://example.com/private-video.mp4',
+        rights_status: 'licensed',
+        access_scope: 'excerpt',
+        user_reason: '不得由服务端下载或上传第三方',
+        authorization: {
+          basis: 'licensed',
+          authorization_reference: 'license-20260729',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+    expect(rejectedUrl.status).toBe(400);
+    expect(rejectedUrl.body.error.code).toBe(
+      'REFERENCE_PRIVATE_VIDEO_SOURCE_PATH_INVALID',
+    );
+  });
+
+  it('seals local private transcripts without returning transcript text', async () => {
+    const sourceRoot = await mkdtemp(path.join(os.tmpdir(), 'story-agent-private-video-source-'));
+    temporaryRoots.push(sourceRoot);
+    const sourcePath = path.join(sourceRoot, 'authorized-dialogue.mp4');
+    await writeFile(sourcePath, Buffer.from('private video bytes with dialogue'));
+    const { repoRoot, request } = await createRequest({
+      privateVideoCommandRunner: fakePrivateVideoRunner(),
+    });
+    const created = await request
+      .post('/api/reference-library/private-video-samples')
+      .send({
+        title: '用户授权转写样片',
+        media_type: 'tutorial',
+        local_video_path: sourcePath,
+        rights_status: 'user_owned',
+        access_scope: 'excerpt',
+        user_reason: '只在本地转写并生成分析证据',
+        authorization: {
+          basis: 'user_owned',
+          authorization_reference: 'private-video-transcript-attestation',
+          attested_by: 'operator-01',
+          attested_at: '2026-07-29T09:00:00.000Z',
+          confirmation: 'authorized_private_video_ingest',
+        },
+      });
+    const transcriptText = [
+      '00:00:00 讲述者先提出问题。',
+      '00:00:04 画面切到操作步骤，说明本地流程。',
+    ].join('\n');
+    const submitted = await request
+      .post(
+        `/api/reference-library/private-video-samples/${
+          created.body.data.sample.sample_id
+        }/transcript`,
+      )
+      .send({
+        transcript_text: transcriptText,
+        transcript_format: 'text/plain',
+        transcribed_by: 'operator-01',
+        transcribed_at: '2026-07-29T09:10:00.000Z',
+        method: 'local_model',
+        tool_name: 'local-whisper',
+        tool_version: 'offline-test',
+        confirmation: 'local_private_transcription_only',
+      });
+
+    expect(submitted.status).toBe(201);
+    expect(submitted.body.data.sample.transcript).toMatchObject({
+      status: 'ready',
+      transcript_format: 'text/plain',
+      content_sha256: sha256(transcriptText),
+      byte_length: Buffer.byteLength(transcriptText),
+      character_count: Array.from(transcriptText).length,
+      line_count: 2,
+      method: 'local_model',
+      tool_name: 'local-whisper',
+      local_transcription_performed: true,
+      external_model_call_performed: false,
+      third_party_upload_performed: false,
+    });
+    expect(JSON.stringify(submitted.body.data)).not.toContain('讲述者先提出问题');
+    const transcriptPath = path.join(
+      repoRoot,
+      submitted.body.data.sample.transcript.private_relative_path,
+    );
+    expect(await readFile(transcriptPath, 'utf8')).toBe(transcriptText);
+
+    const replay = await request
+      .post(
+        `/api/reference-library/private-video-samples/${
+          created.body.data.sample.sample_id
+        }/transcript`,
+      )
+      .send({
+        transcript_text: transcriptText,
+        transcript_format: 'text/plain',
+        transcribed_by: 'operator-01',
+        transcribed_at: '2026-07-29T09:10:00.000Z',
+        method: 'local_model',
+        tool_name: 'local-whisper',
+        tool_version: 'offline-test',
+        confirmation: 'local_private_transcription_only',
+      });
+    expect(replay.status).toBe(200);
+    expect(replay.body.data.idempotent_replay).toBe(true);
+
+    const conflict = await request
+      .post(
+        `/api/reference-library/private-video-samples/${
+          created.body.data.sample.sample_id
+        }/transcript`,
+      )
+      .send({
+        transcript_text: `${transcriptText}\n00:00:09 新增不同文本。`,
+        transcript_format: 'text/plain',
+        transcribed_by: 'operator-01',
+        transcribed_at: '2026-07-29T09:10:00.000Z',
+        method: 'local_model',
+        tool_name: 'local-whisper',
+        tool_version: 'offline-test',
+        confirmation: 'local_private_transcription_only',
+      });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe(
+      'REFERENCE_PRIVATE_VIDEO_TRANSCRIPT_CONFLICT',
+    );
   });
 
   it('seals authorized user-supplied text and exposes bounded deterministic chunks', async () => {

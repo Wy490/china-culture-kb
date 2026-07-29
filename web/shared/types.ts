@@ -613,6 +613,154 @@ export interface ReferenceTextMaterialChunk
   production_credit_granted: false;
 }
 
+export type ReferencePrivateVideoMediaType = Extract<
+  ReferenceSourceMediaType,
+  'film' | 'episode' | 'promo' | 'tutorial'
+>;
+
+export interface ReferencePrivateVideoAuthorization {
+  basis: Extract<
+    ReferenceRightsStatus,
+    'user_owned' | 'licensed' | 'public_domain'
+  >;
+  authorization_reference: string;
+  attested_by: string;
+  attested_at: string;
+  confirmation: 'authorized_private_video_ingest';
+  machine_verified: false;
+}
+
+export interface ReferencePrivateVideoSourceArtifact {
+  original_filename: string;
+  stored_private_relative_path: string;
+  content_sha256: string;
+  byte_length: number;
+}
+
+export interface ReferencePrivateVideoStreamSummary {
+  codec_type: 'video' | 'audio';
+  codec_name?: string;
+  width?: number;
+  height?: number;
+  sample_rate?: number;
+  channels?: number;
+  duration_seconds?: number;
+  avg_frame_rate?: string;
+}
+
+export type ReferencePrivateVideoProbeReport =
+  | {
+      status: 'ready';
+      command: string;
+      raw_json_private_relative_path: string;
+      raw_json_sha256: string;
+      format_name?: string;
+      duration_seconds?: number;
+      bit_rate?: number;
+      video_streams: ReferencePrivateVideoStreamSummary[];
+      audio_streams: ReferencePrivateVideoStreamSummary[];
+    }
+  | {
+      status: 'blocked';
+      command: string;
+      blocked_reason: string;
+      video_streams: [];
+      audio_streams: [];
+    };
+
+export type ReferencePrivateVideoDerivedArtifact =
+  | {
+      status: 'ready';
+      kind: 'thumbnail_jpeg' | 'audio_wav_16khz_mono';
+      command: string;
+      private_relative_path: string;
+      content_sha256: string;
+      byte_length: number;
+    }
+  | {
+      status: 'blocked';
+      kind: 'thumbnail_jpeg' | 'audio_wav_16khz_mono';
+      command: string;
+      blocked_reason: string;
+    }
+  | {
+      status: 'not_requested';
+      kind: 'thumbnail_jpeg' | 'audio_wav_16khz_mono';
+    };
+
+export type ReferencePrivateVideoTranscriptStatus =
+  | {
+      status: 'not_submitted';
+    }
+  | {
+      status: 'ready';
+      transcript_id: string;
+      transcript_format: 'text/plain' | 'text/srt' | 'text/vtt';
+      content_sha256: string;
+      byte_length: number;
+      character_count: number;
+      line_count: number;
+      private_relative_path: string;
+      transcribed_by: string;
+      transcribed_at: string;
+      method: 'local_manual' | 'local_model';
+      tool_name?: string;
+      tool_version?: string;
+      local_transcription_performed: true;
+      external_model_call_performed: false;
+      third_party_upload_performed: false;
+    };
+
+export interface ReferencePrivateVideoGovernanceBoundary
+  extends ReferenceGovernanceBoundary {
+  local_private_mode: true;
+  source_video_in_git: false;
+  source_path_persisted: false;
+  server_download_allowed: false;
+  third_party_upload_allowed: false;
+  external_model_call_performed: false;
+  ffprobe_allowed: true;
+  ffmpeg_allowed: true;
+  local_transcription_allowed: true;
+  prompt_injection_allowed: false;
+  human_review_complete: false;
+  production_credit_granted: false;
+}
+
+export interface ReferencePrivateVideoSampleRecord {
+  schema_version: 'reference-private-video-sample/v1';
+  sample_id: string;
+  title: string;
+  media_type: ReferencePrivateVideoMediaType;
+  rights_status: Extract<
+    ReferenceRightsStatus,
+    'user_owned' | 'licensed' | 'public_domain'
+  >;
+  access_scope: Extract<ReferenceAccessScope, 'excerpt' | 'full_user_supplied'>;
+  user_reason: string;
+  source_video: ReferencePrivateVideoSourceArtifact;
+  authorization: ReferencePrivateVideoAuthorization;
+  ffprobe: ReferencePrivateVideoProbeReport;
+  ffmpeg_derivatives: {
+    thumbnail: ReferencePrivateVideoDerivedArtifact;
+    audio_wav: ReferencePrivateVideoDerivedArtifact;
+  };
+  transcript: ReferencePrivateVideoTranscriptStatus;
+  governance: ReferencePrivateVideoGovernanceBoundary;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReferencePrivateVideoSampleIngestResult {
+  sample: ReferencePrivateVideoSampleRecord;
+  idempotent_replay: boolean;
+}
+
+export interface ReferencePrivateVideoTranscriptSubmissionResult {
+  sample: ReferencePrivateVideoSampleRecord;
+  idempotent_replay: boolean;
+}
+
 export type ReferenceSimilarityDimension =
   | 'excerpt'
   | 'character_design'

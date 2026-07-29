@@ -2691,13 +2691,69 @@ MCP production build passed
 knowledge base lint: 34 files / 262 entries passed
 ```
 
-### 6.30 下一优先级
+### 6.30 P1-D1～D4 本地私有视频样本接入（2026-07-29）
+
+本轮按用户明确边界推进真实视频样本到来前的本地私有模式：允许本机
+`ffprobe`/`ffmpeg` 和本地转写，原视频不进入 Git、不上传第三方，真实样本稍后再由
+用户提供。
+
+实现边界：
+
+- 新增 `reference-private-video-sample/v1` 共享类型与 Zod 合同，覆盖本地私有样片、
+  ffprobe 摘要、ffmpeg 派生缩略图/16kHz 单声道 wav、本地转写状态和 no-credit
+  governance；
+- 新增 `reference-private-video-sample-service`，只接受仓库外的绝对本机文件路径，
+  拒绝 URL/URI、相对路径和 Git worktree 内原视频；
+- 原视频复制到 ignored 的
+  `references/creative/private-video-samples/`，记录只保存私有相对路径、SHA-256、
+  字节数和原始文件名，不保存用户传入的本机源路径；
+- 服务调用 canonical 本地 `ffprobe`/`ffmpeg` runner，生成 `ffprobe.json`、缩略图和
+  audio wav，并逐项记录命令 hint、状态、SHA-256、字节数或 blocked reason；
+- 转写入口只封存本地已经生成的 transcript 文本，API/report 不返回正文；记录
+  `method=local_manual|local_model`、工具名、文本 SHA-256 和
+  `external_model_call_performed=false` / `third_party_upload_performed=false`；
+- 新增 `/api/reference-library/private-video-samples`、读取详情与 transcript 提交路由，
+  复用 `material:review/sign` 权限和 actor 一致性检查；
+- 新增本地 operator CLI
+  `npm run smoke:reference-private-video-intake -w server -- ...`，真实样本到位后可直接用
+  `--video` 与可选 `--transcript` 跑本机私有封存；
+- `.gitignore` 明确忽略 `references/creative/private-video-samples/`，防止原视频、
+  ffmpeg 派生物和转写正文进入提交。
+
+烟测说明：
+
+- 使用 `/private/tmp/story-agent-private-video-smoke.mp4` 的本地合成 1 秒视频和临时
+  transcript 跑真实 `ffprobe`/`ffmpeg` CLI 烟测；
+- 报告 `/private/tmp/story-agent-private-video-intake-report.json` 显示
+  `ffprobe_status=ready`、`thumbnail_status=ready`、`audio_wav_status=ready`、
+  `transcript_status=ready`；
+- `record.json` 与报告均不包含 `/private/tmp` 源路径、`local_video_path` 或 transcript
+  正文；transcript 正文只存在 ignored 私有目录；
+- 该合成样片只是工程烟测，不是用户真实样本，不计 reference approval、真人审核或
+  production credit。
+
+验证结果：
+
+```text
+reference-library targeted: 1 file / 10 tests passed
+server lint/typecheck: passed
+real local ffmpeg/ffprobe CLI smoke: ready probe / thumbnail / audio / transcript
+record/report source-path and transcript-body leak check: passed
+web build: server tsup + client vue-tsc/vite passed
+web lint: server tsc + scripts tsc + client vue-tsc passed
+MCP build: passed
+server full: 183 files passed / 1 skipped; 1530 tests passed / 2 skipped; 111.19s
+git diff --check passed
+```
+
+### 6.31 下一优先级
 
 P1-C15 后本地可验证的授权文字接入、执行、补证、pending 草拟、批准/读取 provenance
-和 MCP command surface 已闭环。下一步优先等待用户合法提供真实材料并亲自确认授权，
-再通过 MCP 或 Web 运行 operator evidence、独立 analysis approval、benchmark/style
-pack 和 reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture
-冒充真实验收。
+和 MCP command surface 已闭环；P1-D1～D4 的本地私有视频样本接入、ffprobe/ffmpeg
+派生证据、本地 transcript 封存和 no-credit 边界也已具备。下一步优先等待用户合法
+提供真实视频样本并亲自确认授权，再通过本地 CLI 或 Web API 运行真实样本 ingest，
+随后再进入 operator evidence、独立 analysis approval、benchmark/style pack 和
+reference-free/reference-assisted 对照；若没有真实材料，不要用 fixture 冒充真实验收。
 
 外部 artifact store 仍等待用户选择后端、凭据注入方式与保留策略。旧两批没有完整历史证据时继续保持 `legacy_unsealed`。
 

@@ -9,6 +9,9 @@ web/server/dist/
 # Generated story files (runtime output, not source)
 web/generated/
 
+# Local private reference video samples and derivatives; never commit originals
+references/creative/private-video-samples/
+
 # IDE
 .vscode/
 .idea/

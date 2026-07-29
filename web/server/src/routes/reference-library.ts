@@ -34,6 +34,12 @@ import {
   getReferenceTextMaterialStatus,
 } from '../services/reference-text-material-service.js';
 import {
+  createReferencePrivateVideoSample,
+  getReferencePrivateVideoSample,
+  submitReferencePrivateVideoTranscript,
+  type PrivateVideoCommandRunner,
+} from '../services/reference-private-video-sample-service.js';
+import {
   createReferenceTextAnalysisExecution,
   finalizeReferenceTextAnalysisExecution,
   getReferenceTextAnalysisExecution,
@@ -85,7 +91,12 @@ function requiredActorMatchesClaims(req: Request, claims: unknown[]): boolean {
     );
 }
 
-export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()): Router {
+export function createReferenceLibraryRouter(
+  repoRoot = resolveDefaultRepoRoot(),
+  options: {
+    privateVideoCommandRunner?: PrivateVideoCommandRunner;
+  } = {},
+): Router {
   const router = Router();
   router.use(requireProductAccess('material:review'));
 
@@ -105,6 +116,70 @@ export function createReferenceLibraryRouter(repoRoot = resolveDefaultRepoRoot()
       next(error);
     }
   });
+
+  router.post(
+    '/private-video-samples',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        if (
+          !requiredActorMatchesClaims(
+            req,
+            [req.body?.authorization?.attested_by],
+          )
+        ) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Private video attested_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await createReferencePrivateVideoSample({
+          repoRoot,
+          request: req.body,
+          runner: options.privateVideoCommandRunner,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.get('/private-video-samples/:sampleId', async (req, res, next) => {
+    try {
+      res.json(success(await getReferencePrivateVideoSample({
+        repoRoot,
+        sampleId: String(req.params.sampleId),
+      })));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post(
+    '/private-video-samples/:sampleId/transcript',
+    requireProductAccess('material:sign'),
+    async (req, res, next) => {
+      try {
+        if (!requiredActorMatchesClaims(req, [req.body?.transcribed_by])) {
+          res.status(403).json(fail(
+            ErrorCodes.ACCESS_FORBIDDEN,
+            'Private video transcript transcribed_by must match the authenticated material reviewer',
+          ));
+          return;
+        }
+        const result = await submitReferencePrivateVideoTranscript({
+          repoRoot,
+          sampleId: String(req.params.sampleId),
+          request: req.body,
+        });
+        res.status(result.idempotent_replay ? 200 : 201).json(success(result));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/benchmark-cards', async (_req, res, next) => {
     try {

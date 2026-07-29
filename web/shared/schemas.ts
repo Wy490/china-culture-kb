@@ -286,6 +286,187 @@ ReferenceTextMaterialChunkDescriptorSchema.extend({
   production_credit_granted: z.literal(false),
 }).strict();
 
+export const ReferencePrivateVideoMediaTypeSchema = z.enum([
+  'film',
+  'episode',
+  'promo',
+  'tutorial',
+]);
+
+export const ReferencePrivateVideoAuthorizationInputSchema = z.object({
+  basis: z.enum(['user_owned', 'licensed', 'public_domain']),
+  authorization_reference: ReferenceNonEmptyTextSchema.max(500),
+  attested_by: ReferenceNonEmptyTextSchema.max(120),
+  attested_at: ReferenceTimestampSchema,
+  confirmation: z.literal('authorized_private_video_ingest'),
+}).strict();
+
+export const ReferencePrivateVideoSampleIngestRequestSchema = z.object({
+  title: ReferenceNonEmptyTextSchema.max(200),
+  media_type: ReferencePrivateVideoMediaTypeSchema,
+  local_video_path: ReferenceNonEmptyTextSchema.max(2_000),
+  rights_status: z.enum(['user_owned', 'licensed', 'public_domain']),
+  access_scope: z.enum(['excerpt', 'full_user_supplied']),
+  user_reason: ReferenceNonEmptyTextSchema.max(1_000),
+  authorization: ReferencePrivateVideoAuthorizationInputSchema,
+  thumbnail_time_seconds: z.number().min(0).max(36_000).optional(),
+  extract_thumbnail: z.boolean().optional(),
+  extract_audio_wav: z.boolean().optional(),
+}).strict();
+
+export const ReferencePrivateVideoSourceArtifactSchema = z.object({
+  original_filename: ReferenceNonEmptyTextSchema.max(255),
+  stored_private_relative_path: ReferenceNonEmptyTextSchema.max(1_000),
+  content_sha256: ReferenceContentFingerprintSchema,
+  byte_length: z.number().int().min(1),
+}).strict();
+
+export const ReferencePrivateVideoStreamSummarySchema = z.object({
+  codec_type: z.enum(['video', 'audio']),
+  codec_name: ReferenceNonEmptyTextSchema.max(80).optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  sample_rate: z.number().int().positive().optional(),
+  channels: z.number().int().positive().optional(),
+  duration_seconds: z.number().min(0).optional(),
+  avg_frame_rate: ReferenceNonEmptyTextSchema.max(40).optional(),
+}).strict();
+
+export const ReferencePrivateVideoProbeReportSchema = z.discriminatedUnion(
+  'status',
+  [
+    z.object({
+      status: z.literal('ready'),
+      command: ReferenceNonEmptyTextSchema.max(2_000),
+      raw_json_private_relative_path: ReferenceNonEmptyTextSchema.max(1_000),
+      raw_json_sha256: ReferenceContentFingerprintSchema,
+      format_name: ReferenceNonEmptyTextSchema.max(200).optional(),
+      duration_seconds: z.number().min(0).optional(),
+      bit_rate: z.number().int().min(0).optional(),
+      video_streams: z.array(ReferencePrivateVideoStreamSummarySchema).max(32),
+      audio_streams: z.array(ReferencePrivateVideoStreamSummarySchema).max(32),
+    }).strict(),
+    z.object({
+      status: z.literal('blocked'),
+      command: ReferenceNonEmptyTextSchema.max(2_000),
+      blocked_reason: ReferenceNonEmptyTextSchema.max(1_000),
+      video_streams: z.tuple([]),
+      audio_streams: z.tuple([]),
+    }).strict(),
+  ],
+);
+
+export const ReferencePrivateVideoDerivedArtifactSchema =
+z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('ready'),
+    kind: z.enum(['thumbnail_jpeg', 'audio_wav_16khz_mono']),
+    command: ReferenceNonEmptyTextSchema.max(2_000),
+    private_relative_path: ReferenceNonEmptyTextSchema.max(1_000),
+    content_sha256: ReferenceContentFingerprintSchema,
+    byte_length: z.number().int().min(1),
+  }).strict(),
+  z.object({
+    status: z.literal('blocked'),
+    kind: z.enum(['thumbnail_jpeg', 'audio_wav_16khz_mono']),
+    command: ReferenceNonEmptyTextSchema.max(2_000),
+    blocked_reason: ReferenceNonEmptyTextSchema.max(1_000),
+  }).strict(),
+  z.object({
+    status: z.literal('not_requested'),
+    kind: z.enum(['thumbnail_jpeg', 'audio_wav_16khz_mono']),
+  }).strict(),
+]);
+
+export const ReferencePrivateVideoTranscriptSubmitRequestSchema = z.object({
+  transcript_text: z.string()
+    .min(1)
+    .max(500_000)
+    .refine(value => value.trim().length > 0, 'transcript_text must not be blank'),
+  transcript_format: z.enum(['text/plain', 'text/srt', 'text/vtt']),
+  transcribed_by: ReferenceNonEmptyTextSchema.max(120),
+  transcribed_at: ReferenceTimestampSchema,
+  method: z.enum(['local_manual', 'local_model']),
+  tool_name: ReferenceNonEmptyTextSchema.max(120).optional(),
+  tool_version: ReferenceNonEmptyTextSchema.max(120).optional(),
+  confirmation: z.literal('local_private_transcription_only'),
+}).strict();
+
+export const ReferencePrivateVideoTranscriptStatusSchema =
+z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('not_submitted'),
+  }).strict(),
+  z.object({
+    status: z.literal('ready'),
+    transcript_id: z.string().regex(
+      /^reference-private-video-transcript-[a-f0-9]{24}$/,
+    ),
+    transcript_format: z.enum(['text/plain', 'text/srt', 'text/vtt']),
+    content_sha256: ReferenceContentFingerprintSchema,
+    byte_length: z.number().int().min(1),
+    character_count: z.number().int().min(1).max(500_000),
+    line_count: z.number().int().min(1).max(500_001),
+    private_relative_path: ReferenceNonEmptyTextSchema.max(1_000),
+    transcribed_by: ReferenceNonEmptyTextSchema.max(120),
+    transcribed_at: ReferenceTimestampSchema,
+    method: z.enum(['local_manual', 'local_model']),
+    tool_name: ReferenceNonEmptyTextSchema.max(120).optional(),
+    tool_version: ReferenceNonEmptyTextSchema.max(120).optional(),
+    local_transcription_performed: z.literal(true),
+    external_model_call_performed: z.literal(false),
+    third_party_upload_performed: z.literal(false),
+  }).strict(),
+]);
+
+export const ReferencePrivateVideoSampleRecordSchema = z.object({
+  schema_version: z.literal('reference-private-video-sample/v1'),
+  sample_id: z.string().regex(/^reference-private-video-[a-f0-9]{24}$/),
+  title: ReferencePrivateVideoSampleIngestRequestSchema.shape.title,
+  media_type: ReferencePrivateVideoMediaTypeSchema,
+  rights_status: z.enum(['user_owned', 'licensed', 'public_domain']),
+  access_scope: z.enum(['excerpt', 'full_user_supplied']),
+  user_reason: ReferencePrivateVideoSampleIngestRequestSchema.shape.user_reason,
+  source_video: ReferencePrivateVideoSourceArtifactSchema,
+  authorization: ReferencePrivateVideoAuthorizationInputSchema.extend({
+    machine_verified: z.literal(false),
+  }).strict(),
+  ffprobe: ReferencePrivateVideoProbeReportSchema,
+  ffmpeg_derivatives: z.object({
+    thumbnail: ReferencePrivateVideoDerivedArtifactSchema,
+    audio_wav: ReferencePrivateVideoDerivedArtifactSchema,
+  }).strict(),
+  transcript: ReferencePrivateVideoTranscriptStatusSchema,
+  governance: z.object({
+    local_private_mode: z.literal(true),
+    source_video_in_git: z.literal(false),
+    source_path_persisted: z.literal(false),
+    server_download_allowed: z.literal(false),
+    third_party_upload_allowed: z.literal(false),
+    external_model_call_performed: z.literal(false),
+    ffprobe_allowed: z.literal(true),
+    ffmpeg_allowed: z.literal(true),
+    local_transcription_allowed: z.literal(true),
+    prompt_injection_allowed: z.literal(false),
+    knowledge_writeback_allowed: z.literal(false),
+    production_credit_eligible: z.literal(false),
+    human_review_complete: z.literal(false),
+    production_credit_granted: z.literal(false),
+  }).strict(),
+  created_at: ReferenceTimestampSchema,
+  updated_at: ReferenceTimestampSchema,
+}).strict();
+
+export const ReferencePrivateVideoSampleIngestResultSchema = z.object({
+  sample: ReferencePrivateVideoSampleRecordSchema,
+  idempotent_replay: z.boolean(),
+}).strict();
+
+export const ReferencePrivateVideoTranscriptSubmissionResultSchema = z.object({
+  sample: ReferencePrivateVideoSampleRecordSchema,
+  idempotent_replay: z.boolean(),
+}).strict();
+
 const ReferenceSimilarityMarkerSchema = ReferenceNonEmptyTextSchema.max(120);
 const ReferenceSimilarityObservationIdSchema =
   ReferenceNonEmptyTextSchema.max(120);
