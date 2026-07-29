@@ -397,6 +397,23 @@ P1-E1 / E2 / E3 配方路线图已完成。真实参考样本、人工偏好和�
 - MCP 新增 `kb_get_story_recipe_effect_history`，只作为 canonical Web API 薄桥接；
 - 固定边界为 machine-only、非真人偏好、非因果证明、非法务结论、非生产交付信用。
 
+### 6.5 本轮完成：受控 cohort 与机器报告导出
+
+配方趋势现在可以导出为可复核的受控 cohort 报告：
+
+- 新增 `story-recipe-effect-machine-report/v1`；
+- cohort 定义包含配方、成片类型、机器 verdict、时间窗、每配方最小样本数和 item limit；
+- 带时区的 ISO 时间窗先归一化为 UTC，等价时间不会产生不同 cohort ID；
+- 同一 cohort 定义生成稳定 `recipe-effect-cohort-*` ID；
+- cohort 成员按项目/故事/配方/hash 稳定排序后生成 `membership_sha256`；
+- 最小样本门槛在最终趋势聚合前执行，报告同时记录 source matched、candidate、
+  included、below-minimum exclusion 和 truncation；
+- API 新增 `/api/projects/recipe-effect-comparison-report`，访问过滤在 cohort 聚合前执行；
+- 项目工作台支持最小样本门槛以及 Markdown/JSON 下载，并显示最近 cohort ID；
+- JSON 下载主动去除重复 Markdown 正文；
+- MCP 新增 `kb_get_story_recipe_effect_report`，支持时间窗和全部 cohort 筛选；
+- 空 cohort 是合法结果，不会伪造样本、人工偏好、因果结论或生产信用。
+
 ## 7. 关键代码位置
 
 ```text
@@ -593,6 +610,28 @@ Browser smoke
   only console error was the pre-existing /favicon.ico 404
 ```
 
+受控 cohort 与机器报告新增验证：
+
+```text
+Server full regression
+  188 files passed, 1 skipped
+  1563 tests passed, 2 skipped
+
+MCP full regression
+  101 files / 533 tests passed
+  TypeScript build passed
+
+Web lint / production build / visible-copy audit
+  all passed
+
+Browser smoke
+  minimum comparisons per recipe changed from 1 to 2
+  JSON download completed as recipe-effect-cohort-074d6c6df771.json
+  downloaded JSON contained stable cohort ID, membership SHA-256 and all false-credit boundaries
+  downloaded JSON omitted duplicate markdown
+  page rendered the latest exported cohort ID
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
@@ -601,10 +640,15 @@ Browser smoke
 branch: codex/story-agent-manifest-integrity-20260718
 functional baseline: 859007d5
 handoff HEAD: run git log -1 --oneline
-remote: expected ahead 9 after the recipe history local commit
+remote: expected ahead 10 after the recipe cohort report local commit
 worktree: clean
 push: not performed
 ```
+
+研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
+当前运行健康分为 30/100，主要因为历史 generated targets 未生产就绪且真实 GEARS v2
+端点、callback secret/base 尚未配置；运行健康分不能冒充研发实现进度，研发完成也不能
+冒充真实外部验收。
 
 交接时浏览器冒烟使用过以下临时地址，验证后进程已停止：
 
@@ -635,7 +679,6 @@ P1-E1 / E2 / E3 和配方机器对照历史已完成。没有真实合法样本�
 验收。下一轮可按产品需要选择：
 
 - 为配方实验增加独立的真人评审录入与审核账本；没有真实操作员输入时保持空状态；
-- 为历史趋势增加可导出的机器对照报告和受控 cohort 定义；
 - 扩展更多成片类型的 canonical 配方；
 - 继续 Story Agent 其他产品 backlog；
 - 等待用户提供合法真实样本后进入人工分析链。
@@ -718,6 +761,10 @@ P1-E3 已完成：无配方 baseline、canonical 配方 replay draft、正式生
 配方效果历史与趋势已完成：current project version 派生索引、失效记录拒绝、组合筛选、
 四类 verdict 与五维均值、项目权限过滤、项目工作台和
 `kb_get_story_recipe_effect_history` 已闭环；趋势不证明因果，也不代表真人偏好。
+
+受控 cohort 与机器报告已完成：稳定 cohort ID、成员 SHA-256、时间窗和最小样本门槛、
+Markdown/JSON 导出、权限安全 API、项目工作台和
+`kb_get_story_recipe_effect_report` 已闭环；空 cohort 不会被填充伪样本。
 
 P1-E1 / E2 / E3 与机器趋势路线图完成。下一步必须根据新的产品优先级推进；没有用户真实合法
 样本时，不得伪造后续 reference analysis、人工批准或生产验收。

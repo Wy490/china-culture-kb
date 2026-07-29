@@ -6,6 +6,7 @@ import type {
 } from '@shared/types.js';
 import { buildReferenceGenerationRecipeContract } from '@shared/reference-generation-recipes.js';
 import {
+  buildStoryRecipeEffectMachineReport,
   buildStoryRecipeEffectComparisonHistory,
   type StoryRecipeEffectComparisonHistoryRecord,
 } from '../services/reference-recipe-effect-history-service.js';
@@ -177,6 +178,85 @@ describe('recipe effect comparison history', () => {
       project_id: 'a',
       story_id: 'a-story',
       updated_at: '2026-07-30T00:00:00.000Z',
+    });
+  });
+
+  it('builds a deterministic controlled cohort before exporting machine trends', () => {
+    const records = [
+      record({ projectId: 'feature-a', updatedAt: '2026-07-30T08:00:00.000Z', delta: 10 }),
+      record({ projectId: 'feature-b', updatedAt: '2026-07-29T08:00:00.000Z', delta: 2, verdict: 'mixed' }),
+      record({
+        projectId: 'promo-a',
+        updatedAt: '2026-07-30T09:00:00.000Z',
+        recipeId: 'promo_mnemonic_reveal',
+      }),
+      record({ projectId: 'too-old', updatedAt: '2026-07-20T08:00:00.000Z' }),
+    ];
+
+    const report = buildStoryRecipeEffectMachineReport(records, {
+      from_updated_at: '2026-07-29T00:00:00.000Z',
+      to_updated_at: '2026-07-31T00:00:00.000Z',
+      min_comparisons_per_recipe: 2,
+      limit: 20,
+      generated_at: '2026-07-30T10:00:00.000Z',
+    });
+    const replay = buildStoryRecipeEffectMachineReport([...records].reverse(), {
+      from_updated_at: '2026-07-29T00:00:00.000Z',
+      to_updated_at: '2026-07-31T00:00:00.000Z',
+      min_comparisons_per_recipe: 2,
+      limit: 20,
+      generated_at: '2026-07-30T11:00:00.000Z',
+    });
+
+    expect(report).toMatchObject({
+      schema_version: 'story-recipe-effect-machine-report/v1',
+      generated_at: '2026-07-30T10:00:00.000Z',
+      cohort: {
+        source_snapshot: 'current_project_versions',
+        min_comparisons_per_recipe: 2,
+        candidate_comparison_count: 3,
+        included_comparison_count: 2,
+        excluded_below_minimum_sample_count: 1,
+      },
+      history: {
+        summary: {
+          matched_comparison_count: 2,
+        },
+      },
+    });
+    expect(report.cohort.cohort_id).toMatch(/^recipe-effect-cohort-[a-f0-9]{12}$/);
+    expect(report.cohort.membership_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(replay.cohort.cohort_id).toBe(report.cohort.cohort_id);
+    expect(replay.cohort.membership_sha256).toBe(report.cohort.membership_sha256);
+    const offsetReplay = buildStoryRecipeEffectMachineReport(records, {
+      from_updated_at: '2026-07-29T08:00:00.000+08:00',
+      to_updated_at: '2026-07-31T08:00:00.000+08:00',
+      min_comparisons_per_recipe: 2,
+      limit: 20,
+    });
+    expect(offsetReplay.cohort.cohort_id).toBe(report.cohort.cohort_id);
+    expect(report.history.items.map(item => item.project_id)).toEqual([
+      'feature-a',
+      'feature-b',
+    ]);
+  });
+
+  it('exports neutral markdown without human, causal, legal, or production credit', () => {
+    const report = buildStoryRecipeEffectMachineReport([
+      record({ projectId: 'feature-a', updatedAt: '2026-07-30T08:00:00.000Z' }),
+    ], {
+      generated_at: '2026-07-30T10:00:00.000Z',
+    });
+
+    expect(report.markdown).toContain('# 创作配方机器对照报告');
+    expect(report.markdown).toContain('只反映机器质量维度');
+    expect(report.markdown).toContain('不证明因果');
+    expect(report.boundary).toEqual({
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
+      legal_conclusion_reached: false,
+      production_credit_granted: false,
     });
   });
 });

@@ -8270,6 +8270,47 @@ describe('Projects API', () => {
     });
   });
 
+  describe('GET /api/projects/recipe-effect-comparison-report', () => {
+    it('returns a controlled cohort with neutral machine-only markdown', async () => {
+      const res = await request.get(
+        '/api/projects/recipe-effect-comparison-report'
+        + '?from_updated_at=2026-07-01T00%3A00%3A00.000Z'
+        + '&to_updated_at=2026-07-31T23%3A59%3A59.999Z'
+        + '&min_comparisons_per_recipe=2&limit=20',
+      );
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-recipe-effect-machine-report/v1',
+        cohort: {
+          source_snapshot: 'current_project_versions',
+          min_comparisons_per_recipe: 2,
+          item_limit: 20,
+        },
+        boundary: {
+          machine_comparison_only: true,
+          human_preference_measured: false,
+          causal_effect_proven: false,
+          legal_conclusion_reached: false,
+          production_credit_granted: false,
+        },
+      });
+      expect(res.body.data.cohort.cohort_id)
+        .toMatch(/^recipe-effect-cohort-[a-f0-9]{12}$/);
+      expect(res.body.data.markdown).toContain('# 创作配方机器对照报告');
+    });
+
+    it('rejects reversed report time windows', async () => {
+      const res = await request.get(
+        '/api/projects/recipe-effect-comparison-report'
+        + '?from_updated_at=2026-08-01T00%3A00%3A00.000Z'
+        + '&to_updated_at=2026-07-01T00%3A00%3A00.000Z',
+      );
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
   describe('PATCH /api/projects/:projectId/supplement-tasks/:taskId', () => {
     it('validates supplement task status', async () => {
       const res = await request

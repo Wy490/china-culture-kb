@@ -1826,6 +1826,21 @@ export const StoryRecipeEffectComparisonHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 }).strict();
 
+export const StoryRecipeEffectMachineReportQuerySchema =
+StoryRecipeEffectComparisonHistoryQuerySchema.extend({
+  from_updated_at: z.string().datetime({ offset: true }).optional(),
+  to_updated_at: z.string().datetime({ offset: true }).optional(),
+  min_comparisons_per_recipe: z.coerce.number().int().min(1).max(100).optional(),
+}).strict().refine(
+  value => !value.from_updated_at
+    || !value.to_updated_at
+    || value.from_updated_at <= value.to_updated_at,
+  {
+    message: 'from_updated_at must be earlier than or equal to to_updated_at',
+    path: ['from_updated_at'],
+  },
+);
+
 export const ReferenceBaselineReplayDraftRequestSchema = z.object({
   baseline_story_id: z.string()
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),

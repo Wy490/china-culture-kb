@@ -18,6 +18,7 @@ import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
 import {
   getStoryAgentRecipeEffectHistory,
+  getStoryAgentRecipeEffectReport,
   prepareStoryAgentRecipeComparison,
   recommendStoryAgentRecipes,
 } from './tools/story-agent-recipe-recommendations.js';
@@ -420,6 +421,58 @@ server.tool(
   },
   async (input) => {
     const result = await getStoryAgentRecipeEffectHistory(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_get_story_recipe_effect_report',
+  '从 canonical Story Agent Web/API 导出受控 cohort 的配方机器对照报告。返回稳定 cohort ID、成员 SHA-256、机器趋势和 Markdown；不代表真人偏好，不证明因果，不授予生产信用。',
+  {
+    recipe_id: z.enum([
+      'feature_long_goal_payoff',
+      'feature_epoch_character_mosaic',
+      'feature_moral_pressure',
+      'promo_space_emotion',
+      'promo_mnemonic_reveal',
+      'promo_collective_montage',
+      'series_strategy_chapters',
+      'series_ritual_relationships',
+    ]).optional().describe('筛选 canonical 配方 ID'),
+    video_type: z.enum([
+      'character_story',
+      'historical_drama',
+      'legend_story',
+      'culture_promo',
+      'heritage_promo',
+      'city_brand_promo',
+      'scene_short',
+      'landscape_mood',
+      'documentary_short',
+      'explainer_video',
+      'lecture_video',
+      'education_training',
+      'children_story',
+      'social_short',
+      'ai_comic_drama',
+    ]).optional().describe('筛选目标成片类型'),
+    machine_verdict: z.enum([
+      'improved',
+      'mixed',
+      'no_material_change',
+      'regressed',
+    ]).optional().describe('筛选机器判定'),
+    from_updated_at: z.string().datetime({ offset: true }).optional()
+      .describe('纳入窗口起点，ISO-8601'),
+    to_updated_at: z.string().datetime({ offset: true }).optional()
+      .describe('纳入窗口终点，ISO-8601'),
+    min_comparisons_per_recipe: z.number().int().min(1).max(100).optional()
+      .describe('每个配方进入 cohort 所需的最小对照数'),
+    limit: z.number().int().min(1).max(100).optional()
+      .describe('受控 cohort 的最大历史项数量'),
+  },
+  async (input) => {
+    const result = await getStoryAgentRecipeEffectReport(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

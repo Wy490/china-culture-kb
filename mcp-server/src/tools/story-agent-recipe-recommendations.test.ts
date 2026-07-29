@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getStoryAgentRecipeEffectHistory,
+  getStoryAgentRecipeEffectReport,
   prepareStoryAgentRecipeComparison,
   recommendStoryAgentRecipes,
 } from './story-agent-recipe-recommendations.js';
@@ -228,5 +229,71 @@ describe('getStoryAgentRecipeEffectHistory', () => {
 
     await expect(getStoryAgentRecipeEffectHistory({ limit: 101 }))
       .rejects.toThrow('VALIDATION_ERROR: limit must be at most 100');
+  });
+});
+
+describe('getStoryAgentRecipeEffectReport', () => {
+  it('queries the canonical controlled-cohort report endpoint', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999/';
+    const webEnvelope = {
+      ok: true,
+      data: {
+        schema_version: 'story-recipe-effect-machine-report/v1',
+        cohort: { cohort_id: 'recipe-effect-cohort-aabbccddeeff' },
+        markdown: '# 创作配方机器对照报告',
+      },
+      error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(webEnvelope), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getStoryAgentRecipeEffectReport({
+      recipe_id: 'feature_long_goal_payoff',
+      from_updated_at: '2026-07-01T00:00:00.000Z',
+      to_updated_at: '2026-07-31T23:59:59.999Z',
+      min_comparisons_per_recipe: 3,
+      limit: 50,
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'http://127.0.0.1:3999/api/projects/recipe-effect-comparison-report'
+      + '?recipe_id=feature_long_goal_payoff&limit=50'
+      + '&from_updated_at=2026-07-01T00%3A00%3A00.000Z'
+      + '&to_updated_at=2026-07-31T23%3A59%3A59.999Z'
+      + '&min_comparisons_per_recipe=3',
+    );
+    expect(result.mcp_bridge).toMatchObject({
+      schema_version: 'mcp-story-agent-recipe-effect-report/v1',
+      canonical_tool: 'kb_get_story_recipe_effect_report',
+      canonical_service: true,
+      controlled_cohort: true,
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
+      production_credit_granted: false,
+    });
+  });
+
+  it('preserves canonical reversed-window validation failures', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'https://story-agent.example.com';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: false,
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'from_updated_at must be earlier than or equal to to_updated_at',
+      },
+    }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    })));
+
+    await expect(getStoryAgentRecipeEffectReport({
+      from_updated_at: '2026-08-01T00:00:00.000Z',
+      to_updated_at: '2026-07-01T00:00:00.000Z',
+    })).rejects.toThrow('VALIDATION_ERROR');
   });
 });

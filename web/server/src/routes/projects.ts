@@ -51,6 +51,7 @@ import {
   SupplementTaskIdParamSchema,
   DomainPackQuerySchema,
   StoryRecipeEffectComparisonHistoryQuerySchema,
+  StoryRecipeEffectMachineReportQuerySchema,
 } from '@shared/schemas.js';
 import {
   deleteProject,
@@ -114,6 +115,7 @@ import { getProductAccessContext } from '../services/product-access-service.js';
 import { parseMultipartAssetUpload } from '../services/multipart-asset-upload-service.js';
 import {
   buildStoryRecipeEffectComparisonHistory,
+  buildStoryRecipeEffectMachineReport,
   collectStoryRecipeEffectComparisonHistoryRecords,
 } from '../services/reference-recipe-effect-history-service.js';
 
@@ -287,6 +289,29 @@ projectsRouter.get(
         item => item.project_id,
       );
       res.json(success(buildStoryRecipeEffectComparisonHistory(accessibleRecords, filters)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.get(
+  '/recipe-effect-comparison-report',
+  validateQuery(StoryRecipeEffectMachineReportQuerySchema),
+  async (req, res, next) => {
+    try {
+      const filters = StoryRecipeEffectMachineReportQuerySchema.parse(req.query);
+      const records = await collectStoryRecipeEffectComparisonHistoryRecords();
+      const accessibleRecords = await filterProductResourcesForRequest(
+        req,
+        'story_project',
+        records,
+        item => item.project_id,
+      );
+      res.json(success(buildStoryRecipeEffectMachineReport(
+        accessibleRecords,
+        filters,
+      )));
     } catch (err) {
       next(err);
     }

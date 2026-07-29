@@ -30,6 +30,8 @@ import type {
   StoryProjectListItem,
   StoryRecipeEffectComparisonHistory,
   StoryRecipeEffectComparisonHistoryFilters,
+  StoryRecipeEffectMachineReport,
+  StoryRecipeEffectMachineReportFilters,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
   StoryProjectProductionReadinessReport,
@@ -92,6 +94,20 @@ export function listStoryRecipeEffectComparisonHistory(
   )
   return apiGet<StoryRecipeEffectComparisonHistory>(
     '/projects/recipe-effect-comparisons',
+    query,
+  )
+}
+
+export function getStoryRecipeEffectMachineReport(
+  filters: StoryRecipeEffectMachineReportFilters = {},
+) {
+  const query = Object.fromEntries(
+    Object.entries(filters)
+      .filter(([, value]) => value !== undefined && value !== '')
+      .map(([key, value]) => [key, String(value)]),
+  )
+  return apiGet<StoryRecipeEffectMachineReport>(
+    '/projects/recipe-effect-comparison-report',
     query,
   )
 }

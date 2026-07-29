@@ -14409,6 +14409,44 @@ export interface StoryRecipeEffectComparisonHistory {
   };
 }
 
+export interface StoryRecipeEffectMachineReportFilters
+  extends StoryRecipeEffectComparisonHistoryFilters {
+  from_updated_at?: string;
+  to_updated_at?: string;
+  min_comparisons_per_recipe?: number;
+}
+
+export interface StoryRecipeEffectMachineReport {
+  schema_version: 'story-recipe-effect-machine-report/v1';
+  generated_at: string;
+  cohort: {
+    cohort_id: string;
+    membership_sha256: string;
+    source_snapshot: 'current_project_versions';
+    recipe_id: ReferenceGenerationRecipeId | null;
+    video_type: VideoType | null;
+    machine_verdict: StoryRecipeEffectMachineVerdict | null;
+    from_updated_at: string | null;
+    to_updated_at: string | null;
+    min_comparisons_per_recipe: number;
+    item_limit: number;
+    source_matched_comparison_count: number;
+    candidate_comparison_count: number;
+    included_comparison_count: number;
+    excluded_below_minimum_sample_count: number;
+    source_match_truncated: boolean;
+  };
+  history: StoryRecipeEffectComparisonHistory;
+  boundary: {
+    machine_comparison_only: true;
+    human_preference_measured: false;
+    causal_effect_proven: false;
+    legal_conclusion_reached: false;
+    production_credit_granted: false;
+  };
+  markdown: string;
+}
+
 export interface ReferenceGenerationSafetyReport {
   schema_version: 'story-reference-generation-safety/v1';
   status: 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';

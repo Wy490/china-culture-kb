@@ -114,6 +114,28 @@ export type StoryAgentRecipeEffectHistoryToolResult = StoryAgentApiEnvelope & {
   };
 };
 
+export interface StoryAgentRecipeEffectReportInput
+  extends StoryAgentRecipeEffectHistoryInput {
+  from_updated_at?: string;
+  to_updated_at?: string;
+  min_comparisons_per_recipe?: number;
+}
+
+export type StoryAgentRecipeEffectReportToolResult = StoryAgentApiEnvelope & {
+  mcp_bridge: {
+    schema_version: 'mcp-story-agent-recipe-effect-report/v1';
+    canonical_tool: 'kb_get_story_recipe_effect_report';
+    canonical_service: true;
+    application_endpoint: string;
+    authoritative_query_schema: 'StoryRecipeEffectMachineReportQuerySchema';
+    controlled_cohort: true;
+    machine_comparison_only: true;
+    human_preference_measured: false;
+    causal_effect_proven: false;
+    production_credit_granted: false;
+  };
+};
+
 function storyAgentBaseUrl(): string {
   const raw = process.env.STORY_AGENT_BASE_URL?.trim();
   if (!raw) {
@@ -267,6 +289,54 @@ export async function getStoryAgentRecipeEffectHistory(
       application_endpoint: applicationEndpoint,
       authoritative_query_schema: 'StoryRecipeEffectComparisonHistoryQuerySchema',
       source_snapshot: 'current_project_versions',
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
+      production_credit_granted: false,
+    },
+  };
+}
+
+export async function getStoryAgentRecipeEffectReport(
+  input: StoryAgentRecipeEffectReportInput = {},
+): Promise<StoryAgentRecipeEffectReportToolResult> {
+  const endpoint = new URL(
+    `${storyAgentBaseUrl()}/api/projects/recipe-effect-comparison-report`,
+  );
+  const query: Record<string, string | number | undefined> = {
+    recipe_id: input.recipe_id,
+    video_type: input.video_type,
+    machine_verdict: input.machine_verdict,
+    limit: input.limit,
+    from_updated_at: input.from_updated_at,
+    to_updated_at: input.to_updated_at,
+    min_comparisons_per_recipe: input.min_comparisons_per_recipe,
+  };
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) endpoint.searchParams.set(key, String(value));
+  }
+  const applicationEndpoint = endpoint.toString();
+  const response = await fetch(applicationEndpoint, {
+    method: 'GET',
+    headers: accessTokenHeader(),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const envelope = await readApiEnvelope(response);
+  if (!response.ok || !envelope.ok) {
+    const code = envelope.error?.code?.trim() || 'STORY_AGENT_RECIPE_EFFECT_REPORT_FAILED';
+    const message = envelope.error?.message?.trim()
+      || `Story Agent application service 配方对照报告查询失败（HTTP ${response.status}）`;
+    throw new Error(`${code}: ${message}`);
+  }
+  return {
+    ...envelope,
+    mcp_bridge: {
+      schema_version: 'mcp-story-agent-recipe-effect-report/v1',
+      canonical_tool: 'kb_get_story_recipe_effect_report',
+      canonical_service: true,
+      application_endpoint: applicationEndpoint,
+      authoritative_query_schema: 'StoryRecipeEffectMachineReportQuerySchema',
+      controlled_cohort: true,
       machine_comparison_only: true,
       human_preference_measured: false,
       causal_effect_proven: false,

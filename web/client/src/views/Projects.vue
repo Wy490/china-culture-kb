@@ -97,6 +97,12 @@
           </p>
         </div>
         <div class="projects-page__portfolio-head-actions">
+          <select v-model.number="recipeReportMinimumSample" class="projects-page__select">
+            <option :value="1">每配方至少 1 例</option>
+            <option :value="2">每配方至少 2 例</option>
+            <option :value="3">每配方至少 3 例</option>
+            <option :value="5">每配方至少 5 例</option>
+          </select>
           <select v-model="recipeHistoryRecipeFilter" class="projects-page__select" @change="loadRecipeEffectHistory">
             <option value="">全部配方</option>
             <option v-for="recipe in REFERENCE_GENERATION_RECIPES" :key="recipe.id" :value="recipe.id">
@@ -112,6 +118,12 @@
           </select>
           <button class="projects-page__muted-btn" :disabled="loadingRecipeHistory" @click="loadRecipeEffectHistory">
             {{ loadingRecipeHistory ? '刷新中…' : '刷新对照' }}
+          </button>
+          <button class="projects-page__muted-btn" :disabled="exportingRecipeReport" @click="exportRecipeEffectMachineReport('markdown')">
+            {{ exportingRecipeReport ? '导出中…' : '导出报告 MD' }}
+          </button>
+          <button class="projects-page__muted-btn" :disabled="exportingRecipeReport" @click="exportRecipeEffectMachineReport('json')">
+            导出报告 JSON
           </button>
         </div>
       </div>
@@ -163,6 +175,9 @@
       <p v-else class="projects-page__recipe-history-empty">暂无符合筛选条件的配方对照。</p>
       <p class="projects-page__recipe-boundary">
         这些结果只反映机器质量维度，不代表真人偏好，不证明配方导致结果变化，也不授予法务或生产交付信用。
+      </p>
+      <p v-if="lastRecipeReportCohortId" class="projects-page__recipe-boundary">
+        最近导出 cohort：{{ lastRecipeReportCohortId }}
       </p>
     </section>
 
@@ -1157,6 +1172,7 @@ import { computed, onMounted, ref } from 'vue'
 import {
   deleteProject,
   deleteProjects,
+  getStoryRecipeEffectMachineReport,
   listProjects,
   listStoryRecipeEffectComparisonHistory,
   retainRecentProjects,
@@ -1215,6 +1231,7 @@ import type {
   StoryRecipeEffectComparisonHistory,
   StoryRecipeEffectDimensionId,
   StoryRecipeEffectMachineVerdict,
+  StoryRecipeEffectMachineReport,
 } from '@shared/types'
 import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
 
@@ -1266,6 +1283,7 @@ const manifestPreflightReviewMessage = ref('')
 const runningManifestPreflight = ref(false)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const recipeEffectHistory = ref<StoryRecipeEffectComparisonHistory | null>(null)
+const recipeEffectReport = ref<StoryRecipeEffectMachineReport | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
 const loadingBacklogHandoff = ref(false)
@@ -1274,6 +1292,7 @@ const loadingGeneratedGovernance = ref(false)
 const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const loadingRecipeHistory = ref(false)
+const exportingRecipeReport = ref(false)
 const runningPortfolioAutomation = ref(false)
 type GearsExternalQueueCopyMode = 'markdown' | 'payload' | 'commands'
 const gearsExternalQueueCopyMode = ref<GearsExternalQueueCopyMode | ''>('')
@@ -1291,6 +1310,10 @@ const qualityFilter = ref(false)
 const showArchivedSeries = ref(false)
 const recipeHistoryRecipeFilter = ref<ReferenceGenerationRecipeId | ''>('')
 const recipeHistoryVerdictFilter = ref<StoryRecipeEffectMachineVerdict | ''>('')
+const recipeReportMinimumSample = ref(1)
+const lastRecipeReportCohortId = computed(() => (
+  recipeEffectReport.value?.cohort.cohort_id ?? ''
+))
 const deletingProjectId = ref('')
 const managingSeriesProjectId = ref('')
 const exportingSeriesProjectId = ref('')
@@ -2457,6 +2480,37 @@ async function loadRecipeEffectHistory() {
     recipeHistoryError.value = res.error?.message ?? '加载创作配方机器对照历史失败'
   }
   loadingRecipeHistory.value = false
+}
+
+async function exportRecipeEffectMachineReport(format: 'markdown' | 'json') {
+  exportingRecipeReport.value = true
+  recipeHistoryError.value = ''
+  const res = await getStoryRecipeEffectMachineReport({
+    recipe_id: recipeHistoryRecipeFilter.value || undefined,
+    machine_verdict: recipeHistoryVerdictFilter.value || undefined,
+    min_comparisons_per_recipe: recipeReportMinimumSample.value,
+    limit: 100,
+  })
+  if (res.ok && res.data) {
+    recipeEffectReport.value = res.data
+    if (format === 'markdown') {
+      downloadText(
+        `${res.data.cohort.cohort_id}.md`,
+        res.data.markdown,
+        'text/markdown;charset=utf-8',
+      )
+    } else {
+      const { markdown: _markdown, ...jsonReport } = res.data
+      downloadText(
+        `${res.data.cohort.cohort_id}.json`,
+        JSON.stringify(jsonReport, null, 2),
+        'application/json;charset=utf-8',
+      )
+    }
+  } else {
+    recipeHistoryError.value = res.error?.message ?? '导出创作配方机器对照报告失败'
+  }
+  exportingRecipeReport.value = false
 }
 
 async function loadStoryAgentMvpStatus() {

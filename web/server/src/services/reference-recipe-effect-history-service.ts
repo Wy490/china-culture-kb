@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   PresentationStyle,
   ReferenceGenerationRecipeContract,
@@ -8,6 +9,8 @@ import type {
   StoryRecipeEffectComparisonHistoryItem,
   StoryRecipeEffectDimensionId,
   StoryRecipeEffectMachineVerdict,
+  StoryRecipeEffectMachineReport,
+  StoryRecipeEffectMachineReportFilters,
   StoryRecipeEffectRecipeTrend,
   VideoType,
 } from '@shared/types.js';
@@ -28,6 +31,11 @@ const VERDICTS: StoryRecipeEffectMachineVerdict[] = [
 ];
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
+
+export interface StoryRecipeEffectMachineReportBuildOptions
+  extends StoryRecipeEffectMachineReportFilters {
+  generated_at?: string;
+}
 
 export interface StoryRecipeEffectComparisonHistoryRecord {
   project_id: string;
@@ -238,6 +246,164 @@ export function buildStoryRecipeEffectComparisonHistory(
       legal_conclusion_reached: false,
       production_credit_granted: false,
     },
+  };
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function normalizeReportFilters(
+  filters: StoryRecipeEffectMachineReportBuildOptions,
+): Required<Pick<StoryRecipeEffectMachineReportBuildOptions, 'limit' | 'min_comparisons_per_recipe'>>
+  & Omit<StoryRecipeEffectMachineReportFilters, 'limit' | 'min_comparisons_per_recipe'> {
+  return {
+    recipe_id: filters.recipe_id,
+    video_type: filters.video_type,
+    machine_verdict: filters.machine_verdict,
+    from_updated_at: filters.from_updated_at
+      ? new Date(filters.from_updated_at).toISOString()
+      : undefined,
+    to_updated_at: filters.to_updated_at
+      ? new Date(filters.to_updated_at).toISOString()
+      : undefined,
+    limit: Math.min(MAX_LIMIT, Math.max(1, Math.trunc(filters.limit ?? DEFAULT_LIMIT))),
+    min_comparisons_per_recipe: Math.min(
+      MAX_LIMIT,
+      Math.max(1, Math.trunc(filters.min_comparisons_per_recipe ?? 1)),
+    ),
+  };
+}
+
+function renderMachineReportMarkdown(
+  report: Omit<StoryRecipeEffectMachineReport, 'markdown'>,
+): string {
+  const lines = [
+    '# 创作配方机器对照报告',
+    '',
+    `> cohort: ${report.cohort.cohort_id}`,
+    `> generatedAt: ${report.generated_at}`,
+    '',
+    '## Cohort',
+    '',
+    `- source snapshot: ${report.cohort.source_snapshot}`,
+    `- membership SHA-256: ${report.cohort.membership_sha256}`,
+    `- recipe: ${report.cohort.recipe_id ?? 'all'}`,
+    `- video type: ${report.cohort.video_type ?? 'all'}`,
+    `- machine verdict: ${report.cohort.machine_verdict ?? 'all'}`,
+    `- updated from: ${report.cohort.from_updated_at ?? 'unbounded'}`,
+    `- updated to: ${report.cohort.to_updated_at ?? 'unbounded'}`,
+    `- minimum comparisons per recipe: ${report.cohort.min_comparisons_per_recipe}`,
+    `- included comparisons: ${report.cohort.included_comparison_count}`,
+    `- excluded below minimum sample: ${report.cohort.excluded_below_minimum_sample_count}`,
+    '',
+    '## Machine trends',
+    '',
+    ...(report.history.trends.length
+      ? report.history.trends.flatMap(trend => [
+        `### ${trend.recipe.recipe_id}`,
+        '',
+        `- comparisons: ${trend.comparison_count}`,
+        `- average baseline score: ${trend.average_baseline_machine_score}`,
+        `- average recipe-assisted score: ${trend.average_recipe_assisted_machine_score}`,
+        `- average aggregate delta: ${trend.average_aggregate_delta}`,
+        `- verdicts: improved ${trend.verdict_counts.improved}, mixed ${trend.verdict_counts.mixed}, no material change ${trend.verdict_counts.no_material_change}, regressed ${trend.verdict_counts.regressed}`,
+        ...trend.dimensions.map(dimension => (
+          `- ${dimension.dimension}: average delta ${dimension.average_delta} (${dimension.comparison_count} comparisons)`
+        )),
+        '',
+      ])
+      : ['- No comparisons satisfy the controlled cohort.', '']),
+    '## Boundary',
+    '',
+    '- 本报告只反映机器质量维度。',
+    '- 不代表真人偏好，不证明因果，不构成法律结论。',
+    '- 不授予生产交付或真实外部验收信用。',
+  ];
+  return lines.join('\n');
+}
+
+export function buildStoryRecipeEffectMachineReport(
+  records: StoryRecipeEffectComparisonHistoryRecord[],
+  requestedFilters: StoryRecipeEffectMachineReportBuildOptions = {},
+): StoryRecipeEffectMachineReport {
+  const filters = normalizeReportFilters(requestedFilters);
+  const timeBoundRecords = records.filter(record => (
+    (!filters.from_updated_at || record.updated_at >= filters.from_updated_at)
+    && (!filters.to_updated_at || record.updated_at <= filters.to_updated_at)
+  ));
+  const sourceHistory = buildStoryRecipeEffectComparisonHistory(timeBoundRecords, {
+    recipe_id: filters.recipe_id,
+    video_type: filters.video_type,
+    machine_verdict: filters.machine_verdict,
+    limit: filters.limit,
+  });
+  const eligibleRecipeIds = new Set(
+    sourceHistory.trends
+      .filter(trend => trend.comparison_count >= filters.min_comparisons_per_recipe)
+      .map(trend => trend.recipe.recipe_id),
+  );
+  const candidateItems = sourceHistory.items;
+  const includedKeys = new Set(
+    candidateItems
+      .filter(item => eligibleRecipeIds.has(item.comparison.recipe.recipe_id))
+      .map(item => `${item.project_id}\u0000${item.story_id}`),
+  );
+  const cohortRecords = timeBoundRecords.filter(record => (
+    includedKeys.has(`${record.project_id}\u0000${record.story.storyId}`)
+  ));
+  const history = buildStoryRecipeEffectComparisonHistory(cohortRecords, {
+    recipe_id: filters.recipe_id,
+    video_type: filters.video_type,
+    machine_verdict: filters.machine_verdict,
+    limit: filters.limit,
+  });
+  const definition = {
+    source_snapshot: 'current_project_versions',
+    recipe_id: filters.recipe_id ?? null,
+    video_type: filters.video_type ?? null,
+    machine_verdict: filters.machine_verdict ?? null,
+    from_updated_at: filters.from_updated_at ?? null,
+    to_updated_at: filters.to_updated_at ?? null,
+    min_comparisons_per_recipe: filters.min_comparisons_per_recipe,
+    item_limit: filters.limit,
+  } as const;
+  const membership = history.items
+    .map(item => [
+      item.project_id,
+      item.story_id,
+      item.comparison.recipe.recipe_id,
+      item.comparison.recipe.payload_sha256,
+    ].join(':'))
+    .sort();
+  const cohort = {
+    cohort_id: `recipe-effect-cohort-${sha256(JSON.stringify(definition)).slice(0, 12)}`,
+    membership_sha256: sha256(JSON.stringify(membership)),
+    ...definition,
+    source_matched_comparison_count: sourceHistory.summary.matched_comparison_count,
+    candidate_comparison_count: candidateItems.length,
+    included_comparison_count: history.summary.matched_comparison_count,
+    excluded_below_minimum_sample_count: candidateItems.length
+      - history.summary.matched_comparison_count,
+    source_match_truncated: sourceHistory.summary.matched_comparison_count
+      > sourceHistory.summary.returned_comparison_count,
+  };
+  const base: Omit<StoryRecipeEffectMachineReport, 'markdown'> = {
+    schema_version: 'story-recipe-effect-machine-report/v1',
+    generated_at: requestedFilters.generated_at ?? new Date().toISOString(),
+    cohort,
+    history,
+    boundary: {
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
+      legal_conclusion_reached: false,
+      production_credit_granted: false,
+    },
+  };
+  return {
+    ...base,
+    markdown: renderMachineReportMarkdown(base),
   };
 }
 
