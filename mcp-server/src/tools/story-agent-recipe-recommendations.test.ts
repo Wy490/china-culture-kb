@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  getStoryAgentRecipeEffectHistory,
   prepareStoryAgentRecipeComparison,
   recommendStoryAgentRecipes,
 } from './story-agent-recipe-recommendations.js';
@@ -149,5 +150,83 @@ describe('prepareStoryAgentRecipeComparison', () => {
       machine_comparison_only: true,
       production_credit_granted: false,
     });
+  });
+});
+
+describe('getStoryAgentRecipeEffectHistory', () => {
+  it('queries the canonical current-project history endpoint without local scanning', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'http://127.0.0.1:3999/';
+    process.env.STORY_AGENT_MCP_ACCESS_TOKEN = 'mcp-test-token';
+    const webEnvelope = {
+      ok: true,
+      data: {
+        schema_version: 'story-recipe-effect-comparison-history/v1',
+        summary: { matched_comparison_count: 2 },
+        trends: [],
+        items: [],
+        boundary: {
+          source_snapshot: 'current_project_versions',
+          machine_comparison_only: true,
+          human_preference_measured: false,
+          causal_effect_proven: false,
+          production_credit_granted: false,
+        },
+      },
+      error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(webEnvelope), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getStoryAgentRecipeEffectHistory({
+      recipe_id: 'feature_long_goal_payoff',
+      video_type: 'character_story',
+      machine_verdict: 'improved',
+      limit: 20,
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'http://127.0.0.1:3999/api/projects/recipe-effect-comparisons'
+      + '?recipe_id=feature_long_goal_payoff&video_type=character_story'
+      + '&machine_verdict=improved&limit=20',
+    );
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      headers: { authorization: 'Bearer mcp-test-token' },
+    });
+    expect(result.mcp_bridge).toEqual({
+      schema_version: 'mcp-story-agent-recipe-effect-history/v1',
+      canonical_tool: 'kb_get_story_recipe_effect_history',
+      canonical_service: true,
+      application_endpoint:
+        'http://127.0.0.1:3999/api/projects/recipe-effect-comparisons'
+        + '?recipe_id=feature_long_goal_payoff&video_type=character_story'
+        + '&machine_verdict=improved&limit=20',
+      authoritative_query_schema: 'StoryRecipeEffectComparisonHistoryQuerySchema',
+      source_snapshot: 'current_project_versions',
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
+      production_credit_granted: false,
+    });
+  });
+
+  it('preserves canonical query validation failures', async () => {
+    process.env.STORY_AGENT_BASE_URL = 'https://story-agent.example.com';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: false,
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'limit must be at most 100' },
+    }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getStoryAgentRecipeEffectHistory({ limit: 101 }))
+      .rejects.toThrow('VALIDATION_ERROR: limit must be at most 100');
   });
 });

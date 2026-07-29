@@ -50,6 +50,7 @@ import {
   StorySceneRegenerateRequestSchema,
   SupplementTaskIdParamSchema,
   DomainPackQuerySchema,
+  StoryRecipeEffectComparisonHistoryQuerySchema,
 } from '@shared/schemas.js';
 import {
   deleteProject,
@@ -111,6 +112,10 @@ import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 import { readProjectMediaAssetPreview } from '../services/media-asset-preview-service.js';
 import { getProductAccessContext } from '../services/product-access-service.js';
 import { parseMultipartAssetUpload } from '../services/multipart-asset-upload-service.js';
+import {
+  buildStoryRecipeEffectComparisonHistory,
+  collectStoryRecipeEffectComparisonHistoryRecords,
+} from '../services/reference-recipe-effect-history-service.js';
 
 export const projectsRouter = Router();
 
@@ -267,6 +272,26 @@ projectsRouter.get('/', validateQuery(DomainPackQuerySchema), async (req, res, n
     next(err);
   }
 });
+
+projectsRouter.get(
+  '/recipe-effect-comparisons',
+  validateQuery(StoryRecipeEffectComparisonHistoryQuerySchema),
+  async (req, res, next) => {
+    try {
+      const filters = StoryRecipeEffectComparisonHistoryQuerySchema.parse(req.query);
+      const records = await collectStoryRecipeEffectComparisonHistoryRecords();
+      const accessibleRecords = await filterProductResourcesForRequest(
+        req,
+        'story_project',
+        records,
+        item => item.project_id,
+      );
+      res.json(success(buildStoryRecipeEffectComparisonHistory(accessibleRecords, filters)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.get('/supplement-tasks', async (req, res, next) => {
   try {

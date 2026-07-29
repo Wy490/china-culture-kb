@@ -92,6 +92,28 @@ export type StoryAgentRecipeComparisonDraftToolResult = StoryAgentApiEnvelope & 
   };
 };
 
+export interface StoryAgentRecipeEffectHistoryInput {
+  recipe_id?: ReferenceGenerationRecipeId;
+  video_type?: VideoType;
+  machine_verdict?: 'improved' | 'mixed' | 'no_material_change' | 'regressed';
+  limit?: number;
+}
+
+export type StoryAgentRecipeEffectHistoryToolResult = StoryAgentApiEnvelope & {
+  mcp_bridge: {
+    schema_version: 'mcp-story-agent-recipe-effect-history/v1';
+    canonical_tool: 'kb_get_story_recipe_effect_history';
+    canonical_service: true;
+    application_endpoint: string;
+    authoritative_query_schema: 'StoryRecipeEffectComparisonHistoryQuerySchema';
+    source_snapshot: 'current_project_versions';
+    machine_comparison_only: true;
+    human_preference_measured: false;
+    causal_effect_proven: false;
+    production_credit_granted: false;
+  };
+};
+
 function storyAgentBaseUrl(): string {
   const raw = process.env.STORY_AGENT_BASE_URL?.trim();
   if (!raw) {
@@ -206,6 +228,48 @@ export async function prepareStoryAgentRecipeComparison(
       generation_performed: false,
       same_input_server_revalidation_required: true,
       machine_comparison_only: true,
+      production_credit_granted: false,
+    },
+  };
+}
+
+export async function getStoryAgentRecipeEffectHistory(
+  input: StoryAgentRecipeEffectHistoryInput = {},
+): Promise<StoryAgentRecipeEffectHistoryToolResult> {
+  const endpoint = new URL(
+    `${storyAgentBaseUrl()}/api/projects/recipe-effect-comparisons`,
+  );
+  if (input.recipe_id) endpoint.searchParams.set('recipe_id', input.recipe_id);
+  if (input.video_type) endpoint.searchParams.set('video_type', input.video_type);
+  if (input.machine_verdict) {
+    endpoint.searchParams.set('machine_verdict', input.machine_verdict);
+  }
+  if (input.limit !== undefined) endpoint.searchParams.set('limit', String(input.limit));
+  const applicationEndpoint = endpoint.toString();
+  const response = await fetch(applicationEndpoint, {
+    method: 'GET',
+    headers: accessTokenHeader(),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const envelope = await readApiEnvelope(response);
+  if (!response.ok || !envelope.ok) {
+    const code = envelope.error?.code?.trim() || 'STORY_AGENT_RECIPE_EFFECT_HISTORY_FAILED';
+    const message = envelope.error?.message?.trim()
+      || `Story Agent application service 配方对照历史查询失败（HTTP ${response.status}）`;
+    throw new Error(`${code}: ${message}`);
+  }
+  return {
+    ...envelope,
+    mcp_bridge: {
+      schema_version: 'mcp-story-agent-recipe-effect-history/v1',
+      canonical_tool: 'kb_get_story_recipe_effect_history',
+      canonical_service: true,
+      application_endpoint: applicationEndpoint,
+      authoritative_query_schema: 'StoryRecipeEffectComparisonHistoryQuerySchema',
+      source_snapshot: 'current_project_versions',
+      machine_comparison_only: true,
+      human_preference_measured: false,
+      causal_effect_proven: false,
       production_credit_granted: false,
     },
   };

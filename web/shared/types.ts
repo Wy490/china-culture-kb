@@ -14343,6 +14343,72 @@ export interface StoryRecipeEffectComparison {
   };
 }
 
+export type StoryRecipeEffectMachineVerdict = StoryRecipeEffectComparison['machine_verdict'];
+
+export interface StoryRecipeEffectComparisonHistoryFilters {
+  recipe_id?: ReferenceGenerationRecipeId;
+  video_type?: VideoType;
+  machine_verdict?: StoryRecipeEffectMachineVerdict;
+  limit?: number;
+}
+
+export interface StoryRecipeEffectComparisonHistoryItem {
+  schema_version: 'story-recipe-effect-comparison-history-item/v1';
+  project_id: string;
+  project_title: string;
+  story_id: string;
+  source_entry: string;
+  video_type: VideoType;
+  presentation_style: PresentationStyle;
+  updated_at: string;
+  comparison: StoryRecipeEffectComparison;
+}
+
+export interface StoryRecipeEffectDimensionTrend {
+  dimension: StoryRecipeEffectDimensionId;
+  comparison_count: number;
+  average_baseline_score: number;
+  average_recipe_assisted_score: number;
+  average_delta: number;
+}
+
+export interface StoryRecipeEffectRecipeTrend {
+  recipe: ReferenceGenerationRecipeContract;
+  comparison_count: number;
+  average_baseline_machine_score: number;
+  average_recipe_assisted_machine_score: number;
+  average_aggregate_delta: number;
+  verdict_counts: Record<StoryRecipeEffectMachineVerdict, number>;
+  dimensions: StoryRecipeEffectDimensionTrend[];
+}
+
+export interface StoryRecipeEffectComparisonHistory {
+  schema_version: 'story-recipe-effect-comparison-history/v1';
+  filters: {
+    recipe_id: ReferenceGenerationRecipeId | null;
+    video_type: VideoType | null;
+    machine_verdict: StoryRecipeEffectMachineVerdict | null;
+    limit: number;
+  };
+  summary: {
+    matched_comparison_count: number;
+    returned_comparison_count: number;
+    skipped_invalid_comparison_count: number;
+    average_aggregate_delta: number | null;
+    verdict_counts: Record<StoryRecipeEffectMachineVerdict, number>;
+  };
+  trends: StoryRecipeEffectRecipeTrend[];
+  items: StoryRecipeEffectComparisonHistoryItem[];
+  boundary: {
+    source_snapshot: 'current_project_versions';
+    machine_comparison_only: true;
+    human_preference_measured: false;
+    causal_effect_proven: false;
+    legal_conclusion_reached: false;
+    production_credit_granted: false;
+  };
+}
+
 export interface ReferenceGenerationSafetyReport {
   schema_version: 'story-reference-generation-safety/v1';
   status: 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';

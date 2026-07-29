@@ -28,6 +28,8 @@ import type {
   ProjectKnowledgeWritebackPatchPackage,
   ProjectSupplementCandidateExportPackage,
   StoryProjectListItem,
+  StoryRecipeEffectComparisonHistory,
+  StoryRecipeEffectComparisonHistoryFilters,
   ProductionReadinessAutomationRunRequest,
   ProductionReadinessAutomationRunResult,
   StoryProjectProductionReadinessReport,
@@ -78,6 +80,20 @@ import type {
 
 export function listProjects(sourceDomain?: string) {
   return apiGet<StoryProjectListItem[]>('/projects', sourceDomain ? { domain: sourceDomain } : undefined)
+}
+
+export function listStoryRecipeEffectComparisonHistory(
+  filters: StoryRecipeEffectComparisonHistoryFilters = {},
+) {
+  const query = Object.fromEntries(
+    Object.entries(filters)
+      .filter(([, value]) => value !== undefined && value !== '')
+      .map(([key, value]) => [key, String(value)]),
+  )
+  return apiGet<StoryRecipeEffectComparisonHistory>(
+    '/projects/recipe-effect-comparisons',
+    query,
+  )
 }
 
 export function listSupplementTasks(filters: ProjectSupplementTaskListFilters = {}) {

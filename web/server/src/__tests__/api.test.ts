@@ -8236,6 +8236,40 @@ describe('Projects API', () => {
     });
   });
 
+  describe('GET /api/projects/recipe-effect-comparisons', () => {
+    it('returns a machine-only current-project comparison history contract', async () => {
+      const res = await request.get('/api/projects/recipe-effect-comparisons?limit=5');
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'story-recipe-effect-comparison-history/v1',
+        filters: { limit: 5 },
+        boundary: {
+          source_snapshot: 'current_project_versions',
+          machine_comparison_only: true,
+          human_preference_measured: false,
+          causal_effect_proven: false,
+          legal_conclusion_reached: false,
+          production_credit_granted: false,
+        },
+      });
+      expect(Array.isArray(res.body.data.items)).toBe(true);
+      expect(Array.isArray(res.body.data.trends)).toBe(true);
+    });
+
+    it('rejects unknown recipes, verdicts, and oversized history limits', async () => {
+      const responses = await Promise.all([
+        request.get('/api/projects/recipe-effect-comparisons?recipe_id=unknown'),
+        request.get('/api/projects/recipe-effect-comparisons?machine_verdict=preferred'),
+        request.get('/api/projects/recipe-effect-comparisons?limit=101'),
+      ]);
+      for (const res of responses) {
+        expect(res.status).toBe(400);
+        expectFailure(res.body, 'VALIDATION_ERROR');
+      }
+    });
+  });
+
   describe('PATCH /api/projects/:projectId/supplement-tasks/:taskId', () => {
     it('validates supplement task status', async () => {
       const res = await request

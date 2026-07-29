@@ -85,6 +85,87 @@
       </details>
     </section>
 
+    <section v-if="recipeEffectHistory" class="projects-page__portfolio projects-page__recipe-history">
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>创作配方机器对照历史</h2>
+          <p>
+            当前项目版本中的同输入机器对照
+            · 匹配 {{ recipeEffectHistory.summary.matched_comparison_count }}
+            · 展示 {{ recipeEffectHistory.summary.returned_comparison_count }}
+            · 无效记录 {{ recipeEffectHistory.summary.skipped_invalid_comparison_count }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <select v-model="recipeHistoryRecipeFilter" class="projects-page__select" @change="loadRecipeEffectHistory">
+            <option value="">全部配方</option>
+            <option v-for="recipe in REFERENCE_GENERATION_RECIPES" :key="recipe.id" :value="recipe.id">
+              {{ recipe.label }}
+            </option>
+          </select>
+          <select v-model="recipeHistoryVerdictFilter" class="projects-page__select" @change="loadRecipeEffectHistory">
+            <option value="">全部判定</option>
+            <option value="improved">机器指标改善</option>
+            <option value="mixed">有升有降</option>
+            <option value="no_material_change">无显著变化</option>
+            <option value="regressed">机器指标回落</option>
+          </select>
+          <button class="projects-page__muted-btn" :disabled="loadingRecipeHistory" @click="loadRecipeEffectHistory">
+            {{ loadingRecipeHistory ? '刷新中…' : '刷新对照' }}
+          </button>
+        </div>
+      </div>
+      <p v-if="recipeHistoryError" class="projects-page__recipe-history-error">{{ recipeHistoryError }}</p>
+      <div class="projects-page__portfolio-metrics">
+        <span>平均变化 {{ formatRecipeDelta(recipeEffectHistory.summary.average_aggregate_delta) }}</span>
+        <span>改善 {{ recipeEffectHistory.summary.verdict_counts.improved }}</span>
+        <span>有升有降 {{ recipeEffectHistory.summary.verdict_counts.mixed }}</span>
+        <span>无显著变化 {{ recipeEffectHistory.summary.verdict_counts.no_material_change }}</span>
+        <span>回落 {{ recipeEffectHistory.summary.verdict_counts.regressed }}</span>
+      </div>
+      <div v-if="recipeEffectHistory.trends.length" class="projects-page__recipe-trends">
+        <article
+          v-for="trend in recipeEffectHistory.trends"
+          :key="trend.recipe.recipe_id"
+          class="projects-page__recipe-trend"
+        >
+          <div class="projects-page__recipe-trend-head">
+            <strong>{{ recipeLabel(trend.recipe.recipe_id) }}</strong>
+            <span>{{ trend.comparison_count }} 次对照</span>
+          </div>
+          <p>
+            综合均值 {{ formatRecipeDelta(trend.average_aggregate_delta) }}
+            · 基线 {{ formatRecipeScore(trend.average_baseline_machine_score) }}
+            → 配方 {{ formatRecipeScore(trend.average_recipe_assisted_machine_score) }}
+          </p>
+          <div class="projects-page__recipe-dimensions">
+            <span v-for="dimension in trend.dimensions" :key="dimension.dimension">
+              {{ recipeDimensionLabel(dimension.dimension) }}
+              {{ formatRecipeDelta(dimension.average_delta) }}
+            </span>
+          </div>
+        </article>
+      </div>
+      <div v-if="recipeEffectHistory.items.length" class="projects-page__recipe-history-list">
+        <RouterLink
+          v-for="item in recipeEffectHistory.items.slice(0, 6)"
+          :key="`${item.project_id}:${item.story_id}`"
+          class="projects-page__recipe-history-item"
+          :to="`/projects/${item.project_id}`"
+        >
+          <strong>{{ item.project_title }}</strong>
+          <span>{{ recipeLabel(item.comparison.recipe.recipe_id) }}</span>
+          <span>{{ recipeVerdictLabel(item.comparison.machine_verdict) }}</span>
+          <span>{{ formatRecipeDelta(item.comparison.aggregate_delta) }}</span>
+          <small>{{ formatDate(item.updated_at) }}</small>
+        </RouterLink>
+      </div>
+      <p v-else class="projects-page__recipe-history-empty">暂无符合筛选条件的配方对照。</p>
+      <p class="projects-page__recipe-boundary">
+        这些结果只反映机器质量维度，不代表真人偏好，不证明配方导致结果变化，也不授予法务或生产交付信用。
+      </p>
+    </section>
+
     <section v-if="storyAgentMvpStatus" class="projects-page__portfolio projects-page__mvp-status">
       <div class="projects-page__portfolio-head">
         <div>
@@ -1073,7 +1154,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { deleteProject, deleteProjects, listProjects, retainRecentProjects } from '@/api/projects'
+import {
+  deleteProject,
+  deleteProjects,
+  listProjects,
+  listStoryRecipeEffectComparisonHistory,
+  retainRecentProjects,
+} from '@/api/projects'
 import {
   getGearsExternalCallbackHandoffQueue,
   getProductionReadinessPortfolio,
@@ -1124,7 +1211,12 @@ import type {
   StoryProjectStatus,
   CreationUseCase,
   TruthMode,
+  ReferenceGenerationRecipeId,
+  StoryRecipeEffectComparisonHistory,
+  StoryRecipeEffectDimensionId,
+  StoryRecipeEffectMachineVerdict,
 } from '@shared/types'
+import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
 
 const RETAIN_RECENT_COUNT = 10
 
@@ -1173,6 +1265,7 @@ const manifestPreflightReviewItems = ref<StoryAgentFinalDeliveryManifestPrefligh
 const manifestPreflightReviewMessage = ref('')
 const runningManifestPreflight = ref(false)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
+const recipeEffectHistory = ref<StoryRecipeEffectComparisonHistory | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
 const loadingBacklogHandoff = ref(false)
@@ -1180,11 +1273,13 @@ const loadingPortfolio = ref(false)
 const loadingGeneratedGovernance = ref(false)
 const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
+const loadingRecipeHistory = ref(false)
 const runningPortfolioAutomation = ref(false)
 type GearsExternalQueueCopyMode = 'markdown' | 'payload' | 'commands'
 const gearsExternalQueueCopyMode = ref<GearsExternalQueueCopyMode | ''>('')
 const error = ref('')
 const projectMessage = ref('')
+const recipeHistoryError = ref('')
 const searchQuery = ref('')
 const projectKindFilter = ref('story')
 const statusFilter = ref('')
@@ -1194,6 +1289,8 @@ const materialGateFilter = ref<MaterialGateStatus | ''>('')
 const supplementFilter = ref(false)
 const qualityFilter = ref(false)
 const showArchivedSeries = ref(false)
+const recipeHistoryRecipeFilter = ref<ReferenceGenerationRecipeId | ''>('')
+const recipeHistoryVerdictFilter = ref<StoryRecipeEffectMachineVerdict | ''>('')
 const deletingProjectId = ref('')
 const managingSeriesProjectId = ref('')
 const exportingSeriesProjectId = ref('')
@@ -1706,6 +1803,41 @@ function formatDate(iso: string): string {
   if (!iso) return '未记录'
   const d = new Date(iso)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function formatRecipeScore(value: number): string {
+  return value.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function formatRecipeDelta(value: number | null): string {
+  if (value === null) return '暂无样本'
+  const formatted = formatRecipeScore(value)
+  return value > 0 ? `+${formatted}` : formatted
+}
+
+function recipeLabel(recipeId: ReferenceGenerationRecipeId): string {
+  return REFERENCE_GENERATION_RECIPES.find(recipe => recipe.id === recipeId)?.label ?? recipeId
+}
+
+function recipeVerdictLabel(verdict: StoryRecipeEffectMachineVerdict): string {
+  const labels: Record<StoryRecipeEffectMachineVerdict, string> = {
+    improved: '机器指标改善',
+    mixed: '有升有降',
+    no_material_change: '无显著变化',
+    regressed: '机器指标回落',
+  }
+  return labels[verdict]
+}
+
+function recipeDimensionLabel(dimension: StoryRecipeEffectDimensionId): string {
+  const labels: Record<StoryRecipeEffectDimensionId, string> = {
+    structure: '结构',
+    causality: '因果',
+    visualization: '可视化',
+    continuity: '连续性',
+    contract_completeness: '合同完整',
+  }
+  return labels[dimension]
 }
 
 function removedStoryFileCount(results: StoryProjectDeleteResult[]): number {
@@ -2274,6 +2406,7 @@ async function loadProjects() {
       if (res.ok && res.data) projects.value = res.data
       else error.value = res.error?.message ?? '加载单片项目失败'
     }),
+    loadRecipeEffectHistory(),
     listAiComicSeriesProjects(showArchivedSeries.value).then((res) => {
       if (res.ok && res.data) seriesProjects.value = res.data
       else error.value = res.error?.message ?? '加载漫剧系列失败'
@@ -2308,6 +2441,22 @@ async function loadProjects() {
   ]).finally(() => {
     loading.value = false
   })
+}
+
+async function loadRecipeEffectHistory() {
+  loadingRecipeHistory.value = true
+  recipeHistoryError.value = ''
+  const res = await listStoryRecipeEffectComparisonHistory({
+    recipe_id: recipeHistoryRecipeFilter.value || undefined,
+    machine_verdict: recipeHistoryVerdictFilter.value || undefined,
+    limit: 12,
+  })
+  if (res.ok && res.data) {
+    recipeEffectHistory.value = res.data
+  } else {
+    recipeHistoryError.value = res.error?.message ?? '加载创作配方机器对照历史失败'
+  }
+  loadingRecipeHistory.value = false
 }
 
 async function loadStoryAgentMvpStatus() {
@@ -2635,6 +2784,110 @@ onMounted(async () => {
   color: #33475b;
   font-size: 12px;
   font-weight: 700;
+}
+
+.projects-page__recipe-history {
+  border-color: #cbd9e5;
+  background: linear-gradient(135deg, #f8fbfd 0%, #f4f8fb 100%);
+}
+
+.projects-page__recipe-history-error {
+  margin: 0 0 10px;
+  color: #b03a2e;
+  font-size: 12px;
+}
+
+.projects-page__recipe-trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.projects-page__recipe-trend {
+  padding: 11px;
+  border: 1px solid #d7e1e9;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.projects-page__recipe-trend-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #2c3e50;
+  font-size: 13px;
+}
+
+.projects-page__recipe-trend-head span {
+  color: #66727f;
+}
+
+.projects-page__recipe-trend p {
+  margin: 7px 0;
+  color: #52616f;
+  font-size: 12px;
+}
+
+.projects-page__recipe-dimensions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.projects-page__recipe-dimensions span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #eef4f8;
+  color: #36566f;
+  font-size: 11px;
+}
+
+.projects-page__recipe-history-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.projects-page__recipe-history-item {
+  display: grid;
+  grid-template-columns: minmax(170px, 2fr) minmax(150px, 1.4fr) 100px 58px 118px;
+  gap: 9px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #dbe4eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #415466;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.projects-page__recipe-history-item:hover {
+  border-color: #92b8d3;
+  background: #fbfdff;
+}
+
+.projects-page__recipe-history-item strong {
+  color: #22313f;
+}
+
+.projects-page__recipe-history-item small {
+  color: #75818c;
+  text-align: right;
+}
+
+.projects-page__recipe-history-empty,
+.projects-page__recipe-boundary {
+  margin: 8px 0 0;
+  color: #66727f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.projects-page__recipe-boundary {
+  padding-top: 9px;
+  border-top: 1px dashed #ccd7df;
 }
 
 .projects-page__metric-link {
@@ -3924,6 +4177,22 @@ onMounted(async () => {
   .projects-page__filters-body {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .projects-page__portfolio-head,
+  .projects-page__portfolio-head-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .projects-page__recipe-history-item {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .projects-page__recipe-history-item strong,
+  .projects-page__recipe-history-item small {
+    grid-column: 1 / -1;
+    text-align: left;
   }
 
   .projects-page__bulk-summary {

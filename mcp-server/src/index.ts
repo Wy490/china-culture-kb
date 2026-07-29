@@ -17,6 +17,7 @@ import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
 import {
+  getStoryAgentRecipeEffectHistory,
   prepareStoryAgentRecipeComparison,
   recommendStoryAgentRecipes,
 } from './tools/story-agent-recipe-recommendations.js';
@@ -373,6 +374,52 @@ server.tool(
   },
   async (input) => {
     const result = await prepareStoryAgentRecipeComparison(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_get_story_recipe_effect_history',
+  '查询 canonical Story Agent Web/API 中当前项目版本的配方机器对照历史与趋势。只读取已完成的同输入机器对照；不代表真人偏好，不证明因果，不授予生产交付信用。',
+  {
+    recipe_id: z.enum([
+      'feature_long_goal_payoff',
+      'feature_epoch_character_mosaic',
+      'feature_moral_pressure',
+      'promo_space_emotion',
+      'promo_mnemonic_reveal',
+      'promo_collective_montage',
+      'series_strategy_chapters',
+      'series_ritual_relationships',
+    ]).optional().describe('筛选 canonical 配方 ID'),
+    video_type: z.enum([
+      'character_story',
+      'historical_drama',
+      'legend_story',
+      'culture_promo',
+      'heritage_promo',
+      'city_brand_promo',
+      'scene_short',
+      'landscape_mood',
+      'documentary_short',
+      'explainer_video',
+      'lecture_video',
+      'education_training',
+      'children_story',
+      'social_short',
+      'ai_comic_drama',
+    ]).optional().describe('筛选目标成片类型'),
+    machine_verdict: z.enum([
+      'improved',
+      'mixed',
+      'no_material_change',
+      'regressed',
+    ]).optional().describe('筛选机器判定'),
+    limit: z.number().int().min(1).max(100).optional()
+      .describe('返回最近历史项数量；趋势仍基于完整筛选结果聚合'),
+  },
+  async (input) => {
+    const result = await getStoryAgentRecipeEffectHistory(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );

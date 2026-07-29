@@ -1797,19 +1797,33 @@ export const ReferenceGenerationRecipeRecommendationRequestSchema = z.object({
   ).optional(),
 }).strict();
 
+export const ReferenceGenerationRecipeIdSchema = z.enum([
+  'feature_long_goal_payoff',
+  'feature_epoch_character_mosaic',
+  'feature_moral_pressure',
+  'promo_space_emotion',
+  'promo_mnemonic_reveal',
+  'promo_collective_montage',
+  'series_strategy_chapters',
+  'series_ritual_relationships',
+]);
+
 export const ReferenceRecipeComparisonDraftRequestSchema = z.object({
   baseline_story_id: z.string()
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),
-  recipe_id: z.enum([
-    'feature_long_goal_payoff',
-    'feature_epoch_character_mosaic',
-    'feature_moral_pressure',
-    'promo_space_emotion',
-    'promo_mnemonic_reveal',
-    'promo_collective_montage',
-    'series_strategy_chapters',
-    'series_ritual_relationships',
-  ]),
+  recipe_id: ReferenceGenerationRecipeIdSchema,
+}).strict();
+
+export const StoryRecipeEffectComparisonHistoryQuerySchema = z.object({
+  recipe_id: ReferenceGenerationRecipeIdSchema.optional(),
+  video_type: VideoTypeSchema.optional(),
+  machine_verdict: z.enum([
+    'improved',
+    'mixed',
+    'no_material_change',
+    'regressed',
+  ]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 }).strict();
 
 export const ReferenceBaselineReplayDraftRequestSchema = z.object({

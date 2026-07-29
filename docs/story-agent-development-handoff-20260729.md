@@ -381,6 +381,22 @@ Story Studio 已增加“创作配方”选择器。应用配方会同步：
 P1-E1 / E2 / E3 配方路线图已完成。真实参考样本、人工偏好和生产验收仍受既有权利与
 人工证据边界约束。
 
+### 6.4 本轮完成：配方效果历史索引与机器趋势
+
+已把单次对照升级为当前项目版本上的只读历史与趋势层：
+
+- 新增 `story-recipe-effect-comparison-history/v1` 共享合同；
+- 历史直接派生自现有项目仓库和 current version，不新增旁路数据库；
+- 只收录 story ID、canonical recipe 版本/hash、五维证据和边界全部一致的 completed
+  comparison；不合法记录 fail closed 并计入 `skipped_invalid_comparison_count`；
+- 支持按配方、成片类型、机器 verdict 筛选，历史项稳定按更新时间排序；
+- 趋势在展示 limit 之前聚合，包含样本数、四类 verdict 计数、综合分和五维均值；
+- `/api/projects/recipe-effect-comparisons` 在聚合前执行项目级访问过滤，避免不可见项目
+  通过计数或均值泄漏；
+- 项目工作台已提供筛选、趋势卡、最近对照入口和明确边界提示；
+- MCP 新增 `kb_get_story_recipe_effect_history`，只作为 canonical Web API 薄桥接；
+- 固定边界为 machine-only、非真人偏好、非因果证明、非法务结论、非生产交付信用。
+
 ## 7. 关键代码位置
 
 ```text
@@ -409,6 +425,10 @@ mcp-server/src/tools/story-agent-recipe-recommendations.ts
 配方同输入对照
 web/server/src/services/reference-recipe-effect-comparison-service.ts
 web/server/src/services/reference-baseline-replay-service.ts
+
+配方对照历史与趋势
+web/server/src/services/reference-recipe-effect-history-service.ts
+web/client/src/views/Projects.vue
 
 Reference Library 页面
 web/client/src/views/ReferenceLibrary.vue
@@ -552,6 +572,27 @@ Repository audit
   git diff --check passed
 ```
 
+配方历史与趋势新增验证：
+
+```text
+Server full regression
+  188 files passed, 1 skipped
+  1559 tests passed, 2 skipped
+
+MCP full regression
+  101 files / 529 tests passed
+  TypeScript build passed
+
+Web lint / production build / visible-copy audit
+  all passed
+
+Browser smoke
+  project workbench rendered the recipe effect history panel
+  empty state and recipe filter refresh behaved correctly
+  machine-only / non-causal / non-production-credit boundary rendered
+  only console error was the pre-existing /favicon.ico 404
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
@@ -560,7 +601,7 @@ Repository audit
 branch: codex/story-agent-manifest-integrity-20260718
 functional baseline: 859007d5
 handoff HEAD: run git log -1 --oneline
-remote: expected ahead 8 after the P1-E3 local commit
+remote: expected ahead 9 after the recipe history local commit
 worktree: clean
 push: not performed
 ```
@@ -590,10 +631,11 @@ npm run dev
 
 ## 10. 下一开发优先级
 
-P1-E1 / E2 / E3 已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产
+P1-E1 / E2 / E3 和配方机器对照历史已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产
 验收。下一轮可按产品需要选择：
 
-- 为配方对照增加组合筛选、历史列表和机器指标趋势；
+- 为配方实验增加独立的真人评审录入与审核账本；没有真实操作员输入时保持空状态；
+- 为历史趋势增加可导出的机器对照报告和受控 cohort 定义；
 - 扩展更多成片类型的 canonical 配方；
 - 继续 Story Agent 其他产品 backlog；
 - 等待用户提供合法真实样本后进入人工分析链。
@@ -673,7 +715,11 @@ P1-E3 已完成：无配方 baseline、canonical 配方 replay draft、正式生
 复验、五维机器 comparison、Story Studio / StoryResult / 项目持久化和 MCP draft
 入口均已闭环；机器 verdict 不等于真人偏好、法律结论或 production credit。
 
-P1-E1 / E2 / E3 路线图完成。下一步必须根据新的产品优先级推进；没有用户真实合法
+配方效果历史与趋势已完成：current project version 派生索引、失效记录拒绝、组合筛选、
+四类 verdict 与五维均值、项目权限过滤、项目工作台和
+`kb_get_story_recipe_effect_history` 已闭环；趋势不证明因果，也不代表真人偏好。
+
+P1-E1 / E2 / E3 与机器趋势路线图完成。下一步必须根据新的产品优先级推进；没有用户真实合法
 样本时，不得伪造后续 reference analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
