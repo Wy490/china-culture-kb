@@ -1350,6 +1350,74 @@ describe('Story Agent top-level run API', () => {
   });
 });
 
+describe('POST /api/stories/reference-generation-recipe-recommendations', () => {
+  it('returns ranked canonical recipe contracts without applying one', async () => {
+    const response = await request
+      .post('/api/stories/reference-generation-recipe-recommendations')
+      .send({
+        creation_path: 'original',
+        video_type: 'character_story',
+        creation_use_case: 'original_ai_comic',
+        truth_mode: 'fictional_original',
+        subject_text: '一个人物坚持多年，最后以不可撤回的选择付出代价。',
+        narrative_goal: '长期目标与伏笔回收。',
+        material_features: ['documented_character_choice'],
+      });
+
+    expect(response.status).toBe(200);
+    expectSuccess(response.body);
+    expect(response.body.data).toMatchObject({
+      schema_version: 'reference-generation-recipe-recommendation/v1',
+      boundary: {
+        optional_recommendation: true,
+        user_may_decline: true,
+        machine_recommendation_only: true,
+      },
+    });
+    expect(response.body.data.recommendations[0]).toMatchObject({
+      recipe_id: 'feature_long_goal_payoff',
+      rank: 1,
+      contract: {
+        schema_version: 'reference-generation-recipe/v1',
+        recipe_id: 'feature_long_goal_payoff',
+      },
+    });
+  });
+
+  it('returns no recommendation when factual institutional material is limited', async () => {
+    const response = await request
+      .post('/api/stories/reference-generation-recipe-recommendations')
+      .send({
+        creation_path: 'institutional',
+        video_type: 'historical_drama',
+        creation_use_case: 'institutional_promo',
+        truth_mode: 'institutional_verified',
+        material_features: [
+          'institutional_brief',
+          'limited_or_unverified_material',
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expectSuccess(response.body);
+    expect(response.body.data.recommendations).toEqual([]);
+    expect(response.body.data.no_recommendation_reason).toContain('真实性');
+  });
+
+  it('validates duplicate material features', async () => {
+    const response = await request
+      .post('/api/stories/reference-generation-recipe-recommendations')
+      .send({
+        creation_path: 'original',
+        video_type: 'character_story',
+        material_features: ['ensemble_cast', 'ensemble_cast'],
+      });
+
+    expect(response.status).toBe(400);
+    expectFailure(response.body, 'VALIDATION_ERROR');
+  });
+});
+
 describe('GET /api/system/story-generation-capabilities', () => {
   it('returns the non-executing model availability and engine boundary contract', async () => {
     const res = await request.get('/api/system/story-generation-capabilities');

@@ -1770,6 +1770,31 @@ export const StoryGenerateRequestSchema = z.object({
   { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
 
+export const ReferenceGenerationRecipeRecommendationRequestSchema = z.object({
+  creation_path: z.enum(['original', 'adaptation', 'institutional']),
+  video_type: VideoTypeSchema,
+  creation_use_case: CreationUseCaseSchema.optional(),
+  truth_mode: TruthModeSchema.optional(),
+  subject_text: z.string().trim().max(4_000).optional(),
+  narrative_goal: z.string().trim().max(1_000).optional(),
+  material_features: z.array(z.enum([
+    'structured_knowledge_pack',
+    'documented_character_choice',
+    'multi_period_scope',
+    'ensemble_cast',
+    'spatial_subject',
+    'public_service_goal',
+    'institutional_brief',
+    'strategy_or_power_material',
+    'ritual_or_relationship_material',
+    'rhythmic_short_scene_material',
+    'limited_or_unverified_material',
+  ])).max(20).refine(
+    values => new Set(values).size === values.length,
+    'material_features must be unique',
+  ).optional(),
+}).strict();
+
 export const ReferenceBaselineReplayDraftRequestSchema = z.object({
   baseline_story_id: z.string()
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),

@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`183b122a feat(story-agent): add reference-inspired generation recipes`
+> 功能基线：`859007d5 feat(story-agent): persist generation recipe contracts`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -327,7 +327,7 @@ Story Studio 已增加“创作配方”选择器。应用配方会同步：
 创作配方已经从前端参数组合器升级为可审计的一等生成合同：
 
 - 共享 `StoryGenerateRequest` 增加可选
-  `reference_generation_recipe/v1`；
+  `reference-generation-recipe/v1`；
 - 合同固定保存 `recipe_id`、`recipe_version`、抽象机制快照、禁仿边界和
   `payload_sha256`；
 - 服务端按 canonical 配方目录重新解析并复算 SHA-256，拒绝未知 ID、内容篡改、
@@ -341,9 +341,25 @@ Story Studio 已增加“创作配方”选择器。应用配方会同步：
 - Web API 和 MCP canonical 入口均支持该合同；
 - 旧请求和无配方项目继续兼容。
 
+### 6.2 本轮完成：P1-E2 可解释的可选推荐
+
+创作配方推荐已经成为独立 canonical 服务，不与生成或应用动作混在一起：
+
+- 新增 `reference-generation-recipe-recommendation/v1` 请求/结果合同；
+- 服务端按创作路径、成片类型、题材、叙事目标和结构化素材特征进行确定性排序；
+- 只返回与目标 `video_type` 兼容的 canonical 配方合同，最多 3 个；
+- 每项包含 rank、score、confidence、原因和命中信号；
+- 没有兼容配方时保持无配方；不会为了凑数跨类型推荐；
+- 事实重构/机构审定任务存在 `limited_or_unverified_material` 时返回零建议，并明确
+  “先补齐和核验材料”；
+- Story Studio 自动刷新建议，但不自动应用；用户可以采用、手动切换或明确拒绝；
+- 拒绝后生成请求不携带配方合同；
+- MCP 新增 `kb_recommend_story_generation_recipes`，只桥接 canonical Web API，
+  明确 `generation_performed: false`、`recipe_applied: false`；
+- 推荐输入、结果和 UI 均不包含公开研究候选作品标题或内容。
+
 仍未完成：
 
-- 尚未根据题材、类型和创作路径自动推荐配方；
 - 还没有 reference-free / recipe-assisted 的同输入质量对照。
 
 ## 7. 关键代码位置
@@ -363,6 +379,13 @@ web/server/src/services/narrative-pattern-library.ts
 
 配方合同测试
 web/server/src/__tests__/reference-generation-recipes.test.ts
+
+配方推荐服务与测试
+web/server/src/services/reference-generation-recipe-recommendation-service.ts
+web/server/src/__tests__/reference-generation-recipe-recommendation.test.ts
+
+配方推荐 MCP
+mcp-server/src/tools/story-agent-recipe-recommendations.ts
 
 Reference Library 页面
 web/client/src/views/ReferenceLibrary.vue
@@ -444,15 +467,48 @@ Repository audit
   git diff --check passed
 ```
 
+P1-E2 新增验证：
+
+```text
+Server targeted recommendation / contract / API
+  2 files / 9 passed, 233 unrelated API tests skipped
+
+Server full regression
+  186 files passed, 1 skipped
+  1547 tests passed, 2 skipped
+
+MCP targeted recommendation + generation bridge
+  2 files / 6 tests passed
+
+MCP full regression
+  101 files / 523 tests passed
+  TypeScript build passed
+
+Web workspace lint / production build / visible-copy audit
+  all passed
+
+Browser smoke
+  original character topic returned ranked reasons and high-confidence recommendation
+  recommendation was not auto-applied
+  explicit adoption updated the applied canonical recipe
+  explicit decline cleared selection and applied contract
+  institutional verified task without grounded material returned zero recommendations
+  truth/material warnings rendered
+  no story project was generated or persisted
+
+Repository audit
+  git diff --check passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 183b122a
+functional baseline: 859007d5
 handoff HEAD: run git log -1 --oneline
-remote: expected ahead 6 after the P1-E1 local commit
+remote: expected ahead 7 after the P1-E2 local commit
 worktree: clean
 push: not performed
 ```
@@ -461,10 +517,10 @@ push: not performed
 
 ```text
 Story Studio
-http://localhost:15191/story/new
+http://localhost:5173/story/new
 
 API
-http://localhost:13016
+http://localhost:3000
 ```
 
 新对话不要假设旧进程仍存活。需要时启动：
@@ -481,15 +537,6 @@ npm run dev
 如果端口占用，先检查现有服务；不要未经确认杀死不明进程，也可以改用其他前端端口。
 
 ## 10. 下一开发优先级
-
-### P1-E2 自动推荐而不是强制套用
-
-根据创作路径、成片类型、题材、叙事目标和素材特征返回 1～3 个配方建议，并允许：
-
-- 用户不使用配方；
-- 用户查看建议原因；
-- 用户手动切换；
-- 机构/事实型任务优先真实性，不为套配方牺牲材料边界。
 
 ### P1-E3 配方效果对照
 
@@ -537,7 +584,7 @@ git diff --check
 git status --short --branch
 ```
 
-完成 P1-E2 里程碑后，再运行受影响的 recommendation、generation request、UI、
+完成 P1-E3 里程碑后，再运行受影响的 comparison、generation、project persistence、
 API 与 MCP 测试；不要每次小改都重复整套全量 CI。
 
 ## 12. 可复制到下一对话的启动指令
@@ -553,6 +600,7 @@ API 与 MCP 测试；不要每次小改都重复整套全量 CI。
 0d72e2f6 feat(story-agent): bridge private video samples to mcp
 3140160f feat(story-agent): surface private video samples in reference library
 183b122a feat(story-agent): add reference-inspired generation recipes
+859007d5 feat(story-agent): persist generation recipe contracts
 
 固定产品边界：
 主题/大纲/授权原作 → 中国文化知识 → 故事蓝图与完整文本 → 场景/分镜/GearsSegment
@@ -571,10 +619,13 @@ style pack 或 production credit。
 P1-E1 已完成：服务端 canonical 解析、SHA-256 与防篡改、prompt 有界注入、
 project version / story-agent-run / result provenance、Web/MCP 和旧项目兼容均已闭环。
 
-下一优先级是 P1-E2：根据创作路径、成片类型、题材、叙事目标和素材特征返回 1～3 个
-配方建议。建议必须解释原因、允许不使用或手动切换，并让机构/事实型任务优先真实性，
-不得为套配方牺牲材料和权利边界。先写 recommendation contract 与兼容性失败测试，再
-实现服务端 canonical 推荐和 Story Studio 展示。
+P1-E2 已完成：服务端 canonical 确定性推荐、1～3 个兼容配方、解释原因、可拒绝与
+手动切换、机构/事实型材料不足返回零建议、Story Studio 和 MCP bridge 均已闭环。
+
+下一优先级是 P1-E3：建立同输入 reference-free / recipe-assisted 对照运行与机器可验证
+比较合同，只比较结构、可视化程度、因果、连续性和合同完整度；不得把机器对照冒充
+真人偏好、法律结论或 production credit。先写 comparison contract、同输入约束与
+fail-closed 测试，再实现 canonical 服务、持久化账本和 Web/MCP 只读结果。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

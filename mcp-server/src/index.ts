@@ -16,6 +16,7 @@ import { collect } from './tools/collect.js';
 import { getEntryDetail } from './tools/get-entry-detail.js';
 import { generateStory } from './tools/generate-story.js';
 import { storyAgentGenerate } from './tools/story-agent-generate.js';
+import { recommendStoryAgentRecipes } from './tools/story-agent-recipe-recommendations.js';
 import { exportStoryAgentPreproduction } from './tools/export-story-agent-preproduction.js';
 import {
   exportStoryAgentImageRequest,
@@ -276,6 +277,77 @@ server.tool(
     });
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   }
+);
+
+// kb_recommend_story_generation_recipes — optional canonical recipe recommendation
+server.tool(
+  'kb_recommend_story_generation_recipes',
+  '通过 canonical Story Agent Web/API 获取可解释的创作配方建议。只推荐、不生成、不自动应用；用户可拒绝。事实型或机构任务材料不足时可返回无建议，真实性边界优先。',
+  {
+    creation_path: z.enum(['original', 'adaptation', 'institutional'])
+      .describe('当前创作路径'),
+    video_type: z.enum([
+      'character_story',
+      'historical_drama',
+      'legend_story',
+      'culture_promo',
+      'heritage_promo',
+      'city_brand_promo',
+      'scene_short',
+      'landscape_mood',
+      'documentary_short',
+      'explainer_video',
+      'lecture_video',
+      'education_training',
+      'children_story',
+      'social_short',
+      'ai_comic_drama',
+    ]).describe('目标成片类型'),
+    creation_use_case: z.enum([
+      'original_ai_comic',
+      'adapted_ai_comic',
+      'institutional_promo',
+      'documentary_short',
+      'brand_commercial',
+      'education_training',
+      'public_service',
+    ]).optional().describe('创作使用场景'),
+    truth_mode: z.enum([
+      'fictional_original',
+      'inspired_by_material',
+      'source_adaptation',
+      'factual_reconstruction',
+      'institutional_verified',
+    ]).optional().describe('真实性模式'),
+    subject_text: z.string().trim().min(1).max(4_000).optional()
+      .describe('主题、素材摘要或大纲；只用于匹配抽象机制'),
+    narrative_goal: z.string().trim().min(1).max(1_000).optional()
+      .describe('叙事或传播目标'),
+    material_features: z.array(z.enum([
+      'structured_knowledge_pack',
+      'documented_character_choice',
+      'multi_period_scope',
+      'ensemble_cast',
+      'spatial_subject',
+      'public_service_goal',
+      'institutional_brief',
+      'strategy_or_power_material',
+      'ritual_or_relationship_material',
+      'rhythmic_short_scene_material',
+      'limited_or_unverified_material',
+    ]))
+      .max(20)
+      .refine(
+        features => new Set(features).size === features.length,
+        'material_features must be unique',
+      )
+      .optional()
+      .describe('已知素材特征；limited_or_unverified_material 会触发真实性优先边界'),
+  },
+  async (input) => {
+    const result = await recommendStoryAgentRecipes(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
 );
 
 // kb_story_agent_generate — canonical Web/MCP Story Agent generation entry

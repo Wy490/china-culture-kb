@@ -5,6 +5,7 @@ import { validateBody, validateParams, validateQuery } from '../middleware/valid
 import {
   GearsDeliveryUpdateRequestSchema,
   ReferenceBaselineReplayDraftRequestSchema,
+  ReferenceGenerationRecipeRecommendationRequestSchema,
   StoryPlanRequestSchema,
   StoryGenerateRequestSchema,
   StoryIdParamSchema,
@@ -20,6 +21,7 @@ import {
 } from '../services/story-service.js';
 import type {
   ReferenceBaselineReplayDraftRequest,
+  ReferenceGenerationRecipeRecommendationRequest,
   StoryGenerateRequest,
   VideoType,
 } from '@shared/types.js';
@@ -36,6 +38,7 @@ import { resolveStoryVideoType } from '../platform/story-generation-policy.js';
 import { runWithStoryGenerationAttemptAudit } from '../services/story-generation-attempt-audit-service.js';
 import { listReferenceStylePacks } from '../services/reference-library-service.js';
 import { createReferenceBaselineReplayDraft } from '../services/reference-baseline-replay-service.js';
+import { recommendReferenceGenerationRecipes } from '../services/reference-generation-recipe-recommendation-service.js';
 import { storyRepositoryRoot } from '../platform/story-storage-root.js';
 
 export const storiesRouter = Router();
@@ -149,6 +152,20 @@ storiesRouter.post(
         baselineStoryId: request.baseline_story_id,
         stylePackIds: request.style_pack_ids,
       })));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+storiesRouter.post(
+  '/reference-generation-recipe-recommendations',
+  requireStoryCreate,
+  validateBody(ReferenceGenerationRecipeRecommendationRequestSchema),
+  (req, res, next) => {
+    try {
+      const request = req.body as ReferenceGenerationRecipeRecommendationRequest;
+      res.json(success(recommendReferenceGenerationRecipes(request)));
     } catch (error) {
       next(error);
     }

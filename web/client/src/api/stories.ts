@@ -88,6 +88,8 @@ import type {
   MediaAssetReviewUpdateRequest,
   ReferenceBaselineReplayDraft,
   ReferenceBaselineReplayDraftRequest,
+  ReferenceGenerationRecipeRecommendationRequest,
+  ReferenceGenerationRecipeRecommendationResult,
   ReferenceStylePackCatalogItem,
 } from '@shared/types'
 
@@ -108,6 +110,15 @@ export function getReferenceStylePackCatalog() {
 
 export function createReferenceBaselineReplayDraft(req: ReferenceBaselineReplayDraftRequest) {
   return apiPost<ReferenceBaselineReplayDraft>('/stories/reference-baseline-replay-drafts', req)
+}
+
+export function recommendReferenceGenerationRecipes(
+  req: ReferenceGenerationRecipeRecommendationRequest,
+) {
+  return apiPost<ReferenceGenerationRecipeRecommendationResult>(
+    '/stories/reference-generation-recipe-recommendations',
+    req,
+  )
 }
 
 export function listStories(generationType?: string, videoType?: VideoType, sourceDomain?: string) {

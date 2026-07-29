@@ -1470,6 +1470,58 @@ export interface ReferenceGenerationRecipeContract {
   payload_sha256: string;
 }
 
+export type ReferenceGenerationRecipeCreationPath =
+  | 'original'
+  | 'adaptation'
+  | 'institutional';
+
+export type ReferenceGenerationRecipeMaterialFeature =
+  | 'structured_knowledge_pack'
+  | 'documented_character_choice'
+  | 'multi_period_scope'
+  | 'ensemble_cast'
+  | 'spatial_subject'
+  | 'public_service_goal'
+  | 'institutional_brief'
+  | 'strategy_or_power_material'
+  | 'ritual_or_relationship_material'
+  | 'rhythmic_short_scene_material'
+  | 'limited_or_unverified_material';
+
+export interface ReferenceGenerationRecipeRecommendationRequest {
+  creation_path: ReferenceGenerationRecipeCreationPath;
+  video_type: VideoType;
+  creation_use_case?: CreationUseCase;
+  truth_mode?: TruthMode;
+  subject_text?: string;
+  narrative_goal?: string;
+  material_features?: ReferenceGenerationRecipeMaterialFeature[];
+}
+
+export interface ReferenceGenerationRecipeRecommendation {
+  recipe_id: ReferenceGenerationRecipeId;
+  rank: number;
+  score: number;
+  confidence: 'low' | 'medium' | 'high';
+  reasons: string[];
+  matched_signals: string[];
+  contract: ReferenceGenerationRecipeContract;
+}
+
+export interface ReferenceGenerationRecipeRecommendationResult {
+  schema_version: 'reference-generation-recipe-recommendation/v1';
+  recommendations: ReferenceGenerationRecipeRecommendation[];
+  policy_warnings: string[];
+  no_recommendation_reason?: string;
+  boundary: {
+    optional_recommendation: true;
+    user_may_decline: true;
+    machine_recommendation_only: true;
+    truth_and_material_boundaries_take_priority: true;
+    production_credit_granted: false;
+  };
+}
+
 export interface StoryGenerateRequest {
   domain?: string;
   entry_name?: string;

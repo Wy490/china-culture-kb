@@ -441,6 +441,67 @@
 
       <section class="story-studio__field">
         <label class="story-studio__label" for="reference-generation-recipe">创作配方</label>
+        <div class="story-studio__recipe-recommendations" data-testid="reference-generation-recipe-recommendations">
+          <div class="story-studio__recipe-recommendation-head">
+            <div>
+              <strong>系统建议（可选）</strong>
+              <small>根据创作路径、成片类型和素材特征解释推荐；不会自动应用。</small>
+            </div>
+            <button
+              type="button"
+              class="story-studio__recipe-decline"
+              data-testid="decline-reference-generation-recipe"
+              @click="declineReferenceGenerationRecipe"
+            >
+              不使用配方
+            </button>
+          </div>
+          <p v-if="referenceRecipeRecommendationLoading" class="story-studio__recipe-state" role="status">
+            正在评估可选配方…
+          </p>
+          <p v-else-if="referenceRecipeRecommendationError" class="story-studio__recipe-state story-studio__recipe-state--error">
+            {{ referenceRecipeRecommendationError }}
+          </p>
+          <template v-else-if="referenceRecipeRecommendations">
+            <article
+              v-for="recommendation in referenceRecipeRecommendations.recommendations"
+              :key="recommendation.recipe_id"
+              class="story-studio__recipe-recommendation"
+              :class="{
+                'story-studio__recipe-recommendation--applied':
+                  appliedReferenceGenerationRecipeId === recommendation.recipe_id,
+              }"
+            >
+              <div class="story-studio__recipe-recommendation-title">
+                <strong>#{{ recommendation.rank }} {{ referenceGenerationRecipeLabel(recommendation.recipe_id) }}</strong>
+                <span>{{ recommendationConfidenceLabel(recommendation.confidence) }} · {{ recommendation.score }} 分</span>
+              </div>
+              <p>{{ recommendation.reasons.join('；') }}</p>
+              <button
+                type="button"
+                class="btn btn--search"
+                :data-testid="`apply-recommended-recipe-${recommendation.recipe_id}`"
+                @click="applyRecommendedReferenceGenerationRecipe(recommendation.recipe_id)"
+              >
+                {{ appliedReferenceGenerationRecipeId === recommendation.recipe_id ? '已采用' : '采用此建议' }}
+              </button>
+            </article>
+            <p
+              v-if="referenceRecipeRecommendations.no_recommendation_reason"
+              class="story-studio__recipe-state story-studio__recipe-state--boundary"
+            >
+              {{ referenceRecipeRecommendations.no_recommendation_reason }}
+            </p>
+            <ul
+              v-if="referenceRecipeRecommendations.policy_warnings.length"
+              class="story-studio__recipe-warnings"
+            >
+              <li v-for="warning in referenceRecipeRecommendations.policy_warnings" :key="warning">
+                {{ warning }}
+              </li>
+            </ul>
+          </template>
+        </div>
         <div class="story-studio__recipe-row">
           <select
             id="reference-generation-recipe"
@@ -767,12 +828,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   createReferenceBaselineReplayDraft,
   getReferenceStylePackCatalog,
   getStory,
+  recommendReferenceGenerationRecipes,
   storyPlan,
   storyGenerate,
   storyOutlineAnalyze,
@@ -814,6 +876,9 @@ import type {
   CreationUseCase,
   TruthMode,
   ReferenceBaselineReplayDraft,
+  ReferenceGenerationRecipeMaterialFeature,
+  ReferenceGenerationRecipeRecommendation,
+  ReferenceGenerationRecipeRecommendationResult,
   ReferenceStylePackCatalogItem,
 } from '@shared/types'
 import { VIDEO_TYPE_CONFIG, PRESENTATION_STYLE_CONFIG, GENERATION_TO_VIDEO_TYPE } from '@shared/types'
@@ -1076,6 +1141,11 @@ const preparingBaselineDraft = ref(false)
 const selectedReferenceGenerationRecipeId = ref<ReferenceGenerationRecipeId | ''>('')
 const appliedReferenceGenerationRecipeId = ref<ReferenceGenerationRecipeId | ''>('')
 const referenceRecipeMessage = ref('')
+const referenceRecipeRecommendations = ref<ReferenceGenerationRecipeRecommendationResult | null>(null)
+const referenceRecipeRecommendationLoading = ref(false)
+const referenceRecipeRecommendationError = ref('')
+let referenceRecipeRecommendationTimer: ReturnType<typeof setTimeout> | null = null
+let referenceRecipeRecommendationSequence = 0
 
 const canUseOutlineOnly = computed(() => {
   return creationPath.value === 'original'
@@ -1238,6 +1308,136 @@ function referenceGenerationRecipeRequestFields() {
           buildReferenceGenerationRecipeContract(recipeId),
       }
     : {}
+}
+
+function referenceGenerationRecipeLabel(recipeId: ReferenceGenerationRecipeId): string {
+  return REFERENCE_GENERATION_RECIPES.find(recipe => recipe.id === recipeId)?.label ?? recipeId
+}
+
+function recommendationConfidenceLabel(confidence: ReferenceGenerationRecipeRecommendation['confidence']): string {
+  if (confidence === 'high') return '高匹配'
+  if (confidence === 'medium') return '中匹配'
+  return '低匹配'
+}
+
+function recommendationSubjectText(): string {
+  return [
+    selectedEntry.value?.name,
+    selectedEntry.value?.summary,
+    outlineText.value,
+    originalUserQuery.value,
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
+function recommendationMaterialFeatures(): ReferenceGenerationRecipeMaterialFeature[] {
+  const subjectText = recommendationSubjectText()
+  const features = new Set<ReferenceGenerationRecipeMaterialFeature>()
+  const factSensitive = selectedTruthMode.value === 'factual_reconstruction'
+    || selectedTruthMode.value === 'institutional_verified'
+
+  if (creationPath.value === 'institutional') features.add('institutional_brief')
+  if (knowledgePack.value) features.add('structured_knowledge_pack')
+  if (
+    outlineAnalysis.value?.story_intent.time_range
+    || /时代|年代|一生|生平|跨越|多年|阶段/.test(subjectText)
+  ) {
+    features.add('multi_period_scope')
+  }
+  if (
+    (outlineAnalysis.value?.detected_characters.length ?? 0) >= 3
+    || /群像|多位|多人|共同|集体/.test(subjectText)
+  ) {
+    features.add('ensemble_cast')
+  }
+  if (
+    ['culture_promo', 'heritage_promo', 'city_brand_promo', 'scene_short', 'landscape_mood']
+      .includes(selectedVideoType.value ?? '')
+    || /空间|城市|地方|建筑|场所|文旅|景观/.test(subjectText)
+  ) {
+    features.add('spatial_subject')
+  }
+  if (
+    selectedCreationUseCase.value === 'public_service'
+    || /公益|公共服务|社会倡议/.test(`${subjectText}\n${communicationGoal.value}`)
+  ) {
+    features.add('public_service_goal')
+  }
+  if (/权力|制度|名分|策略|阵营|战争|谈判|两难/.test(subjectText)) {
+    features.add('strategy_or_power_material')
+  }
+  if (/礼俗|仪式|家族|关系|潜台词|座次|称谓/.test(subjectText)) {
+    features.add('ritual_or_relationship_material')
+  }
+  if (
+    selectedVideoType.value === 'scene_short'
+    || /节奏|重复|旋律|短场景|揭示|反差/.test(subjectText)
+  ) {
+    features.add('rhythmic_short_scene_material')
+  }
+  if (/选择|代价|信念|坚持|决定/.test(subjectText)) {
+    features.add('documented_character_choice')
+  }
+
+  const credibility = selectedEntry.value?.credibility ?? ''
+  const explicitlyLimited = /待核|未核|混合|不确定/.test(credibility)
+    || Boolean(knowledgePack.value?.missing_needs.length)
+    || Boolean(knowledgePack.value && knowledgePack.value.overall_confidence < 0.7)
+  const entryMaterialIsGrounded = Boolean(selectedEntry.value && credibility)
+    && !/待核|未核|混合|不确定/.test(credibility)
+  const knowledgePackIsGrounded = Boolean(
+    knowledgePack.value
+    && knowledgePack.value.primary_entries.length > 0
+    && knowledgePack.value.missing_needs.length === 0
+    && knowledgePack.value.overall_confidence >= 0.7,
+  )
+  const hasGroundedMaterial = entryMaterialIsGrounded || knowledgePackIsGrounded
+  if (factSensitive && (explicitlyLimited || !hasGroundedMaterial)) {
+    features.add('limited_or_unverified_material')
+  }
+
+  return [...features]
+}
+
+async function refreshReferenceGenerationRecipeRecommendations() {
+  const videoType = selectedVideoType.value
+  if (!videoType) {
+    referenceRecipeRecommendations.value = null
+    referenceRecipeRecommendationError.value = ''
+    return
+  }
+
+  const sequence = ++referenceRecipeRecommendationSequence
+  referenceRecipeRecommendationLoading.value = true
+  referenceRecipeRecommendationError.value = ''
+  const response = await recommendReferenceGenerationRecipes({
+    creation_path: creationPath.value,
+    video_type: videoType,
+    creation_use_case: selectedCreationUseCase.value || undefined,
+    truth_mode: selectedTruthMode.value || undefined,
+    subject_text: recommendationSubjectText() || undefined,
+    narrative_goal: communicationGoal.value.trim() || undefined,
+    material_features: recommendationMaterialFeatures(),
+  })
+  if (sequence !== referenceRecipeRecommendationSequence) return
+
+  referenceRecipeRecommendationLoading.value = false
+  if (response.ok && response.data) {
+    referenceRecipeRecommendations.value = response.data
+    return
+  }
+  referenceRecipeRecommendations.value = null
+  referenceRecipeRecommendationError.value = response.error?.message ?? '创作配方建议暂时不可用。'
+}
+
+function scheduleReferenceGenerationRecipeRecommendations() {
+  if (referenceRecipeRecommendationTimer) clearTimeout(referenceRecipeRecommendationTimer)
+  referenceRecipeRecommendationTimer = setTimeout(() => {
+    referenceRecipeRecommendationTimer = null
+    void refreshReferenceGenerationRecipeRecommendations()
+  }, 320)
 }
 
 function sourceMaterialModeForRequest(): SourceMaterialMode | undefined {
@@ -1564,6 +1764,12 @@ onMounted(async () => {
   }
 })
 
+onBeforeUnmount(() => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  if (referenceRecipeRecommendationTimer) clearTimeout(referenceRecipeRecommendationTimer)
+  referenceRecipeRecommendationSequence += 1
+})
+
 watch(selectedModelProfileId, (value) => {
   if (value) {
     localStorage.setItem(MODEL_PROFILE_STORAGE_KEY, value)
@@ -1574,6 +1780,23 @@ watch(selectedReferenceGenerationRecipeId, () => {
   appliedReferenceGenerationRecipeId.value = ''
   referenceRecipeMessage.value = ''
 })
+
+watch(
+  [
+    creationPath,
+    selectedVideoType,
+    selectedCreationUseCase,
+    selectedTruthMode,
+    selectedEntry,
+    outlineText,
+    originalUserQuery,
+    outlineAnalysis,
+    knowledgePack,
+    communicationGoal,
+  ],
+  scheduleReferenceGenerationRecipeRecommendations,
+  { immediate: true },
+)
 
 watch(selectedVideoType, (videoType) => {
   applyRecommendedNarrativePatterns(planResult.value)
@@ -1659,6 +1882,18 @@ async function applyReferenceGenerationRecipe() {
   communicationGoal.value = recipe.communication_goal
   appliedReferenceGenerationRecipeId.value = recipe.id
   referenceRecipeMessage.value = `已应用「${recipe.label}」；只使用抽象机制，不注入研究候选作品内容。`
+}
+
+async function applyRecommendedReferenceGenerationRecipe(recipeId: ReferenceGenerationRecipeId) {
+  selectedReferenceGenerationRecipeId.value = recipeId
+  await nextTick()
+  await applyReferenceGenerationRecipe()
+}
+
+function declineReferenceGenerationRecipe() {
+  selectedReferenceGenerationRecipeId.value = ''
+  appliedReferenceGenerationRecipeId.value = ''
+  referenceRecipeMessage.value = '已选择不使用创作配方；后续生成不会携带配方合同。'
 }
 
 function alignCreationContractWithVideoType(vt: VideoType) {
@@ -2060,6 +2295,109 @@ async function handleGenerate() {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.story-studio__recipe-recommendations {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #dbe8e8;
+  border-radius: 8px;
+  background: #f8fcfc;
+}
+
+.story-studio__recipe-recommendation-head,
+.story-studio__recipe-recommendation-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.story-studio__recipe-recommendation-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.story-studio__recipe-recommendation-head strong {
+  color: #234e52;
+  font-size: 13px;
+}
+
+.story-studio__recipe-recommendation-head small {
+  color: #637b82;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.story-studio__recipe-decline {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid #b8cbce;
+  border-radius: 4px;
+  background: #fff;
+  color: #526575;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.story-studio__recipe-recommendation {
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid #cfe1e2;
+  border-left: 4px solid #4f9a94;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.story-studio__recipe-recommendation--applied {
+  border-color: #2f855a;
+  border-left-color: #2f855a;
+  background: #f0fff4;
+}
+
+.story-studio__recipe-recommendation-title strong {
+  color: #285e61;
+  font-size: 12px;
+}
+
+.story-studio__recipe-recommendation-title span {
+  color: #607d8b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.story-studio__recipe-recommendation p,
+.story-studio__recipe-state {
+  margin: 0;
+  color: #526575;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.story-studio__recipe-recommendation .btn {
+  justify-self: start;
+}
+
+.story-studio__recipe-state--error {
+  color: #b42318;
+}
+
+.story-studio__recipe-state--boundary {
+  padding: 8px;
+  border-radius: 5px;
+  background: #fff7e6;
+  color: #8a5a00;
+}
+
+.story-studio__recipe-warnings {
+  margin: 0;
+  padding-left: 18px;
+  color: #8a5a00;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .story-studio__recipe-summary {
