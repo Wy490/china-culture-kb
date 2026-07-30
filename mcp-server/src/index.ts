@@ -76,6 +76,9 @@ import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import {
   getSeriesStoryRecoveryCandidates,
 } from './tools/get-series-story-recovery-candidates.js';
+import {
+  getStoryAgentImageRunOps,
+} from './tools/get-story-agent-image-run-ops.js';
 import { preflightStoryAgentFinalDeliveryManifest } from './tools/preflight-final-delivery-manifest.js';
 import {
   getFinalDeliveryManifestDispositions,
@@ -1540,6 +1543,27 @@ server.tool(
   },
   async (input) => {
     const result = await getSeriesStoryRecoveryCandidates(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  },
+);
+
+// kb_get_story_agent_image_run_ops — read-only stale ImageGen run inventory
+server.tool(
+  'kb_get_story_agent_image_run_ops',
+  '读取 canonical Story Agent ImageGen 运行运维报告。只读汇总陈旧运行、待处理任务和 Story Agent 关联关系，给出恢复或人工取消建议；不调用图片模型、不修改或自动关闭任何运行。',
+  {
+    limit: z.number().int().positive().max(250).optional()
+      .describe('最多返回多少个 ImageGen 运行，默认 100'),
+    stale_after_ms: z.number().int().positive().optional()
+      .describe('运行多久未更新即视为陈旧，默认 86400000 毫秒'),
+  },
+  async (input) => {
+    const result = await getStoryAgentImageRunOps(input);
     return {
       content: [{
         type: 'text',

@@ -36,6 +36,7 @@ import type {
   StoryAgentGeneratedGovernanceRunRequest,
   StoryAgentGeneratedGovernanceRunResult,
   StoryAgentSeriesStoryRecoveryCandidateReport,
+  StoryAgentImageRunOpsReport,
   StoryAgentFinalDeliveryManifestPreflightRequest,
   StoryAgentFinalDeliveryManifestPreflightResult,
   StoryAgentFinalDeliveryManifestDispositionLedger,
@@ -128,6 +129,21 @@ export function getStoryAgentSeriesStoryRecoveryCandidates(options: {
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiGet<StoryAgentSeriesStoryRecoveryCandidateReport>(
     `/system/story-agent-series-story-recovery-candidates${suffix}`,
+  )
+}
+
+export function getStoryAgentImageRunOpsReport(options: {
+  limit?: number
+  staleAfterMs?: number
+} = {}) {
+  const params = new URLSearchParams()
+  if (typeof options.limit === 'number') params.set('limit', String(options.limit))
+  if (typeof options.staleAfterMs === 'number') {
+    params.set('stale_after_ms', String(options.staleAfterMs))
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<StoryAgentImageRunOpsReport>(
+    `/system/story-agent-image-run-ops${suffix}`,
   )
 }
 

@@ -82,6 +82,9 @@ import {
 import {
   getStoryAgentSeriesStoryRecoveryCandidates,
 } from '../services/series-story-recovery-candidate-service.js';
+import {
+  getStoryAgentImageRunOpsReport,
+} from '../services/story-agent-image-run-ops-service.js';
 import { preflightStoryAgentFinalDeliveryManifest } from '../services/final-delivery-manifest-preflight-service.js';
 import {
   readFinalDeliveryManifestDispositionLedger,
@@ -640,6 +643,27 @@ systemRouter.get(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-image-run-ops — read-only stale run inventory
+// ---------------------------------------------------------------------------
+
+systemRouter.get('/story-agent-image-run-ops', async (req, res, next) => {
+  try {
+    const limit = typeof req.query.limit === 'string'
+      ? Number(req.query.limit)
+      : undefined;
+    const staleAfterMs = typeof req.query.stale_after_ms === 'string'
+      ? Number(req.query.stale_after_ms)
+      : undefined;
+    res.json(success(await getStoryAgentImageRunOpsReport({
+      limit,
+      staleAfterMs,
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/system/story-agent-backlog-handoff — generated/supplement backlog handoff package

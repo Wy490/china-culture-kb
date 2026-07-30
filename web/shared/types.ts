@@ -8766,6 +8766,65 @@ export interface StoryAgentImageRun {
   preproduction_acceptance: StoryAgentSeedancePreproductionPackage['acceptance'];
 }
 
+export type StoryAgentImageRunOpsRecommendedAction =
+  | 'resume_image_generation_after_operator_confirmation'
+  | 'operator_review_resume_or_cancel'
+  | 'inspect_blocked_image_run'
+  | 'no_action_required';
+
+export interface StoryAgentImageRunOpsItem {
+  run_id: string;
+  source: StoryAgentImageRun['source'];
+  status: StoryAgentImageRun['status'];
+  relative_path: string;
+  created_at: string;
+  updated_at: string;
+  age_ms: number;
+  stale: boolean;
+  task_count: number;
+  awaiting_task_count: number;
+  verified_task_count: number;
+  failed_retryable_task_count: number;
+  blocked_task_count: number;
+  provider_invoked: boolean;
+  linked_story_agent_run_ids: string[];
+  recommended_action: StoryAgentImageRunOpsRecommendedAction;
+  automatic_close_eligible: false;
+}
+
+export interface StoryAgentImageRunOpsReport {
+  schema_version: 'story-agent-image-run-ops-report/v1';
+  generated_at: string;
+  stale_after_ms: number;
+  summary: {
+    scanned_run_count: number;
+    returned_run_count: number;
+    malformed_run_count: number;
+    open_run_count: number;
+    stale_run_count: number;
+    blocked_run_count: number;
+    complete_run_count: number;
+    awaiting_task_count: number;
+    failed_retryable_task_count: number;
+    blocked_task_count: number;
+    linked_story_agent_run_count: number;
+    unlinked_open_run_count: number;
+    provider_invoked_run_count: number;
+    automatic_close_eligible_count: 0;
+  };
+  items: StoryAgentImageRunOpsItem[];
+  boundary: {
+    read_only: true;
+    provider_invoked: false;
+    image_run_files_modified: false;
+    story_agent_run_files_modified: false;
+    automatic_close_allowed: false;
+    publishable_delivery_credit_granted: false;
+  };
+  notes: string[];
+  markdown: string;
+}
+
 export interface StoryAgentImageRunExportRequest {
   project_id?: string;
   series_project_id?: string;

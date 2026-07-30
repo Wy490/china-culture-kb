@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`080d523d feat(story-agent): add manifest disposition workbench`
+> 功能基线：`257ebdbe feat(story-agent): classify series story recovery candidates`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -988,17 +988,69 @@ Web/MCP TypeScript, Web production build and visible-copy audit
   all passed
 ```
 
+ImageGen 遗留运行运维审计新增验证：
+
+```text
+Screenshot legacy diagnosis
+  the previous "server Vitest only printed the startup banner" item is closed
+  current server full regression printed an explicit final summary and exited 0
+  the screenshot's "6 ImageGen tasks" means 6 open ImageGen runs, not 6 tasks
+
+Real workspace inventory
+  82 ImageGen runs scanned
+  76 complete runs
+  6 stale open runs
+  20 awaiting ImageGen tasks across those 6 open runs
+  1 open image run is linked to an awaiting Story Agent run
+  5 open image runs are not linked to an open Story Agent run
+  0 provider-invoked runs
+  0 automatically close-eligible runs
+
+Linked external-action run
+  story-agent-run-05ae616576d8ab4a92866482
+  image-run-c109131815db5aae0350b2cd
+  title: 周敦颐分宁断案
+  3 awaiting tasks
+  recommended action: resume image generation only after operator confirmation
+
+Safety contract
+  report is read-only
+  no image provider is called
+  no ImageGen or Story Agent run file is changed
+  stale unlinked runs receive operator_review_resume_or_cancel
+  linked runs receive resume_image_generation_after_operator_confirmation
+  no run is automatically canceled or closed
+  no publishable-delivery credit is granted
+
+Surfaces
+  typed story-agent-image-run-ops-report/v1
+  GET /api/system/story-agent-image-run-ops
+  typed Web client
+  canonical MCP bridge kb_get_story_agent_image_run_ops
+  MCP Story Agent tool inventory is now 47
+
+Server full regression
+  192 files passed, 1 skipped
+  1591 tests passed, 2 skipped
+
+MCP full regression
+  107 files / 551 tests passed
+
+Web/MCP TypeScript, Web production build and visible-copy audit
+  all passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 080d523d
+functional baseline: 257ebdbe
 handoff HEAD: run git log -1 --oneline
-remote: synchronized through 4d5b6357 before this local slice
-worktree: clean after committing the latest series-story recovery candidate slice
-push: eight local Story Agent slices are not yet pushed after committing this slice
+remote: synchronized through the handoff HEAD after the authorized push
+worktree: clean after committing the ImageGen run ops audit slice
+push: current branch and all previously local Story Agent commits pushed to origin
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -1036,6 +1088,11 @@ P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP、项目
 真人处置项目工作台均已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或
 生产验收。下一轮可按产品需要选择：
 
+- 由真实操作员根据 `story-agent-image-run-ops-report/v1` 决定恢复或取消 6 个陈旧
+  ImageGen 运行；其中关联当前 Story Agent 的 3 个任务应优先确认，模型不得自行生成
+  资产或关闭运行；
+- 为 ImageGen 运行补充显式、可审计、需操作员声明的 resume/cancel disposition
+  预检与账本，保持默认只读并禁止自动关闭；
 - 为 9 条唯一旧 story-ID 后缀候选增加 canonical relink preflight 和真人 whitelist
   账本；另外 90 条无候选引用只能从可信历史恢复原 JSON 或按当前合同重建；
 - 由真实操作员使用项目工作台处理 10 个缺 final-delivery manifest 的系列；当前真实
@@ -1101,6 +1158,7 @@ f18ebe5c feat(story-agent): cover all canonical video types
 f58df48e feat(story-agent): normalize generated signoff portfolio
 51384dec feat(story-agent): add manifest disposition ledger
 080d523d feat(story-agent): add manifest disposition workbench
+257ebdbe feat(story-agent): classify series story recovery candidates
 
 固定产品边界：
 主题/大纲/授权原作 → 中国文化知识 → 故事蓝图与完整文本 → 场景/分镜/GearsSegment
@@ -1150,14 +1208,17 @@ generated health 同时公开原始 1284 目标与活跃签核组合 457 目标�
 通过 manifest 可逆排除，活跃组合仍有 99 个 interrupted 系列，运行健康不得虚报。
 系列故事恢复候选报告已把这 99 条断链精确分类为 9 条唯一旧 ID 后缀候选和 90 条无候选；
 后缀匹配不证明兼容，当前 operator whitelist=0、automatic relink=0。
+ImageGen 运维报告已扫描 82 个运行：76 个完成，6 个陈旧开放运行含 20 个待处理任务；
+仅 1 个与当前等待外部动作的 Story Agent 运行关联，5 个未关联。报告只给恢复/人工取消
+建议，不调用图片模型、不修改或自动关闭真实运行；MCP Story Agent 工具数为 47。
 final-delivery manifest 人工处置 owner-only 原子账本、哈希链、API、MCP 和治理清单
 回填已完成；10 个缺口当前仍为 0 条真实操作员决定，不能由模型代填。
 最终交付真人处置项目工作台也已完成：强制空白 operator 身份、理由、证据、三项声明，
 只允许绑定当前预检快照提交，提交后刷新真实账本并始终展示零发布信用边界。
-下一步优先为 9 条唯一候选增加 canonical relink preflight 与真人 whitelist 账本，
-同时保持 90 条无候选引用为 blocked；也可等待真实操作员处理 10 个 manifest 缺口，
-或推进真实 reviewer/writeback。没有用户真实合法样本时，不得伪造后续 reference
-analysis、人工批准或生产验收。
+下一步优先由操作员决定 6 个陈旧 ImageGen 运行的 resume/cancel，并为该决定补充显式
+预检与可审计账本；也可为 9 条唯一候选增加 canonical relink preflight 与真人
+whitelist 账本，同时保持 90 条无候选引用为 blocked。没有用户真实合法样本时，不得
+伪造后续 reference analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

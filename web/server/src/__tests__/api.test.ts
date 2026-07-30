@@ -3076,6 +3076,33 @@ describe('System API', () => {
       expect(JSON.stringify(recoveryCandidatesRes.body.data))
         .not.toContain(generatedRoot);
 
+      const imageRunOpsRes = await request.get(
+        '/api/system/story-agent-image-run-ops'
+        + '?limit=20&stale_after_ms=86400000',
+      );
+      expect(imageRunOpsRes.status).toBe(200);
+      expectSuccess(imageRunOpsRes.body);
+      expect(imageRunOpsRes.body.data).toMatchObject({
+        schema_version: 'story-agent-image-run-ops-report/v1',
+        stale_after_ms: 86_400_000,
+        summary: expect.objectContaining({
+          scanned_run_count: expect.any(Number),
+          returned_run_count: expect.any(Number),
+          awaiting_task_count: expect.any(Number),
+          automatic_close_eligible_count: 0,
+        }),
+        boundary: {
+          read_only: true,
+          provider_invoked: false,
+          image_run_files_modified: false,
+          story_agent_run_files_modified: false,
+          automatic_close_allowed: false,
+          publishable_delivery_credit_granted: false,
+        },
+      });
+      expect(JSON.stringify(imageRunOpsRes.body.data))
+        .not.toContain(generatedRoot);
+
       const backlogRes = await request.get('/api/system/story-agent-backlog-handoff?limit=20');
       expect(backlogRes.status).toBe(200);
       expectSuccess(backlogRes.body);
@@ -4052,11 +4079,12 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=46'),
+        expect.stringContaining('tool_count=47'),
         'reference_text_analysis_tools=12',
         'private_video_sample_tools=3',
         expect.stringContaining('kb_story_agent_generate'),
         expect.stringContaining('kb_get_story_agent_backlog_handoff'),
+        expect.stringContaining('kb_get_story_agent_image_run_ops'),
         expect.stringContaining('kb_get_domain_pack_expansion_candidates'),
         expect.stringContaining('kb_get_domain_pack_expansion_writeback_draft'),
         expect.stringContaining('kb_update_domain_pack_expansion_review_state'),
