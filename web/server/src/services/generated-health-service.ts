@@ -554,6 +554,12 @@ function renderMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'
     `- series_relink_candidates: ${report.summary.series_relink_candidate_count ?? 0}`,
     `- series_signoff_portfolio: ${report.summary.series_signoff_portfolio_count ?? 0}`,
     `- series_soft_archive_excluded: ${report.summary.series_soft_archive_excluded_count ?? 0}`,
+    `- signoff_portfolio_targets: ${report.summary.signoff_portfolio_target_count ?? report.summary.total_target_count}`,
+    `- signoff_portfolio_ready: ${report.summary.signoff_portfolio_ready_count ?? report.summary.ready_count}`,
+    `- signoff_portfolio_planned: ${report.summary.signoff_portfolio_planned_count ?? report.summary.planned_count}`,
+    `- signoff_portfolio_production_gap: ${report.summary.signoff_portfolio_production_gap_count ?? report.summary.production_gap_count}`,
+    `- signoff_portfolio_interrupted: ${report.summary.signoff_portfolio_interrupted_count ?? report.summary.interrupted_count}`,
+    `- soft_archive_excluded_targets: ${report.summary.soft_archive_excluded_target_count ?? 0}`,
     `- series_seedance_failed_projects: ${report.summary.series_seedance_failed_project_count ?? 0}`,
     `- series_seedance_failed_items: ${report.summary.series_seedance_failed_item_count ?? 0}`,
     `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
@@ -858,6 +864,8 @@ export async function getStoryAgentGeneratedHealth(
   });
   const limit = boundedLimit(options.limit);
   const reportItems = limit ? allItems.slice(0, limit) : allItems;
+  const signoffPortfolioItems = allItems.filter(item => item.signoff_eligible !== false);
+  const softArchiveExcludedTargetCount = allItems.length - signoffPortfolioItems.length;
   const seriesReadyCount = countByStatusAndScope(allItems, 'ready', 'ai_comic_series_project');
   const seriesPlannedOnlyCount = countByStatusAndScope(allItems, 'planned', 'ai_comic_series_project');
   const seriesProductionGapCount = countByStatusAndScope(allItems, 'production_gap', 'ai_comic_series_project');
@@ -938,6 +946,12 @@ export async function getStoryAgentGeneratedHealth(
       series_relink_candidate_count: seriesRelinkCandidateCount,
       series_signoff_portfolio_count: seriesSignoffPortfolioCount,
       series_soft_archive_excluded_count: seriesSoftArchiveExcludedCount,
+      signoff_portfolio_target_count: signoffPortfolioItems.length,
+      signoff_portfolio_ready_count: countByStatus(signoffPortfolioItems, 'ready'),
+      signoff_portfolio_planned_count: countByStatus(signoffPortfolioItems, 'planned'),
+      signoff_portfolio_production_gap_count: countByStatus(signoffPortfolioItems, 'production_gap'),
+      signoff_portfolio_interrupted_count: countByStatus(signoffPortfolioItems, 'interrupted'),
+      soft_archive_excluded_target_count: softArchiveExcludedTargetCount,
       series_seedance_failed_project_count: seriesSeedanceFailedProjectCount,
       series_seedance_failed_item_count: seriesSeedanceFailedItemCount,
       series_seedance_failure_marker_project_count: seriesSeedanceFailureMarkerProjectCount,

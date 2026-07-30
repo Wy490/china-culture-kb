@@ -599,9 +599,14 @@ function missingContractCount(health: StoryAgentGeneratedHealthReport, contract:
 
 function generatedArtifactsLane(health: StoryAgentGeneratedHealthReport): StoryAgentMvpLane {
   const summary = health.summary;
-  const total = summary.total_target_count;
-  const openCount = summary.planned_count + summary.production_gap_count + summary.interrupted_count;
-  const status: MvpStatus = total === 0 || summary.interrupted_count > 0
+  const total = summary.signoff_portfolio_target_count ?? summary.total_target_count;
+  const ready = summary.signoff_portfolio_ready_count ?? summary.ready_count;
+  const planned = summary.signoff_portfolio_planned_count ?? summary.planned_count;
+  const productionGap = summary.signoff_portfolio_production_gap_count ?? summary.production_gap_count;
+  const interrupted = summary.signoff_portfolio_interrupted_count ?? summary.interrupted_count;
+  const excluded = summary.soft_archive_excluded_target_count ?? 0;
+  const openCount = planned + productionGap + interrupted;
+  const status: MvpStatus = total === 0 || interrupted > 0
     ? 'blocked'
     : openCount > 0
       ? 'needs_action'
@@ -610,18 +615,23 @@ function generatedArtifactsLane(health: StoryAgentGeneratedHealthReport): StoryA
     key: 'generated_artifacts',
     label: 'Generated artifacts',
     status,
-    score: total === 0 ? 0 : clampScore((summary.ready_count / total) * 100 - summary.interrupted_count * 20),
-    detail: total === 0 ? 'No generated Story Agent targets were found.' : `${summary.ready_count}/${total} generated targets are ready.`,
+    score: total === 0 ? 0 : clampScore((ready / total) * 100 - interrupted * 20),
+    detail: total === 0
+      ? 'No generated Story Agent signoff-portfolio targets were found.'
+      : `${ready}/${total} signoff-portfolio generated targets are ready.`,
     evidence: [
       `targets=${total}`,
-      `ready=${summary.ready_count}`,
-      `planned=${summary.planned_count}`,
-      `production_gap=${summary.production_gap_count}`,
-      `interrupted=${summary.interrupted_count}`,
+      `ready=${ready}`,
+      `planned=${planned}`,
+      `production_gap=${productionGap}`,
+      `interrupted=${interrupted}`,
+      `raw_targets=${summary.total_target_count}`,
+      `raw_interrupted=${summary.interrupted_count}`,
+      `soft_archive_excluded=${excluded}`,
     ],
     next_action: total === 0
       ? 'Generate or import at least one Story Agent target.'
-      : summary.interrupted_count > 0
+      : interrupted > 0
         ? 'Repair interrupted current story/version or episode references.'
         : openCount > 0
           ? 'Finish planned or production_gap targets before GEARS signoff.'

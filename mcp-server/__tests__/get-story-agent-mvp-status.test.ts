@@ -277,6 +277,33 @@ beforeEach(() => {
     production_asset_ready_count: 1,
     assets: [],
   }, null, 2));
+
+  const archivedSeriesId = '20260623-series-soft-archived';
+  const archivedSeriesRoot = path.join(tmpRoot, 'web', 'generated', 'ai-comic-series-projects', archivedSeriesId);
+  fs.mkdirSync(archivedSeriesRoot, { recursive: true });
+  fs.writeFileSync(path.join(archivedSeriesRoot, 'project.json'), JSON.stringify({
+    project: {
+      series_project_id: archivedSeriesId,
+      title: 'Soft Archived Historical Fixture',
+      episode_count: 1,
+      generated_episode_count: 1,
+    },
+    generated_episode_story_ids: {
+      '1': 'missing-soft-archived-story',
+    },
+  }, null, 2));
+  fs.mkdirSync(path.join(dataRoot, 'reports'), { recursive: true });
+  fs.writeFileSync(path.join(dataRoot, 'reports', 'story-agent-soft-archive-manifest-20260710.json'), JSON.stringify({
+    schema_version: 'story-agent-soft-archive-manifest/v1',
+    mode: 'active_signoff_exclusion',
+    policy: {
+      signoff_exclusion_applied: true,
+    },
+    entries: [{
+      project_id: archivedSeriesId,
+      execution_status: 'signoff_exclusion_active',
+    }],
+  }, null, 2));
 });
 
 afterEach(() => {
@@ -402,6 +429,26 @@ describe('kb_get_story_agent_mvp_status', () => {
       'supplement_candidate_package_optional=0',
     ]));
     expect(result.generated_health.schema_version).toBe('mcp-story-agent-generated-health/v1');
+    expect(result.generated_health.summary).toMatchObject({
+      total_target_count: 2,
+      signoff_portfolio_target_count: 1,
+      signoff_portfolio_ready_count: 1,
+      signoff_portfolio_interrupted_count: 0,
+      soft_archive_excluded_target_count: 1,
+    });
+    expect(result.lanes.find(lane => lane.key === 'generated_artifacts')).toMatchObject({
+      status: 'ready',
+      score: 100,
+      detail: '1/1 signoff-portfolio generated targets are ready.',
+      evidence: expect.arrayContaining([
+        'targets=1',
+        'ready=1',
+        'interrupted=0',
+        'raw_targets=2',
+        'raw_interrupted=1',
+        'soft_archive_excluded=1',
+      ]),
+    });
     expect(result.generated_governance_plan.schema_version).toBe('mcp-story-agent-generated-governance-plan/v1');
     expect(result.production_material_pack_health.schema_version).toBe('production-material-pack-health/v1');
     expect(result.production_material_pack_health.pack_file_valid).toBe(true);

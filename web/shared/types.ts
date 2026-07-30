@@ -3565,6 +3565,12 @@ export interface StoryAgentGeneratedHealthReport {
     series_relink_candidate_count?: number;
     series_signoff_portfolio_count?: number;
     series_soft_archive_excluded_count?: number;
+    signoff_portfolio_target_count?: number;
+    signoff_portfolio_ready_count?: number;
+    signoff_portfolio_planned_count?: number;
+    signoff_portfolio_production_gap_count?: number;
+    signoff_portfolio_interrupted_count?: number;
+    soft_archive_excluded_target_count?: number;
     series_seedance_failed_project_count?: number;
     series_seedance_failed_item_count?: number;
     series_seedance_failure_marker_project_count?: number;

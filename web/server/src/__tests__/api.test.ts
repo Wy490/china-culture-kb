@@ -2906,6 +2906,12 @@ describe('System API', () => {
           series_relink_candidate_count: expect.any(Number),
           series_signoff_portfolio_count: expect.any(Number),
           series_soft_archive_excluded_count: expect.any(Number),
+          signoff_portfolio_target_count: expect.any(Number),
+          signoff_portfolio_ready_count: expect.any(Number),
+          signoff_portfolio_planned_count: expect.any(Number),
+          signoff_portfolio_production_gap_count: expect.any(Number),
+          signoff_portfolio_interrupted_count: expect.any(Number),
+          soft_archive_excluded_target_count: expect.any(Number),
           series_seedance_failed_project_count: expect.any(Number),
           series_seedance_failed_item_count: expect.any(Number),
           series_seedance_failure_marker_project_count: expect.any(Number),
@@ -2927,6 +2933,13 @@ describe('System API', () => {
       expect(res.body.data.summary.series_contract_evidence_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_relink_candidate_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_soft_archive_excluded_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.summary.signoff_portfolio_target_count).toBe(
+        res.body.data.summary.total_target_count - res.body.data.summary.soft_archive_excluded_target_count,
+      );
+      expect(res.body.data.summary.signoff_portfolio_interrupted_count).toBe(
+        res.body.data.summary.interrupted_count - res.body.data.summary.soft_archive_excluded_target_count,
+      );
+      expect(res.body.data.summary.soft_archive_excluded_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_failed_project_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_failed_item_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.series_seedance_failure_marker_project_count).toBeGreaterThanOrEqual(1);
@@ -3002,6 +3015,7 @@ describe('System API', () => {
       expect(res.body.data.markdown).toContain('series_governance_attention');
       expect(res.body.data.markdown).toContain('series_relink_candidates');
       expect(res.body.data.markdown).toContain('series_soft_archive_excluded');
+      expect(res.body.data.markdown).toContain('signoff_portfolio_targets');
       expect(res.body.data.markdown).toContain('series_seedance_test_fixture_failure_items');
       expect(res.body.data.markdown).toContain('series_missing_final_delivery_manifest');
       expect(res.body.data.markdown).toContain('health-interrupted-story');

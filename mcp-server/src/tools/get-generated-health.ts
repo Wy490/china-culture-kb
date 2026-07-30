@@ -84,6 +84,12 @@ export interface StoryAgentGeneratedHealthReport {
     series_relink_candidate_count?: number;
     series_signoff_portfolio_count?: number;
     series_soft_archive_excluded_count?: number;
+    signoff_portfolio_target_count?: number;
+    signoff_portfolio_ready_count?: number;
+    signoff_portfolio_planned_count?: number;
+    signoff_portfolio_production_gap_count?: number;
+    signoff_portfolio_interrupted_count?: number;
+    soft_archive_excluded_target_count?: number;
     series_seedance_failed_project_count?: number;
     series_seedance_failed_item_count?: number;
     series_seedance_failure_marker_project_count?: number;
@@ -445,6 +451,12 @@ function buildMarkdown(report: Omit<StoryAgentGeneratedHealthReport, 'markdown'>
     `- series_relink_candidates: ${report.summary.series_relink_candidate_count ?? 0}`,
     `- series_signoff_portfolio: ${report.summary.series_signoff_portfolio_count ?? 0}`,
     `- series_soft_archive_excluded: ${report.summary.series_soft_archive_excluded_count ?? 0}`,
+    `- signoff_portfolio_targets: ${report.summary.signoff_portfolio_target_count ?? report.summary.total_target_count}`,
+    `- signoff_portfolio_ready: ${report.summary.signoff_portfolio_ready_count ?? report.summary.ready_count}`,
+    `- signoff_portfolio_planned: ${report.summary.signoff_portfolio_planned_count ?? report.summary.planned_count}`,
+    `- signoff_portfolio_production_gap: ${report.summary.signoff_portfolio_production_gap_count ?? report.summary.production_gap_count}`,
+    `- signoff_portfolio_interrupted: ${report.summary.signoff_portfolio_interrupted_count ?? report.summary.interrupted_count}`,
+    `- soft_archive_excluded_targets: ${report.summary.soft_archive_excluded_target_count ?? 0}`,
     `- series_seedance_failed_projects: ${report.summary.series_seedance_failed_project_count ?? 0}`,
     `- series_seedance_failed_items: ${report.summary.series_seedance_failed_item_count ?? 0}`,
     `- series_seedance_failure_marker_projects: ${report.summary.series_seedance_failure_marker_project_count ?? 0}`,
@@ -548,6 +560,8 @@ export async function getStoryAgentGeneratedHealth(
     || b.risk_score - a.risk_score
     || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')
   ));
+  const signoffPortfolioItems = allItems.filter(item => item.signoff_eligible !== false);
+  const softArchiveExcludedTargetCount = allItems.length - signoffPortfolioItems.length;
   const items = allItems.slice(0, limit);
   const base: Omit<StoryAgentGeneratedHealthReport, 'markdown'> = {
     schema_version: 'mcp-story-agent-generated-health/v1',
@@ -585,6 +599,12 @@ export async function getStoryAgentGeneratedHealth(
       series_relink_candidate_count: seriesRelinkCandidateCount,
       series_signoff_portfolio_count: seriesSignoffPortfolioCount,
       series_soft_archive_excluded_count: seriesSoftArchiveExcludedCount,
+      signoff_portfolio_target_count: signoffPortfolioItems.length,
+      signoff_portfolio_ready_count: count(signoffPortfolioItems, 'ready'),
+      signoff_portfolio_planned_count: count(signoffPortfolioItems, 'planned'),
+      signoff_portfolio_production_gap_count: count(signoffPortfolioItems, 'production_gap'),
+      signoff_portfolio_interrupted_count: count(signoffPortfolioItems, 'interrupted'),
+      soft_archive_excluded_target_count: softArchiveExcludedTargetCount,
       series_seedance_failed_project_count: seriesSeedanceFailedProjectCount,
       series_seedance_failed_item_count: seriesSeedanceFailedItemCount,
       series_seedance_failure_marker_project_count: seriesSeedanceFailureMarkerProjectCount,

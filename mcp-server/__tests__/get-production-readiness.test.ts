@@ -664,6 +664,13 @@ describe('kb_get_production_readiness', () => {
 
     expect(result.summary.series_soft_archive_excluded_count).toBe(1);
     expect(result.summary.series_signoff_portfolio_count).toBe(1);
+    expect(result.summary.signoff_portfolio_target_count).toBe(
+      result.summary.total_target_count - 1,
+    );
+    expect(result.summary.signoff_portfolio_interrupted_count).toBe(
+      result.summary.interrupted_count - 1,
+    );
+    expect(result.summary.soft_archive_excluded_target_count).toBe(1);
     expect(result.items).toEqual(expect.arrayContaining([
       expect.objectContaining({
         project_id: seriesProjectId,
