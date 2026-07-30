@@ -31,6 +31,13 @@ type ReferenceGenerationRecipeId =
   | 'heritage_craft_process_evidence'
   | 'documentary_evidence_trail'
   | 'explainer_question_to_example'
+  | 'legend_symbolic_trial'
+  | 'children_gentle_choice_loop'
+  | 'promo_city_day_identity'
+  | 'lecture_case_to_action'
+  | 'training_objective_practice_feedback'
+  | 'spatial_route_time_layers'
+  | 'landscape_sensory_breath'
   | 'series_strategy_chapters'
   | 'series_ritual_relationships';
 

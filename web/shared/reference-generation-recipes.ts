@@ -10,8 +10,10 @@ import type {
 
 export type ReferenceGenerationRecipeCategory =
   | 'feature_film'
+  | 'story'
   | 'promo'
   | 'knowledge'
+  | 'spatial'
   | 'classic_series';
 
 export type { ReferenceGenerationRecipeId } from './types.js';
@@ -108,6 +110,60 @@ export const REFERENCE_GENERATION_RECIPES: ReferenceGenerationRecipe[] = [
       '不得复刻具体犯罪家族、超级英雄或反派设定',
       '不得复刻标志性仪式、交叉剪辑桥段或对白',
       '不得用无铺垫反转替代信息差与人物选择',
+    ],
+  },
+  {
+    id: 'legend_symbolic_trial',
+    category: 'story',
+    label: '象征考验与凡人选择',
+    summary: '用重复意象、递进考验和凡人选择组织有口述边界的传说故事。',
+    video_type: 'legend_story',
+    presentation_style: 'ink_style',
+    narrative_pattern_ids: [
+      'folk_legend_trial',
+      'object_clue_journey',
+      'mystery_reveal',
+    ],
+    story_priority: 'plot_first',
+    genre_strictness: 'strict',
+    tone: '神秘、质朴、有口述节奏，神异奇观服务人的选择',
+    communication_goal: '让观众通过一个凡人在神异考验中的行动理解传说意义，并知道它属于何种口述版本。',
+    reusable_mechanisms: [
+      '用一个可反复出现的自然意象或民间物件建立传说规则',
+      '让每轮神异考验都增加选择代价，并暴露人物欲望或承诺',
+      '用最终选择改变意象含义，再标明传说版本与史实边界',
+    ],
+    avoid_copying: [
+      '不得把地方口述、神异事件或象征解释写成确定史实',
+      '不得复刻既有神话人物组合、法器、关卡或结局',
+      '不得只堆奇观、怪物和预言而省略凡人的行动选择',
+    ],
+  },
+  {
+    id: 'children_gentle_choice_loop',
+    category: 'story',
+    label: '温和尝试与成长选择',
+    summary: '以熟悉物件、重复尝试和温和后果组织儿童可理解的文化成长故事。',
+    video_type: 'children_story',
+    presentation_style: 'children_animation',
+    narrative_pattern_ids: [
+      'children_fable',
+      'folk_legend_trial',
+      'mortal_growth',
+    ],
+    story_priority: 'plot_first',
+    genre_strictness: 'strict',
+    tone: '明亮、温和、好奇，冲突安全且因果清楚',
+    communication_goal: '让儿童通过主人公的尝试、犯错、互助和修正理解一个可执行的正向选择。',
+    reusable_mechanisms: [
+      '用儿童熟悉的目标和可重复出现的物件建立简单问题',
+      '按尝试、犯错、获得帮助、再次尝试组织清楚因果',
+      '让最终选择产生温和可见的后果，并回收重复物件',
+    ],
+    avoid_copying: [
+      '不得使用恐怖、羞辱、残酷惩罚或成人化关系制造刺激',
+      '不得复刻识别性童话角色、魔法规则、对白或结局',
+      '不得用成人说教替代儿童自己观察、尝试和做出选择',
     ],
   },
   {
@@ -219,6 +275,33 @@ export const REFERENCE_GENERATION_RECIPES: ReferenceGenerationRecipe[] = [
     ],
   },
   {
+    id: 'promo_city_day_identity',
+    category: 'promo',
+    label: '城市一日与生活身份',
+    summary: '沿真实空间路线连接地标、居民动作和昼夜变化，形成可识别的城市气质。',
+    video_type: 'city_brand_promo',
+    presentation_style: 'voiceover_montage',
+    narrative_pattern_ids: [
+      'city_day_journey',
+      'brand_symbol',
+      'object_clue_journey',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '开放、鲜活、有生活温度，地标与居民平等',
+    communication_goal: '让观众从一条可追踪路线和真实生活动作中辨认城市，而不是只记住宣传口号。',
+    reusable_mechanisms: [
+      '按清晨、白昼、黄昏或夜晚组织一条可验证的城市空间路线',
+      '让每个地标与一种居民动作、声音或公共生活发生关系',
+      '从多个生活片段提炼城市主张，并回到开场空间完成身份闭环',
+    ],
+    avoid_copying: [
+      '不得虚构地标位置、地方历史、节庆传统或居民身份',
+      '不得用航拍、空镜和泛化口号替代可识别的空间路线',
+      '不得把游客消费视角冒充城市居民的完整生活经验',
+    ],
+  },
+  {
     id: 'documentary_evidence_trail',
     category: 'knowledge',
     label: '现场问题与证据追踪',
@@ -270,6 +353,114 @@ export const REFERENCE_GENERATION_RECIPES: ReferenceGenerationRecipe[] = [
       '不得把未经证实的起源传说包装成知识结论',
       '不得把类比、动画示意或个案当成事实本身',
       '不得只堆结论、术语和金句而省略解释过程',
+    ],
+  },
+  {
+    id: 'lecture_case_to_action',
+    category: 'knowledge',
+    label: '案例论证与现实行动',
+    summary: '由有来源的案例提出观点，经事实与反思形成克制、可执行的宣讲结尾。',
+    video_type: 'lecture_video',
+    presentation_style: 'host_narration',
+    narrative_pattern_ids: [
+      'lecture_case_argument',
+      'historical_causal_story',
+      'hero_choice',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '真诚、清楚、有感染力但不过度煽情',
+    communication_goal: '让观众看到观点如何由事实和人物选择成立，并能把结尾号召转成具体行动。',
+    reusable_mechanisms: [
+      '用一个来源明确的案例困境提出中心观点而非先喊口号',
+      '按事实经过、关键选择、结果与反思逐层建立论证',
+      '把精神提炼连接到当下场景，并给出具体可执行行动',
+    ],
+    avoid_copying: [
+      '不得为增强感染力而虚构案例、引语、数据或人物选择',
+      '不得把复杂历史和文化议题压缩成单一价值标签',
+      '不得以抽象号召、名言堆叠或情绪音乐替代事实论证',
+    ],
+  },
+  {
+    id: 'training_objective_practice_feedback',
+    category: 'knowledge',
+    label: '目标练习与反馈闭环',
+    summary: '以可观察学习目标、步骤示范、主动练习和纠错反馈组织教育培训内容。',
+    video_type: 'education_training',
+    presentation_style: 'host_narration',
+    narrative_pattern_ids: [
+      'training_loop',
+      'knowledge_gap_explainer',
+      'craft_mastery',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '明确、耐心、可操作，鼓励学习者主动判断',
+    communication_goal: '让学习者完成一次可观察、可练习、可纠错和可复盘的知识或技能闭环。',
+    reusable_mechanisms: [
+      '把学习目标写成完成后能够观察或检验的行为',
+      '按示范、分步练习、常见错误和即时反馈组织学习循环',
+      '用迁移任务和复盘清单检验学习者是否能独立完成',
+    ],
+    avoid_copying: [
+      '不得虚构安全规范、工艺参数、操作资格或考核标准',
+      '不得只播放完整示范而省略练习、反馈和错误纠正',
+      '不得把宣传介绍或知识罗列包装成已经完成的培训效果',
+    ],
+  },
+  {
+    id: 'spatial_route_time_layers',
+    category: 'spatial',
+    label: '空间路线与时间显影',
+    summary: '让镜头沿可追踪路线移动，通过节点、物件和人物痕迹揭示空间的时间层。',
+    video_type: 'scene_short',
+    presentation_style: 'cinematic',
+    narrative_pattern_ids: [
+      'space_walkthrough',
+      'object_clue_journey',
+      'poetic_landscape',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '沉浸、清晰、有历史回声，空间是叙事主体',
+    communication_goal: '让观众知道镜头从哪里到哪里、每个空间节点为何重要，以及古今痕迹如何在路线中相遇。',
+    reusable_mechanisms: [
+      '用入口、转折点和终点建立连续且可复述的镜头路线',
+      '让每个空间节点通过物件、声音或人物痕迹显出一个时间层',
+      '在终点回望起点，使空间身份和历史记忆完成闭环',
+    ],
+    avoid_copying: [
+      '不得虚构建筑关系、历史用途、地点事件或不可见空间',
+      '不得把地点短片改写成人物传记或百科式背景介绍',
+      '不得用无方向空镜和跳切破坏空间路线的可理解性',
+    ],
+  },
+  {
+    id: 'landscape_sensory_breath',
+    category: 'spatial',
+    label: '感官流变与山水留白',
+    summary: '用声音、天气、光影和低密度人文痕迹组织具有呼吸感的山水意境。',
+    video_type: 'landscape_mood',
+    presentation_style: 'ink_style',
+    narrative_pattern_ids: [
+      'poetic_landscape',
+      'space_walkthrough',
+      'object_clue_journey',
+    ],
+    story_priority: 'balanced',
+    genre_strictness: 'strict',
+    tone: '安静、诗性、低密度，以感官变化和留白推进',
+    communication_goal: '让观众通过连续的自然状态变化形成情绪体验，同时保持地点、物候和文化引用准确。',
+    reusable_mechanisms: [
+      '按声音、空气、光影或天气的细微变化组织镜头呼吸',
+      '让少量人文痕迹进入山水，但不抢占自然意境主体',
+      '用前后呼应的自然意象收束，保留未被旁白解释的空间',
+    ],
+    avoid_copying: [
+      '不得错配地点、季节、物候、诗文出处或文化意象',
+      '不得用密集剧情、知识点和宣传口号破坏山水留白',
+      '不得复刻识别性画作构图、诗句组合或视听段落',
     ],
   },
   {
@@ -343,6 +534,13 @@ const REFERENCE_GENERATION_RECIPE_PAYLOAD_SHA256: Record<
   heritage_craft_process_evidence: 'e66e93f0f0afad4251e28cbaef1113547d054412bad19bedf98815952ad3ed68',
   documentary_evidence_trail: 'f91200727ac14156371340a589fb7bfd3a9d4e5448239b90d9993b2375ac071c',
   explainer_question_to_example: 'acdb92cd37ef5625ca0d510dfbf09a405f4d15782e578e5583b4ccfda6a7c828',
+  legend_symbolic_trial: 'f790d1d1b9fffb910807ed53e8823511f292f7a4e1fa55a3d50779d0301b6fe3',
+  children_gentle_choice_loop: '6b2db6d901741534c6221e3160deba22022055def9fbfd57f862d9e9ce224301',
+  promo_city_day_identity: '3def9c2d6eaebd92f0f12f3333f2c21a9c1dd3b94732e743b30eeb88c25ab0a9',
+  lecture_case_to_action: 'd3ef43d671d0622c381571df0e999c6f9b55f4b0038a8209303a2e05d273fd23',
+  training_objective_practice_feedback: '397859cb00b56a37433ea9ff561f278245a6cf2380b34146b7cb372b0d2f8c98',
+  spatial_route_time_layers: 'a00e77ea8cb5b84a1eb815d1a5779d469dcb751b32590fb0ef9bf0ceab86b0dd',
+  landscape_sensory_breath: 'ff15dff7ec6093274ef874dc8125591fe3fcd2fa03778e91f16af977f37a7ab9',
   series_strategy_chapters: '36442de5dbb0f84e018e0a2093b9b99c1232be43d11a192b1a10833e5a595ad6',
   series_ritual_relationships: '99409049b84791fc20a32881fd300aa7b0800382c384dc24d99eb9e8ef978f69',
 };

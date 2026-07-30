@@ -6,10 +6,11 @@ import {
   referenceGenerationRecipePayload,
   type ReferenceGenerationRecipeCategory,
 } from '@shared/reference-generation-recipes.js';
+import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import { getNarrativePatternCatalog } from '../services/narrative-pattern-library.js';
 
 describe('reference-generation-recipes', () => {
-  it('offers bounded film, promo, knowledge, and series recipes', () => {
+  it('offers bounded film, story, promo, knowledge, series, and spatial recipes', () => {
     const counts = new Map<ReferenceGenerationRecipeCategory, number>();
 
     for (const recipe of REFERENCE_GENERATION_RECIPES) {
@@ -18,12 +19,24 @@ describe('reference-generation-recipes', () => {
 
     expect(counts).toEqual(new Map([
       ['feature_film', 3],
-      ['promo', 4],
+      ['story', 2],
+      ['promo', 5],
+      ['knowledge', 4],
       ['classic_series', 2],
-      ['knowledge', 2],
+      ['spatial', 2],
     ]));
     expect(new Set(REFERENCE_GENERATION_RECIPES.map(recipe => recipe.id)).size)
       .toBe(REFERENCE_GENERATION_RECIPES.length);
+  });
+
+  it('covers every canonical video type without changing the 15-type catalog', () => {
+    const catalogVideoTypes = Object.keys(VIDEO_TYPE_CONFIG).sort();
+    const coveredVideoTypes = [
+      ...new Set(REFERENCE_GENERATION_RECIPES.map(recipe => recipe.video_type)),
+    ].sort();
+
+    expect(catalogVideoTypes).toHaveLength(15);
+    expect(coveredVideoTypes).toEqual(catalogVideoTypes);
   });
 
   it('covers heritage, documentary, and explainer production promises', () => {

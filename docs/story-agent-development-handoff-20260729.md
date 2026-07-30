@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`955f64cc feat(story-agent): add recipe human review workbench`
+> 功能基线：`9a8a7748 feat(story-agent): expand canonical recipe coverage`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -297,18 +297,25 @@ descriptor 和 preflight。它们证明“生成了什么、从哪里导入、�
 - 不能注入生成 prompt；
 - 只保存公开页面链接、标题和研究理由。
 
-当前 11 个抽象创作配方：
+当前 18 个抽象创作配方：
 
 ```text
 feature_long_goal_payoff       长线目标与延迟回收
 feature_epoch_character_mosaic 人物命运与时代拼图
 feature_moral_pressure         权力压力与道德两难
+legend_symbolic_trial          象征考验与凡人选择
+children_gentle_choice_loop    温和尝试与成长选择
 promo_space_emotion            空间变化与情绪品牌片
 promo_mnemonic_reveal          记忆旋律与结尾揭示
 promo_collective_montage       群像动作与主题蒙太奇
 heritage_craft_process_evidence 工艺过程与传承证据
+promo_city_day_identity        城市一日与生活身份
 documentary_evidence_trail     现场问题与证据追踪
 explainer_question_to_example  问题拆解与实例回扣
+lecture_case_to_action         案例论证与现实行动
+training_objective_practice_feedback 目标练习与反馈闭环
+spatial_route_time_layers      空间路线与时间显影
+landscape_sensory_breath       感官流变与山水留白
 series_strategy_chapters       历史权谋章回连续剧
 series_ritual_relationships    礼俗群像关系连续剧
 ```
@@ -474,6 +481,29 @@ canonical 配方目录从 8 个扩展到 11 个，成片类型覆盖从 5/15 提
 - Web schema、生成请求、机器对照、真人账本筛选和 MCP 工具枚举已同步接受三个新 ID；
 - 不得伪造工序、采访、时间码、档案出处、现场观察、认证或知识结论。
 
+### 6.9 本轮完成：canonical 配方 15/15 成片类型覆盖
+
+配方目录从 11 个扩展到 18 个，成片类型覆盖从 8/15 提升到 15/15：
+
+- `legend_symbolic_trial` 以象征意象、递进考验和凡人选择组织神话/传说故事，并保留
+  口述版本与史实边界；
+- `children_gentle_choice_loop` 以熟悉物件、温和尝试、犯错、互助和可见后果组织
+  儿童成长；
+- `promo_city_day_identity` 沿真实城市路线连接地标、居民动作和昼夜生活；
+- `lecture_case_to_action` 从有来源案例建立观点、反思、现实连接和具体行动；
+- `training_objective_practice_feedback` 形成学习目标、示范、练习、反馈、迁移和复盘
+  闭环；
+- `spatial_route_time_layers` 以入口、节点、终点和古今痕迹建立可复述空间路线；
+- `landscape_sensory_breath` 用声音、天气、光影与低密度人文痕迹形成山水留白；
+- 新增 `story` 与 `spatial` 配方分类，Story Studio 同步显示“类型故事机制”和
+  “场景与意境机制”；
+- 自动测试固定 `VIDEO_TYPE_CONFIG` 仍为 15 类，并要求每一类至少拥有一个 canonical
+  配方；
+- 18 个配方继续逐一复验 narrative pattern 兼容关系、抽象机制数量、防仿边界和
+  canonical SHA-256；
+- Web schema、机器对照、真人评审 cohort/filter 以及 5 处 MCP Zod 枚举已同步；
+- 配方覆盖完整不等于真实样本、真人偏好、因果效果、法律确认或生产验收完成。
+
 ## 7. 关键代码位置
 
 ```text
@@ -483,7 +513,7 @@ web/client/src/views/StoryStudio.vue
 15 种类型和 11 种表现形式
 web/shared/types.ts
 
-11 个创作配方
+18 个创作配方
 web/shared/reference-generation-recipes.ts
 
 叙事结构目录和类型兼容关系
@@ -589,6 +619,41 @@ Browser smoke
   request carried reference-generation-recipe/v1 + SHA-256
   result provenance rendered
   generation request was intercepted; no smoke project was persisted
+
+Repository audit
+  git diff --check passed
+```
+
+15/15 canonical 配方覆盖新增验证：
+
+```text
+TDD red
+  9 expected failures observed
+  existing 12 related tests remained green
+
+Server targeted regression
+  3 files / 25 tests passed
+  all 15 VideoType values covered
+  all 18 canonical payload SHA-256 values verified
+
+Web lint / production build / visible-copy audit
+  all passed
+
+MCP targeted regression
+  2 files / 13 tests passed
+  TypeScript build passed
+
+Server full regression
+  189 files passed, 1 skipped
+  1583 tests passed, 2 skipped
+
+MCP full regression
+  101 files / 537 tests passed
+
+Playwright CLI browser smoke
+  Story Studio recipe selector rendered all 18 recipes
+  all seven newly added recipe labels were visible
+  only console error was the pre-existing /favicon.ico 404
 
 Repository audit
   git diff --check passed
@@ -788,11 +853,11 @@ Repository audit
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 955f64cc
+functional baseline: 9a8a7748
 handoff HEAD: run git log -1 --oneline
 remote: synchronized through 4d5b6357 before this local slice
-worktree: clean after committing this recipe-expansion slice
-push: three local Story Agent slices are not yet pushed
+worktree: clean after committing this 15/15 recipe-coverage slice
+push: four local Story Agent slices are not yet pushed
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -829,9 +894,8 @@ P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP 以及�
 完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品
 需要选择：
 
-- 继续扩展仍未覆盖的神话传说、儿童、城市文旅、宣讲、教育培训、场景短片和山水意境
-  canonical 配方；
-- 清理历史 generated targets，并推进真实 reviewer/writeback 的操作员闭环；
+- canonical 配方已覆盖全部 15 类；下一步清理历史 generated targets，并推进真实
+  reviewer/writeback 的操作员闭环；
 - 继续 Story Agent 其他产品 backlog；
 - 等待 GEARS 凭据、真实端点和用户合法真实样本后进入外部验收链。
 
@@ -897,12 +961,12 @@ project persistence、API 与 MCP 测试；不要每次小改都重复整套全�
 style pack 或 production credit。
 
 当前 10 条影视/宣传片/电视剧候选只是 research_only + metadata_only。
-11 个创作配方已成为 reference-generation-recipe/v1 一等合同，只使用抽象机制，不得把
+18 个创作配方已成为 reference-generation-recipe/v1 一等合同，只使用抽象机制，不得把
 候选作品角色、对白、情节、镜头、美术或音乐注入生成。
 
-canonical 配方目前覆盖 8/15 成片类型；本轮新增非遗/工艺宣传片、微纪录片和知识讲解
-视频的过程证据、现场证据链和问题—实例解释配方。仍缺神话传说、儿童、城市文旅、宣讲、
-教育培训、场景短片和山水意境 7 类。
+canonical 配方目前覆盖 15/15 成片类型；目录测试会拒绝任何未覆盖的 VideoType。
+本轮补齐神话传说、儿童、城市文旅、宣讲、教育培训、场景短片和山水意境 7 类，
+并同步 Web/MCP 合同。完整覆盖不代表真实外部验收。
 
 P1-E1 已完成：服务端 canonical 解析、SHA-256 与防篡改、prompt 有界注入、
 project version / story-agent-run / result provenance、Web/MCP 和旧项目兼容均已闭环。

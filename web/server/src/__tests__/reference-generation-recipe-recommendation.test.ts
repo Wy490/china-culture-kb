@@ -145,6 +145,94 @@ describe('reference generation recipe recommendations', () => {
     });
   });
 
+  it.each([
+    {
+      creation_path: 'adaptation' as const,
+      video_type: 'legend_story' as const,
+      creation_use_case: 'adapted_ai_comic' as const,
+      truth_mode: 'source_adaptation' as const,
+      subject_text: '一个地方传说以神异征兆考验凡人的承诺与选择，不同口述版本保留差异。',
+      narrative_goal: '用象征意象、重复考验和人的选择表现传说意义。',
+      material_features: ['ritual_or_relationship_material'] as const,
+      recipe_id: 'legend_symbolic_trial',
+    },
+    {
+      creation_path: 'original' as const,
+      video_type: 'children_story' as const,
+      creation_use_case: 'original_ai_comic' as const,
+      truth_mode: 'fictional_original' as const,
+      subject_text: '孩子和会说话的小纸鸢遇到一个温和难题，通过尝试、犯错和互助学会守信。',
+      narrative_goal: '用重复物件、简单因果和温暖选择完成成长。',
+      material_features: ['documented_character_choice'] as const,
+      recipe_id: 'children_gentle_choice_loop',
+    },
+    {
+      creation_path: 'institutional' as const,
+      video_type: 'city_brand_promo' as const,
+      creation_use_case: 'institutional_promo' as const,
+      truth_mode: 'institutional_verified' as const,
+      subject_text: '沿河岸、老街、市场和夜间公共空间展开城市一日，地标与居民生活互相连接。',
+      narrative_goal: '用真实路线和生活动作凝练城市身份，而不是堆空镜。',
+      material_features: ['spatial_subject', 'institutional_brief'] as const,
+      recipe_id: 'promo_city_day_identity',
+    },
+    {
+      creation_path: 'institutional' as const,
+      video_type: 'lecture_video' as const,
+      creation_use_case: 'public_service' as const,
+      truth_mode: 'institutional_verified' as const,
+      subject_text: '从一个有来源的真实案例提出观点，解释人物选择、现实意义与可执行行动。',
+      narrative_goal: '让事实、论点和行动号召逐层成立。',
+      material_features: ['structured_knowledge_pack', 'institutional_brief'] as const,
+      recipe_id: 'lecture_case_to_action',
+    },
+    {
+      creation_path: 'institutional' as const,
+      video_type: 'education_training' as const,
+      creation_use_case: 'education_training' as const,
+      truth_mode: 'institutional_verified' as const,
+      subject_text: '培训课程需要明确学习目标、步骤示范、练习、反馈和复盘标准。',
+      narrative_goal: '让学习者完成一次可观察、可纠错的操作闭环。',
+      material_features: ['structured_knowledge_pack', 'institutional_brief'] as const,
+      recipe_id: 'training_objective_practice_feedback',
+    },
+    {
+      creation_path: 'institutional' as const,
+      video_type: 'scene_short' as const,
+      creation_use_case: 'institutional_promo' as const,
+      truth_mode: 'factual_reconstruction' as const,
+      subject_text: '从城门进入院落再抵达后园，沿空间路线观察物件、人物痕迹和古今时间层。',
+      narrative_goal: '让镜头移动揭示空间身份和历史记忆。',
+      material_features: ['spatial_subject', 'structured_knowledge_pack'] as const,
+      recipe_id: 'spatial_route_time_layers',
+    },
+    {
+      creation_path: 'original' as const,
+      video_type: 'landscape_mood' as const,
+      creation_use_case: 'brand_commercial' as const,
+      truth_mode: 'inspired_by_material' as const,
+      subject_text: '山水在晨雾、风声、雨痕和暮色中缓慢变化，只留下少量人文痕迹。',
+      narrative_goal: '用感官递进、光影流变和低密度旁白形成留白。',
+      material_features: ['spatial_subject'] as const,
+      recipe_id: 'landscape_sensory_breath',
+    },
+  ])('covers the remaining $video_type recipe with $recipe_id', input => {
+    const result = recommendReferenceGenerationRecipes({
+      creation_path: input.creation_path,
+      video_type: input.video_type,
+      creation_use_case: input.creation_use_case,
+      truth_mode: input.truth_mode,
+      subject_text: input.subject_text,
+      narrative_goal: input.narrative_goal,
+      material_features: [...input.material_features],
+    });
+
+    expect(result.recommendations[0]).toMatchObject({
+      recipe_id: input.recipe_id,
+      rank: 1,
+    });
+  });
+
   it('never exposes research candidate titles in recommendation payloads', () => {
     const serialized = JSON.stringify(recommendReferenceGenerationRecipes({
       creation_path: 'original',

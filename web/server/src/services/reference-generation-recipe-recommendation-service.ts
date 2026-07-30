@@ -72,6 +72,48 @@ const RECIPE_SIGNALS = {
     keywords: ['为什么', '概念', '知识', '解释', '实例', '例子', '反例', '原理', '步骤', '关系'],
     reason: '目标强调理解概念与原理，适合用核心问题、实例、反例和回扣建立解释链。',
   },
+  legend_symbolic_trial: {
+    creation_paths: ['adaptation', 'original'],
+    material_features: ['ritual_or_relationship_material', 'structured_knowledge_pack'],
+    keywords: ['传说', '神异', '征兆', '口述', '版本', '象征', '考验', '承诺', '选择', '凡人'],
+    reason: '素材具有口述版本、象征意象或神异考验，适合让凡人选择承担传说意义。',
+  },
+  children_gentle_choice_loop: {
+    creation_paths: ['original', 'adaptation'],
+    material_features: ['documented_character_choice'],
+    keywords: ['儿童', '孩子', '温和', '尝试', '犯错', '互助', '成长', '守信', '重复', '物件'],
+    reason: '目标强调儿童成长和清楚因果，适合用温和尝试、反馈与最终选择组织故事。',
+  },
+  promo_city_day_identity: {
+    creation_paths: ['institutional', 'adaptation'],
+    material_features: ['spatial_subject', 'institutional_brief', 'structured_knowledge_pack'],
+    keywords: ['城市', '地标', '街区', '河岸', '市场', '居民', '生活', '路线', '昼夜', '文旅'],
+    reason: '素材具有可识别城市空间和居民生活，适合沿一日路线建立地方身份。',
+  },
+  lecture_case_to_action: {
+    creation_paths: ['institutional', 'adaptation'],
+    material_features: ['structured_knowledge_pack', 'institutional_brief', 'documented_character_choice'],
+    keywords: ['案例', '观点', '事实', '选择', '精神', '现实', '行动', '号召', '论证', '意义'],
+    reason: '素材包含有来源案例和现实主张，适合从事实、选择与反思推进到具体行动。',
+  },
+  training_objective_practice_feedback: {
+    creation_paths: ['institutional', 'adaptation'],
+    material_features: ['structured_knowledge_pack', 'institutional_brief'],
+    keywords: ['培训', '学习目标', '步骤', '示范', '练习', '错误', '反馈', '纠错', '复盘', '考核'],
+    reason: '任务要求可操作学习路径，适合用目标、示范、练习、反馈和复盘形成教学闭环。',
+  },
+  spatial_route_time_layers: {
+    creation_paths: ['institutional', 'adaptation', 'original'],
+    material_features: ['spatial_subject', 'structured_knowledge_pack'],
+    keywords: ['空间', '路线', '入口', '院落', '节点', '移动', '物件', '痕迹', '古今', '时间层'],
+    reason: '素材具有明确空间节点和历史痕迹，适合用连续路线让时间层逐步显影。',
+  },
+  landscape_sensory_breath: {
+    creation_paths: ['original', 'institutional', 'adaptation'],
+    material_features: ['spatial_subject'],
+    keywords: ['山水', '晨雾', '风声', '雨痕', '暮色', '光影', '天气', '感官', '留白', '意境'],
+    reason: '目标强调自然状态和诗性留白，适合用感官与光影流变组织低密度意境。',
+  },
   series_strategy_chapters: {
     creation_paths: ['adaptation', 'original'],
     material_features: ['strategy_or_power_material', 'structured_knowledge_pack'],

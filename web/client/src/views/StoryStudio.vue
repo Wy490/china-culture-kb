@@ -897,8 +897,10 @@ const route = useRoute()
 const MODEL_PROFILE_STORAGE_KEY = 'story-agent.model-profile-id'
 const REFERENCE_GENERATION_RECIPE_GROUP_LABELS: Record<ReferenceGenerationRecipeCategory, string> = {
   feature_film: '电影机制',
+  story: '类型故事机制',
   promo: '宣传片机制',
   knowledge: '知识与纪录机制',
+  spatial: '场景与意境机制',
   classic_series: '经典连续剧机制',
 }
 
