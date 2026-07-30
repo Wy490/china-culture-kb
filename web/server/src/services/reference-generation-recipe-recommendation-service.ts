@@ -54,6 +54,24 @@ const RECIPE_SIGNALS = {
     keywords: ['群像', '多位', '多个', '共同', '集体', '地域', '技艺', '机构', '统一主张', '传承'],
     reason: '素材包含多人物、多地域或多行动证据，适合用匹配剪辑共同证明传播主张。',
   },
+  heritage_craft_process_evidence: {
+    creation_paths: ['institutional', 'adaptation'],
+    material_features: ['structured_knowledge_pack', 'institutional_brief'],
+    keywords: ['非遗', '工艺', '原料', '工具', '手部', '工序', '步骤', '成品', '实践者', '传承'],
+    reason: '素材包含可核验的工艺过程和实践者信息，适合用材料变化与关键工序证明技艺价值。',
+  },
+  documentary_evidence_trail: {
+    creation_paths: ['institutional', 'adaptation'],
+    material_features: ['structured_knowledge_pack', 'spatial_subject', 'multi_period_scope'],
+    keywords: ['现场', '实物', '遗存', '档案', '史料', '证据', '见证', '核验', '推断', '来源'],
+    reason: '素材包含现场、实物或文献证据，适合从问题出发建立来源分层清楚的纪录片证据链。',
+  },
+  explainer_question_to_example: {
+    creation_paths: ['institutional', 'adaptation', 'original'],
+    material_features: ['structured_knowledge_pack'],
+    keywords: ['为什么', '概念', '知识', '解释', '实例', '例子', '反例', '原理', '步骤', '关系'],
+    reason: '目标强调理解概念与原理，适合用核心问题、实例、反例和回扣建立解释链。',
+  },
   series_strategy_chapters: {
     creation_paths: ['adaptation', 'original'],
     material_features: ['strategy_or_power_material', 'structured_knowledge_pack'],

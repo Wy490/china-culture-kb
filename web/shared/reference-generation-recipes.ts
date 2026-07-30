@@ -11,6 +11,7 @@ import type {
 export type ReferenceGenerationRecipeCategory =
   | 'feature_film'
   | 'promo'
+  | 'knowledge'
   | 'classic_series';
 
 export type { ReferenceGenerationRecipeId } from './types.js';
@@ -191,6 +192,87 @@ export const REFERENCE_GENERATION_RECIPES: ReferenceGenerationRecipe[] = [
     ],
   },
   {
+    id: 'heritage_craft_process_evidence',
+    category: 'promo',
+    label: '工艺过程与传承证据',
+    summary: '以材料变化、关键工序和实践者关系证明非遗技艺价值。',
+    video_type: 'heritage_promo',
+    presentation_style: 'documentary',
+    narrative_pattern_ids: [
+      'craft_mastery',
+      'ritual_process',
+      'object_clue_journey',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '克制、细致、重视材料质感与真实劳动',
+    communication_goal: '让观众从原料、工具、手部动作和成品变化中理解技艺难度与传承关系。',
+    reusable_mechanisms: [
+      '用原料初始状态与成品状态建立可见的过程问题',
+      '按不可跳步的关键工序组织动作、工具、判断标准和失败风险',
+      '让实践者之间的示范、纠正与接力承担传承表达',
+    ],
+    avoid_copying: [
+      '不得虚构未经材料支持的工序、口诀或传承谱系',
+      '不得用空泛匠心口号替代材料、工具和手部动作',
+      '不得把宣传性判断写成已经完成的机构或法律认证',
+    ],
+  },
+  {
+    id: 'documentary_evidence_trail',
+    category: 'knowledge',
+    label: '现场问题与证据追踪',
+    summary: '从现实现场提出问题，以实物、档案和见证材料建立可核验的纪录片证据链。',
+    video_type: 'documentary_short',
+    presentation_style: 'documentary',
+    narrative_pattern_ids: [
+      'documentary_investigation',
+      'historical_causal_story',
+      'object_clue_journey',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '客观、探究、证据优先、对未知保持克制',
+    communication_goal: '让每个历史或文化判断都能回到现实现场、来源层级与明确的不确定性边界。',
+    reusable_mechanisms: [
+      '从今天仍可观察的地点、实物或现象提出一个可核验问题',
+      '交替使用现场观察、文献记录和受约束的解释推进证据链',
+      '在结尾区分已经证实、合理推断和仍待核验的内容',
+    ],
+    avoid_copying: [
+      '不得伪造采访、引语、时间码、档案出处或现场观察',
+      '不得把影视化再现剪成未经标识的真实记录',
+      '不得用情绪蒙太奇替代证据之间的因果连接',
+    ],
+  },
+  {
+    id: 'explainer_question_to_example',
+    category: 'knowledge',
+    label: '问题拆解与实例回扣',
+    summary: '围绕一个知识问题，用概念、实例、反例和回扣建立可理解的解释链。',
+    video_type: 'explainer_video',
+    presentation_style: 'host_narration',
+    narrative_pattern_ids: [
+      'knowledge_gap_explainer',
+      'historical_causal_story',
+      'object_clue_journey',
+    ],
+    story_priority: 'knowledge_first',
+    genre_strictness: 'strict',
+    tone: '清楚、准确、层级分明、亲切但不简化事实',
+    communication_goal: '让观众不仅记住结论，还能用实例说明概念、识别边界并回答开场问题。',
+    reusable_mechanisms: [
+      '先提出一个观众能够复述的核心问题并标明理解障碍',
+      '按概念定义、具体实例、易错反例和视觉证据逐层解释',
+      '结尾回扣开场问题，并给出可复述的判断步骤而非口号',
+    ],
+    avoid_copying: [
+      '不得把未经证实的起源传说包装成知识结论',
+      '不得把类比、动画示意或个案当成事实本身',
+      '不得只堆结论、术语和金句而省略解释过程',
+    ],
+  },
+  {
     id: 'series_strategy_chapters',
     category: 'classic_series',
     label: '历史权谋章回连续剧',
@@ -258,6 +340,9 @@ const REFERENCE_GENERATION_RECIPE_PAYLOAD_SHA256: Record<
   promo_space_emotion: 'c41e9c25b7734e66540d42e37de04d64a096f26ffadb625123994f5ba3cc19cc',
   promo_mnemonic_reveal: '299f2eb149dcca7f20090a779cfd98b32fab91110f69914dc81e2b94da7af565',
   promo_collective_montage: '08aa2f93c254b45922184c0e1789ca96bf78bd50cf4a5f70e9a60668d17828b0',
+  heritage_craft_process_evidence: 'e66e93f0f0afad4251e28cbaef1113547d054412bad19bedf98815952ad3ed68',
+  documentary_evidence_trail: 'f91200727ac14156371340a589fb7bfd3a9d4e5448239b90d9993b2375ac071c',
+  explainer_question_to_example: 'acdb92cd37ef5625ca0d510dfbf09a405f4d15782e578e5583b4ccfda6a7c828',
   series_strategy_chapters: '36442de5dbb0f84e018e0a2093b9b99c1232be43d11a192b1a10833e5a595ad6',
   series_ritual_relationships: '99409049b84791fc20a32881fd300aa7b0800382c384dc24d99eb9e8ef978f69',
 };

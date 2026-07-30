@@ -91,19 +91,58 @@ describe('reference generation recipe recommendations', () => {
     ]));
   });
 
-  it('returns no forced recommendation for unsupported video types', () => {
+  it('recommends an evidence trail for a documentary with verified field material', () => {
     const result = recommendReferenceGenerationRecipes({
       creation_path: 'institutional',
       video_type: 'documentary_short',
       creation_use_case: 'documentary_short',
       truth_mode: 'factual_reconstruction',
-      subject_text: '从现场遗存追踪历史证据。',
-      narrative_goal: '纪实核验优先。',
-      material_features: ['structured_knowledge_pack'],
+      subject_text: '从现实现场、实物遗存和档案史料追踪事件证据。',
+      narrative_goal: '区分现场观察、文献事实和谨慎推断，建立可核验的证据链。',
+      material_features: ['structured_knowledge_pack', 'spatial_subject'],
     });
 
-    expect(result.recommendations).toEqual([]);
-    expect(result.no_recommendation_reason).toContain('没有兼容');
+    expect(result.recommendations[0]).toMatchObject({
+      recipe_id: 'documentary_evidence_trail',
+      rank: 1,
+    });
+    expect(result.policy_warnings).toEqual(expect.arrayContaining([
+      expect.stringContaining('事实'),
+    ]));
+  });
+
+  it.each([
+    {
+      video_type: 'heritage_promo' as const,
+      creation_use_case: 'institutional_promo' as const,
+      subject_text: '记录原料、工具、手部动作与关键工序，呈现传承人的实践。',
+      narrative_goal: '让工艺变化和传承关系共同证明技艺价值。',
+      material_features: ['structured_knowledge_pack', 'institutional_brief'] as const,
+      recipe_id: 'heritage_craft_process_evidence',
+    },
+    {
+      video_type: 'explainer_video' as const,
+      creation_use_case: 'education_training' as const,
+      subject_text: '解释为什么节气仪式形成，以及概念、例子和反例之间的关系。',
+      narrative_goal: '用问题、概念、实例和回扣建立知识理解。',
+      material_features: ['structured_knowledge_pack'] as const,
+      recipe_id: 'explainer_question_to_example',
+    },
+  ])('recommends $recipe_id for $video_type', input => {
+    const result = recommendReferenceGenerationRecipes({
+      creation_path: 'institutional',
+      video_type: input.video_type,
+      creation_use_case: input.creation_use_case,
+      truth_mode: 'institutional_verified',
+      subject_text: input.subject_text,
+      narrative_goal: input.narrative_goal,
+      material_features: [...input.material_features],
+    });
+
+    expect(result.recommendations[0]).toMatchObject({
+      recipe_id: input.recipe_id,
+      rank: 1,
+    });
   });
 
   it('never exposes research candidate titles in recommendation payloads', () => {

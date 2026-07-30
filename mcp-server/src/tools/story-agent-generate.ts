@@ -28,6 +28,9 @@ type ReferenceGenerationRecipeId =
   | 'promo_space_emotion'
   | 'promo_mnemonic_reveal'
   | 'promo_collective_montage'
+  | 'heritage_craft_process_evidence'
+  | 'documentary_evidence_trail'
+  | 'explainer_question_to_example'
   | 'series_strategy_chapters'
   | 'series_ritual_relationships';
 
