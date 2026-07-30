@@ -3582,6 +3582,73 @@ export interface StoryAgentGeneratedHealthReport {
   markdown: string;
 }
 
+export type StoryAgentSeriesStoryRecoveryCandidateStatus =
+  | 'unique_legacy_suffix_candidate'
+  | 'ambiguous_legacy_suffix_candidates'
+  | 'no_candidate';
+
+export type StoryAgentSeriesStoryRecoveryWhitelistStatus =
+  | 'not_whitelisted'
+  | 'whitelisted'
+  | 'invalid_whitelist_entry';
+
+export interface StoryAgentSeriesStoryRecoveryCandidateStory {
+  story_id: string;
+  relative_path: string;
+  sha256: string;
+  title?: string;
+  video_type?: VideoType;
+  source_entry?: string;
+  match_basis: 'legacy_story_id_suffix';
+  compatibility_confirmed: false;
+}
+
+export interface StoryAgentSeriesStoryRecoveryCandidateItem {
+  series_project_id: string;
+  series_title?: string;
+  episode_no: number;
+  episode_title?: string;
+  missing_story_id: string;
+  missing_story_id_suffix: string;
+  project_relative_path: string;
+  project_sha256: string;
+  contract_evidence: string[];
+  candidate_status: StoryAgentSeriesStoryRecoveryCandidateStatus;
+  candidate_stories: StoryAgentSeriesStoryRecoveryCandidateStory[];
+  operator_whitelist_status: StoryAgentSeriesStoryRecoveryWhitelistStatus;
+  operator_whitelist_required: true;
+  automatic_relink_eligible: false;
+  recommended_action: string;
+}
+
+export interface StoryAgentSeriesStoryRecoveryCandidateReport {
+  schema_version: 'story-agent-series-story-recovery-candidate-report/v1';
+  generated_at: string;
+  source_health_schema: 'story-agent-generated-health/v1';
+  summary: {
+    active_relink_project_count: number;
+    missing_reference_count: number;
+    returned_reference_count: number;
+    unique_legacy_suffix_candidate_count: number;
+    ambiguous_legacy_suffix_candidate_count: number;
+    no_candidate_count: number;
+    operator_whitelisted_count: number;
+    auto_relink_eligible_count: 0;
+  };
+  items: StoryAgentSeriesStoryRecoveryCandidateItem[];
+  boundary: {
+    read_only: true;
+    operator_whitelist_required: true;
+    automatic_relink_allowed: false;
+    project_files_modified: false;
+    story_files_written: false;
+    signoff_portfolio_modified: false;
+    publishable_delivery_credit_granted: false;
+  };
+  notes: string[];
+  markdown: string;
+}
+
 export type StoryAgentBacklogHandoffPriority = 'P0' | 'P1' | 'P2' | 'P3';
 
 export type StoryAgentBacklogHandoffActionType =

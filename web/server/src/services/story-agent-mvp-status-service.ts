@@ -46,6 +46,7 @@ const MCP_STORY_AGENT_LOOP_TOOLS = [
   'kb_generate_gears_delivery',
   'kb_generate_seedance_prompt',
   'kb_get_story_agent_generated_health',
+  'kb_get_story_agent_series_story_recovery_candidates',
   'kb_get_story_agent_backlog_handoff',
   'kb_get_story_agent_generated_governance_plan',
   'kb_run_story_agent_generated_governance',

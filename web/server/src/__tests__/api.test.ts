@@ -2679,7 +2679,7 @@ describe('System API', () => {
           production_notes: [],
         },
         generated_episode_story_ids: {
-          '1': '20260622-story-health-series-missing',
+          '1': '20260619-story-health-series-1',
         },
         seedance_production: {
           items: [{
@@ -3022,6 +3022,59 @@ describe('System API', () => {
       expect(res.body.data.notes.join('\n')).toContain('Series governance');
       expect(res.body.data.notes.join('\n')).toContain('Series relink candidates');
       expect(res.body.data.notes.join('\n')).toContain('explicitly test-marked fixtures');
+
+      const recoveryCandidatesRes = await request.get(
+        '/api/system/story-agent-series-story-recovery-candidates?limit=20',
+      );
+      expect(recoveryCandidatesRes.status).toBe(200);
+      expectSuccess(recoveryCandidatesRes.body);
+      expect(recoveryCandidatesRes.body.data).toMatchObject({
+        schema_version:
+          'story-agent-series-story-recovery-candidate-report/v1',
+        summary: expect.objectContaining({
+          active_relink_project_count: expect.any(Number),
+          missing_reference_count: expect.any(Number),
+          unique_legacy_suffix_candidate_count: expect.any(Number),
+          operator_whitelisted_count: 0,
+          auto_relink_eligible_count: 0,
+        }),
+        boundary: {
+          read_only: true,
+          operator_whitelist_required: true,
+          automatic_relink_allowed: false,
+          project_files_modified: false,
+          story_files_written: false,
+          signoff_portfolio_modified: false,
+          publishable_delivery_credit_granted: false,
+        },
+      });
+      expect(recoveryCandidatesRes.body.data.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            series_project_id: 'health-relink-series',
+            episode_no: 1,
+            missing_story_id:
+              '20260619-story-health-series-1',
+            candidate_status:
+              'unique_legacy_suffix_candidate',
+            operator_whitelist_status: 'not_whitelisted',
+            automatic_relink_eligible: false,
+            candidate_stories: [
+              expect.objectContaining({
+                story_id:
+                  '20260622-story-health-series-1',
+                match_basis: 'legacy_story_id_suffix',
+                compatibility_confirmed: false,
+              }),
+            ],
+          }),
+        ]),
+      );
+      expect(recoveryCandidatesRes.body.data.markdown).toContain(
+        'automatic_relink_allowed: false',
+      );
+      expect(JSON.stringify(recoveryCandidatesRes.body.data))
+        .not.toContain(generatedRoot);
 
       const backlogRes = await request.get('/api/system/story-agent-backlog-handoff?limit=20');
       expect(backlogRes.status).toBe(200);
@@ -3999,7 +4052,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=45'),
+        expect.stringContaining('tool_count=46'),
         'reference_text_analysis_tools=12',
         'private_video_sample_tools=3',
         expect.stringContaining('kb_story_agent_generate'),

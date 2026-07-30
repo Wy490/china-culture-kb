@@ -73,6 +73,9 @@ import {
 } from './tools/get-generated-governance-plan.js';
 import { getStoryAgentBacklogHandoff } from './tools/get-story-agent-backlog-handoff.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
+import {
+  getSeriesStoryRecoveryCandidates,
+} from './tools/get-series-story-recovery-candidates.js';
 import { preflightStoryAgentFinalDeliveryManifest } from './tools/preflight-final-delivery-manifest.js';
 import {
   getFinalDeliveryManifestDispositions,
@@ -1525,6 +1528,25 @@ server.tool(
       }],
     };
   }
+);
+
+// kb_get_story_agent_series_story_recovery_candidates — read-only relink evidence
+server.tool(
+  'kb_get_story_agent_series_story_recovery_candidates',
+  '读取 canonical 系列分集故事恢复候选报告。只读区分唯一旧 ID 后缀候选、歧义候选和无候选；后缀匹配不代表兼容，所有 relink 都必须进入真人白名单，不修改 generated 文件或签核组合。',
+  {
+    limit: z.number().int().positive().max(500).optional()
+      .describe('最多返回多少条缺失分集引用，默认 200'),
+  },
+  async (input) => {
+    const result = await getSeriesStoryRecoveryCandidates(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  },
 );
 
 // kb_get_story_agent_backlog_handoff — read generated/supplement backlog handoff

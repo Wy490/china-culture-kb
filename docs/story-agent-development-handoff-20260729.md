@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`51384dec feat(story-agent): add manifest disposition ledger`
+> 功能基线：`080d523d feat(story-agent): add manifest disposition workbench`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -945,17 +945,60 @@ Repository audit
   git diff --check passed
 ```
 
+系列分集故事恢复候选治理新增验证：
+
+```text
+Real workspace classification
+  99 active interrupted series are relink candidates
+  99/99 already carry production or postproduction contract evidence
+  99 missing episode story references
+  9 unique legacy story-ID suffix candidates
+  0 ambiguous suffix candidate sets
+  90 references have no current generated-story candidate
+  0 operator-whitelisted mappings
+  0 automatic-relink-eligible mappings
+
+Safety contract
+  suffix equality is evidence only and never proves episode compatibility
+  every candidate keeps compatibility_confirmed=false
+  operator whitelist remains required even for a unique suffix candidate
+  project/story files and the active signoff portfolio remain unchanged
+  no publishable-delivery credit is granted
+
+Surfaces
+  typed story-agent-series-story-recovery-candidate-report/v1
+  GET /api/system/story-agent-series-story-recovery-candidates
+  typed Web client
+  canonical MCP bridge kb_get_story_agent_series_story_recovery_candidates
+  MCP Story Agent tool inventory is now 46
+
+Targeted tests
+  service red/green test passed
+  API generated-health/recovery contract test passed
+  MCP bridge and MVP inventory tests passed
+
+Server full regression
+  191 files passed, 1 skipped
+  1589 tests passed, 2 skipped
+
+MCP full regression
+  105 files / 547 tests passed
+
+Web/MCP TypeScript, Web production build and visible-copy audit
+  all passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 51384dec
+functional baseline: 080d523d
 handoff HEAD: run git log -1 --oneline
 remote: synchronized through 4d5b6357 before this local slice
-worktree: clean after committing the latest manifest-disposition workbench slice
-push: seven local Story Agent slices are not yet pushed after committing this workbench slice
+worktree: clean after committing the latest series-story recovery candidate slice
+push: eight local Story Agent slices are not yet pushed after committing this slice
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -993,8 +1036,8 @@ P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP、项目
 真人处置项目工作台均已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或
 生产验收。下一轮可按产品需要选择：
 
-- 对活跃签核组合中的 99 个 interrupted 系列做引用恢复/重建白名单治理；827 个历史
-  fixture 已可逆排除，不删除、不重写；
+- 为 9 条唯一旧 story-ID 后缀候选增加 canonical relink preflight 和真人 whitelist
+  账本；另外 90 条无候选引用只能从可信历史恢复原 JSON 或按当前合同重建；
 - 由真实操作员使用项目工作台处理 10 个缺 final-delivery manifest 的系列；当前真实
   账本仍为 0，模型不得代填身份、理由、证据或声明；
 - 推进真实 reviewer/writeback 的操作员闭环；
@@ -1057,6 +1100,7 @@ ed8f0efd feat(story-agent): add human recipe review ledger
 f18ebe5c feat(story-agent): cover all canonical video types
 f58df48e feat(story-agent): normalize generated signoff portfolio
 51384dec feat(story-agent): add manifest disposition ledger
+080d523d feat(story-agent): add manifest disposition workbench
 
 固定产品边界：
 主题/大纲/授权原作 → 中国文化知识 → 故事蓝图与完整文本 → 场景/分镜/GearsSegment
@@ -1104,12 +1148,15 @@ owner-only 原子账本、事件哈希链、篡改 fail closed、权限过滤和
 P1-E1 / E2 / E3、机器趋势、真人评审全栈路线图和 15/15 canonical 配方覆盖完成。
 generated health 同时公开原始 1284 目标与活跃签核组合 457 目标；827 个历史 fixture
 通过 manifest 可逆排除，活跃组合仍有 99 个 interrupted 系列，运行健康不得虚报。
+系列故事恢复候选报告已把这 99 条断链精确分类为 9 条唯一旧 ID 后缀候选和 90 条无候选；
+后缀匹配不证明兼容，当前 operator whitelist=0、automatic relink=0。
 final-delivery manifest 人工处置 owner-only 原子账本、哈希链、API、MCP 和治理清单
 回填已完成；10 个缺口当前仍为 0 条真实操作员决定，不能由模型代填。
 最终交付真人处置项目工作台也已完成：强制空白 operator 身份、理由、证据、三项声明，
 只允许绑定当前预检快照提交，提交后刷新真实账本并始终展示零发布信用边界。
-下一步优先推进这 99 个引用恢复/重建白名单、等待真实操作员处理 10 个 manifest 缺口，
-或推进真实 reviewer/writeback；没有用户真实合法样本时，不得伪造后续 reference
+下一步优先为 9 条唯一候选增加 canonical relink preflight 与真人 whitelist 账本，
+同时保持 90 条无候选引用为 blocked；也可等待真实操作员处理 10 个 manifest 缺口，
+或推进真实 reviewer/writeback。没有用户真实合法样本时，不得伪造后续 reference
 analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建

@@ -79,6 +79,9 @@ import {
   getStoryAgentBacklogHandoffPackage,
   getStoryAgentGeneratedHealth,
 } from '../services/generated-health-service.js';
+import {
+  getStoryAgentSeriesStoryRecoveryCandidates,
+} from '../services/series-story-recovery-candidate-service.js';
 import { preflightStoryAgentFinalDeliveryManifest } from '../services/final-delivery-manifest-preflight-service.js';
 import {
   readFinalDeliveryManifestDispositionLedger,
@@ -617,6 +620,26 @@ systemRouter.get('/story-agent-generated-health', async (req, res, next) => {
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-series-story-recovery-candidates — read-only relink evidence
+// ---------------------------------------------------------------------------
+
+systemRouter.get(
+  '/story-agent-series-story-recovery-candidates',
+  async (req, res, next) => {
+    try {
+      const limit = typeof req.query.limit === 'string'
+        ? Number(req.query.limit)
+        : undefined;
+      res.json(success(
+        await getStoryAgentSeriesStoryRecoveryCandidates({ limit }),
+      ));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // GET /api/system/story-agent-backlog-handoff — generated/supplement backlog handoff package
