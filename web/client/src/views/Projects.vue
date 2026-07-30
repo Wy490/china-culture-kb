@@ -181,6 +181,235 @@
       </p>
     </section>
 
+    <section
+      v-if="recipeHumanReviewLedger"
+      class="projects-page__portfolio projects-page__human-review"
+      data-testid="recipe-human-review-ledger"
+    >
+      <div class="projects-page__portfolio-head">
+        <div>
+          <h2>创作配方真人评审账本</h2>
+          <p>
+            真实操作员评审 {{ recipeHumanReviewLedger.summary.recorded_review_count }}
+            · 当前展示 {{ recipeHumanReviewLedger.summary.returned_review_count }}
+            · 哈希链 {{ recipeHumanReviewLedger.integrity.chain_valid ? '有效' : '异常' }}
+          </p>
+        </div>
+        <div class="projects-page__portfolio-head-actions">
+          <input
+            v-model="recipeHumanReviewReviewerFilter"
+            class="projects-page__input"
+            placeholder="按 Reviewer ID 筛选"
+            aria-label="按 Reviewer ID 筛选"
+          />
+          <select
+            v-model="recipeHumanReviewDecisionFilter"
+            class="projects-page__select"
+            aria-label="按真人评审决定筛选"
+            @change="loadRecipeHumanReviews"
+          >
+            <option value="">全部真人决定</option>
+            <option value="baseline_preferred">偏好基线版</option>
+            <option value="recipe_preferred">偏好配方版</option>
+            <option value="no_preference">无明显偏好</option>
+            <option value="insufficient_evidence">证据不足</option>
+          </select>
+          <button
+            class="projects-page__muted-btn"
+            :disabled="loadingRecipeHumanReviews"
+            @click="loadRecipeHumanReviews"
+          >
+            {{ loadingRecipeHumanReviews ? '刷新中…' : '刷新真人账本' }}
+          </button>
+          <button
+            class="projects-page__muted-btn"
+            :disabled="preparingRecipeHumanReviewCohort"
+            @click="prepareRecipeHumanReviewCohort"
+          >
+            {{ preparingRecipeHumanReviewCohort ? '准备中…' : '准备真人评审 cohort' }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="recipeHumanReviewError" class="projects-page__recipe-history-error">
+        {{ recipeHumanReviewError }}
+      </p>
+      <p v-if="recipeHumanReviewMessage" class="projects-page__human-review-message">
+        {{ recipeHumanReviewMessage }}
+      </p>
+
+      <div class="projects-page__portfolio-metrics">
+        <span>偏好基线 {{ recipeHumanReviewLedger.summary.decision_counts.baseline_preferred }}</span>
+        <span>偏好配方 {{ recipeHumanReviewLedger.summary.decision_counts.recipe_preferred }}</span>
+        <span>无偏好 {{ recipeHumanReviewLedger.summary.decision_counts.no_preference }}</span>
+        <span>证据不足 {{ recipeHumanReviewLedger.summary.decision_counts.insufficient_evidence }}</span>
+      </div>
+
+      <details class="projects-page__human-review-intake" open>
+        <summary>录入一条真实操作员评审</summary>
+        <p class="projects-page__recipe-boundary">
+          这里只接收已经由真人完成的双版本比较。系统不会从机器分数推断真人偏好，也不会替审核者填写身份、结论或证据。
+        </p>
+        <div v-if="recipeEffectReport" class="projects-page__human-review-cohort">
+          <strong>受控 cohort</strong>
+          <code>{{ recipeEffectReport.cohort.cohort_id }}</code>
+          <span>成员哈希 {{ recipeEffectReport.cohort.membership_sha256 }}</span>
+          <span>可评审对照 {{ recipeEffectReport.history.items.length }}</span>
+        </div>
+        <p v-else class="projects-page__recipe-history-empty">
+          请先点击“准备真人评审 cohort”，系统会按当前机器对照筛选生成可复核成员快照。
+        </p>
+
+        <form class="projects-page__human-review-form" @submit.prevent="submitRecipeHumanReview">
+          <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+            <span>评审对象</span>
+            <select
+              v-model="recipeHumanReviewTarget"
+              class="projects-page__select"
+              :disabled="recipeHumanReviewCohortItems.length === 0"
+              aria-label="评审对象"
+            >
+              <option value="">请选择 cohort 成员</option>
+              <option
+                v-for="item in recipeHumanReviewCohortItems"
+                :key="`${item.project_id}:${item.story_id}`"
+                :value="`${item.project_id}:${item.story_id}`"
+              >
+                {{ item.project_title }} · {{ recipeLabel(item.comparison.recipe.recipe_id) }}
+              </option>
+            </select>
+          </label>
+
+          <label class="projects-page__human-review-field">
+            <span>Reviewer ID</span>
+            <input
+              v-model="recipeHumanReviewerId"
+              class="projects-page__input"
+              maxlength="128"
+              aria-label="Reviewer ID"
+            />
+          </label>
+          <label class="projects-page__human-review-field">
+            <span>Reviewer 显示名</span>
+            <input
+              v-model="recipeHumanReviewerName"
+              class="projects-page__input"
+              maxlength="120"
+              aria-label="Reviewer 显示名"
+            />
+          </label>
+          <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+            <span>Reviewer 身份记录</span>
+            <input
+              v-model="recipeHumanReviewerIdentityReference"
+              class="projects-page__input"
+              maxlength="256"
+              placeholder="例如 operator-directory:reviewer-001"
+              aria-label="Reviewer 身份记录"
+            />
+          </label>
+          <label class="projects-page__human-review-field">
+            <span>真人评审决定</span>
+            <select
+              v-model="recipeHumanReviewDecision"
+              class="projects-page__select"
+              aria-label="真人评审决定"
+            >
+              <option value="baseline_preferred">偏好基线版</option>
+              <option value="recipe_preferred">偏好配方版</option>
+              <option value="no_preference">无明显偏好</option>
+              <option value="insufficient_evidence">证据不足</option>
+            </select>
+          </label>
+          <label class="projects-page__human-review-field">
+            <span>评审方法</span>
+            <select
+              v-model="recipeHumanReviewMethod"
+              class="projects-page__select"
+              aria-label="评审方法"
+            >
+              <option value="blind_to_machine_verdict">未查看机器判定</option>
+              <option value="machine_verdict_visible">已看到机器判定</option>
+            </select>
+          </label>
+          <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+            <span>真人评审理由</span>
+            <textarea
+              v-model="recipeHumanReviewRationale"
+              rows="4"
+              minlength="10"
+              maxlength="4000"
+              placeholder="写明比较后的具体判断，不要粘贴机器评分结论。"
+              aria-label="真人评审理由"
+            ></textarea>
+          </label>
+          <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+            <span>证据引用</span>
+            <textarea
+              v-model="recipeHumanReviewEvidence"
+              rows="3"
+              placeholder="每行一个人工评审笔记、场次或附件引用，可留空。"
+              aria-label="证据引用"
+            ></textarea>
+          </label>
+
+          <div class="projects-page__human-review-attestations">
+            <label>
+              <input v-model="recipeHumanAttestationReviewer" type="checkbox" />
+              <span>我是真实完成评审的人类审核者</span>
+            </label>
+            <label>
+              <input v-model="recipeHumanAttestationCompared" type="checkbox" />
+              <span>我已完整比较基线版与配方版</span>
+            </label>
+            <label>
+              <input v-model="recipeHumanAttestationIndependent" type="checkbox" />
+              <span>该决定来自我的独立判断</span>
+            </label>
+          </div>
+
+          <button
+            class="projects-page__cta projects-page__human-review-submit"
+            type="submit"
+            :disabled="!recipeHumanReviewCanSubmit || submittingRecipeHumanReview"
+          >
+            {{ submittingRecipeHumanReview ? '提交中…' : '提交真人评审' }}
+          </button>
+        </form>
+      </details>
+
+      <div v-if="recipeHumanReviewLedger.entries.length" class="projects-page__human-review-events">
+        <article
+          v-for="event in recipeHumanReviewLedger.entries"
+          :key="event.event_id"
+          class="projects-page__human-review-event"
+        >
+          <div>
+            <strong>{{ event.project_title }}</strong>
+            <span>{{ recipeHumanReviewDecisionLabel(event.review.decision) }}</span>
+            <span>{{ event.reviewer.display_name }} · {{ event.reviewer.reviewer_id }}</span>
+            <small>{{ formatDate(event.recorded_at) }}</small>
+          </div>
+          <p>{{ event.review.rationale }}</p>
+          <code>{{ event.event_sha256 }}</code>
+          <button class="projects-page__muted-btn" @click="copyRecipeHumanReviewHash(event)">
+            复制事件哈希
+          </button>
+        </article>
+      </div>
+      <p v-else class="projects-page__recipe-history-empty">
+        尚未录入真实操作员评审。系统保持空状态，不会用机器 verdict 或 fixture 填充真人偏好。
+      </p>
+
+      <p v-if="lastSubmittedRecipeHumanReview" class="projects-page__recipe-boundary">
+        最近提交事件：{{ lastSubmittedRecipeHumanReview.event_id }}
+        · SHA-256 {{ lastSubmittedRecipeHumanReview.event_sha256 }}
+      </p>
+      <p class="projects-page__recipe-boundary">
+        账本只证明操作员评审事件已按合同记录；不声称聚合真人偏好，不证明因果，不构成法律结论，也不授予生产交付信用。
+      </p>
+    </section>
+
     <section v-if="storyAgentMvpStatus" class="projects-page__portfolio projects-page__mvp-status">
       <div class="projects-page__portfolio-head">
         <div>
@@ -1175,7 +1404,9 @@ import {
   getStoryRecipeEffectMachineReport,
   listProjects,
   listStoryRecipeEffectComparisonHistory,
+  listStoryRecipeEffectHumanReviews,
   retainRecentProjects,
+  submitStoryRecipeEffectHumanReview,
 } from '@/api/projects'
 import {
   getGearsExternalCallbackHandoffQueue,
@@ -1230,8 +1461,13 @@ import type {
   ReferenceGenerationRecipeId,
   StoryRecipeEffectComparisonHistory,
   StoryRecipeEffectDimensionId,
+  StoryRecipeEffectHumanReviewDecision,
+  StoryRecipeEffectHumanReviewEvent,
+  StoryRecipeEffectHumanReviewLedger,
+  StoryRecipeEffectHumanReviewSubmitRequest,
   StoryRecipeEffectMachineVerdict,
   StoryRecipeEffectMachineReport,
+  StoryRecipeEffectMachineReportFilters,
 } from '@shared/types'
 import { REFERENCE_GENERATION_RECIPES } from '@shared/reference-generation-recipes'
 
@@ -1284,6 +1520,8 @@ const runningManifestPreflight = ref(false)
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const recipeEffectHistory = ref<StoryRecipeEffectComparisonHistory | null>(null)
 const recipeEffectReport = ref<StoryRecipeEffectMachineReport | null>(null)
+const recipeHumanReviewLedger = ref<StoryRecipeEffectHumanReviewLedger | null>(null)
+const lastSubmittedRecipeHumanReview = ref<StoryRecipeEffectHumanReviewEvent | null>(null)
 const loading = ref(false)
 const loadingMvpStatus = ref(false)
 const loadingBacklogHandoff = ref(false)
@@ -1293,12 +1531,17 @@ const runningGeneratedGovernance = ref(false)
 const loadingGeneratedHealth = ref(false)
 const loadingRecipeHistory = ref(false)
 const exportingRecipeReport = ref(false)
+const loadingRecipeHumanReviews = ref(false)
+const preparingRecipeHumanReviewCohort = ref(false)
+const submittingRecipeHumanReview = ref(false)
 const runningPortfolioAutomation = ref(false)
 type GearsExternalQueueCopyMode = 'markdown' | 'payload' | 'commands'
 const gearsExternalQueueCopyMode = ref<GearsExternalQueueCopyMode | ''>('')
 const error = ref('')
 const projectMessage = ref('')
 const recipeHistoryError = ref('')
+const recipeHumanReviewError = ref('')
+const recipeHumanReviewMessage = ref('')
 const searchQuery = ref('')
 const projectKindFilter = ref('story')
 const statusFilter = ref('')
@@ -1311,8 +1554,42 @@ const showArchivedSeries = ref(false)
 const recipeHistoryRecipeFilter = ref<ReferenceGenerationRecipeId | ''>('')
 const recipeHistoryVerdictFilter = ref<StoryRecipeEffectMachineVerdict | ''>('')
 const recipeReportMinimumSample = ref(1)
+const recipeHumanReviewDecisionFilter = ref<StoryRecipeEffectHumanReviewDecision | ''>('')
+const recipeHumanReviewReviewerFilter = ref('')
+const recipeHumanReviewTarget = ref('')
+const recipeHumanReviewerId = ref('')
+const recipeHumanReviewerName = ref('')
+const recipeHumanReviewerIdentityReference = ref('')
+const recipeHumanReviewDecision = ref<StoryRecipeEffectHumanReviewDecision>('insufficient_evidence')
+const recipeHumanReviewMethod = ref<'blind_to_machine_verdict' | 'machine_verdict_visible'>(
+  'blind_to_machine_verdict',
+)
+const recipeHumanReviewRationale = ref('')
+const recipeHumanReviewEvidence = ref('')
+const recipeHumanAttestationReviewer = ref(false)
+const recipeHumanAttestationCompared = ref(false)
+const recipeHumanAttestationIndependent = ref(false)
+const recipeHumanReviewIdempotencyKey = ref(createRecipeHumanReviewIdempotencyKey())
 const lastRecipeReportCohortId = computed(() => (
   recipeEffectReport.value?.cohort.cohort_id ?? ''
+))
+const recipeHumanReviewCohortItems = computed(() => (
+  recipeEffectReport.value?.history.items ?? []
+))
+const selectedRecipeHumanReviewItem = computed(() => (
+  recipeHumanReviewCohortItems.value.find(
+    item => `${item.project_id}:${item.story_id}` === recipeHumanReviewTarget.value,
+  ) ?? null
+))
+const recipeHumanReviewCanSubmit = computed(() => Boolean(
+  selectedRecipeHumanReviewItem.value
+  && recipeHumanReviewerId.value.trim()
+  && recipeHumanReviewerName.value.trim()
+  && recipeHumanReviewerIdentityReference.value.trim()
+  && recipeHumanReviewRationale.value.trim().length >= 10
+  && recipeHumanAttestationReviewer.value
+  && recipeHumanAttestationCompared.value
+  && recipeHumanAttestationIndependent.value,
 ))
 const deletingProjectId = ref('')
 const managingSeriesProjectId = ref('')
@@ -1861,6 +2138,25 @@ function recipeDimensionLabel(dimension: StoryRecipeEffectDimensionId): string {
     contract_completeness: '合同完整',
   }
   return labels[dimension]
+}
+
+function recipeHumanReviewDecisionLabel(
+  decision: StoryRecipeEffectHumanReviewDecision,
+): string {
+  const labels: Record<StoryRecipeEffectHumanReviewDecision, string> = {
+    baseline_preferred: '偏好基线版',
+    recipe_preferred: '偏好配方版',
+    no_preference: '无明显偏好',
+    insufficient_evidence: '证据不足',
+  }
+  return labels[decision]
+}
+
+function createRecipeHumanReviewIdempotencyKey(): string {
+  const suffix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `ui-recipe-human-review-${suffix}`
 }
 
 function removedStoryFileCount(results: StoryProjectDeleteResult[]): number {
@@ -2430,6 +2726,7 @@ async function loadProjects() {
       else error.value = res.error?.message ?? '加载单片项目失败'
     }),
     loadRecipeEffectHistory(),
+    loadRecipeHumanReviews(),
     listAiComicSeriesProjects(showArchivedSeries.value).then((res) => {
       if (res.ok && res.data) seriesProjects.value = res.data
       else error.value = res.error?.message ?? '加载漫剧系列失败'
@@ -2482,15 +2779,19 @@ async function loadRecipeEffectHistory() {
   loadingRecipeHistory.value = false
 }
 
-async function exportRecipeEffectMachineReport(format: 'markdown' | 'json') {
-  exportingRecipeReport.value = true
-  recipeHistoryError.value = ''
-  const res = await getStoryRecipeEffectMachineReport({
+function currentRecipeReportFilters(): StoryRecipeEffectMachineReportFilters {
+  return {
     recipe_id: recipeHistoryRecipeFilter.value || undefined,
     machine_verdict: recipeHistoryVerdictFilter.value || undefined,
     min_comparisons_per_recipe: recipeReportMinimumSample.value,
     limit: 100,
-  })
+  }
+}
+
+async function exportRecipeEffectMachineReport(format: 'markdown' | 'json') {
+  exportingRecipeReport.value = true
+  recipeHistoryError.value = ''
+  const res = await getStoryRecipeEffectMachineReport(currentRecipeReportFilters())
   if (res.ok && res.data) {
     recipeEffectReport.value = res.data
     if (format === 'markdown') {
@@ -2511,6 +2812,124 @@ async function exportRecipeEffectMachineReport(format: 'markdown' | 'json') {
     recipeHistoryError.value = res.error?.message ?? '导出创作配方机器对照报告失败'
   }
   exportingRecipeReport.value = false
+}
+
+async function loadRecipeHumanReviews() {
+  loadingRecipeHumanReviews.value = true
+  recipeHumanReviewError.value = ''
+  const res = await listStoryRecipeEffectHumanReviews({
+    reviewer_id: recipeHumanReviewReviewerFilter.value.trim() || undefined,
+    decision: recipeHumanReviewDecisionFilter.value || undefined,
+    limit: 20,
+  })
+  if (res.ok && res.data) {
+    recipeHumanReviewLedger.value = res.data
+  } else {
+    recipeHumanReviewError.value = res.error?.message ?? '加载创作配方真人评审账本失败'
+  }
+  loadingRecipeHumanReviews.value = false
+}
+
+async function prepareRecipeHumanReviewCohort() {
+  preparingRecipeHumanReviewCohort.value = true
+  recipeHumanReviewError.value = ''
+  recipeHumanReviewMessage.value = ''
+  const res = await getStoryRecipeEffectMachineReport(currentRecipeReportFilters())
+  if (res.ok && res.data) {
+    recipeEffectReport.value = res.data
+    const first = res.data.history.items[0]
+    recipeHumanReviewTarget.value = first
+      ? `${first.project_id}:${first.story_id}`
+      : ''
+    recipeHumanReviewMessage.value = first
+      ? `已准备受控 cohort：${res.data.cohort.cohort_id}，包含 ${res.data.cohort.included_comparison_count} 个可评审对照。`
+      : `cohort ${res.data.cohort.cohort_id} 当前没有可评审成员。`
+  } else {
+    recipeHumanReviewError.value = res.error?.message ?? '准备真人评审 cohort 失败'
+  }
+  preparingRecipeHumanReviewCohort.value = false
+}
+
+function recipeHumanReviewReportFilters(
+  report: StoryRecipeEffectMachineReport,
+): StoryRecipeEffectMachineReportFilters {
+  return {
+    recipe_id: report.cohort.recipe_id ?? undefined,
+    video_type: report.cohort.video_type ?? undefined,
+    machine_verdict: report.cohort.machine_verdict ?? undefined,
+    from_updated_at: report.cohort.from_updated_at ?? undefined,
+    to_updated_at: report.cohort.to_updated_at ?? undefined,
+    min_comparisons_per_recipe: report.cohort.min_comparisons_per_recipe,
+    limit: report.cohort.item_limit,
+  }
+}
+
+async function submitRecipeHumanReview() {
+  const report = recipeEffectReport.value
+  const item = selectedRecipeHumanReviewItem.value
+  if (!report || !item || !recipeHumanReviewCanSubmit.value) return
+  submittingRecipeHumanReview.value = true
+  recipeHumanReviewError.value = ''
+  recipeHumanReviewMessage.value = ''
+  const evidenceReferences = recipeHumanReviewEvidence.value
+    .split('\n')
+    .map(value => value.trim())
+    .filter((value, index, values) => Boolean(value) && values.indexOf(value) === index)
+  const request: StoryRecipeEffectHumanReviewSubmitRequest = {
+    project_id: item.project_id,
+    story_id: item.story_id,
+    cohort: {
+      cohort_id: report.cohort.cohort_id,
+      membership_sha256: report.cohort.membership_sha256,
+      report_filters: recipeHumanReviewReportFilters(report),
+    },
+    reviewer: {
+      reviewer_id: recipeHumanReviewerId.value.trim(),
+      display_name: recipeHumanReviewerName.value.trim(),
+      identity_reference: recipeHumanReviewerIdentityReference.value.trim(),
+    },
+    review: {
+      decision: recipeHumanReviewDecision.value,
+      rationale: recipeHumanReviewRationale.value.trim(),
+      evidence_references: evidenceReferences,
+      method: recipeHumanReviewMethod.value,
+    },
+    attestation: {
+      human_reviewer: true,
+      compared_both_outputs: true,
+      independent_judgment: true,
+    },
+    idempotency_key: recipeHumanReviewIdempotencyKey.value,
+  }
+  const res = await submitStoryRecipeEffectHumanReview(request)
+  if (res.ok && res.data) {
+    lastSubmittedRecipeHumanReview.value = res.data.event
+    recipeHumanReviewMessage.value = res.data.idempotent_replay
+      ? `真人评审幂等重放已确认：${res.data.event.event_id}`
+      : `真人评审已写入审核账本：${res.data.event.event_id}`
+    recipeHumanReviewRationale.value = ''
+    recipeHumanReviewEvidence.value = ''
+    recipeHumanAttestationReviewer.value = false
+    recipeHumanAttestationCompared.value = false
+    recipeHumanAttestationIndependent.value = false
+    recipeHumanReviewIdempotencyKey.value = createRecipeHumanReviewIdempotencyKey()
+    await loadRecipeHumanReviews()
+  } else {
+    recipeHumanReviewError.value = res.error?.message ?? '提交真人评审失败'
+  }
+  submittingRecipeHumanReview.value = false
+}
+
+async function copyRecipeHumanReviewHash(event: StoryRecipeEffectHumanReviewEvent) {
+  recipeHumanReviewError.value = ''
+  try {
+    await navigator.clipboard.writeText(event.event_sha256)
+    recipeHumanReviewMessage.value = `已复制事件哈希：${event.event_sha256}`
+  } catch (err) {
+    recipeHumanReviewError.value = err instanceof Error
+      ? err.message
+      : '复制真人评审事件哈希失败'
+  }
 }
 
 async function loadStoryAgentMvpStatus() {
@@ -2942,6 +3361,156 @@ onMounted(async () => {
 .projects-page__recipe-boundary {
   padding-top: 9px;
   border-top: 1px dashed #ccd7df;
+}
+
+.projects-page__human-review {
+  border-color: #d8d0e8;
+  background: linear-gradient(135deg, #fbfaff 0%, #f7f5fc 100%);
+}
+
+.projects-page__human-review-message {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: #eaf7ef;
+  color: #1f7a44;
+  font-size: 12px;
+}
+
+.projects-page__human-review-intake {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d8d0e8;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.projects-page__human-review-intake > summary {
+  color: #3f3458;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.projects-page__human-review-cohort {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f2eef9;
+  color: #55486f;
+  font-size: 12px;
+}
+
+.projects-page__human-review-cohort code,
+.projects-page__human-review-event code {
+  overflow-wrap: anywhere;
+  color: #4b3f63;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.projects-page__human-review-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.projects-page__human-review-field {
+  display: grid;
+  gap: 5px;
+  color: #4e4560;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__human-review-field--wide,
+.projects-page__human-review-attestations,
+.projects-page__human-review-submit {
+  grid-column: 1 / -1;
+}
+
+.projects-page__input,
+.projects-page__human-review-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccd5dd;
+  border-radius: 4px;
+  background: #fff;
+  color: #2f4358;
+  font: inherit;
+}
+
+.projects-page__human-review-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.projects-page__human-review-attestations {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #ead9b7;
+  border-radius: 6px;
+  background: #fff9ee;
+}
+
+.projects-page__human-review-attestations label {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  color: #6c5326;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-page__human-review-submit {
+  justify-self: start;
+  border: 0;
+}
+
+.projects-page__human-review-events {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.projects-page__human-review-event {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 10px;
+  border: 1px solid #dcd5e8;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.projects-page__human-review-event > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  color: #5c506f;
+  font-size: 12px;
+}
+
+.projects-page__human-review-event strong {
+  color: #30283f;
+}
+
+.projects-page__human-review-event p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #4f5963;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.projects-page__human-review-event code {
+  align-self: center;
+  font-size: 11px;
 }
 
 .projects-page__metric-link {
@@ -4247,6 +4816,22 @@ onMounted(async () => {
   .projects-page__recipe-history-item small {
     grid-column: 1 / -1;
     text-align: left;
+  }
+
+  .projects-page__human-review-form,
+  .projects-page__human-review-event {
+    grid-template-columns: 1fr;
+  }
+
+  .projects-page__human-review-field--wide,
+  .projects-page__human-review-attestations,
+  .projects-page__human-review-submit,
+  .projects-page__human-review-event p {
+    grid-column: 1;
+  }
+
+  .projects-page__human-review-submit {
+    width: 100%;
   }
 
   .projects-page__bulk-summary {

@@ -30,6 +30,10 @@ import type {
   StoryProjectListItem,
   StoryRecipeEffectComparisonHistory,
   StoryRecipeEffectComparisonHistoryFilters,
+  StoryRecipeEffectHumanReviewLedger,
+  StoryRecipeEffectHumanReviewLedgerFilters,
+  StoryRecipeEffectHumanReviewSubmitRequest,
+  StoryRecipeEffectHumanReviewSubmitResult,
   StoryRecipeEffectMachineReport,
   StoryRecipeEffectMachineReportFilters,
   ProductionReadinessAutomationRunRequest,
@@ -109,6 +113,29 @@ export function getStoryRecipeEffectMachineReport(
   return apiGet<StoryRecipeEffectMachineReport>(
     '/projects/recipe-effect-comparison-report',
     query,
+  )
+}
+
+export function listStoryRecipeEffectHumanReviews(
+  filters: StoryRecipeEffectHumanReviewLedgerFilters = {},
+) {
+  const query = Object.fromEntries(
+    Object.entries(filters)
+      .filter(([, value]) => value !== undefined && value !== '')
+      .map(([key, value]) => [key, String(value)]),
+  )
+  return apiGet<StoryRecipeEffectHumanReviewLedger>(
+    '/projects/recipe-effect-human-reviews',
+    query,
+  )
+}
+
+export function submitStoryRecipeEffectHumanReview(
+  request: StoryRecipeEffectHumanReviewSubmitRequest,
+) {
+  return apiPost<StoryRecipeEffectHumanReviewSubmitResult>(
+    '/projects/recipe-effect-human-reviews',
+    request,
   )
 }
 

@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`4d5b6357 feat(story-agent): export recipe cohort reports`
+> 功能基线：`ed8f0efd feat(story-agent): add human recipe review ledger`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -436,6 +436,22 @@ P1-E1 / E2 / E3 配方路线图已完成。真实参考样本、人工偏好和�
   模型代填 reviewer、偏好、理由、证据或真人声明；
 - 固定边界仍为：不声称聚合真人偏好、不证明因果、不构成法律结论、不授予生产信用。
 
+### 6.7 本轮完成：项目工作台真人评审操作界面
+
+真人评审后端现在已在项目工作台形成可操作、可复核且不伪造结论的闭环：
+
+- 项目工作台可按当前机器报告筛选条件准备受控 cohort，并显示 cohort ID、成员
+  SHA-256 和成员数；
+- 评审表要求操作员明确选择 comparison target，填写 reviewer ID、显示名、身份记录
+  引用、决定、评审方法、理由和证据引用；
+- 三项真人声明必须由操作员逐项确认，缺少任一声明或必填证据时提交保持禁用；
+- 提交沿用服务端 canonical cohort/member 复验、幂等键和项目级 `review:operate`
+  权限，不在客户端推断或代填真人结论；
+- 账本支持 reviewer/decision 筛选、事件哈希显示和剪贴板复制；
+- 没有真实操作员评审时展示诚实空状态，不用机器 verdict、fixture 或 placeholder
+  填充真人偏好；
+- 页面持续声明真人账本不证明因果、不构成法律结论，也不授予生产交付信用。
+
 ## 7. 关键代码位置
 
 ```text
@@ -472,6 +488,9 @@ web/client/src/views/Projects.vue
 配方真人评审与审核账本
 web/server/src/services/reference-recipe-human-review-ledger-service.ts
 web/server/src/__tests__/reference-recipe-human-review-ledger.test.ts
+web/client/src/api/projects.ts
+web/client/src/views/Projects.vue
+web/e2e/recipe-human-review-workbench.spec.ts
 
 Reference Library 页面
 web/client/src/views/ReferenceLibrary.vue
@@ -689,17 +708,41 @@ Integrity behaviors
   access-filtered Web API passed
 ```
 
+真人评审项目工作台新增验证：
+
+```text
+Client typecheck / Web production build / visible-copy audit
+  all passed
+
+Targeted Playwright E2E
+  1 test passed
+  honest empty state rendered
+  controlled cohort preparation passed
+  required identity/evidence fields and three attestations passed
+  canonical POST contract passed
+  recorded event and event-hash clipboard copy passed
+
+Playwright CLI visual QA
+  project workbench rendered the complete human-review panel
+  empty cohort kept target and submit controls disabled
+  accessible form labels and fixed boundary copy rendered
+  only console error was the pre-existing /favicon.ico 404
+
+Repository audit
+  git diff --check passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 4d5b6357
+functional baseline: ed8f0efd
 handoff HEAD: run git log -1 --oneline
 remote: synchronized through 4d5b6357 before this local slice
-worktree: contains the human-review ledger implementation until committed
-push: this local slice not yet pushed
+worktree: clean after committing this workbench slice
+push: the two local human-review slices are not yet pushed
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -732,13 +775,14 @@ npm run dev
 
 ## 10. 下一开发优先级
 
-P1-E1 / E2 / E3、配方机器对照历史以及真人评审服务/API/MCP 已完成。没有真实合法样本时，
-不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品需要选择：
+P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP 以及项目工作台操作界面均已
+完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品
+需要选择：
 
-- 在项目工作台增加真人评审录入、账本浏览和事件哈希复制 UI；
-- 扩展更多成片类型的 canonical 配方；
+- 优先扩展当前仍未覆盖成片类型的 canonical 配方；
+- 清理历史 generated targets，并推进真实 reviewer/writeback 的操作员闭环；
 - 继续 Story Agent 其他产品 backlog；
-- 等待用户提供合法真实样本后进入人工分析链。
+- 等待 GEARS 凭据、真实端点和用户合法真实样本后进入外部验收链。
 
 ### 真实样本到位后
 
@@ -824,11 +868,15 @@ Markdown/JSON 导出、权限安全 API、项目工作台和
 `kb_get_story_recipe_effect_report` 已闭环；空 cohort 不会被填充伪样本。
 
 真人评审服务/API/MCP 已完成：canonical cohort/member 复验、显式真人声明、幂等提交、
-owner-only 原子账本、事件哈希链、篡改 fail closed、权限过滤和空状态已闭环；尚未提交
-真实真人结论，项目工作台录入/浏览 UI 可作为下一本地开发切片。
+owner-only 原子账本、事件哈希链、篡改 fail closed、权限过滤和空状态已闭环。
 
-P1-E1 / E2 / E3、机器趋势和真人评审后端路线图完成。下一步必须根据新的产品优先级推进；
-没有用户真实合法样本时，不得伪造后续 reference analysis、人工批准或生产验收。
+真人评审项目工作台已完成：受控 cohort 准备、comparison target、reviewer 身份与证据、
+三项真人声明、提交、账本筛选、事件哈希复制和诚实空状态已闭环；尚未提交任何真实真人
+结论。
+
+P1-E1 / E2 / E3、机器趋势和真人评审全栈路线图完成。下一步优先扩展未覆盖成片类型的
+canonical 配方，或推进历史 generated targets / 真实 reviewer-writeback 治理；没有
+用户真实合法样本时，不得伪造后续 reference analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。
