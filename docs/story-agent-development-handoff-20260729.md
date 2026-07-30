@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`f58df48e feat(story-agent): normalize generated signoff portfolio`
+> 功能基线：`51384dec feat(story-agent): add manifest disposition ledger`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -915,17 +915,47 @@ Web lint / production build / visible-copy audit
   all passed
 ```
 
+Final-delivery manifest 真人处置项目工作台新增验证：
+
+```text
+UI contract
+  dry-run queue and latest canonical preflight remain the required entry point
+  operator ID, display name and identity reference are never auto-filled
+  rationale >= 10 chars, at least one evidence reference and three attestations required
+  selection changes invalidate the preflight snapshot before submission
+  exact target, disposition and authorized-media attestation are forwarded
+
+Ledger visibility and safety
+  real recorded-decision total, ready/blocked preflight totals and chain validity displayed
+  recent event ID, operator claim, status, timestamp and false publishable credit displayed
+  successful submission refreshes the owner-only durable ledger
+  operator identity remains self-attested and not independently verified
+  submission does not apply disposition, write project/manifest files, invoke final assemble,
+  or grant publishable-delivery credit
+
+Targeted Playwright E2E
+  1 test passed
+  canonical preflight -> required human intake -> exact POST -> ledger 0 to 1 passed
+  browser fixture remained isolated; real workspace ledger stayed at 0 decisions
+
+Client TypeScript lint / Web production build / visible-copy audit
+  all passed
+
+Repository audit
+  git diff --check passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: f58df48e
+functional baseline: 51384dec
 handoff HEAD: run git log -1 --oneline
 remote: synchronized through 4d5b6357 before this local slice
-worktree: clean after committing the latest manifest-disposition ledger slice
-push: six local Story Agent slices are not yet pushed
+worktree: clean after committing the latest manifest-disposition workbench slice
+push: seven local Story Agent slices are not yet pushed after committing this workbench slice
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -959,14 +989,14 @@ npm run dev
 ## 10. 下一开发优先级
 
 P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP、项目工作台操作界面、
-历史 generated targets 的签核组合归一化和 final-delivery manifest 人工处置账本均已
-完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品
-需要选择：
+历史 generated targets 的签核组合归一化、final-delivery manifest 人工处置账本及其
+真人处置项目工作台均已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或
+生产验收。下一轮可按产品需要选择：
 
 - 对活跃签核组合中的 99 个 interrupted 系列做引用恢复/重建白名单治理；827 个历史
   fixture 已可逆排除，不删除、不重写；
-- 为 10 个缺 final-delivery manifest 的系列增加 operator disposition 工作台；只有
-  真实操作员填写身份、证据和声明后才提交，当前真实账本为 0；
+- 由真实操作员使用项目工作台处理 10 个缺 final-delivery manifest 的系列；当前真实
+  账本仍为 0，模型不得代填身份、理由、证据或声明；
 - 推进真实 reviewer/writeback 的操作员闭环；
 - 继续 Story Agent 其他产品 backlog；
 - 等待 GEARS 凭据、真实端点和用户合法真实样本后进入外部验收链。
@@ -1026,6 +1056,7 @@ ed8f0efd feat(story-agent): add human recipe review ledger
 9a8a7748 feat(story-agent): expand canonical recipe coverage
 f18ebe5c feat(story-agent): cover all canonical video types
 f58df48e feat(story-agent): normalize generated signoff portfolio
+51384dec feat(story-agent): add manifest disposition ledger
 
 固定产品边界：
 主题/大纲/授权原作 → 中国文化知识 → 故事蓝图与完整文本 → 场景/分镜/GearsSegment
@@ -1075,9 +1106,11 @@ generated health 同时公开原始 1284 目标与活跃签核组合 457 目标�
 通过 manifest 可逆排除，活跃组合仍有 99 个 interrupted 系列，运行健康不得虚报。
 final-delivery manifest 人工处置 owner-only 原子账本、哈希链、API、MCP 和治理清单
 回填已完成；10 个缺口当前仍为 0 条真实操作员决定，不能由模型代填。
-下一步优先推进这 99 个引用恢复/重建白名单、10 个 manifest 缺口的操作员工作台或真实
-reviewer/writeback；没有用户真实合法样本时，不得伪造后续 reference analysis、
-人工批准或生产验收。
+最终交付真人处置项目工作台也已完成：强制空白 operator 身份、理由、证据、三项声明，
+只允许绑定当前预检快照提交，提交后刷新真实账本并始终展示零发布信用边界。
+下一步优先推进这 99 个引用恢复/重建白名单、等待真实操作员处理 10 个 manifest 缺口，
+或推进真实 reviewer/writeback；没有用户真实合法样本时，不得伪造后续 reference
+analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

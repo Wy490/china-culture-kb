@@ -23,6 +23,8 @@ test('manifest operator queue 只读预检会清空旧结果并保持零发布�
   test.setTimeout(90_000)
   const targetId = '20260619-series-0so7mqbg'
   let preflightFailure = false
+  let submittedDispositionBody: Record<string, unknown> | null = null
+  const dispositionEvents: Array<Record<string, unknown>> = []
   await page.route('**/api/system/story-agent-generated-governance-plan/run', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -116,6 +118,119 @@ test('manifest operator queue 只读预检会清空旧结果并保持零发布�
       }),
     })
   })
+  await page.route(
+    '**/api/system/story-agent-final-delivery-manifest-dispositions**',
+    async route => {
+      if (route.request().method() === 'POST') {
+        submittedDispositionBody =
+          route.request().postDataJSON() as Record<string, unknown>
+        const event = {
+          schema_version:
+            'story-agent-final-delivery-manifest-disposition-event/v1',
+          event_id:
+            'final-delivery-disposition-aabbccddeeff001122334455',
+          sequence: 1,
+          previous_event_sha256: null,
+          event_sha256: 'a'.repeat(64),
+          request_sha256: 'b'.repeat(64),
+          idempotency_key:
+            submittedDispositionBody.idempotency_key,
+          recorded_at: '2026-07-30T11:00:00.000Z',
+          series_project_id: targetId,
+          disposition:
+            submittedDispositionBody.disposition,
+          disposition_status: 'decision_recorded',
+          authorized_media_inputs_attested: false,
+          operator: submittedDispositionBody.operator,
+          decision: submittedDispositionBody.decision,
+          attestation: submittedDispositionBody.attestation,
+          preflight: {
+            schema_version:
+              'story-agent-final-delivery-manifest-preflight/v1',
+            generated_at: '2026-07-30T11:00:00.000Z',
+            status: 'ready',
+            eligible_for_selected_disposition: true,
+            checks_sha256: 'c'.repeat(64),
+            missing_dependencies: [],
+            unsafe_paths: [],
+          },
+          boundary: {
+            operator_decision_recorded: true,
+            operator_identity_independently_verified: false,
+            disposition_applied_to_project: false,
+            project_files_modified: false,
+            manifest_written: false,
+            final_assemble_invoked: false,
+            publishable_delivery_credit_granted: false,
+          },
+        }
+        dispositionEvents.splice(0, dispositionEvents.length, event)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            error: null,
+            data: {
+              schema_version:
+                'story-agent-final-delivery-manifest-disposition-submit-result/v1',
+              event,
+              idempotent_replay: false,
+            },
+          }),
+        })
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          error: null,
+          data: {
+            schema_version:
+              'story-agent-final-delivery-manifest-disposition-ledger/v1',
+            filters: {
+              series_project_id: null,
+              operator_id: null,
+              disposition: null,
+              limit: 50,
+            },
+            summary: {
+              recorded_decision_count: dispositionEvents.length,
+              returned_decision_count: dispositionEvents.length,
+              operator_decisions_recorded:
+                dispositionEvents.length > 0,
+              ready_preflight_count: dispositionEvents.length,
+              blocked_preflight_count: 0,
+              disposition_counts: {
+                preserve_fixture_exclude_from_publishable_delivery:
+                  dispositionEvents.length,
+                reexport_after_authorized_dependencies: 0,
+              },
+            },
+            entries: dispositionEvents,
+            integrity: {
+              chain_valid: true,
+              invalid_event_count: 0,
+              ledger_head_sha256:
+                dispositionEvents.length ? 'a'.repeat(64) : null,
+            },
+            boundary: {
+              source:
+                'operator_submitted_final_delivery_manifest_dispositions',
+              operator_identity_independently_verified: false,
+              disposition_applied_to_project: false,
+              project_files_modified: false,
+              manifest_written: false,
+              final_assemble_invoked: false,
+              publishable_delivery_credit_granted: false,
+            },
+          },
+        }),
+      })
+    },
+  )
   await page.goto('/projects')
   const activityDiagnostic = page.getByTestId('generation-activity-diagnostic')
   await expect(activityDiagnostic).toBeVisible({ timeout: 45_000 })
@@ -206,6 +321,64 @@ test('manifest operator queue 只读预检会清空旧结果并保持零发布�
   await expect(result).toContainText('发布信用 false')
   await expect(result).toContainText('final assemble false')
   await expect(result).not.toContainText('已可发布')
+
+  const dispositionWorkbench = page.getByTestId(
+    'manifest-disposition-workbench',
+  )
+  await expect(dispositionWorkbench).toBeVisible()
+  await expect(dispositionWorkbench).toContainText('真实人工处置 0')
+  const dispositionSubmit = page.getByTestId(
+    'manifest-disposition-submit',
+  )
+  await expect(dispositionSubmit).toBeDisabled()
+  await page.getByTestId('manifest-disposition-operator-id')
+    .fill('operator-browser-001')
+  await page.getByTestId('manifest-disposition-operator-name')
+    .fill('Browser Manifest Operator')
+  await page.getByTestId('manifest-disposition-identity-reference')
+    .fill('browser-review-roster/operator-browser-001')
+  await page.getByTestId('manifest-disposition-rationale')
+    .fill('该历史 fixture 仅保留审计并排除发布交付信用。')
+  await page.getByTestId('manifest-disposition-evidence')
+    .fill('project.json#seedance_final_delivery\npreflight#browser-fixture')
+  await page.getByTestId('manifest-disposition-attestation-human')
+    .check()
+  await page.getByTestId('manifest-disposition-attestation-preflight')
+    .check()
+  await page.getByTestId('manifest-disposition-attestation-credit')
+    .check()
+  await expect(dispositionSubmit).toBeEnabled()
+  await dispositionSubmit.click()
+  await expect(dispositionWorkbench).toContainText('人工处置已记录')
+  await expect(dispositionWorkbench).toContainText('真实人工处置 1')
+  await expect(dispositionWorkbench).toContainText(
+    'final-delivery-disposition-aabbccddeeff001122334455',
+  )
+  expect(submittedDispositionBody).toMatchObject({
+    series_project_id: targetId,
+    disposition:
+      'preserve_fixture_exclude_from_publishable_delivery',
+    authorized_media_inputs_attested: false,
+    operator: {
+      operator_id: 'operator-browser-001',
+      display_name: 'Browser Manifest Operator',
+      identity_reference:
+        'browser-review-roster/operator-browser-001',
+    },
+    decision: {
+      rationale:
+        '该历史 fixture 仅保留审计并排除发布交付信用。',
+      evidence_references: [
+        'project.json#seedance_final_delivery',
+        'preflight#browser-fixture',
+      ],
+    },
+    attestation: {
+      human_operator: true,
+      reviewed_current_preflight: true,
+      accepts_no_publishable_delivery_credit: true,
+    },
+  })
 
   const addToReview = page.getByTestId('manifest-preflight-review-add')
   await addToReview.click()

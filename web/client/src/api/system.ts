@@ -37,6 +37,9 @@ import type {
   StoryAgentGeneratedGovernanceRunResult,
   StoryAgentFinalDeliveryManifestPreflightRequest,
   StoryAgentFinalDeliveryManifestPreflightResult,
+  StoryAgentFinalDeliveryManifestDispositionLedger,
+  StoryAgentFinalDeliveryManifestDispositionSubmitRequest,
+  StoryAgentFinalDeliveryManifestDispositionSubmitResult,
   StoryAgentGeneratedHealthReport,
   StoryAgentBacklogHandoffPackage,
   StoryAgentMvpStatusReport,
@@ -137,6 +140,32 @@ export function runStoryAgentGeneratedGovernance(req: StoryAgentGeneratedGoverna
 export function preflightStoryAgentFinalDeliveryManifest(req: StoryAgentFinalDeliveryManifestPreflightRequest) {
   return apiPost<StoryAgentFinalDeliveryManifestPreflightResult>(
     '/system/story-agent-final-delivery-manifest-preflight',
+    req,
+  )
+}
+
+export function getStoryAgentFinalDeliveryManifestDispositions(options: {
+  seriesProjectId?: string
+  operatorId?: string
+  disposition?: StoryAgentFinalDeliveryManifestDispositionSubmitRequest['disposition']
+  limit?: number
+} = {}) {
+  const params = new URLSearchParams()
+  if (options.seriesProjectId) params.set('series_project_id', options.seriesProjectId)
+  if (options.operatorId) params.set('operator_id', options.operatorId)
+  if (options.disposition) params.set('disposition', options.disposition)
+  if (typeof options.limit === 'number') params.set('limit', String(options.limit))
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiGet<StoryAgentFinalDeliveryManifestDispositionLedger>(
+    `/system/story-agent-final-delivery-manifest-dispositions${suffix}`,
+  )
+}
+
+export function submitStoryAgentFinalDeliveryManifestDisposition(
+  req: StoryAgentFinalDeliveryManifestDispositionSubmitRequest,
+) {
+  return apiPost<StoryAgentFinalDeliveryManifestDispositionSubmitResult>(
+    '/system/story-agent-final-delivery-manifest-dispositions',
     req,
   )
 }

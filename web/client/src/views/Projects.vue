@@ -836,7 +836,7 @@
             </article>
           </div>
           <p class="projects-page__manifest-preflight-boundary">
-            本结果不保存 operator disposition，不执行 GEARS 合成，也不授予成片发布资格。
+            本结果本身不保存 operator disposition；只有下方真人显式提交后才写入处置账本，且仍不执行 GEARS 合成或授予成片发布资格。
           </p>
           <div class="projects-page__manifest-preflight-result-actions">
             <button
@@ -849,6 +849,169 @@
             <span v-if="manifestPreflightReviewMessage">{{ manifestPreflightReviewMessage }}</span>
           </div>
         </div>
+        <section
+          v-if="manifestPreflightResult"
+          class="projects-page__manifest-disposition-workbench"
+          data-testid="manifest-disposition-workbench"
+        >
+          <div class="projects-page__manifest-review-package-head">
+            <div>
+              <h4>最终交付 manifest 真人处置台</h4>
+              <p>
+                真实人工处置 {{ manifestDispositionLedger?.summary.recorded_decision_count ?? 0 }}
+                · ready {{ manifestDispositionLedger?.summary.ready_preflight_count ?? 0 }}
+                · blocked {{ manifestDispositionLedger?.summary.blocked_preflight_count ?? 0 }}
+                · 哈希链 {{ manifestDispositionLedger?.integrity.chain_valid ? 'valid' : '未确认' }}
+              </p>
+            </div>
+            <button
+              class="projects-page__muted-btn"
+              type="button"
+              :disabled="loadingManifestDispositions"
+              @click="loadManifestDispositionLedger"
+            >
+              {{ loadingManifestDispositions ? '刷新中…' : '刷新处置账本' }}
+            </button>
+          </div>
+
+          <p class="projects-page__manifest-preflight-boundary">
+            操作员身份由提交者自证，系统未独立核验。提交只追加防篡改处置事件，不应用到项目、不写 manifest/project.json、不调用 final assemble，也不授予发布信用。
+          </p>
+          <p
+            v-if="manifestDispositionError"
+            class="projects-page__manifest-preflight-error"
+          >
+            {{ manifestDispositionError }}
+          </p>
+          <p
+            v-if="manifestDispositionMessage"
+            class="projects-page__manifest-disposition-message"
+          >
+            {{ manifestDispositionMessage }}
+          </p>
+
+          <form
+            class="projects-page__human-review-form"
+            @submit.prevent="submitManifestDisposition"
+          >
+            <label class="projects-page__human-review-field">
+              <span>Operator ID</span>
+              <input
+                v-model="manifestDispositionOperatorId"
+                class="projects-page__input"
+                data-testid="manifest-disposition-operator-id"
+                maxlength="128"
+                pattern="[a-zA-Z0-9][a-zA-Z0-9._:@/-]*"
+                autocomplete="off"
+              />
+            </label>
+            <label class="projects-page__human-review-field">
+              <span>Operator 显示名</span>
+              <input
+                v-model="manifestDispositionOperatorName"
+                class="projects-page__input"
+                data-testid="manifest-disposition-operator-name"
+                maxlength="120"
+                autocomplete="off"
+              />
+            </label>
+            <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+              <span>身份记录引用</span>
+              <input
+                v-model="manifestDispositionIdentityReference"
+                class="projects-page__input"
+                data-testid="manifest-disposition-identity-reference"
+                maxlength="256"
+                placeholder="例如 operator-directory:operator-001"
+                autocomplete="off"
+              />
+            </label>
+            <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+              <span>处置理由</span>
+              <textarea
+                v-model="manifestDispositionRationale"
+                data-testid="manifest-disposition-rationale"
+                rows="4"
+                minlength="10"
+                maxlength="4000"
+                placeholder="写明为何选择当前处置；至少 10 个字符。"
+              ></textarea>
+            </label>
+            <label class="projects-page__human-review-field projects-page__human-review-field--wide">
+              <span>证据引用（必填，每行一项）</span>
+              <textarea
+                v-model="manifestDispositionEvidence"
+                data-testid="manifest-disposition-evidence"
+                rows="3"
+                maxlength="12849"
+                placeholder="project.json#seedance_final_delivery"
+              ></textarea>
+            </label>
+            <div class="projects-page__human-review-attestations">
+              <label>
+                <input
+                  v-model="manifestDispositionAttestationHuman"
+                  data-testid="manifest-disposition-attestation-human"
+                  type="checkbox"
+                />
+                <span>我是真实执行本次处置判断的人类操作员</span>
+              </label>
+              <label>
+                <input
+                  v-model="manifestDispositionAttestationPreflight"
+                  data-testid="manifest-disposition-attestation-preflight"
+                  type="checkbox"
+                />
+                <span>我已审阅当前项目、处置方式与最新预检结果</span>
+              </label>
+              <label>
+                <input
+                  v-model="manifestDispositionAttestationCredit"
+                  data-testid="manifest-disposition-attestation-credit"
+                  type="checkbox"
+                />
+                <span>我接受本记录不会授予 publishable-delivery credit</span>
+              </label>
+            </div>
+            <button
+              class="projects-page__cta projects-page__human-review-submit"
+              data-testid="manifest-disposition-submit"
+              type="submit"
+              :disabled="!manifestDispositionCanSubmit || submittingManifestDisposition"
+            >
+              {{ submittingManifestDisposition ? '提交中…' : '写入真人处置账本' }}
+            </button>
+          </form>
+
+          <div
+            v-if="manifestDispositionLedger?.entries.length"
+            class="projects-page__manifest-disposition-events"
+          >
+            <article
+              v-for="event in manifestDispositionLedger.entries"
+              :key="event.event_id"
+              class="projects-page__manifest-disposition-event"
+            >
+              <div>
+                <strong>{{ event.series_project_id }}</strong>
+                <span>{{ manifestDispositionLabel(event.disposition) }}</span>
+                <span>{{ manifestDispositionStatusLabel(event.disposition_status) }}</span>
+              </div>
+              <p>
+                {{ event.operator.display_name }} · {{ event.operator.operator_id }}
+                · {{ formatDate(event.recorded_at) }}
+              </p>
+              <p>
+                preflight {{ event.preflight.status }}
+                · publishable-delivery credit {{ event.boundary.publishable_delivery_credit_granted }}
+              </p>
+              <code>{{ event.event_id }}</code>
+            </article>
+          </div>
+          <p v-else class="projects-page__recipe-history-empty">
+            当前真实操作员处置账本为空；系统不会把 dry-run 或会话草案计作真人决定。
+          </p>
+        </section>
         <section
           v-if="manifestPreflightReviewItems.length"
           class="projects-page__manifest-review-package"
@@ -1412,12 +1575,14 @@ import {
   getGearsExternalCallbackHandoffQueue,
   getProductionReadinessPortfolio,
   getStoryAgentBacklogHandoff,
+  getStoryAgentFinalDeliveryManifestDispositions,
   getStoryAgentGeneratedGovernancePlan,
   getStoryAgentGeneratedHealth,
   getStoryAgentMvpStatus,
   preflightStoryAgentFinalDeliveryManifest,
   runProductionReadinessPortfolioAutomation,
   runStoryAgentGeneratedGovernance,
+  submitStoryAgentFinalDeliveryManifestDisposition,
 } from '@/api/system'
 import {
   archiveAiComicSeriesProject,
@@ -1446,6 +1611,9 @@ import type {
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedGovernanceRunResult,
   StoryAgentFinalDeliveryManifestDisposition,
+  StoryAgentFinalDeliveryManifestDispositionEvent,
+  StoryAgentFinalDeliveryManifestDispositionLedger,
+  StoryAgentFinalDeliveryManifestDispositionSubmitRequest,
   StoryAgentFinalDeliveryManifestPreflightCheckKey,
   StoryAgentFinalDeliveryManifestPreflightResult,
   StoryAgentGeneratedHealthItem,
@@ -1512,11 +1680,26 @@ const generatedGovernanceRun = ref<StoryAgentGeneratedGovernanceRunResult | null
 const manifestPreflightTargetId = ref('')
 const manifestPreflightDisposition = ref<StoryAgentFinalDeliveryManifestDisposition>('preserve_fixture_exclude_from_publishable_delivery')
 const manifestPreflightAuthorizedInputs = ref(false)
+const manifestPreflightAuthorizedInputsAtRun = ref<boolean | null>(null)
 const manifestPreflightResult = ref<StoryAgentFinalDeliveryManifestPreflightResult | null>(null)
 const manifestPreflightError = ref('')
 const manifestPreflightReviewItems = ref<StoryAgentFinalDeliveryManifestPreflightResult[]>([])
 const manifestPreflightReviewMessage = ref('')
 const runningManifestPreflight = ref(false)
+const manifestDispositionLedger = ref<StoryAgentFinalDeliveryManifestDispositionLedger | null>(null)
+const loadingManifestDispositions = ref(false)
+const submittingManifestDisposition = ref(false)
+const manifestDispositionError = ref('')
+const manifestDispositionMessage = ref('')
+const manifestDispositionOperatorId = ref('')
+const manifestDispositionOperatorName = ref('')
+const manifestDispositionIdentityReference = ref('')
+const manifestDispositionRationale = ref('')
+const manifestDispositionEvidence = ref('')
+const manifestDispositionAttestationHuman = ref(false)
+const manifestDispositionAttestationPreflight = ref(false)
+const manifestDispositionAttestationCredit = ref(false)
+const manifestDispositionIdempotencyKey = ref(createManifestDispositionIdempotencyKey())
 const generatedHealth = ref<StoryAgentGeneratedHealthReport | null>(null)
 const recipeEffectHistory = ref<StoryRecipeEffectComparisonHistory | null>(null)
 const recipeEffectReport = ref<StoryRecipeEffectMachineReport | null>(null)
@@ -1613,6 +1796,36 @@ const manifestGapQueueItems = computed(() => generatedGovernanceRun.value?.manif
 ) ?? [])
 const manifestPreflightReviewSummary = computed(() => summarizeManifestPreflightReview(
   manifestPreflightReviewItems.value,
+))
+const manifestDispositionEvidenceReferences = computed(() => (
+  manifestDispositionEvidence.value
+    .split('\n')
+    .map(value => value.trim())
+    .filter((value, index, values) => Boolean(value) && values.indexOf(value) === index)
+))
+const manifestDispositionPreflightMatchesSelection = computed(() => {
+  const result = manifestPreflightResult.value
+  if (!result) return false
+  const expectedAttestation = manifestPreflightDisposition.value === 'reexport_after_authorized_dependencies'
+    ? manifestPreflightAuthorizedInputs.value
+    : false
+  return result.series_project_id === manifestPreflightTargetId.value
+    && result.disposition === manifestPreflightDisposition.value
+    && manifestPreflightAuthorizedInputsAtRun.value === expectedAttestation
+})
+const manifestDispositionCanSubmit = computed(() => Boolean(
+  manifestDispositionPreflightMatchesSelection.value
+  && manifestDispositionOperatorId.value.trim().length >= 3
+  && /^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/.test(manifestDispositionOperatorId.value.trim())
+  && manifestDispositionOperatorName.value.trim()
+  && manifestDispositionIdentityReference.value.trim().length >= 3
+  && manifestDispositionRationale.value.trim().length >= 10
+  && manifestDispositionEvidenceReferences.value.length > 0
+  && manifestDispositionEvidenceReferences.value.length <= 50
+  && manifestDispositionEvidenceReferences.value.every(reference => reference.length <= 256)
+  && manifestDispositionAttestationHuman.value
+  && manifestDispositionAttestationPreflight.value
+  && manifestDispositionAttestationCredit.value,
 ))
 
 const filteredProjects = computed(() => {
@@ -2045,8 +2258,10 @@ function exportManifestPreflightReviewJson() {
 
 function resetManifestPreflightResult() {
   manifestPreflightResult.value = null
+  manifestPreflightAuthorizedInputsAtRun.value = null
   manifestPreflightError.value = ''
   manifestPreflightReviewMessage.value = ''
+  manifestDispositionMessage.value = ''
 }
 
 function handleManifestPreflightDispositionChange() {
@@ -2157,6 +2372,27 @@ function createRecipeHumanReviewIdempotencyKey(): string {
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`
   return `ui-recipe-human-review-${suffix}`
+}
+
+function createManifestDispositionIdempotencyKey(): string {
+  const suffix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `ui-manifest-disposition-${suffix}`
+}
+
+function manifestDispositionLabel(disposition: StoryAgentFinalDeliveryManifestDisposition): string {
+  return disposition === 'preserve_fixture_exclude_from_publishable_delivery'
+    ? '保留夹具并排除发布签收'
+    : '依赖授权齐备后申请重导出'
+}
+
+function manifestDispositionStatusLabel(
+  status: StoryAgentFinalDeliveryManifestDispositionEvent['disposition_status'],
+): string {
+  return status === 'decision_recorded'
+    ? '处置决定已记录'
+    : '处置决定已记录，仍待依赖'
 }
 
 function removedStoryFileCount(results: StoryProjectDeleteResult[]): number {
@@ -2716,6 +2952,82 @@ async function handleRetainRecentProjects() {
   retainingRecent.value = false
 }
 
+async function loadManifestDispositionLedger() {
+  loadingManifestDispositions.value = true
+  manifestDispositionError.value = ''
+  try {
+    const res = await getStoryAgentFinalDeliveryManifestDispositions({ limit: 50 })
+    if (res.ok && res.data) {
+      manifestDispositionLedger.value = res.data
+    } else {
+      manifestDispositionError.value = res.error?.message ?? '加载最终交付 manifest 人工处置账本失败'
+    }
+  } catch (ledgerError) {
+    manifestDispositionError.value = ledgerError instanceof Error
+      ? ledgerError.message
+      : '加载最终交付 manifest 人工处置账本失败'
+  } finally {
+    loadingManifestDispositions.value = false
+  }
+}
+
+async function submitManifestDisposition() {
+  const result = manifestPreflightResult.value
+  if (!result || !manifestDispositionCanSubmit.value) return
+
+  submittingManifestDisposition.value = true
+  manifestDispositionError.value = ''
+  manifestDispositionMessage.value = ''
+  const authorizedMediaInputsAttested =
+    manifestPreflightDisposition.value === 'reexport_after_authorized_dependencies'
+      ? manifestPreflightAuthorizedInputs.value
+      : false
+  const request: StoryAgentFinalDeliveryManifestDispositionSubmitRequest = {
+    series_project_id: result.series_project_id,
+    disposition: result.disposition,
+    authorized_media_inputs_attested: authorizedMediaInputsAttested,
+    operator: {
+      operator_id: manifestDispositionOperatorId.value.trim(),
+      display_name: manifestDispositionOperatorName.value.trim(),
+      identity_reference: manifestDispositionIdentityReference.value.trim(),
+    },
+    decision: {
+      rationale: manifestDispositionRationale.value.trim(),
+      evidence_references: manifestDispositionEvidenceReferences.value,
+    },
+    attestation: {
+      human_operator: true,
+      reviewed_current_preflight: true,
+      accepts_no_publishable_delivery_credit: true,
+    },
+    idempotency_key: manifestDispositionIdempotencyKey.value,
+  }
+
+  try {
+    const res = await submitStoryAgentFinalDeliveryManifestDisposition(request)
+    if (res.ok && res.data) {
+      manifestDispositionMessage.value = res.data.idempotent_replay
+        ? `人工处置幂等重放已确认：${res.data.event.event_id}`
+        : `人工处置已记录：${res.data.event.event_id}`
+      manifestDispositionRationale.value = ''
+      manifestDispositionEvidence.value = ''
+      manifestDispositionAttestationHuman.value = false
+      manifestDispositionAttestationPreflight.value = false
+      manifestDispositionAttestationCredit.value = false
+      manifestDispositionIdempotencyKey.value = createManifestDispositionIdempotencyKey()
+      await loadManifestDispositionLedger()
+    } else {
+      manifestDispositionError.value = res.error?.message ?? '最终交付 manifest 人工处置提交失败'
+    }
+  } catch (submitError) {
+    manifestDispositionError.value = submitError instanceof Error
+      ? submitError.message
+      : '最终交付 manifest 人工处置提交失败'
+  } finally {
+    submittingManifestDisposition.value = false
+  }
+}
+
 async function loadProjects() {
   loading.value = true
   error.value = ''
@@ -2727,6 +3039,7 @@ async function loadProjects() {
     }),
     loadRecipeEffectHistory(),
     loadRecipeHumanReviews(),
+    loadManifestDispositionLedger(),
     listAiComicSeriesProjects(showArchivedSeries.value).then((res) => {
       if (res.ok && res.data) seriesProjects.value = res.data
       else error.value = res.error?.message ?? '加载漫剧系列失败'
@@ -3096,6 +3409,7 @@ async function runManifestPreflight() {
         return
       }
       manifestPreflightResult.value = res.data
+      manifestPreflightAuthorizedInputsAtRun.value = requestedAttestation
     } else {
       manifestPreflightError.value = res.error?.message ?? '只读预检不可用'
     }
@@ -3899,6 +4213,61 @@ onMounted(async () => {
   color: #52616f;
   font-size: 12px;
   font-weight: 700;
+}
+
+.projects-page__manifest-disposition-workbench {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #9fc5ad;
+  border-radius: 7px;
+  background: #f6fcf8;
+}
+
+.projects-page__manifest-disposition-message {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #a9d7bb;
+  border-radius: 6px;
+  background: #eaf7ef;
+  color: #176b3a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.projects-page__manifest-disposition-events {
+  display: grid;
+  gap: 8px;
+}
+
+.projects-page__manifest-disposition-event {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid #c7d2df;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.projects-page__manifest-disposition-event > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  align-items: center;
+  color: #33475b;
+  font-size: 12px;
+}
+
+.projects-page__manifest-disposition-event p {
+  margin: 0;
+  color: #52616f;
+  font-size: 12px;
+}
+
+.projects-page__manifest-disposition-event code {
+  overflow-wrap: anywhere;
+  color: #66727f;
+  font-size: 11px;
 }
 
 .projects-page__manifest-review-package {
