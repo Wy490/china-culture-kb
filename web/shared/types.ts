@@ -3761,6 +3761,111 @@ export interface StoryAgentFinalDeliveryManifestPreflightResult {
   markdown: string;
 }
 
+export interface StoryAgentFinalDeliveryManifestDispositionSubmitRequest
+  extends StoryAgentFinalDeliveryManifestPreflightRequest {
+  operator: {
+    operator_id: string;
+    display_name: string;
+    identity_reference: string;
+  };
+  decision: {
+    rationale: string;
+    evidence_references: string[];
+  };
+  attestation: {
+    human_operator: true;
+    reviewed_current_preflight: true;
+    accepts_no_publishable_delivery_credit: true;
+  };
+  idempotency_key: string;
+}
+
+export type StoryAgentFinalDeliveryManifestDispositionStatus =
+  | 'decision_recorded'
+  | 'decision_recorded_pending_dependencies';
+
+export interface StoryAgentFinalDeliveryManifestDispositionEvent {
+  schema_version: 'story-agent-final-delivery-manifest-disposition-event/v1';
+  event_id: string;
+  sequence: number;
+  previous_event_sha256: string | null;
+  event_sha256: string;
+  request_sha256: string;
+  idempotency_key: string;
+  recorded_at: string;
+  series_project_id: string;
+  disposition: StoryAgentFinalDeliveryManifestDisposition;
+  disposition_status: StoryAgentFinalDeliveryManifestDispositionStatus;
+  authorized_media_inputs_attested: boolean;
+  operator: StoryAgentFinalDeliveryManifestDispositionSubmitRequest['operator'];
+  decision: StoryAgentFinalDeliveryManifestDispositionSubmitRequest['decision'];
+  attestation: StoryAgentFinalDeliveryManifestDispositionSubmitRequest['attestation'];
+  preflight: {
+    schema_version: 'story-agent-final-delivery-manifest-preflight/v1';
+    generated_at: string;
+    status: 'ready' | 'blocked';
+    eligible_for_selected_disposition: boolean;
+    checks_sha256: string;
+    missing_dependencies: string[];
+    unsafe_paths: string[];
+  };
+  boundary: {
+    operator_decision_recorded: true;
+    operator_identity_independently_verified: false;
+    disposition_applied_to_project: false;
+    project_files_modified: false;
+    manifest_written: false;
+    final_assemble_invoked: false;
+    publishable_delivery_credit_granted: false;
+  };
+}
+
+export interface StoryAgentFinalDeliveryManifestDispositionSubmitResult {
+  schema_version: 'story-agent-final-delivery-manifest-disposition-submit-result/v1';
+  event: StoryAgentFinalDeliveryManifestDispositionEvent;
+  idempotent_replay: boolean;
+}
+
+export interface StoryAgentFinalDeliveryManifestDispositionLedgerFilters {
+  series_project_id?: string;
+  operator_id?: string;
+  disposition?: StoryAgentFinalDeliveryManifestDisposition;
+  limit?: number;
+}
+
+export interface StoryAgentFinalDeliveryManifestDispositionLedger {
+  schema_version: 'story-agent-final-delivery-manifest-disposition-ledger/v1';
+  filters: {
+    series_project_id: string | null;
+    operator_id: string | null;
+    disposition: StoryAgentFinalDeliveryManifestDisposition | null;
+    limit: number;
+  };
+  summary: {
+    recorded_decision_count: number;
+    returned_decision_count: number;
+    operator_decisions_recorded: boolean;
+    ready_preflight_count: number;
+    blocked_preflight_count: number;
+    disposition_counts: Record<StoryAgentFinalDeliveryManifestDisposition, number>;
+  };
+  entries: StoryAgentFinalDeliveryManifestDispositionEvent[];
+  integrity: {
+    chain_valid: true;
+    invalid_event_count: 0;
+    ledger_head_sha256: string | null;
+  };
+  boundary: {
+    source: 'operator_submitted_final_delivery_manifest_dispositions';
+    operator_identity_independently_verified: false;
+    disposition_applied_to_project: false;
+    project_files_modified: false;
+    manifest_written: false;
+    final_assemble_invoked: false;
+    publishable_delivery_credit_granted: false;
+  };
+}
+
 export interface StoryAgentGeneratedGovernanceRunTarget {
   action_key: StoryAgentGeneratedGovernanceActionKey;
   scope: StoryAgentGeneratedHealthScope;
@@ -3770,7 +3875,12 @@ export interface StoryAgentGeneratedGovernanceRunTarget {
   planned_operation: string;
   expected_file_changes: string[];
   requires_operator_review: boolean;
-  operator_disposition_status?: 'awaiting_operator_decision';
+  operator_disposition_status?:
+    | 'awaiting_operator_decision'
+    | StoryAgentFinalDeliveryManifestDispositionStatus;
+  recorded_operator_disposition?: StoryAgentFinalDeliveryManifestDisposition;
+  operator_disposition_event_id?: string;
+  operator_disposition_preflight_status?: 'ready' | 'blocked';
   allowed_operator_dispositions?: StoryAgentFinalDeliveryManifestDisposition[];
   preflight_checks?: string[];
   preflight_api?: {

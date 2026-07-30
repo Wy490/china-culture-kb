@@ -9,6 +9,9 @@ import type {
   StoryAgentGeneratedHealthItem,
 } from '@shared/types.js';
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
+import {
+  collectFinalDeliveryManifestDispositionEvents,
+} from './final-delivery-manifest-disposition-ledger-service.js';
 
 interface GeneratedGovernanceOptions {
   limit?: number;
@@ -337,6 +340,11 @@ export async function runStoryAgentGeneratedGovernance(
   const health = await getStoryAgentGeneratedHealth();
   const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
   const storyItems = health.items.filter(item => item.scope === 'story_project');
+  const dispositionEvents =
+    await collectFinalDeliveryManifestDispositionEvents();
+  const latestDispositionByProject = new Map(
+    dispositionEvents.map(event => [event.series_project_id, event]),
+  );
   const targetGroups: Record<StoryAgentGeneratedGovernanceActionKey, StoryAgentGeneratedHealthItem[]> = {
     review_final_delivery_manifest_gaps: seriesItems.filter(item => item.final_delivery_manifest_missing === true),
     restore_or_relink_series_story_refs: seriesItems.filter(item => item.relink_candidate),
@@ -363,6 +371,10 @@ export async function runStoryAgentGeneratedGovernance(
     for (const item of targets) {
       if (manifestItems.length >= maxTargets) break;
       const target = toTarget(item);
+      const recordedDisposition = action.action_key ===
+        'review_final_delivery_manifest_gaps'
+        ? latestDispositionByProject.get(target.project_id)
+        : undefined;
       manifestItems.push({
         action_key: action.action_key,
         scope: target.scope,
@@ -373,7 +385,15 @@ export async function runStoryAgentGeneratedGovernance(
         expected_file_changes: expectedFileChanges(action.action_key, target),
         requires_operator_review: requiresOperatorReview(action.action_key),
         ...(action.action_key === 'review_final_delivery_manifest_gaps' ? {
-          operator_disposition_status: 'awaiting_operator_decision' as const,
+          operator_disposition_status: recordedDisposition?.disposition_status
+            ?? 'awaiting_operator_decision' as const,
+          ...(recordedDisposition ? {
+            recorded_operator_disposition:
+              recordedDisposition.disposition,
+            operator_disposition_event_id: recordedDisposition.event_id,
+            operator_disposition_preflight_status:
+              recordedDisposition.preflight.status,
+          } : {}),
           allowed_operator_dispositions: [
             'preserve_fixture_exclude_from_publishable_delivery' as const,
             'reexport_after_authorized_dependencies' as const,

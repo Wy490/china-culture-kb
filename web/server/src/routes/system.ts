@@ -15,6 +15,8 @@ import {
   ProductionReadinessPortfolioRunRequestSchema,
   ProductResourceOwnershipMigrationRequestSchema,
   StoryDomainSafetyMigrationRequestSchema,
+  StoryAgentFinalDeliveryManifestDispositionLedgerQuerySchema,
+  StoryAgentFinalDeliveryManifestDispositionSubmitRequestSchema,
   StoryAgentFinalDeliveryManifestPreflightRequestSchema,
   StoryProjectFileToSqliteMigrationRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
@@ -78,6 +80,10 @@ import {
   getStoryAgentGeneratedHealth,
 } from '../services/generated-health-service.js';
 import { preflightStoryAgentFinalDeliveryManifest } from '../services/final-delivery-manifest-preflight-service.js';
+import {
+  readFinalDeliveryManifestDispositionLedger,
+  submitFinalDeliveryManifestDisposition,
+} from '../services/final-delivery-manifest-disposition-ledger-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from '../services/knowledge-writeback-queue-service.js';
 import { getStoryAgentMvpStatus } from '../services/story-agent-mvp-status-service.js';
 import { getStoryAgentVisualAssetPressureOpsStatus } from '../services/story-agent-visual-asset-pressure-ops-service.js';
@@ -276,6 +282,7 @@ systemRouter.use((req, res, next) => {
     req.path.includes('/production-readiness')
     || req.path.includes('/gears-')
     || req.path.includes('/seedance-')
+    || req.path.includes('/final-delivery-manifest-')
   ) {
     requireSystemProductionOperation(req, res, next);
     return;
@@ -663,6 +670,43 @@ systemRouter.post(
   async (req, res, next) => {
     try {
       res.json(success(await preflightStoryAgentFinalDeliveryManifest(req.body)));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET/POST /api/system/story-agent-final-delivery-manifest-dispositions
+// ---------------------------------------------------------------------------
+
+systemRouter.get(
+  '/story-agent-final-delivery-manifest-dispositions',
+  requireSystemProductionOperation,
+  validateQuery(StoryAgentFinalDeliveryManifestDispositionLedgerQuerySchema),
+  async (req, res, next) => {
+    try {
+      const filters =
+        StoryAgentFinalDeliveryManifestDispositionLedgerQuerySchema.parse(
+          req.query,
+        );
+      res.json(success(
+        await readFinalDeliveryManifestDispositionLedger({}, filters),
+      ));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+systemRouter.post(
+  '/story-agent-final-delivery-manifest-dispositions',
+  validateBody(StoryAgentFinalDeliveryManifestDispositionSubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(
+        await submitFinalDeliveryManifestDisposition(req.body),
+      ));
     } catch (err) {
       next(err);
     }

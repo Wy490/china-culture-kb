@@ -3371,6 +3371,129 @@ describe('System API', () => {
         (check: { status: string }) => check.status === 'passed',
       )).toBe(true);
 
+      const emptyDispositionLedgerRes = await request.get(
+        '/api/system/story-agent-final-delivery-manifest-dispositions'
+        + '?operator_id=operator-api-manifest',
+      );
+      expect(emptyDispositionLedgerRes.status).toBe(200);
+      expectSuccess(emptyDispositionLedgerRes.body);
+      expect(emptyDispositionLedgerRes.body.data).toMatchObject({
+        schema_version:
+          'story-agent-final-delivery-manifest-disposition-ledger/v1',
+        summary: {
+          recorded_decision_count: 0,
+          operator_decisions_recorded: false,
+        },
+        entries: [],
+        boundary: {
+          operator_identity_independently_verified: false,
+          disposition_applied_to_project: false,
+          project_files_modified: false,
+          manifest_written: false,
+          final_assemble_invoked: false,
+          publishable_delivery_credit_granted: false,
+        },
+      });
+
+      const dispositionRequest = {
+        series_project_id: 'health-manifest-gap-series',
+        disposition:
+          'preserve_fixture_exclude_from_publishable_delivery',
+        authorized_media_inputs_attested: false,
+        operator: {
+          operator_id: 'operator-api-manifest',
+          display_name: 'API Manifest Operator',
+          identity_reference: 'api-test-roster/operator-api-manifest',
+        },
+        decision: {
+          rationale:
+            '该历史 dry-run fixture 保留审计，但不授予可发布交付信用。',
+          evidence_references: [
+            'project.json#seedance_final_delivery',
+            'preflight#health-manifest-gap-series',
+          ],
+        },
+        attestation: {
+          human_operator: true,
+          reviewed_current_preflight: true,
+          accepts_no_publishable_delivery_credit: true,
+        },
+        idempotency_key: 'manifest-api-disposition-20260730-0001',
+      };
+      const submittedDispositionRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-dispositions')
+        .send(dispositionRequest);
+      expect(submittedDispositionRes.status).toBe(200);
+      expectSuccess(submittedDispositionRes.body);
+      expect(submittedDispositionRes.body.data).toMatchObject({
+        schema_version:
+          'story-agent-final-delivery-manifest-disposition-submit-result/v1',
+        idempotent_replay: false,
+        event: {
+          schema_version:
+            'story-agent-final-delivery-manifest-disposition-event/v1',
+          series_project_id: 'health-manifest-gap-series',
+          disposition:
+            'preserve_fixture_exclude_from_publishable_delivery',
+          disposition_status: 'decision_recorded',
+          preflight: {
+            status: 'ready',
+            eligible_for_selected_disposition: true,
+          },
+          boundary: {
+            operator_decision_recorded: true,
+            disposition_applied_to_project: false,
+            project_files_modified: false,
+            manifest_written: false,
+            final_assemble_invoked: false,
+            publishable_delivery_credit_granted: false,
+          },
+        },
+      });
+      const replayDispositionRes = await request
+        .post('/api/system/story-agent-final-delivery-manifest-dispositions')
+        .send(dispositionRequest);
+      expect(replayDispositionRes.status).toBe(200);
+      expect(replayDispositionRes.body.data.idempotent_replay).toBe(true);
+
+      const recordedDispositionLedgerRes = await request.get(
+        '/api/system/story-agent-final-delivery-manifest-dispositions'
+        + '?series_project_id=health-manifest-gap-series',
+      );
+      expect(recordedDispositionLedgerRes.status).toBe(200);
+      expect(recordedDispositionLedgerRes.body.data).toMatchObject({
+        summary: {
+          recorded_decision_count: 1,
+          operator_decisions_recorded: true,
+        },
+        entries: [expect.objectContaining({
+          series_project_id: 'health-manifest-gap-series',
+        })],
+      });
+
+      const recordedManifestQueueRes = await request
+        .post('/api/system/story-agent-generated-governance-plan/run')
+        .send({
+          dry_run: true,
+          action_keys: ['review_final_delivery_manifest_gaps'],
+          project_ids: ['health-manifest-gap-series'],
+          max_targets: 1,
+        });
+      expect(recordedManifestQueueRes.status).toBe(200);
+      expect(recordedManifestQueueRes.body.data.manifest.items).toEqual([
+        expect.objectContaining({
+          project_id: 'health-manifest-gap-series',
+          operator_disposition_status: 'decision_recorded',
+          recorded_operator_disposition:
+            'preserve_fixture_exclude_from_publishable_delivery',
+          operator_disposition_event_id: expect.stringMatching(
+            /^final-delivery-disposition-[a-f0-9]{24}$/,
+          ),
+          operator_disposition_preflight_status: 'ready',
+          publishable_delivery_credit_granted: false,
+        }),
+      ]);
+
       const missingDispositionPreflightRes = await request
         .post('/api/system/story-agent-final-delivery-manifest-preflight')
         .send({ series_project_id: 'health-manifest-gap-series' });
@@ -3396,7 +3519,9 @@ describe('System API', () => {
             project_id: 'health-manifest-gap-series',
             status: 'blocked',
             expected_file_changes: [],
-            operator_disposition_status: 'awaiting_operator_decision',
+            operator_disposition_status: 'decision_recorded',
+            recorded_operator_disposition:
+              'preserve_fixture_exclude_from_publishable_delivery',
             publishable_delivery_credit_granted: false,
           })],
         },
@@ -3425,6 +3550,11 @@ describe('System API', () => {
       await rm(resolve(generatedRoot, 'cuts', readyPreflightProjectId), { recursive: true, force: true });
       await rm(resolve(generatedRoot, 'subtitles', readyPreflightProjectId), { recursive: true, force: true });
       await rm(resolve(generatedRoot, 'title-cards', readyPreflightProjectId), { recursive: true, force: true });
+      await rm(resolve(
+        generatedRoot,
+        'system',
+        'final-delivery-manifest-dispositions.json',
+      ), { force: true });
       await rm(archiveSeriesDir, { recursive: true, force: true });
       await rm(resolve(storyFileDir, '20260622-story-health-series-1.json'), { force: true });
     });
@@ -3869,7 +3999,7 @@ describe('System API', () => {
       ]));
       expect(res.body.data.progress.find((slice: any) => slice.key === 'mcp_story_agent_loop')?.evidence).toEqual(expect.arrayContaining([
         'implementation_progress=100',
-        expect.stringContaining('tool_count=42'),
+        expect.stringContaining('tool_count=45'),
         'reference_text_analysis_tools=12',
         'private_video_sample_tools=3',
         expect.stringContaining('kb_story_agent_generate'),

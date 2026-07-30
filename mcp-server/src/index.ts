@@ -74,6 +74,10 @@ import {
 import { getStoryAgentBacklogHandoff } from './tools/get-story-agent-backlog-handoff.js';
 import { getStoryAgentGeneratedHealth } from './tools/get-generated-health.js';
 import { preflightStoryAgentFinalDeliveryManifest } from './tools/preflight-final-delivery-manifest.js';
+import {
+  getFinalDeliveryManifestDispositions,
+  submitFinalDeliveryManifestDisposition,
+} from './tools/final-delivery-manifest-dispositions.js';
 import { getStoryAgentMvpStatus } from './tools/get-story-agent-mvp-status.js';
 import {
   getDomainPackExpansionCandidateToolResult,
@@ -1605,6 +1609,80 @@ server.tool(
   },
   async (input) => {
     const result = await preflightStoryAgentFinalDeliveryManifest(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  },
+);
+
+server.tool(
+  'kb_get_story_agent_final_delivery_manifest_dispositions',
+  '查询 canonical Story Agent Web/API 中由真实操作员明确提交的 final-delivery manifest 处置账本。空账本保持为空；不会把预检、模型推断或 dry-run 冒充人工决定，也不授予交付信用。',
+  {
+    series_project_id: z.string().trim().min(1).max(160)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
+      .optional()
+      .describe('筛选 AI 漫剧系列项目 ID'),
+    operator_id: z.string().trim().min(3).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/)
+      .optional()
+      .describe('筛选操作员 ID 声明'),
+    disposition: z.enum([
+      'preserve_fixture_exclude_from_publishable_delivery',
+      'reexport_after_authorized_dependencies',
+    ]).optional().describe('筛选已记录处置方式'),
+    limit: z.number().int().min(1).max(100).optional()
+      .describe('最多返回多少个事件'),
+  },
+  async (input) => {
+    const result = await getFinalDeliveryManifestDispositions(input);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      }],
+    };
+  },
+);
+
+server.tool(
+  'kb_submit_story_agent_final_delivery_manifest_disposition',
+  '仅转发用户明确提供、由真人操作员完成的 final-delivery manifest 处置。不得由模型代填 operator、理由、证据或真人声明；canonical 服务会重跑当前预检、验证 manifest 缺口、写入哈希链账本，但不会修改项目、生成 manifest、执行合成或授予交付信用。',
+  {
+    series_project_id: z.string().trim().min(1).max(160)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
+      .describe('待处置的 AI 漫剧系列项目 ID'),
+    disposition: z.enum([
+      'preserve_fixture_exclude_from_publishable_delivery',
+      'reexport_after_authorized_dependencies',
+    ]).describe('真人操作员选择的处置方式'),
+    authorized_media_inputs_attested: z.boolean().optional()
+      .describe('仅 reexport 使用；真人是否证明媒体输入已获授权'),
+    operator: z.object({
+      operator_id: z.string().trim().min(3).max(128)
+        .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/),
+      display_name: z.string().trim().min(1).max(120),
+      identity_reference: z.string().trim().min(3).max(256),
+    }).strict(),
+    decision: z.object({
+      rationale: z.string().trim().min(10).max(4000),
+      evidence_references: z.array(
+        z.string().trim().min(1).max(256),
+      ).min(1).max(50),
+    }).strict(),
+    attestation: z.object({
+      human_operator: z.literal(true),
+      reviewed_current_preflight: z.literal(true),
+      accepts_no_publishable_delivery_credit: z.literal(true),
+    }).strict(),
+    idempotency_key: z.string().trim().min(8).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/),
+  },
+  async (input) => {
+    const result = await submitFinalDeliveryManifestDisposition(input);
     return {
       content: [{
         type: 'text',

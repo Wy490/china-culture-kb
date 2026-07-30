@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`f18ebe5c feat(story-agent): cover all canonical video types`
+> 功能基线：`f58df48e feat(story-agent): normalize generated signoff portfolio`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -876,17 +876,56 @@ Server TypeScript lint / MCP TypeScript build
   passed
 ```
 
+Final-delivery manifest 人工处置账本新增验证：
+
+```text
+Contract
+  canonical preflight reruns on every submitted decision
+  operator identity reference, rationale, evidence and three attestations required
+  preserve and reexport decisions are recorded separately
+  blocked reexport remains decision_recorded_pending_dependencies
+
+Integrity and safety
+  owner-only atomic storage with lock + fsync
+  ordered event hash chain and tamper fail-closed
+  idempotent replay and conflicting-key rejection
+  governance dry-run manifest reads the latest recorded disposition
+  project JSON, media, final manifest and final assembly remain unchanged
+  operator identity is self-attested, not independently verified by the system
+  no publishable-delivery credit is granted
+
+Real workspace state
+  10 current final-delivery manifest gaps
+  0 real operator disposition events
+  empty ledger remains honest; tests only wrote isolated temporary fixtures
+
+Web/API and MCP
+  GET/POST canonical system endpoints require production operation access
+  MCP get/submit bridges preserve canonical validation failures
+  MCP Story Agent tool inventory corrected from 42 to 45
+
+Server full regression
+  190 files passed, 1 skipped
+  1588 tests passed, 2 skipped
+
+MCP full regression
+  103 files / 543 tests passed
+
+Web lint / production build / visible-copy audit
+  all passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: f18ebe5c
+functional baseline: f58df48e
 handoff HEAD: run git log -1 --oneline
 remote: synchronized through 4d5b6357 before this local slice
-worktree: clean after committing the latest generated-target governance slice
-push: five local Story Agent slices are not yet pushed
+worktree: clean after committing the latest manifest-disposition ledger slice
+push: six local Story Agent slices are not yet pushed
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -919,13 +958,15 @@ npm run dev
 
 ## 10. 下一开发优先级
 
-P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP、项目工作台操作界面和
-历史 generated targets 的签核组合归一化均已完成。没有真实合法样本时，不继续伪造
-参考分析、真人偏好或生产验收。下一轮可按产品需要选择：
+P1-E1 / E2 / E3、配方机器对照历史、真人评审服务/API/MCP、项目工作台操作界面、
+历史 generated targets 的签核组合归一化和 final-delivery manifest 人工处置账本均已
+完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品
+需要选择：
 
 - 对活跃签核组合中的 99 个 interrupted 系列做引用恢复/重建白名单治理；827 个历史
   fixture 已可逆排除，不删除、不重写；
-- 为 10 个缺 final-delivery manifest 的系列增加真实 operator disposition 持久账本；
+- 为 10 个缺 final-delivery manifest 的系列增加 operator disposition 工作台；只有
+  真实操作员填写身份、证据和声明后才提交，当前真实账本为 0；
 - 推进真实 reviewer/writeback 的操作员闭环；
 - 继续 Story Agent 其他产品 backlog；
 - 等待 GEARS 凭据、真实端点和用户合法真实样本后进入外部验收链。
@@ -984,6 +1025,7 @@ ed8f0efd feat(story-agent): add human recipe review ledger
 955f64cc feat(story-agent): add recipe human review workbench
 9a8a7748 feat(story-agent): expand canonical recipe coverage
 f18ebe5c feat(story-agent): cover all canonical video types
+f58df48e feat(story-agent): normalize generated signoff portfolio
 
 固定产品边界：
 主题/大纲/授权原作 → 中国文化知识 → 故事蓝图与完整文本 → 场景/分镜/GearsSegment
@@ -1031,9 +1073,11 @@ owner-only 原子账本、事件哈希链、篡改 fail closed、权限过滤和
 P1-E1 / E2 / E3、机器趋势、真人评审全栈路线图和 15/15 canonical 配方覆盖完成。
 generated health 同时公开原始 1284 目标与活跃签核组合 457 目标；827 个历史 fixture
 通过 manifest 可逆排除，活跃组合仍有 99 个 interrupted 系列，运行健康不得虚报。
-下一步优先推进这 99 个引用恢复/重建白名单、10 个 final-delivery manifest 人工处置
-账本或真实 reviewer/writeback；没有用户真实合法样本时，不得伪造后续 reference
-analysis、人工批准或生产验收。
+final-delivery manifest 人工处置 owner-only 原子账本、哈希链、API、MCP 和治理清单
+回填已完成；10 个缺口当前仍为 0 条真实操作员决定，不能由模型代填。
+下一步优先推进这 99 个引用恢复/重建白名单、10 个 manifest 缺口的操作员工作台或真实
+reviewer/writeback；没有用户真实合法样本时，不得伪造后续 reference analysis、
+人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

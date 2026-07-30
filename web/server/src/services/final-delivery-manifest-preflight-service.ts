@@ -113,9 +113,13 @@ function renderMarkdown(result: Omit<StoryAgentFinalDeliveryManifestPreflightRes
 
 export async function preflightStoryAgentFinalDeliveryManifest(
   input: StoryAgentFinalDeliveryManifestPreflightRequest,
+  options: {
+    generatedRoot?: string;
+    now?: () => Date;
+  } = {},
 ): Promise<StoryAgentFinalDeliveryManifestPreflightResult> {
-  const generatedAt = new Date().toISOString();
-  const generatedRoot = storyGeneratedRoot();
+  const generatedAt = (options.now?.() ?? new Date()).toISOString();
+  const generatedRoot = options.generatedRoot ?? storyGeneratedRoot();
   const projectId = input.series_project_id.trim();
   const projectRoot = resolve(generatedRoot, 'ai-comic-series-projects');
   const projectDir = resolve(projectRoot, projectId);

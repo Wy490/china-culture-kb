@@ -3522,6 +3522,49 @@ export const StoryAgentFinalDeliveryManifestPreflightRequestSchema = z.object({
   authorized_media_inputs_attested: z.boolean().optional().default(false),
 }).strict();
 
+const StoryAgentFinalDeliveryManifestDispositionSchema = z.enum([
+  'preserve_fixture_exclude_from_publishable_delivery',
+  'reexport_after_authorized_dependencies',
+]);
+
+export const StoryAgentFinalDeliveryManifestDispositionSubmitRequestSchema = z.object({
+  series_project_id: z.string().trim().min(1).max(160)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
+  disposition: StoryAgentFinalDeliveryManifestDispositionSchema,
+  authorized_media_inputs_attested: z.boolean().optional().default(false),
+  operator: z.object({
+    operator_id: z.string().trim().min(3).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/),
+    display_name: z.string().trim().min(1).max(120),
+    identity_reference: z.string().trim().min(3).max(256),
+  }).strict(),
+  decision: z.object({
+    rationale: z.string().trim().min(10).max(4000),
+    evidence_references: z.array(z.string().trim().min(1).max(256))
+      .min(1)
+      .max(50)
+      .refine(uniqueReferenceIds, 'evidence_references must be unique'),
+  }).strict(),
+  attestation: z.object({
+    human_operator: z.literal(true),
+    reviewed_current_preflight: z.literal(true),
+    accepts_no_publishable_delivery_credit: z.literal(true),
+  }).strict(),
+  idempotency_key: z.string().trim().min(8).max(128)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/),
+}).strict();
+
+export const StoryAgentFinalDeliveryManifestDispositionLedgerQuerySchema = z.object({
+  series_project_id: z.string().trim().min(1).max(160)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
+    .optional(),
+  operator_id: z.string().trim().min(3).max(128)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/)
+    .optional(),
+  disposition: StoryAgentFinalDeliveryManifestDispositionSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+}).strict();
+
 export const GearsDeliveryUpdateRequestSchema = z.object({
   markdown: z.string().min(1, 'markdown cannot be empty').max(120000, 'markdown is too long'),
 });
