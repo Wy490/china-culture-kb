@@ -32,6 +32,7 @@ import {
   GEARS_CALLBACK_EVENT_RETENTION_LIMIT,
   type StoryProjectMeta,
   type StoryGenerateResult,
+  type StoryRecipeEffectComparison,
 } from '@shared/types.js';
 import {
   buildReferenceGenerationRecipeContract,
@@ -8306,6 +8307,184 @@ describe('Projects API', () => {
         + '?from_updated_at=2026-08-01T00%3A00%3A00.000Z'
         + '&to_updated_at=2026-07-01T00%3A00%3A00.000Z',
       );
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+  });
+
+  describe('recipe effect human review ledger', () => {
+    it('keeps an empty state until a verified operator review is submitted', async () => {
+      const empty = await request.get(
+        '/api/projects/recipe-effect-human-reviews?reviewer_id=reviewer-api-empty',
+      );
+      expect(empty.status).toBe(200);
+      expectSuccess(empty.body);
+      expect(empty.body.data).toMatchObject({
+        schema_version: 'story-recipe-effect-human-review-ledger/v1',
+        summary: {
+          recorded_review_count: 0,
+          human_reviews_recorded: false,
+        },
+        entries: [],
+        boundary: {
+          aggregate_human_preference_claimed: false,
+          causal_effect_proven: false,
+          production_credit_granted: false,
+        },
+      });
+    });
+
+    it('records a cohort-verified human review and exposes it through the ledger', async () => {
+      const recipe = buildReferenceGenerationRecipeContract('feature_long_goal_payoff');
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260730-story-human1',
+        title: 'API 真人配方评审测试',
+        gears_segments_url: '/api/stories/20260730-story-human1/gears-segments',
+        reference_generation_recipe: recipe,
+        recipe_effect_comparison: {
+          schema_version: 'story-recipe-effect-comparison/v1',
+          status: 'completed',
+          baseline_story_id: '20260730-story-human0',
+          recipe_assisted_story_id: '20260730-story-human1',
+          recipe,
+          baseline_machine_score: 60,
+          recipe_assisted_machine_score: 72,
+          aggregate_delta: 12,
+          dimensions: [
+            'structure',
+            'causality',
+            'visualization',
+            'continuity',
+            'contract_completeness',
+          ].map(dimension => ({
+            dimension,
+            baseline_score: 60,
+            recipe_assisted_score: 72,
+            delta: 12,
+            evidence: [`${dimension}=api-fixture`],
+          })) as StoryRecipeEffectComparison['dimensions'],
+          machine_verdict: 'improved',
+          boundary: {
+            same_input_verified: true,
+            machine_comparison_only: true,
+            human_preference_measured: false,
+            legal_conclusion_reached: false,
+            production_credit_granted: false,
+          },
+        },
+      };
+      const enriched = await createProjectFromGeneratedStory(
+        story,
+        '2026-07-30T09:00:00.000Z',
+      );
+      const reportFilters = {
+        recipe_id: 'feature_long_goal_payoff',
+        video_type: 'character_story',
+        min_comparisons_per_recipe: 1,
+        limit: 100,
+      };
+      const reportResponse = await request.get(
+        '/api/projects/recipe-effect-comparison-report'
+        + '?recipe_id=feature_long_goal_payoff'
+        + '&video_type=character_story'
+        + '&min_comparisons_per_recipe=1'
+        + '&limit=100',
+      );
+      expect(reportResponse.status).toBe(200);
+      const report = reportResponse.body.data;
+      expect(report.history.items.some(
+        (item: { project_id: string }) => item.project_id === enriched.project_id,
+      )).toBe(true);
+
+      const submitted = await request
+        .post('/api/projects/recipe-effect-human-reviews')
+        .send({
+          project_id: enriched.project_id,
+          story_id: story.storyId,
+          cohort: {
+            cohort_id: report.cohort.cohort_id,
+            membership_sha256: report.cohort.membership_sha256,
+            report_filters: reportFilters,
+          },
+          reviewer: {
+            reviewer_id: 'reviewer-api-001',
+            display_name: 'API Reviewer',
+            identity_reference: 'test-operator-directory:reviewer-api-001',
+          },
+          review: {
+            decision: 'recipe_preferred',
+            rationale: '两版均已完整核对，配方版本的目标推进和结尾回收更清楚。',
+            evidence_references: ['api-review-note:scene-2'],
+            method: 'blind_to_machine_verdict',
+          },
+          attestation: {
+            human_reviewer: true,
+            compared_both_outputs: true,
+            independent_judgment: true,
+          },
+          idempotency_key: 'api-human-review-20260730-0001',
+        });
+      expect(submitted.status).toBe(200);
+      expectSuccess(submitted.body);
+      expect(submitted.body.data).toMatchObject({
+        schema_version: 'story-recipe-effect-human-review-submit-result/v1',
+        idempotent_replay: false,
+        event: {
+          project_id: enriched.project_id,
+          story_id: story.storyId,
+          review: {
+            decision: 'recipe_preferred',
+          },
+          boundary: {
+            aggregate_human_preference_claimed: false,
+            production_credit_granted: false,
+          },
+        },
+      });
+
+      const ledger = await request.get(
+        `/api/projects/recipe-effect-human-reviews?project_id=${enriched.project_id}`,
+      );
+      expect(ledger.status).toBe(200);
+      expectSuccess(ledger.body);
+      expect(ledger.body.data.summary).toMatchObject({
+        recorded_review_count: 1,
+        human_reviews_recorded: true,
+      });
+      expect(ledger.body.data.integrity.chain_valid).toBe(true);
+      expect(ledger.body.data.entries[0]).not.toHaveProperty('machine_verdict');
+    });
+
+    it('rejects review submissions without literal human attestations', async () => {
+      const res = await request
+        .post('/api/projects/recipe-effect-human-reviews')
+        .send({
+          project_id: '20260730-story-human1--character_story',
+          story_id: '20260730-story-human1',
+          cohort: {
+            cohort_id: 'recipe-effect-cohort-aabbccddeeff',
+            membership_sha256: 'a'.repeat(64),
+            report_filters: {},
+          },
+          reviewer: {
+            reviewer_id: 'reviewer-api-002',
+            display_name: 'API Reviewer',
+            identity_reference: 'test-operator-directory:reviewer-api-002',
+          },
+          review: {
+            decision: 'no_preference',
+            rationale: '两版均已核对，但没有形成足够稳定的人工偏好判断。',
+            evidence_references: [],
+            method: 'machine_verdict_visible',
+          },
+          attestation: {
+            human_reviewer: false,
+            compared_both_outputs: true,
+            independent_judgment: true,
+          },
+          idempotency_key: 'api-human-review-20260730-0002',
+        });
       expect(res.status).toBe(400);
       expectFailure(res.body, 'VALIDATION_ERROR');
     });

@@ -51,6 +51,8 @@ import {
   SupplementTaskIdParamSchema,
   DomainPackQuerySchema,
   StoryRecipeEffectComparisonHistoryQuerySchema,
+  StoryRecipeEffectHumanReviewLedgerQuerySchema,
+  StoryRecipeEffectHumanReviewSubmitRequestSchema,
   StoryRecipeEffectMachineReportQuerySchema,
 } from '@shared/schemas.js';
 import {
@@ -118,6 +120,11 @@ import {
   buildStoryRecipeEffectMachineReport,
   collectStoryRecipeEffectComparisonHistoryRecords,
 } from '../services/reference-recipe-effect-history-service.js';
+import {
+  buildStoryRecipeEffectHumanReviewLedger,
+  collectStoryRecipeEffectHumanReviewEvents,
+  submitStoryRecipeEffectHumanReview,
+} from '../services/reference-recipe-human-review-ledger-service.js';
 
 export const projectsRouter = Router();
 
@@ -133,6 +140,9 @@ function projectResourceIdsFromRequest(req: Request): string[] {
   if (Array.isArray(req.body?.project_ids)) {
     ids.push(...req.body.project_ids.filter((item: unknown): item is string => typeof item === 'string'));
   }
+  if (typeof req.body?.project_id === 'string' && req.body.project_id.trim()) {
+    ids.push(req.body.project_id.trim());
+  }
   return [...new Set(ids)];
 }
 
@@ -144,6 +154,9 @@ const requireProjectRead = requireProductAccess('project:read', { resource: stor
 const requireProjectWrite = requireProductAccess('project:write', { resource: storyProjectResource });
 const requireProjectProductionWrite = requireProductAccess('production:write', { resource: storyProjectResource });
 const requireProjectMediaReview = requireProductAccess('review:operate', { resource: storyProjectResource });
+const requireScopedProjectRecipeReview = requireProductAccess('review:operate', {
+  resource: { ...storyProjectResource, required: true },
+});
 const requireMaterialReview = requireProductAccess('material:review', { resource: storyProjectResource });
 const requireScopedMaterialReview = requireProductAccess('material:review', {
   resource: { ...storyProjectResource, required: true },
@@ -181,6 +194,10 @@ projectsRouter.use((req, res, next) => {
   }
   if (req.path.includes('/production-board/media-assets/') && req.path.endsWith('/review')) {
     requireProjectMediaReview(req, res, next);
+    return;
+  }
+  if (req.path === '/recipe-effect-human-reviews' && req.method === 'POST') {
+    requireScopedProjectRecipeReview(req, res, next);
     return;
   }
   if (req.method === 'GET') {
@@ -312,6 +329,42 @@ projectsRouter.get(
         accessibleRecords,
         filters,
       )));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.get(
+  '/recipe-effect-human-reviews',
+  validateQuery(StoryRecipeEffectHumanReviewLedgerQuerySchema),
+  async (req, res, next) => {
+    try {
+      const filters = StoryRecipeEffectHumanReviewLedgerQuerySchema.parse(req.query);
+      const allEntries = await collectStoryRecipeEffectHumanReviewEvents();
+      const accessibleEntries = await filterProductResourcesForRequest(
+        req,
+        'story_project',
+        allEntries,
+        item => item.project_id,
+      );
+      res.json(success(buildStoryRecipeEffectHumanReviewLedger(
+        accessibleEntries,
+        filters,
+        accessibleEntries.at(-1)?.event_sha256 ?? null,
+      )));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/recipe-effect-human-reviews',
+  validateBody(StoryRecipeEffectHumanReviewSubmitRequestSchema),
+  async (req, res, next) => {
+    try {
+      res.json(success(await submitStoryRecipeEffectHumanReview(req.body)));
     } catch (err) {
       next(err);
     }

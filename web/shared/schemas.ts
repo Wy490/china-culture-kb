@@ -1841,6 +1841,83 @@ StoryRecipeEffectComparisonHistoryQuerySchema.extend({
   },
 );
 
+const StoryRecipeEffectHumanReviewDecisionSchema = z.enum([
+  'baseline_preferred',
+  'recipe_preferred',
+  'no_preference',
+  'insufficient_evidence',
+]);
+
+const StoryRecipeEffectHumanReviewReportFiltersSchema = z.object({
+  recipe_id: ReferenceGenerationRecipeIdSchema.optional(),
+  video_type: VideoTypeSchema.optional(),
+  machine_verdict: z.enum([
+    'improved',
+    'mixed',
+    'no_material_change',
+    'regressed',
+  ]).optional(),
+  from_updated_at: z.string().datetime({ offset: true }).optional(),
+  to_updated_at: z.string().datetime({ offset: true }).optional(),
+  min_comparisons_per_recipe: z.number().int().min(1).max(100).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+}).strict().refine(
+  value => !value.from_updated_at
+    || !value.to_updated_at
+    || value.from_updated_at <= value.to_updated_at,
+  {
+    message: 'from_updated_at must be earlier than or equal to to_updated_at',
+    path: ['from_updated_at'],
+  },
+);
+
+export const StoryRecipeEffectHumanReviewSubmitRequestSchema = z.object({
+  project_id: z.string()
+    .regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/),
+  story_id: z.string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),
+  cohort: z.object({
+    cohort_id: z.string().regex(/^recipe-effect-cohort-[a-f0-9]{12}$/),
+    membership_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    report_filters: StoryRecipeEffectHumanReviewReportFiltersSchema,
+  }).strict(),
+  reviewer: z.object({
+    reviewer_id: z.string().trim().min(3).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/),
+    display_name: z.string().trim().min(1).max(120),
+    identity_reference: z.string().trim().min(3).max(256),
+  }).strict(),
+  review: z.object({
+    decision: StoryRecipeEffectHumanReviewDecisionSchema,
+    rationale: z.string().trim().min(10).max(4000),
+    evidence_references: z.array(z.string().trim().min(1).max(256))
+      .max(50)
+      .refine(uniqueReferenceIds, 'evidence_references must be unique'),
+    method: z.enum(['blind_to_machine_verdict', 'machine_verdict_visible']),
+  }).strict(),
+  attestation: z.object({
+    human_reviewer: z.literal(true),
+    compared_both_outputs: z.literal(true),
+    independent_judgment: z.literal(true),
+  }).strict(),
+  idempotency_key: z.string().trim().min(8).max(128)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/),
+}).strict();
+
+export const StoryRecipeEffectHumanReviewLedgerQuerySchema = z.object({
+  project_id: z.string()
+    .regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/)
+    .optional(),
+  story_id: z.string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+    .optional(),
+  reviewer_id: z.string().trim().min(3).max(128)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/)
+    .optional(),
+  decision: StoryRecipeEffectHumanReviewDecisionSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+}).strict();
+
 export const ReferenceBaselineReplayDraftRequestSchema = z.object({
   baseline_story_id: z.string()
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/),

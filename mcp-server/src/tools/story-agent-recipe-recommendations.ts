@@ -136,6 +136,78 @@ export type StoryAgentRecipeEffectReportToolResult = StoryAgentApiEnvelope & {
   };
 };
 
+type StoryAgentRecipeHumanReviewDecision =
+  | 'baseline_preferred'
+  | 'recipe_preferred'
+  | 'no_preference'
+  | 'insufficient_evidence';
+
+export interface StoryAgentRecipeHumanReviewLedgerInput {
+  project_id?: string;
+  story_id?: string;
+  reviewer_id?: string;
+  decision?: StoryAgentRecipeHumanReviewDecision;
+  limit?: number;
+}
+
+export type StoryAgentRecipeHumanReviewLedgerToolResult = StoryAgentApiEnvelope & {
+  mcp_bridge: {
+    schema_version: 'mcp-story-agent-recipe-human-review-ledger/v1';
+    canonical_tool: 'kb_get_story_recipe_human_reviews';
+    canonical_service: true;
+    application_endpoint: string;
+    authoritative_query_schema: 'StoryRecipeEffectHumanReviewLedgerQuerySchema';
+    operator_submitted_reviews_only: true;
+    machine_generated_review_allowed: false;
+    aggregate_human_preference_claimed: false;
+    causal_effect_proven: false;
+    production_credit_granted: false;
+  };
+};
+
+export interface StoryAgentRecipeHumanReviewSubmitInput {
+  project_id: string;
+  story_id: string;
+  cohort: {
+    cohort_id: string;
+    membership_sha256: string;
+    report_filters: StoryAgentRecipeEffectReportInput;
+  };
+  reviewer: {
+    reviewer_id: string;
+    display_name: string;
+    identity_reference: string;
+  };
+  review: {
+    decision: StoryAgentRecipeHumanReviewDecision;
+    rationale: string;
+    evidence_references: string[];
+    method: 'blind_to_machine_verdict' | 'machine_verdict_visible';
+  };
+  attestation: {
+    human_reviewer: true;
+    compared_both_outputs: true;
+    independent_judgment: true;
+  };
+  idempotency_key: string;
+}
+
+export type StoryAgentRecipeHumanReviewSubmitToolResult = StoryAgentApiEnvelope & {
+  mcp_bridge: {
+    schema_version: 'mcp-story-agent-recipe-human-review-submit/v1';
+    canonical_tool: 'kb_submit_story_recipe_human_review';
+    canonical_service: true;
+    application_endpoint: string;
+    authoritative_request_schema: 'StoryRecipeEffectHumanReviewSubmitRequestSchema';
+    canonical_cohort_revalidation_required: true;
+    explicit_human_attestation_required: true;
+    machine_generated_review_allowed: false;
+    aggregate_human_preference_claimed: false;
+    causal_effect_proven: false;
+    production_credit_granted: false;
+  };
+};
+
 function storyAgentBaseUrl(): string {
   const raw = process.env.STORY_AGENT_BASE_URL?.trim();
   if (!raw) {
@@ -339,6 +411,93 @@ export async function getStoryAgentRecipeEffectReport(
       controlled_cohort: true,
       machine_comparison_only: true,
       human_preference_measured: false,
+      causal_effect_proven: false,
+      production_credit_granted: false,
+    },
+  };
+}
+
+export async function getStoryAgentRecipeHumanReviews(
+  input: StoryAgentRecipeHumanReviewLedgerInput = {},
+): Promise<StoryAgentRecipeHumanReviewLedgerToolResult> {
+  const endpoint = new URL(
+    `${storyAgentBaseUrl()}/api/projects/recipe-effect-human-reviews`,
+  );
+  const query: Record<string, string | number | undefined> = {
+    project_id: input.project_id,
+    story_id: input.story_id,
+    reviewer_id: input.reviewer_id,
+    decision: input.decision,
+    limit: input.limit,
+  };
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) endpoint.searchParams.set(key, String(value));
+  }
+  const applicationEndpoint = endpoint.toString();
+  const response = await fetch(applicationEndpoint, {
+    method: 'GET',
+    headers: accessTokenHeader(),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const envelope = await readApiEnvelope(response);
+  if (!response.ok || !envelope.ok) {
+    const code = envelope.error?.code?.trim()
+      || 'STORY_AGENT_RECIPE_HUMAN_REVIEW_LEDGER_FAILED';
+    const message = envelope.error?.message?.trim()
+      || `Story Agent application service 真人评审账本查询失败（HTTP ${response.status}）`;
+    throw new Error(`${code}: ${message}`);
+  }
+  return {
+    ...envelope,
+    mcp_bridge: {
+      schema_version: 'mcp-story-agent-recipe-human-review-ledger/v1',
+      canonical_tool: 'kb_get_story_recipe_human_reviews',
+      canonical_service: true,
+      application_endpoint: applicationEndpoint,
+      authoritative_query_schema: 'StoryRecipeEffectHumanReviewLedgerQuerySchema',
+      operator_submitted_reviews_only: true,
+      machine_generated_review_allowed: false,
+      aggregate_human_preference_claimed: false,
+      causal_effect_proven: false,
+      production_credit_granted: false,
+    },
+  };
+}
+
+export async function submitStoryAgentRecipeHumanReview(
+  input: StoryAgentRecipeHumanReviewSubmitInput,
+): Promise<StoryAgentRecipeHumanReviewSubmitToolResult> {
+  const applicationEndpoint =
+    `${storyAgentBaseUrl()}/api/projects/recipe-effect-human-reviews`;
+  const response = await fetch(applicationEndpoint, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...accessTokenHeader(),
+    },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const envelope = await readApiEnvelope(response);
+  if (!response.ok || !envelope.ok) {
+    const code = envelope.error?.code?.trim()
+      || 'STORY_AGENT_RECIPE_HUMAN_REVIEW_SUBMIT_FAILED';
+    const message = envelope.error?.message?.trim()
+      || `Story Agent application service 真人评审录入失败（HTTP ${response.status}）`;
+    throw new Error(`${code}: ${message}`);
+  }
+  return {
+    ...envelope,
+    mcp_bridge: {
+      schema_version: 'mcp-story-agent-recipe-human-review-submit/v1',
+      canonical_tool: 'kb_submit_story_recipe_human_review',
+      canonical_service: true,
+      application_endpoint: applicationEndpoint,
+      authoritative_request_schema: 'StoryRecipeEffectHumanReviewSubmitRequestSchema',
+      canonical_cohort_revalidation_required: true,
+      explicit_human_attestation_required: true,
+      machine_generated_review_allowed: false,
+      aggregate_human_preference_claimed: false,
       causal_effect_proven: false,
       production_credit_granted: false,
     },

@@ -4,7 +4,7 @@
 >
 > 当前分支：`codex/story-agent-manifest-integrity-20260718`
 >
-> 功能基线：`34d6c1ad feat(story-agent): recommend generation recipes`
+> 功能基线：`4d5b6357 feat(story-agent): export recipe cohort reports`
 >
 > 交接提交：以本地 `git log -1 --oneline` 为准
 >
@@ -414,6 +414,28 @@ P1-E1 / E2 / E3 配方路线图已完成。真实参考样本、人工偏好和�
 - MCP 新增 `kb_get_story_recipe_effect_report`，支持时间窗和全部 cohort 筛选；
 - 空 cohort 是合法结果，不会伪造样本、人工偏好、因果结论或生产信用。
 
+### 6.6 本轮完成：独立真人评审录入与审核账本
+
+配方实验现在具备与机器报告分离的真人评审持久层：
+
+- 新增 `story-recipe-effect-human-review-event/v1`、
+  `story-recipe-effect-human-review-ledger/v1` 和提交结果合同；
+- 没有真实操作员输入时返回合法空账本，不创建 placeholder、fixture 或推断偏好；
+- 每次提交都要求明确 reviewer ID、显示名、身份记录引用、决定、理由、证据引用、
+  评审方法和三个 literal `true` 真人声明；
+- 服务端重新生成 canonical cohort，复验 cohort ID、成员 SHA-256、当前项目/故事和
+  comparison membership，过期或伪造引用 fail closed；
+- 审核账本采用 owner-only 原子写入、进程内串行、跨进程锁、幂等键和逐事件 SHA-256
+  哈希链；内容被修改后读取 fail closed；
+- 账本事件只保存 comparison/recipe 哈希与身份，不把机器 verdict 或机器分数写成人工
+  结论字段；
+- API 新增 `GET/POST /api/projects/recipe-effect-human-reviews`，查询在返回前执行项目
+  级访问过滤，提交要求项目级 `review:operate`；
+- MCP 新增 `kb_get_story_recipe_human_reviews` 和
+  `kb_submit_story_recipe_human_review`；后者只允许转发用户明确提供的真人结论，不允许
+  模型代填 reviewer、偏好、理由、证据或真人声明；
+- 固定边界仍为：不声称聚合真人偏好、不证明因果、不构成法律结论、不授予生产信用。
+
 ## 7. 关键代码位置
 
 ```text
@@ -446,6 +468,10 @@ web/server/src/services/reference-baseline-replay-service.ts
 配方对照历史与趋势
 web/server/src/services/reference-recipe-effect-history-service.ts
 web/client/src/views/Projects.vue
+
+配方真人评审与审核账本
+web/server/src/services/reference-recipe-human-review-ledger-service.ts
+web/server/src/__tests__/reference-recipe-human-review-ledger.test.ts
 
 Reference Library 页面
 web/client/src/views/ReferenceLibrary.vue
@@ -632,17 +658,48 @@ Browser smoke
   page rendered the latest exported cohort ID
 ```
 
+真人评审账本新增验证：
+
+```text
+Server targeted regression
+  3 files passed
+  14 tests passed, 242 skipped by targeted filter
+
+Server full regression
+  189 files passed, 1 skipped
+  1571 tests passed, 2 skipped
+
+MCP full regression
+  101 files / 537 tests passed
+
+Server TypeScript lint
+  passed
+
+MCP TypeScript build
+  passed
+
+Web production build
+  server + client passed
+
+Integrity behaviors
+  honest empty ledger passed
+  canonical cohort/member revalidation passed
+  idempotent replay and conflict detection passed
+  persisted hash-chain tamper detection passed
+  access-filtered Web API passed
+```
+
 ## 9. Git 与运行状态
 
 交接时状态：
 
 ```text
 branch: codex/story-agent-manifest-integrity-20260718
-functional baseline: 859007d5
+functional baseline: 4d5b6357
 handoff HEAD: run git log -1 --oneline
-remote: expected ahead 10 after the recipe cohort report local commit
-worktree: clean
-push: not performed
+remote: synchronized through 4d5b6357 before this local slice
+worktree: contains the human-review ledger implementation until committed
+push: this local slice not yet pushed
 ```
 
 研发实现总进度按 MVP 五个实现分项统计为约 99%（100/100/100/100/95）。
@@ -675,10 +732,10 @@ npm run dev
 
 ## 10. 下一开发优先级
 
-P1-E1 / E2 / E3 和配方机器对照历史已完成。没有真实合法样本时，不继续伪造参考分析、真人偏好或生产
-验收。下一轮可按产品需要选择：
+P1-E1 / E2 / E3、配方机器对照历史以及真人评审服务/API/MCP 已完成。没有真实合法样本时，
+不继续伪造参考分析、真人偏好或生产验收。下一轮可按产品需要选择：
 
-- 为配方实验增加独立的真人评审录入与审核账本；没有真实操作员输入时保持空状态；
+- 在项目工作台增加真人评审录入、账本浏览和事件哈希复制 UI；
 - 扩展更多成片类型的 canonical 配方；
 - 继续 Story Agent 其他产品 backlog；
 - 等待用户提供合法真实样本后进入人工分析链。
@@ -766,8 +823,12 @@ P1-E3 已完成：无配方 baseline、canonical 配方 replay draft、正式生
 Markdown/JSON 导出、权限安全 API、项目工作台和
 `kb_get_story_recipe_effect_report` 已闭环；空 cohort 不会被填充伪样本。
 
-P1-E1 / E2 / E3 与机器趋势路线图完成。下一步必须根据新的产品优先级推进；没有用户真实合法
-样本时，不得伪造后续 reference analysis、人工批准或生产验收。
+真人评审服务/API/MCP 已完成：canonical cohort/member 复验、显式真人声明、幂等提交、
+owner-only 原子账本、事件哈希链、篡改 fail closed、权限过滤和空状态已闭环；尚未提交
+真实真人结论，项目工作台录入/浏览 UI 可作为下一本地开发切片。
+
+P1-E1 / E2 / E3、机器趋势和真人评审后端路线图完成。下一步必须根据新的产品优先级推进；
+没有用户真实合法样本时，不得伪造后续 reference analysis、人工批准或生产验收。
 
 完成后运行 targeted tests、Web lint/build/copy audit、git diff --check，更新本交接并创建
 本地 commit。只有用户明确授权向 GitHub 传输仓库内容时才 push。

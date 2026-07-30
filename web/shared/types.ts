@@ -14447,6 +14447,117 @@ export interface StoryRecipeEffectMachineReport {
   markdown: string;
 }
 
+export type StoryRecipeEffectHumanReviewDecision =
+  | 'baseline_preferred'
+  | 'recipe_preferred'
+  | 'no_preference'
+  | 'insufficient_evidence';
+
+export interface StoryRecipeEffectHumanReviewSubmitRequest {
+  project_id: string;
+  story_id: string;
+  cohort: {
+    cohort_id: string;
+    membership_sha256: string;
+    report_filters: StoryRecipeEffectMachineReportFilters;
+  };
+  reviewer: {
+    reviewer_id: string;
+    display_name: string;
+    identity_reference: string;
+  };
+  review: {
+    decision: StoryRecipeEffectHumanReviewDecision;
+    rationale: string;
+    evidence_references: string[];
+    method: 'blind_to_machine_verdict' | 'machine_verdict_visible';
+  };
+  attestation: {
+    human_reviewer: true;
+    compared_both_outputs: true;
+    independent_judgment: true;
+  };
+  idempotency_key: string;
+}
+
+export interface StoryRecipeEffectHumanReviewEvent {
+  schema_version: 'story-recipe-effect-human-review-event/v1';
+  event_id: string;
+  sequence: number;
+  previous_event_sha256: string | null;
+  event_sha256: string;
+  request_sha256: string;
+  idempotency_key: string;
+  recorded_at: string;
+  project_id: string;
+  project_title: string;
+  story_id: string;
+  comparison: {
+    comparison_payload_sha256: string;
+    baseline_story_id: string;
+    recipe_assisted_story_id: string;
+    recipe_id: ReferenceGenerationRecipeId;
+    recipe_version: string;
+    recipe_payload_sha256: string;
+  };
+  cohort: StoryRecipeEffectHumanReviewSubmitRequest['cohort'];
+  reviewer: StoryRecipeEffectHumanReviewSubmitRequest['reviewer'];
+  review: StoryRecipeEffectHumanReviewSubmitRequest['review'];
+  attestation: StoryRecipeEffectHumanReviewSubmitRequest['attestation'];
+  boundary: {
+    human_review_recorded: true;
+    aggregate_human_preference_claimed: false;
+    causal_effect_proven: false;
+    legal_conclusion_reached: false;
+    production_credit_granted: false;
+  };
+}
+
+export interface StoryRecipeEffectHumanReviewSubmitResult {
+  schema_version: 'story-recipe-effect-human-review-submit-result/v1';
+  event: StoryRecipeEffectHumanReviewEvent;
+  idempotent_replay: boolean;
+}
+
+export interface StoryRecipeEffectHumanReviewLedgerFilters {
+  project_id?: string;
+  story_id?: string;
+  reviewer_id?: string;
+  decision?: StoryRecipeEffectHumanReviewDecision;
+  limit?: number;
+}
+
+export interface StoryRecipeEffectHumanReviewLedger {
+  schema_version: 'story-recipe-effect-human-review-ledger/v1';
+  filters: {
+    project_id: string | null;
+    story_id: string | null;
+    reviewer_id: string | null;
+    decision: StoryRecipeEffectHumanReviewDecision | null;
+    limit: number;
+  };
+  summary: {
+    recorded_review_count: number;
+    returned_review_count: number;
+    human_reviews_recorded: boolean;
+    decision_counts: Record<StoryRecipeEffectHumanReviewDecision, number>;
+  };
+  entries: StoryRecipeEffectHumanReviewEvent[];
+  integrity: {
+    chain_valid: true;
+    invalid_event_count: 0;
+    ledger_head_sha256: string | null;
+  };
+  boundary: {
+    source: 'operator_submitted_human_reviews';
+    machine_scores_inferred_as_human_judgment: false;
+    aggregate_human_preference_claimed: false;
+    causal_effect_proven: false;
+    legal_conclusion_reached: false;
+    production_credit_granted: false;
+  };
+}
+
 export interface ReferenceGenerationSafetyReport {
   schema_version: 'story-reference-generation-safety/v1';
   status: 'not_applicable' | 'passed' | 'passed_with_limits' | 'blocked';

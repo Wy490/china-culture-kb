@@ -19,8 +19,10 @@ import { storyAgentGenerate } from './tools/story-agent-generate.js';
 import {
   getStoryAgentRecipeEffectHistory,
   getStoryAgentRecipeEffectReport,
+  getStoryAgentRecipeHumanReviews,
   prepareStoryAgentRecipeComparison,
   recommendStoryAgentRecipes,
+  submitStoryAgentRecipeHumanReview,
 } from './tools/story-agent-recipe-recommendations.js';
 import { exportStoryAgentPreproduction } from './tools/export-story-agent-preproduction.js';
 import {
@@ -473,6 +475,132 @@ server.tool(
   },
   async (input) => {
     const result = await getStoryAgentRecipeEffectReport(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_get_story_recipe_human_reviews',
+  '查询 canonical Story Agent Web/API 中由真实操作员明确提交的配方真人评审账本。空账本保持为空；不把机器指标冒充真人偏好，不证明因果，不授予生产信用。',
+  {
+    project_id: z.string()
+      .regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/)
+      .optional()
+      .describe('筛选故事项目 ID'),
+    story_id: z.string()
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+      .optional()
+      .describe('筛选配方辅助故事 ID'),
+    reviewer_id: z.string().min(3).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/)
+      .optional()
+      .describe('筛选已验证操作员 reviewer ID'),
+    decision: z.enum([
+      'baseline_preferred',
+      'recipe_preferred',
+      'no_preference',
+      'insufficient_evidence',
+    ]).optional().describe('筛选真人评审决定'),
+    limit: z.number().int().min(1).max(100).optional()
+      .describe('最多返回的评审事件数'),
+  },
+  async (input) => {
+    const result = await getStoryAgentRecipeHumanReviews(input);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  'kb_submit_story_recipe_human_review',
+  '仅转发用户明确提供、由真人完成的配方对照评审。不得由模型代填 reviewer、偏好、理由、证据或真人声明；canonical 服务会复验 cohort ID、成员哈希、当前项目故事和幂等键。',
+  {
+    project_id: z.string()
+      .regex(/^\d{8}-story-[0-9a-z]+--[a-z_]+$/)
+      .describe('被评审的故事项目 ID'),
+    story_id: z.string()
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,127}$/)
+      .describe('被评审的配方辅助故事 ID'),
+    cohort: z.object({
+      cohort_id: z.string().regex(/^recipe-effect-cohort-[a-f0-9]{12}$/),
+      membership_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      report_filters: z.object({
+        recipe_id: z.enum([
+          'feature_long_goal_payoff',
+          'feature_epoch_character_mosaic',
+          'feature_moral_pressure',
+          'promo_space_emotion',
+          'promo_mnemonic_reveal',
+          'promo_collective_montage',
+          'series_strategy_chapters',
+          'series_ritual_relationships',
+        ]).optional(),
+        video_type: z.enum([
+          'character_story',
+          'historical_drama',
+          'legend_story',
+          'culture_promo',
+          'heritage_promo',
+          'city_brand_promo',
+          'scene_short',
+          'landscape_mood',
+          'documentary_short',
+          'explainer_video',
+          'lecture_video',
+          'education_training',
+          'children_story',
+          'social_short',
+          'ai_comic_drama',
+        ]).optional(),
+        machine_verdict: z.enum([
+          'improved',
+          'mixed',
+          'no_material_change',
+          'regressed',
+        ]).optional(),
+        from_updated_at: z.string().datetime({ offset: true }).optional(),
+        to_updated_at: z.string().datetime({ offset: true }).optional(),
+        min_comparisons_per_recipe: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      }).strict().refine(
+        value => !value.from_updated_at
+          || !value.to_updated_at
+          || value.from_updated_at <= value.to_updated_at,
+        {
+          message: 'from_updated_at must be earlier than or equal to to_updated_at',
+          path: ['from_updated_at'],
+        },
+      ),
+    }).strict(),
+    reviewer: z.object({
+      reviewer_id: z.string().min(3).max(128)
+        .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:@/-]*$/),
+      display_name: z.string().min(1).max(120),
+      identity_reference: z.string().min(3).max(256),
+    }).strict(),
+    review: z.object({
+      decision: z.enum([
+        'baseline_preferred',
+        'recipe_preferred',
+        'no_preference',
+        'insufficient_evidence',
+      ]),
+      rationale: z.string().min(10).max(4000),
+      evidence_references: z.array(z.string().min(1).max(256)).max(50)
+        .refine(values => new Set(values).size === values.length, {
+          message: 'evidence_references must be unique',
+        }),
+      method: z.enum(['blind_to_machine_verdict', 'machine_verdict_visible']),
+    }).strict(),
+    attestation: z.object({
+      human_reviewer: z.literal(true),
+      compared_both_outputs: z.literal(true),
+      independent_judgment: z.literal(true),
+    }).strict(),
+    idempotency_key: z.string().min(8).max(128)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/),
+  },
+  async (input) => {
+    const result = await submitStoryAgentRecipeHumanReview(input);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },
 );
