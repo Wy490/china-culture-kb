@@ -361,6 +361,7 @@ function sourceLabel(source: KnowledgeSupplementTaskSource): string {
     material_sufficiency_missing_item: '素材 Gate 缺口',
     production_material_missing_field: '生产素材模板缺口',
     professional_evidence_missing: '专业脚本证据缺口',
+    story_knowledge_contract_missing_material: '知识合同只读缺口',
   }
   return map[source]
 }

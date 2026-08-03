@@ -1,0 +1,711 @@
+{
+  "schema_version": "writing-capability-adapter-preflight-baseline/v1",
+  "generated_at": "2026-08-01T02:00:00+08:00",
+  "status": "passed",
+  "capability_id": "short_drama_develop_write_review",
+  "video_type": "ai_comic_drama",
+  "adapter_id": "short_drama_ai_comic_shadow_adapter",
+  "preview_rule_count": 7,
+  "preview_layer_counts": {
+    "blueprint_requirements": 1,
+    "scene_rules": 2,
+    "quality_rules": 2,
+    "repair_guidance": 2
+  },
+  "negative_case_count": 8,
+  "blocked_negative_case_count": 8,
+  "active_capability_count": 0,
+  "runtime_projected_rule_count": 0,
+  "baseline_sha256": "95bdb8a4128d47e86f09a8fe5f6be8b4c51ce9357f044f316335bcef1c7163ef",
+  "invariants": {
+    "canonical_adapter_passes": true,
+    "exactly_seven_preview_rules": true,
+    "expected_layer_split": true,
+    "all_negative_cases_blocked": true,
+    "blocked_cases_expose_no_preview_rules": true,
+    "baseline_shape_unchanged_without_adapter": true,
+    "preview_attached_only_when_requested": true,
+    "runtime_projected_rules_remain_empty": true,
+    "active_capability_count_remains_zero": true,
+    "no_generation_effect": true,
+    "no_persistence": true,
+    "no_public_api": true,
+    "no_third_party_execution": true
+  },
+  "boundary": {
+    "report_only": true,
+    "shadow_only": true,
+    "affects_generation": false,
+    "rules_injected": false,
+    "persistence_allowed": false,
+    "public_api_exposed": false,
+    "third_party_code_executed": false
+  },
+  "canonical_adapter": {
+    "schema_version": "writing-capability-adapter/v1",
+    "adapter_id": "short_drama_ai_comic_shadow_adapter",
+    "adapter_revision": 1,
+    "capability_id": "short_drama_develop_write_review",
+    "video_type": "ai_comic_drama",
+    "profile_schema_version": "writing-capability-profile/v1",
+    "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+    "internal_adaptation_version": "short-drama-adapter/v1",
+    "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+    "rules": {
+      "blueprint_requirements": [
+        {
+          "rule_id": "sd-blueprint-causal-spine",
+          "layer": "blueprint_requirements",
+          "text": "影子预览标记单集目标、压力、策略、局部结果与结尾交接；GenreStoryProfile 继续优先。",
+          "source_profile_field": "blueprint_requirements",
+          "source_rule_index": 0
+        }
+      ],
+      "scene_rules": [
+        {
+          "rule_id": "sd-scene-action-progress",
+          "layer": "scene_rules",
+          "text": "影子预览检查每个节拍是否由行动、调度、对白或可见证据推进。",
+          "source_profile_field": "scene_rules",
+          "source_rule_index": 0
+        },
+        {
+          "rule_id": "sd-scene-hook-boundary",
+          "layer": "scene_rules",
+          "text": "影子预览中的开场或结尾钩子不得覆盖事实、文化、安全或许可边界。",
+          "source_profile_field": "scene_rules",
+          "source_rule_index": 1
+        }
+      ],
+      "quality_rules": [
+        {
+          "rule_id": "sd-quality-causal-loop",
+          "layer": "quality_rules",
+          "text": "影子预览检查目标—阻力—策略—局部结果—交接是否形成可定位因果链。",
+          "source_profile_field": "quality_rules",
+          "source_rule_index": 0
+        },
+        {
+          "rule_id": "sd-quality-review-separation",
+          "layer": "quality_rules",
+          "text": "影子预览把结构、证据、制作与风格发现分层记录，不授予真人审稿信用。",
+          "source_profile_field": "quality_rules",
+          "source_rule_index": 1
+        }
+      ],
+      "repair_guidance": [
+        {
+          "rule_id": "sd-repair-local-causality",
+          "layer": "repair_guidance",
+          "text": "影子预览只提出局部行动与因果衔接建议，不直接改写故事。",
+          "source_profile_field": "repair_guidance",
+          "source_rule_index": 0
+        },
+        {
+          "rule_id": "sd-repair-boundary-preservation",
+          "layer": "repair_guidance",
+          "text": "影子预览的修复建议不得补写未证实事实、删减文化禁区或假设权利已获许可。",
+          "source_profile_field": "repair_guidance",
+          "source_rule_index": 1
+        }
+      ]
+    },
+    "guardrails": {
+      "genre_story_profile_precedence": true,
+      "story_knowledge_evidence_precedence": true,
+      "cultural_safety_precedence": true,
+      "rights_clearance_precedence": true,
+      "no_rule_removal": true
+    },
+    "boundary": {
+      "preview_only": true,
+      "affects_generation": false,
+      "rules_injected": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "canonical_preflight": {
+    "schema_version": "writing-capability-adapter-preflight-report/v1",
+    "status": "passed",
+    "capability_id": "short_drama_develop_write_review",
+    "video_type": "ai_comic_drama",
+    "adapter_id": "short_drama_ai_comic_shadow_adapter",
+    "adapter_revision": 1,
+    "conflicts": [],
+    "preview_rules": {
+      "blueprint_requirements": [
+        "影子预览标记单集目标、压力、策略、局部结果与结尾交接；GenreStoryProfile 继续优先。"
+      ],
+      "scene_rules": [
+        "影子预览检查每个节拍是否由行动、调度、对白或可见证据推进。",
+        "影子预览中的开场或结尾钩子不得覆盖事实、文化、安全或许可边界。"
+      ],
+      "quality_rules": [
+        "影子预览检查目标—阻力—策略—局部结果—交接是否形成可定位因果链。",
+        "影子预览把结构、证据、制作与风格发现分层记录，不授予真人审稿信用。"
+      ],
+      "repair_guidance": [
+        "影子预览只提出局部行动与因果衔接建议，不直接改写故事。",
+        "影子预览的修复建议不得补写未证实事实、删减文化禁区或假设权利已获许可。"
+      ]
+    },
+    "checks": {
+      "genre_story_profile": true,
+      "story_knowledge_evidence": true,
+      "cultural_safety": true,
+      "rights_clearance": true,
+      "rollback_identity": true
+    },
+    "summary": {
+      "preview_rule_count": 7,
+      "conflict_count": 0
+    },
+    "boundary": {
+      "preview_only": true,
+      "affects_generation": false,
+      "rules_injected": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "baseline_plan": {
+    "schema_version": "writing-capability-shadow-preparation-plan/v1",
+    "status": "shadow_ready",
+    "video_type": "ai_comic_drama",
+    "requested_capability_ids": [
+      "short_drama_develop_write_review"
+    ],
+    "policy": {
+      "policy_id": "short_drama_ai_comic_shadow_20260801",
+      "policy_revision": 1,
+      "status": "shadow_plan",
+      "capability_id": "short_drama_develop_write_review",
+      "video_type": "ai_comic_drama",
+      "profile_schema_version": "writing-capability-profile/v1",
+      "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+      "internal_adaptation_version": "short-drama-adapter/v1",
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+    },
+    "routing_report": {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "ai_comic_drama",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"short_drama_develop_write_review\" is eligible for \"ai_comic_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 1,
+        "decision_count": 1,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 0
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    "projected_rules": {
+      "blueprint_requirements": [],
+      "scene_rules": [],
+      "quality_rules": [],
+      "repair_guidance": []
+    },
+    "issues": [],
+    "boundary": {
+      "shadow_only": true,
+      "affects_generation": false,
+      "profile_rules_injected": false,
+      "runtime_activation_allowed": false,
+      "global_enablement_allowed": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "preview_plan": {
+    "schema_version": "writing-capability-shadow-preparation-plan/v1",
+    "status": "shadow_ready",
+    "video_type": "ai_comic_drama",
+    "requested_capability_ids": [
+      "short_drama_develop_write_review"
+    ],
+    "policy": {
+      "policy_id": "short_drama_ai_comic_shadow_20260801",
+      "policy_revision": 1,
+      "status": "shadow_plan",
+      "capability_id": "short_drama_develop_write_review",
+      "video_type": "ai_comic_drama",
+      "profile_schema_version": "writing-capability-profile/v1",
+      "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+      "internal_adaptation_version": "short-drama-adapter/v1",
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+    },
+    "routing_report": {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "ai_comic_drama",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"short_drama_develop_write_review\" is eligible for \"ai_comic_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 1,
+        "decision_count": 1,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 0
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    "adapter_preview": {
+      "schema_version": "writing-capability-adapter-preflight-report/v1",
+      "status": "passed",
+      "capability_id": "short_drama_develop_write_review",
+      "video_type": "ai_comic_drama",
+      "adapter_id": "short_drama_ai_comic_shadow_adapter",
+      "adapter_revision": 1,
+      "conflicts": [],
+      "preview_rules": {
+        "blueprint_requirements": [
+          "影子预览标记单集目标、压力、策略、局部结果与结尾交接；GenreStoryProfile 继续优先。"
+        ],
+        "scene_rules": [
+          "影子预览检查每个节拍是否由行动、调度、对白或可见证据推进。",
+          "影子预览中的开场或结尾钩子不得覆盖事实、文化、安全或许可边界。"
+        ],
+        "quality_rules": [
+          "影子预览检查目标—阻力—策略—局部结果—交接是否形成可定位因果链。",
+          "影子预览把结构、证据、制作与风格发现分层记录，不授予真人审稿信用。"
+        ],
+        "repair_guidance": [
+          "影子预览只提出局部行动与因果衔接建议，不直接改写故事。",
+          "影子预览的修复建议不得补写未证实事实、删减文化禁区或假设权利已获许可。"
+        ]
+      },
+      "checks": {
+        "genre_story_profile": true,
+        "story_knowledge_evidence": true,
+        "cultural_safety": true,
+        "rights_clearance": true,
+        "rollback_identity": true
+      },
+      "summary": {
+        "preview_rule_count": 7,
+        "conflict_count": 0
+      },
+      "boundary": {
+        "preview_only": true,
+        "affects_generation": false,
+        "rules_injected": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    "projected_rules": {
+      "blueprint_requirements": [],
+      "scene_rules": [],
+      "quality_rules": [],
+      "repair_guidance": []
+    },
+    "issues": [],
+    "boundary": {
+      "shadow_only": true,
+      "affects_generation": false,
+      "profile_rules_injected": false,
+      "runtime_activation_allowed": false,
+      "global_enablement_allowed": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "negative_cases": [
+    {
+      "case_id": "duplicate_rule_id",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "conflicts": [
+          {
+            "code": "invalid_adapter_schema",
+            "path": "rules",
+            "message": "adapter rule_id values must be unique across all layers"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "duplicate_rule_text",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "conflicts": [
+          {
+            "code": "invalid_adapter_schema",
+            "path": "rules",
+            "message": "adapter rule text values must be unique across all layers"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "video_type_scope_drift",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "children_story",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "video_type_scope_mismatch",
+            "path": "video_type",
+            "message": "adapter video_type \"children_story\" is outside the capability profile scope"
+          },
+          {
+            "code": "policy_identity_mismatch",
+            "path": "rolloutPolicy.candidate",
+            "message": "adapter identity must exactly match the enabled shadow-plan candidate and rollback identity"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 2
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "source_commit_drift",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "profile_identity_mismatch",
+            "path": "source_commit",
+            "message": "adapter profile identity must match one disabled canonical registry profile"
+          },
+          {
+            "code": "policy_identity_mismatch",
+            "path": "rolloutPolicy.candidate",
+            "message": "adapter identity must exactly match the enabled shadow-plan candidate and rollback identity"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 2
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "adaptation_version_drift",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "policy_identity_mismatch",
+            "path": "rolloutPolicy.candidate",
+            "message": "adapter identity must exactly match the enabled shadow-plan candidate and rollback identity"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "rollback_identity_drift",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "policy_identity_mismatch",
+            "path": "rolloutPolicy.candidate",
+            "message": "adapter identity must exactly match the enabled shadow-plan candidate and rollback identity"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "source_rule_index_drift",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "profile_identity_mismatch",
+            "path": "rules.scene_rules.0.source_rule_index",
+            "message": "source rule index 99 does not exist in profile.scene_rules"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "case_id": "protected_boundary_weakening",
+      "report": {
+        "schema_version": "writing-capability-adapter-preflight-report/v1",
+        "status": "blocked",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "conflicts": [
+          {
+            "code": "forbidden_boundary_language",
+            "path": "rules.repair_guidance.0.text",
+            "message": "adapter rule may weaken fact, cultural-safety, or rights-clearance boundaries"
+          }
+        ],
+        "preview_rules": {
+          "blueprint_requirements": [],
+          "scene_rules": [],
+          "quality_rules": [],
+          "repair_guidance": []
+        },
+        "checks": {
+          "genre_story_profile": true,
+          "story_knowledge_evidence": true,
+          "cultural_safety": true,
+          "rights_clearance": true,
+          "rollback_identity": true
+        },
+        "summary": {
+          "preview_rule_count": 0,
+          "conflict_count": 1
+        },
+        "boundary": {
+          "preview_only": true,
+          "affects_generation": false,
+          "rules_injected": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    }
+  ]
+}

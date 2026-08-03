@@ -1,0 +1,1141 @@
+{
+  "schema_version": "writing-capability-shadow-plan-baseline/v1",
+  "generated_at": "2026-08-01T00:45:00+08:00",
+  "status": "passed",
+  "policy": {
+    "schema_version": "writing-capability-rollout-policy/v1",
+    "policy_id": "short_drama_ai_comic_shadow_20260801",
+    "policy_revision": 1,
+    "status": "shadow_plan",
+    "candidate": {
+      "capability_id": "short_drama_develop_write_review",
+      "video_type": "ai_comic_drama",
+      "profile_schema_version": "writing-capability-profile/v1",
+      "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+      "internal_adaptation_version": "short-drama-adapter/v1",
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+    },
+    "boundary": {
+      "exact_single_capability": true,
+      "exact_single_video_type": true,
+      "global_enablement_allowed": false,
+      "runtime_activation_allowed": false,
+      "affects_generation": false,
+      "third_party_code_executed": false
+    }
+  },
+  "video_type_count": 15,
+  "shadow_ready_count": 1,
+  "active_capability_count": 0,
+  "projected_rule_count": 0,
+  "status_counts": {
+    "not_requested": 0,
+    "policy_disabled": 0,
+    "shadow_ready": 1,
+    "policy_incompatible": 0,
+    "candidate_mismatch": 14,
+    "routing_rejected": 0
+  },
+  "matrix_sha256": "0d98d1e96a7507e9099b7bb3b6c2bbb01e9126f90f472735c9a05b56c1fde177",
+  "invariants": {
+    "covers_all_15_video_types": true,
+    "exactly_one_shadow_ready": true,
+    "only_ai_comic_is_shadow_ready": true,
+    "all_routes_remain_inactive": true,
+    "all_projected_rule_lists_empty": true,
+    "no_generation_effect": true,
+    "no_runtime_activation": true,
+    "no_global_enablement": true,
+    "no_persistence": true
+  },
+  "boundary": {
+    "report_only": true,
+    "shadow_only": true,
+    "affects_generation": false,
+    "runtime_activation_allowed": false,
+    "global_enablement_allowed": false,
+    "persistence_allowed": false,
+    "public_api_exposed": false,
+    "third_party_code_executed": false
+  },
+  "matrix": [
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "character_story",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "character_story",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"character_story\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "historical_drama",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "historical_drama",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"historical_drama\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "legend_story",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "legend_story",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"legend_story\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "culture_promo",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "culture_promo",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"culture_promo\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "heritage_promo",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "heritage_promo",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"heritage_promo\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "city_brand_promo",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "city_brand_promo",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"city_brand_promo\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "scene_short",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "scene_short",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"scene_short\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "landscape_mood",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "landscape_mood",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"landscape_mood\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "documentary_short",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "documentary_short",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"documentary_short\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "explainer_video",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "explainer_video",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"explainer_video\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "lecture_video",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "lecture_video",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"lecture_video\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "education_training",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "education_training",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"education_training\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "children_story",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "children_story",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "video_type_forbidden",
+            "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"children_story\"",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 0,
+          "incompatible_count": 1
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "candidate_mismatch",
+      "video_type": "social_short",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "social_short",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "profile_disabled",
+            "message": "Capability \"short_drama_develop_write_review\" is eligible for \"social_short\" but remains disabled",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 1,
+          "incompatible_count": 0
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [
+        "policy candidate requires exactly \"short_drama_develop_write_review\" for \"ai_comic_drama\""
+      ],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    },
+    {
+      "schema_version": "writing-capability-shadow-preparation-plan/v1",
+      "status": "shadow_ready",
+      "video_type": "ai_comic_drama",
+      "requested_capability_ids": [
+        "short_drama_develop_write_review"
+      ],
+      "policy": {
+        "policy_id": "short_drama_ai_comic_shadow_20260801",
+        "policy_revision": 1,
+        "status": "shadow_plan",
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "profile_schema_version": "writing-capability-profile/v1",
+        "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+        "internal_adaptation_version": "short-drama-adapter/v1",
+        "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+      },
+      "routing_report": {
+        "schema_version": "writing-capability-routing-report/v1",
+        "video_type": "ai_comic_drama",
+        "requested_capability_ids": [
+          "short_drama_develop_write_review"
+        ],
+        "active_capability_ids": [],
+        "decisions": [
+          {
+            "capability_id": "short_drama_develop_write_review",
+            "status": "rejected",
+            "reason_code": "profile_disabled",
+            "message": "Capability \"short_drama_develop_write_review\" is eligible for \"ai_comic_drama\" but remains disabled",
+            "profile_enabled": false,
+            "profile_schema_version": "writing-capability-profile/v1",
+            "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+          }
+        ],
+        "summary": {
+          "requested_count": 1,
+          "decision_count": 1,
+          "active_count": 0,
+          "eligible_but_disabled_count": 1,
+          "incompatible_count": 0
+        },
+        "boundary": {
+          "router_only": true,
+          "affects_generation": false,
+          "runtime_enablement_supported": false,
+          "profile_rules_injected": false,
+          "third_party_code_executed": false,
+          "all_profiles_default_disabled": true
+        }
+      },
+      "projected_rules": {
+        "blueprint_requirements": [],
+        "scene_rules": [],
+        "quality_rules": [],
+        "repair_guidance": []
+      },
+      "issues": [],
+      "boundary": {
+        "shadow_only": true,
+        "affects_generation": false,
+        "profile_rules_injected": false,
+        "runtime_activation_allowed": false,
+        "global_enablement_allowed": false,
+        "persistence_allowed": false,
+        "public_api_exposed": false,
+        "third_party_code_executed": false
+      }
+    }
+  ]
+}

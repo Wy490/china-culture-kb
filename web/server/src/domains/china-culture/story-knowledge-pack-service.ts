@@ -2,6 +2,7 @@ import type { EntryDetail, KnowledgePack, KnowledgePackEntry } from '@shared/typ
 import { buildChinaCultureEntryKnowledgeSummary } from './entry-knowledge-service.js';
 import { extractChinaCultureKeywords } from './entry-language-helpers.js';
 import { appendChinaCultureDomainPackEntries } from './domain-pack-production-service.js';
+import { attachMachineProductionGuidance } from './entry-production-guidance-service.js';
 
 export interface ChinaCultureSingleEntryKnowledgePackContext {
   selectedEvent?: string;
@@ -38,7 +39,7 @@ export function buildChinaCultureSingleEntryKnowledgePack(
     verificationText: entry.verificationMethod ?? '',
     unverifiedText: entry.unverifiedPoints.join(' '),
   }, queryKeywords);
-  const primaryEntry: KnowledgePackEntry = {
+  const primaryEntry: KnowledgePackEntry = attachMachineProductionGuidance({
     entry_name: entry.name,
     province: entry.province,
     region: entry.region,
@@ -53,7 +54,18 @@ export function buildChinaCultureSingleEntryKnowledgePack(
     era: entry.era,
     asset_usage: entry.asset_usage,
     asset_split: entry.asset_split,
-  };
+  }, {
+    name: entry.name,
+    type: entry.type,
+    summary: entry.summary,
+    story: entry.story,
+    culturalSignificance: entry.culturalSignificance,
+    credibility: entry.credibility,
+    unverifiedPoints: entry.unverifiedPoints,
+    relatedLocations: entry.relatedLocations,
+    asset_usage: entry.asset_usage,
+    asset_split: entry.asset_split,
+  });
 
   return {
     primary_entries: [primaryEntry],

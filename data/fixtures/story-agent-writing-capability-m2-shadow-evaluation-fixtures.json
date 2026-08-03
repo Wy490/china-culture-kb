@@ -1,0 +1,382 @@
+{
+  "schema_version": "writing-capability-shadow-evaluation-dataset/v1",
+  "fixture_set_id": "short_drama_ai_comic_shadow_eval_20260802",
+  "fixture_set_revision": 1,
+  "capability_id": "short_drama_develop_write_review",
+  "video_type": "ai_comic_drama",
+  "adapter_id": "short_drama_ai_comic_shadow_adapter",
+  "adapter_revision": 1,
+  "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+  "samples": [
+    {
+      "sample_id": "eval_01_clean_bridge_choice",
+      "title": "守桥人的选择",
+      "source_status": "fictional_fixture",
+      "sample_text": "暴雨将至，少年看见桥墩裂缝，放下赶集的竹筐，敲响铜锣召集邻里。众人用木桩加固桥面，水位暂缓，远处却传来上游闸门开启的钟声。",
+      "expected_issue_ids": [],
+      "closed_state": {
+        "story_ref": "eval_01_clean_bridge_choice",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_01_clean_bridge_choice",
+        "preview_suggestions": [],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_02_clean_dialogue_false_positive",
+      "title": "灯市口的对话",
+      "source_status": "fictional_fixture",
+      "sample_text": "女孩举起修好的灯骨问师父是否合格，师父转动竹篾，让歪斜的影子投上白墙。她沉默片刻，拆掉最后一道绑线重新编扎，灯市开门前终于让影子归正。",
+      "expected_issue_ids": [],
+      "closed_state": {
+        "story_ref": "eval_02_clean_dialogue_false_positive",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_02_clean_dialogue_false_positive",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-scene-action-progress",
+            "issue_id": "action_progression",
+            "observation": "影子预览可能把短暂停顿误判为行动推进不足，需人工复核。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_03_clean_embroidery_delivery",
+      "title": "雨前交绣",
+      "source_status": "fictional_fixture",
+      "sample_text": "绣娘发现云纹最后一针偏色，拒绝把绣片交给商队。徒弟冒雨找回同批染线，两人在关门前补完纹样，商队接货时却递来一张陌生旧图。",
+      "expected_issue_ids": [],
+      "closed_state": {
+        "story_ref": "eval_03_clean_embroidery_delivery",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_03_clean_embroidery_delivery",
+        "preview_suggestions": [],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_04_broken_causal_spine",
+      "title": "突然获胜的木偶师",
+      "source_status": "fictional_fixture",
+      "sample_text": "木偶师说自己必须赢得会演，旁白介绍了三代传承。下一格比赛已经结束，他毫无行动便被宣布夺冠，随后又突然决定离开村庄，前后没有压力、策略或结果交接。",
+      "expected_issue_ids": [
+        "action_progression",
+        "causal_chain"
+      ],
+      "closed_state": {
+        "story_ref": "eval_04_broken_causal_spine",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_04_broken_causal_spine",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-blueprint-causal-spine",
+            "issue_id": "causal_chain",
+            "observation": "目标之后缺少可定位的压力、策略与局部结果。"
+          },
+          {
+            "rule_id": "sd-quality-causal-loop",
+            "issue_id": "causal_chain",
+            "observation": "夺冠与离村之间没有形成可见因果链。"
+          },
+          {
+            "rule_id": "sd-repair-local-causality",
+            "issue_id": "causal_chain",
+            "observation": "可供人工复核的局部衔接位置位于比赛开始与结果之间。"
+          },
+          {
+            "rule_id": "sd-scene-action-progress",
+            "issue_id": "action_progression",
+            "observation": "比赛段落由旁白跳到结果，没有角色行动推进。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_05_passive_exposition",
+      "title": "只剩介绍的茶坊",
+      "source_status": "fictional_fixture",
+      "sample_text": "旁白连续介绍茶坊历史、器具名称和街巷风貌，少年始终站在柜台前听讲。整段没有选择、阻力、操作或关系变化，结尾仍停在同一个姿势。",
+      "expected_issue_ids": [
+        "action_progression"
+      ],
+      "closed_state": {
+        "story_ref": "eval_05_passive_exposition",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_05_passive_exposition",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-scene-action-progress",
+            "issue_id": "action_progression",
+            "observation": "场景只有背景说明，没有可表演动作、冲突或发现。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_06_missed_hook_payoff",
+      "title": "消失的红伞",
+      "source_status": "fictional_fixture",
+      "sample_text": "开场特写一把带血红伞，旁白称它会改变全城命运。此后人物只讨论修缮戏台，红伞再未出现，结尾用雷声制造悬念，却没有兑现或交接开场承诺。",
+      "expected_issue_ids": [
+        "hook_payoff"
+      ],
+      "closed_state": {
+        "story_ref": "eval_06_missed_hook_payoff",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_06_missed_hook_payoff",
+        "preview_suggestions": [],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_07_hook_without_cause",
+      "title": "无缘由的追捕令",
+      "source_status": "fictional_fixture",
+      "sample_text": "少年在集市买糖，下一格官差突然贴出追捕令，所有人立即认定他有罪。故事没有展示触发事件、证据或人物策略，结尾只用追兵逼近作为钩子。",
+      "expected_issue_ids": [
+        "causal_chain",
+        "hook_payoff"
+      ],
+      "closed_state": {
+        "story_ref": "eval_07_hook_without_cause",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_07_hook_without_cause",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-quality-causal-loop",
+            "issue_id": "causal_chain",
+            "observation": "追捕结果之前缺少触发事件、阻力和角色策略。"
+          },
+          {
+            "rule_id": "sd-scene-hook-boundary",
+            "issue_id": "hook_payoff",
+            "observation": "结尾追兵钩子没有承接前文已建立的信息。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_08_false_date_hook",
+      "title": "虚构年代的族谱",
+      "source_status": "fictional_fixture",
+      "sample_text": "角色翻开道具族谱，断言某项技艺在一个未经资料支持的确切年份由真实人物独创，并以此作为结尾反转。样本明确要求该年份保持待核验。",
+      "expected_issue_ids": [
+        "fact_boundary",
+        "hook_payoff"
+      ],
+      "closed_state": {
+        "story_ref": "eval_08_false_date_hook",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_08_false_date_hook",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-repair-boundary-preservation",
+            "issue_id": "fact_boundary",
+            "observation": "确切年份与真实人物独创说法缺少证据支持，应保持待核验。"
+          },
+          {
+            "rule_id": "sd-scene-hook-boundary",
+            "issue_id": "hook_payoff",
+            "observation": "反转依赖未证实的事实断言，钩子边界需要人工复核。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_09_ritual_taboo_hook",
+      "title": "被娱乐化的祭仪",
+      "source_status": "fictional_fixture",
+      "sample_text": "为了制造追看点，角色把资料标记为禁拍的祭仪步骤改成闯关游戏，并在结尾鼓励游客现场模仿，没有呈现禁区、主持者身份或社区边界。",
+      "expected_issue_ids": [
+        "cultural_safety",
+        "hook_payoff"
+      ],
+      "closed_state": {
+        "story_ref": "eval_09_ritual_taboo_hook",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_09_ritual_taboo_hook",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-repair-boundary-preservation",
+            "issue_id": "cultural_safety",
+            "observation": "禁拍祭仪被改为游客模仿内容，文化安全边界未保留。"
+          },
+          {
+            "rule_id": "sd-scene-hook-boundary",
+            "issue_id": "hook_payoff",
+            "observation": "结尾钩子建立在越过仪式禁区之上。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_10_unverified_origin",
+      "title": "被改写的传承源头",
+      "source_status": "fictional_fixture",
+      "sample_text": "样本把存在多种口述版本的传承源头写成唯一官方结论，又删除社区要求保留的女性传承人角色，使文化分歧和待核验事实同时消失。",
+      "expected_issue_ids": [
+        "cultural_safety",
+        "fact_boundary"
+      ],
+      "closed_state": {
+        "story_ref": "eval_10_unverified_origin",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_10_unverified_origin",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-repair-boundary-preservation",
+            "issue_id": "fact_boundary",
+            "observation": "多版本口述被写成唯一结论，事实状态发生越界。"
+          },
+          {
+            "rule_id": "sd-scene-hook-boundary",
+            "issue_id": "cultural_safety",
+            "observation": "删除社区要求保留的传承主体，削弱了文化表达边界。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_11_unlicensed_adaptation_review",
+      "title": "未授权原作的分镜复刻",
+      "source_status": "fictional_fixture",
+      "sample_text": "编剧把一部仍受保护的小说场景逐格改成漫剧，并把机器意见写成真人读者一致好评。项目材料没有授权文件，也没有任何真实读者复核记录。",
+      "expected_issue_ids": [
+        "review_separation",
+        "rights_clearance"
+      ],
+      "closed_state": {
+        "story_ref": "eval_11_unlicensed_adaptation_review",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_11_unlicensed_adaptation_review",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-quality-review-separation",
+            "issue_id": "review_separation",
+            "observation": "机器观察被表述为真人读者一致反馈，复核身份未分离。"
+          },
+          {
+            "rule_id": "sd-repair-boundary-preservation",
+            "issue_id": "rights_clearance",
+            "observation": "逐格改编缺少授权证据，权利状态不能推定。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_12_assumed_brand_license",
+      "title": "被默认许可的品牌",
+      "source_status": "fictional_fixture",
+      "sample_text": "角色使用真实品牌标识和广告语推动剧情，制作说明只写对方应该不会介意，没有许可记录、使用范围或素材来源证明。",
+      "expected_issue_ids": [
+        "rights_clearance"
+      ],
+      "closed_state": {
+        "story_ref": "eval_12_assumed_brand_license",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_12_assumed_brand_license",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-repair-boundary-preservation",
+            "issue_id": "rights_clearance",
+            "observation": "品牌标识与广告语没有许可记录或范围证明。"
+          }
+        ],
+        "story_mutated": false
+      }
+    },
+    {
+      "sample_id": "eval_13_mixed_review_layers",
+      "title": "混在一起的审稿单",
+      "source_status": "fictional_fixture",
+      "sample_text": "审稿单把因果断裂、史料待核验、镜头成本和个人文风偏好混成一条总体差评，没有标注证据位置，也没有区分机器观察与人工判断。",
+      "expected_issue_ids": [
+        "review_separation"
+      ],
+      "closed_state": {
+        "story_ref": "eval_13_mixed_review_layers",
+        "observations": [],
+        "preview_suggestions": [],
+        "story_mutated": false
+      },
+      "shadow_preview_state": {
+        "story_ref": "eval_13_mixed_review_layers",
+        "preview_suggestions": [
+          {
+            "rule_id": "sd-quality-review-separation",
+            "issue_id": "review_separation",
+            "observation": "结构、证据、制作与风格判断未分层，机器和人工身份也未区分。"
+          }
+        ],
+        "story_mutated": false
+      }
+    }
+  ],
+  "boundary": {
+    "offline_only": true,
+    "synthetic_fixtures_only": true,
+    "contains_production_story_data": false,
+    "affects_generation": false,
+    "repair_execution_allowed": false,
+    "persistence_allowed": false,
+    "public_api_exposed": false,
+    "third_party_code_executed": false
+  }
+}

@@ -1,0 +1,847 @@
+{
+  "schema_version": "writing-capability-routing-baseline/v1",
+  "generated_at": "2026-07-31T17:00:00+08:00",
+  "status": "passed",
+  "profile_schema_version": "writing-capability-profile/v1",
+  "routing_schema_version": "writing-capability-routing-report/v1",
+  "video_type_count": 15,
+  "profile_count": 3,
+  "decision_count": 45,
+  "active_capability_count": 0,
+  "reason_counts": {
+    "unknown_capability": 0,
+    "video_type_forbidden": 25,
+    "video_type_not_allowed": 0,
+    "profile_disabled": 20
+  },
+  "matrix_sha256": "6d59efae036581f08ca61e0429436e5327ec0ffa12d2a1cfbe868df1e118d432",
+  "invariants": {
+    "covers_all_15_video_types": true,
+    "covers_all_3_profiles_per_type": true,
+    "every_profile_default_disabled": true,
+    "active_capability_count_is_zero": true,
+    "applicable_routes_are_explicitly_disabled": true,
+    "incompatible_routes_are_explicitly_forbidden": true,
+    "no_profile_rules_injected": true,
+    "no_generation_effect": true
+  },
+  "boundary": {
+    "report_only": true,
+    "affects_generation": false,
+    "runtime_enablement_supported": false,
+    "third_party_code_executed": false,
+    "external_execution_allowed": false
+  },
+  "matrix": [
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "character_story",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"continuity_state_tracking\" is eligible for \"character_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"character_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"character_story\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 2,
+        "incompatible_count": 1
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "historical_drama",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"continuity_state_tracking\" is eligible for \"historical_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"historical_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"historical_drama\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 2,
+        "incompatible_count": 1
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "legend_story",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"continuity_state_tracking\" is eligible for \"legend_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"legend_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"legend_story\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 2,
+        "incompatible_count": 1
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "culture_promo",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"culture_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"culture_promo\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"culture_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "heritage_promo",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"heritage_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"heritage_promo\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"heritage_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "city_brand_promo",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"city_brand_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"city_brand_promo\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"city_brand_promo\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "scene_short",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"scene_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"reader_simulation_review\" explicitly forbids video type \"scene_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"scene_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 0,
+        "incompatible_count": 3
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "landscape_mood",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"landscape_mood\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"reader_simulation_review\" explicitly forbids video type \"landscape_mood\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"landscape_mood\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 0,
+        "incompatible_count": 3
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "documentary_short",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"documentary_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"documentary_short\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"documentary_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "explainer_video",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"explainer_video\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"explainer_video\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"explainer_video\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "lecture_video",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"lecture_video\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"lecture_video\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"lecture_video\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "education_training",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"education_training\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"education_training\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"education_training\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 1,
+        "incompatible_count": 2
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "children_story",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"continuity_state_tracking\" is eligible for \"children_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"children_story\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"short_drama_develop_write_review\" explicitly forbids video type \"children_story\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 2,
+        "incompatible_count": 1
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "social_short",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "video_type_forbidden",
+          "message": "Capability \"continuity_state_tracking\" explicitly forbids video type \"social_short\"",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"social_short\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"short_drama_develop_write_review\" is eligible for \"social_short\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 2,
+        "incompatible_count": 1
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    },
+    {
+      "schema_version": "writing-capability-routing-report/v1",
+      "video_type": "ai_comic_drama",
+      "requested_capability_ids": [
+        "continuity_state_tracking",
+        "reader_simulation_review",
+        "short_drama_develop_write_review"
+      ],
+      "active_capability_ids": [],
+      "decisions": [
+        {
+          "capability_id": "continuity_state_tracking",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"continuity_state_tracking\" is eligible for \"ai_comic_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "c482d48f4eb9b488f033a77a51f9fae55cc0d75f"
+        },
+        {
+          "capability_id": "reader_simulation_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"reader_simulation_review\" is eligible for \"ai_comic_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "fb9dab2d4d23434ae76568e8de36aaf515dea8d5"
+        },
+        {
+          "capability_id": "short_drama_develop_write_review",
+          "status": "rejected",
+          "reason_code": "profile_disabled",
+          "message": "Capability \"short_drama_develop_write_review\" is eligible for \"ai_comic_drama\" but remains disabled",
+          "profile_enabled": false,
+          "profile_schema_version": "writing-capability-profile/v1",
+          "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6"
+        }
+      ],
+      "summary": {
+        "requested_count": 3,
+        "decision_count": 3,
+        "active_count": 0,
+        "eligible_but_disabled_count": 3,
+        "incompatible_count": 0
+      },
+      "boundary": {
+        "router_only": true,
+        "affects_generation": false,
+        "runtime_enablement_supported": false,
+        "profile_rules_injected": false,
+        "third_party_code_executed": false,
+        "all_profiles_default_disabled": true
+      }
+    }
+  ]
+}

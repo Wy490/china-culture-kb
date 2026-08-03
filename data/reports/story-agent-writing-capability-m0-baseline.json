@@ -1,0 +1,97 @@
+{
+  "schema_version": "story-agent-writing-capability-m0-baseline/v1",
+  "generated_at": "2026-07-31T05:37:09Z",
+  "baseline_scope": "local_deterministic_generation_and_knowledge_health",
+  "repository": {
+    "branch": "codex/story-agent-manifest-integrity-20260718",
+    "head": "5f6261e2",
+    "generation_artifacts_unchanged_from_head": true,
+    "worktree_clean": false
+  },
+  "generation_boundary": {
+    "mode": "canonical_local_15x3",
+    "story_gen_local_only": true,
+    "external_model_path_covered": false,
+    "external_model_invocation_count": 0,
+    "third_party_code_executed": false,
+    "paid_cost_usd": 0,
+    "input_tokens": null,
+    "output_tokens": null,
+    "token_metrics_reason": "No language model was invoked in the local deterministic baseline.",
+    "human_review_covered": false,
+    "video_generation_in_scope": false
+  },
+  "generation_baseline": {
+    "schema_version": "story-agent-15x3-stability-matrix/v1",
+    "artifact_path": "web/generated/story-agent-15x3-stability-matrix/matrix-report.json",
+    "artifact_sha256": "53ce931ad46da01bc07d072ddc09335698eabf54efa398c2f37d471d6f1ee1c1",
+    "artifact_generated_at": "2026-07-24T12:45:44.890Z",
+    "status": "ready",
+    "type_count": 15,
+    "variant_count": 3,
+    "case_count": 45,
+    "story_ready_count": 45,
+    "professional_script_ready_count": 45,
+    "prompt_ready_count": 45,
+    "preproduction_ready_count": 45,
+    "hidden_fallback_count": 0,
+    "adaptation_case_count": 5,
+    "compact_case_count": 10,
+    "shot_count": 351,
+    "image_task_count": 69,
+    "delivered_image_count": 69
+  },
+  "canonical_type_baseline": {
+    "schema_version": "story-agent-15-type-preproduction-matrix/v1",
+    "artifact_path": "web/generated/story-agent-15-type-preproduction-matrix/matrix-report.json",
+    "artifact_sha256": "72550913cac157b556e50e7fb09ec37f43ef4bd9656b7e88bb42bab69cf34245",
+    "artifact_generated_at": "2026-07-24T11:40:08.331Z",
+    "status": "ready",
+    "type_count": 15,
+    "case_count": 15,
+    "preproduction_ready_count": 15,
+    "hidden_fallback_count": 0
+  },
+  "verification": {
+    "command": "npm test -- story-agent-15x3-stability-service.test.ts",
+    "verified_at": "2026-07-31T05:36:24Z",
+    "test_files_passed": 1,
+    "tests_passed": 1,
+    "observed_duration_ms": 13300,
+    "uses_temporary_workspace": true,
+    "writes_canonical_artifacts": false
+  },
+  "milestone_gate": {
+    "server_test_files_passed": 193,
+    "server_test_files_skipped": 1,
+    "server_tests_passed": 1600,
+    "server_tests_skipped": 2,
+    "mcp_test_files_passed": 107,
+    "mcp_tests_passed": 551,
+    "server_typecheck_passed": true,
+    "mcp_build_passed": true,
+    "web_production_build_passed": true
+  },
+  "knowledge_baseline": {
+    "production_audit_path": "data/reports/knowledge-base-production-audit.json",
+    "production_audit_sha256": "28a6bf747bfbeba5fea1bfd6b73819a95ad613f0dbd33e3195661be2951c35a9",
+    "content_supply_progress_path": "data/reports/knowledge-base-content-supply-progress.json",
+    "content_supply_progress_sha256": "b65225f92f3fb596ba98d336e5729fbe7bc55221e02ddec7ba7099a2ccababf5",
+    "province_files": 34,
+    "formal_entries": 262,
+    "sources": 960,
+    "human_review_pending": true
+  },
+  "capability_catalog_boundary": {
+    "profile_schema_version": "writing-capability-profile/v1",
+    "catalog_report_schema_version": "writing-capability-catalog-report/v1",
+    "profile_count": 3,
+    "enabled_count": 0,
+    "affects_generation": false
+  },
+  "limitations": [
+    "This baseline measures the local deterministic path only; it does not establish external-model quality, token, latency, or cost baselines.",
+    "The existing 45-case artifact includes completed image imports, while the verification test recreates the same generation contract in an isolated temporary workspace.",
+    "Human blind review is intentionally deferred to M4 and must not be inferred from machine readiness."
+  ]
+}

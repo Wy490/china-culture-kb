@@ -1,14 +1,14 @@
 # 素材库生产化升级计划
 
-生成时间：2026-07-15T17:25:10.393Z
-来源审计时间：2026-07-15T17:25:10.386Z
+生成时间：2026-08-03T14:47:02.377Z
+来源审计时间：2026-08-03T14:47:02.366Z
 
 ## 总览
 
-- 条目总数：262
-- 高优先级条目：204
+- 条目总数：289
+- 高优先级条目：289
 - 批次数：13
-- 计划动作数：399
+- 计划动作数：402
 - 可格式化自动处理动作：0
 
 ## 批次
@@ -97,8 +97,10 @@
 | 常德武陵戏——沅澧流域的湖南五大剧种之一 | 湖南 | 非遗 | 100 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 大甲妈祖遶境进香——跨县市步行与宫庙协作的年度民俗 | 台湾 | 民俗活动 | 100 | high | official_catalog_or_resource_links、tools、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 汉剧——西皮二黄、十大行当与武汉戏码头 | 湖北 | 传统戏剧 | 100 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
+| 金石篆刻（西泠印社）——篆法、章法、刀法与钤拓传承 | 浙江 | 传统美术 | 100 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 吴桥杂技——江湖行当、地方班社与杂技之乡的活态传统 | 河北 | 传统体育、游艺与杂技 | 100 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 湘西苗医苗药——武陵山中的民族医药体系 | 湖南 | 非遗 | 100 | high | official_catalog_or_resource_links、tools、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
+| 豫剧——河南梆子声腔、舞台行当与当代院团传承 | 河南 | 地方戏曲 | 100 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 湖南花鼓戏——湖南人的戏 | 湖南 | 地方戏曲 | 82 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 82 | high | official_catalog_or_resource_links、tools、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、sound_or_texture_details、modern_connection、production_risks |
 | 湘剧——湖南戏曲的中州遗韵 | 湖南 | 非遗 | 82 | high | official_catalog_or_resource_links、process_steps、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、sound_or_texture_details、modern_connection、production_risks |
@@ -106,8 +108,6 @@
 | 长沙弹词——月琴敲响的湘中市井 | 湖南 | 非遗 | 82 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 | 安仁赶分社——春分时节的神农药市 | 湖南 | 民俗活动 | 91 | high | official_catalog_or_resource_links、tools、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、sound_or_texture_details、modern_connection、production_risks |
 | 辰州傩戏——沅水中游的中国戏剧活化石 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
-| 侗族琵琶歌——鼓楼月堂下的湘西南情歌 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
-| 靖州苗族歌鼟——三锹大山的多声部和声 | 湖南 | 非遗 | 91 | high | official_catalog_or_resource_links、hand_actions、practitioner_or_transmission_line、community_or_practitioner_consent、documentation_assets、visual_symbols、sound_or_texture_details、modern_connection、production_risks |
 
 验收标准：
 - 补齐当前片型 required_fields 中最影响生成的字段。
@@ -192,7 +192,7 @@
 - 批次 ID：children_story_minimum_pack
 - 目标：补齐儿童故事片生产所需的最小字段。
 - 原因：只补目标片型需要的字段，比泛泛扩库更快提升生成质量。
-- 条目数：19
+- 条目数：22
 
 | 条目 | 省份 | 类型 | 分数 | 优先级 | 建议字段 |
 |---|---|---|---:|---|---|
@@ -203,6 +203,7 @@
 | 苗族四月八——湘西苗族纪念英雄亚努的节日 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 苗族椎牛祭——湘西苗族最高祭祀礼仪 | 湖南 | 民俗活动 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 瑶族盘王节——瑶族始祖的千年祭典 | 湖南 | 节庆习俗 | 91 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 查干淖尔冬捕习俗——冰下走网、祭湖醒网与生态捕捞 | 吉林 | 民俗活动 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 狐仙报恩母题——湖南民间叙事与志异边界 | 湖南 | 志异母题；民间故事结构；GEARS叙事设定包 | 100 | high | audience_age_band、core_question、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 湘潭龙舞——纸扎龙灯的火光与鼓声 | 湖南 | 民俗活动 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 炎帝神农氏——炎陵传说 | 湖南 | 神话传说 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
@@ -213,8 +214,8 @@
 | 刘海砍樵——人仙之恋的湖南民间传说 | 湖南 | 民间故事 | 91 | high | audience_age_band、core_question、child_safe_conflict、emotional_resolution、parent_teacher_note |
 | 汨罗江畔端午习俗——屈原故乡的龙舟与粽子 | 湖南 | 节庆习俗 | 91 | high | child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 | 柳毅传书——洞庭湖畔的书生与龙女 | 湖南 | 民间故事 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、emotional_resolution、parent_teacher_note |
-| 屈原投江汨罗——端午节起源 | 湖南 | 神话传说 | 100 | high | audience_age_band、child_safe_conflict、protagonist_choice、concrete_examples、parent_teacher_note |
-| 书生遇异母题——志异叙事中的相遇结构与边界 | 湖南 | 志异母题；民间故事结构；GEARS叙事设定包 | 100 | high | audience_age_band、core_question、concrete_examples、emotional_resolution、parent_teacher_note |
+| 妈祖信俗——湄洲祖庙、祭典与海洋社群文化纽带 | 福建 | 民俗活动 | 100 | high | child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
+| 蒙古族服饰——部落版本、生活身份与裁缝饰品系统 | 内蒙古 | 民俗活动 | 100 | high | child_safe_conflict、protagonist_choice、concrete_examples、emotional_resolution、parent_teacher_note |
 
 验收标准：
 - 补齐当前片型 required_fields 中最影响生成的字段。
@@ -389,12 +390,12 @@
 | 渡江战役——百万雄师过大江 | 江苏 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 飞夺泸定桥——长征路上的惊险夺桥 | 四川 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 凤凰蓝印花布——边城蓝白的湘西素颜 | 湖南 | 非遗 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
+| 复州皮影戏——灯幕、影人与辽南声腔的协作舞台 | 辽宁 | 传统戏剧 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
+| 海城高跷——木跷之上的大场、小场与辽南秧歌 | 辽宁 | 传统舞蹈 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 何叔衡——清末秀才的革命觉醒 | 湖南 | 历史人物 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 贺捷生——长征中最小的参与者 | 湖南 | 历史人物 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 衡阳保卫战——抗战中最惨烈的城市坚守 | 湖南 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 | 红军西路军——悲壮的西征 | 青海 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
-| 红军长征过宁夏——翻越六盘山 | 宁夏 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
-| 红岩精神——重庆狱中的忠贞与牺牲 | 重庆 | 地方掌故 | 82 | high | heritage_process_pack、documentary_source_pack、ai_comic_storyboard_pack、era_and_costume_pack |
 
 验收标准：
 - 新增 domain pack 必须有 trigger_words、asset_usage 和边界说明。

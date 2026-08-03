@@ -18,7 +18,10 @@ import {
 import { validateChinaCultureStoryAssemblyBaseQuality } from './story-base-quality-service.js';
 import { buildChinaCultureGeneratedStoryDocument } from './story-document-service.js';
 import { executeChinaCultureStoryGeneration } from './story-generation-execution-service.js';
-import { prepareChinaCultureStoryGeneration } from './story-generation-preparation-service.js';
+import {
+  prepareChinaCultureStoryGeneration,
+  type ChinaCultureStoryGenerationPreparationOptions,
+} from './story-generation-preparation-service.js';
 import { validateChinaCultureStoryContent } from './story-safety.js';
 import {
   applyChinaCultureStoryAssemblyToStoryData,
@@ -30,7 +33,9 @@ import {
 } from '../../services/reference-quality-service.js';
 import { buildStoryRecipeEffectComparison } from '../../services/reference-recipe-effect-comparison-service.js';
 
-export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {}
+export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {
+  writingCapability?: ChinaCultureStoryGenerationPreparationOptions['writingCapability'];
+}
 
 /**
  * Owns the complete china_culture generation workflow. The legacy story service
@@ -42,7 +47,11 @@ export async function generateAndStoreChinaCultureStory(
   options: ChinaCultureStoryGenerationOptions = {},
 ): Promise<ApiResponse<StoryGenerateResult>> {
   const { output_gears_segments } = request;
-  const preparation = await prepareChinaCultureStoryGeneration(request);
+  const preparation = await prepareChinaCultureStoryGeneration(request, {
+    ...(options.writingCapability
+      ? { writingCapability: options.writingCapability }
+      : {}),
+  });
   if (!preparation.ok) {
     return fail(
       preparation.code,

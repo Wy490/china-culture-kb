@@ -28,7 +28,8 @@ describe('china_culture story generation boundary', () => {
     expect(domainPackSource).toContain("from './story-generation-service.js'");
     expect(domainPackSource).not.toContain("from '../../services/story-service.js'");
     expect(domainPackSource).toContain('generateAndStoreChinaCultureStory(request');
-    expect(generationSource).toContain('prepareChinaCultureStoryGeneration(request)');
+    expect(generationSource).toContain('prepareChinaCultureStoryGeneration(request, {');
+    expect(generationSource).toContain('writingCapability: options.writingCapability');
     expect(generationSource).toContain('executeChinaCultureStoryGeneration({ request, preparation })');
     expect(generationSource).toContain('buildChinaCultureGeneratedStoryDocument({');
     expect(generationSource).toContain('orchestrateStoryPostGeneration({');

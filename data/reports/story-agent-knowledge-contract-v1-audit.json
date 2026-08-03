@@ -1,0 +1,35 @@
+{
+  "schema_version": "story-knowledge-contract-migration-audit/v1",
+  "generated_at": "2026-08-03T10:38:18.185Z",
+  "status": "ready_for_human_enrichment",
+  "totals": {
+    "entry_count": 272,
+    "valid_contract_count": 272,
+    "invalid_contract_count": 0,
+    "source_count": 992,
+    "ungraded_source_count": 992,
+    "claim_count": 1405,
+    "blocked_claim_count": 1133,
+    "critical_fact_ready_count": 0,
+    "missing_material_count": 1359
+  },
+  "missing_category_counts": {
+    "claim_level_source_mapping": 272,
+    "authoritative_source": 272,
+    "creative_affordance": 271,
+    "production_material": 272,
+    "rights_clearance": 272
+  },
+  "invariants": {
+    "every_entry_preserved": true,
+    "every_contract_valid": true,
+    "no_critical_fact_auto_assertion": true
+  },
+  "invalid_entries": [],
+  "boundary": {
+    "report_only": true,
+    "consumed_by_generation": false,
+    "source_markdown_writeback_allowed": false,
+    "human_review_complete": false
+  }
+}

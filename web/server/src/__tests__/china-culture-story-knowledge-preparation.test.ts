@@ -1,0 +1,291 @@
+import { readFile } from 'node:fs/promises';
+import { describe, expect, it } from 'vitest';
+import type {
+  StoryGenerateRequest,
+  StoryKnowledgeEvidenceOverlayV1,
+} from '@shared/types.js';
+import {
+  adaptLegacyChinaCultureEntryToStoryKnowledgeContract,
+} from '../domains/china-culture/story-knowledge-contract-service.js';
+import {
+  prepareChinaCultureStoryGeneration,
+} from '../domains/china-culture/story-generation-preparation-service.js';
+
+const REVIEWED_AT = '2026-07-31T13:00:00+08:00';
+const REQUEST: StoryGenerateRequest = {
+  video_type: 'ai_comic_drama',
+  presentation_style: 'ai_comic',
+  creation_use_case: 'original_ai_comic',
+  truth_mode: 'fictional_original',
+  original_user_query: '标题：知识合同测试故事。少年发现古桥即将被洪水冲毁，决定召集伙伴守桥。',
+};
+
+async function preparationBase() {
+  const preparation = await prepareChinaCultureStoryGeneration(REQUEST);
+  expect(preparation.ok).toBe(true);
+  if (!preparation.ok) throw new Error(preparation.message);
+  const contract = adaptLegacyChinaCultureEntryToStoryKnowledgeContract(
+    preparation.entry,
+  ).contract;
+  return { preparation, contract };
+}
+
+function overlay(
+  contract: Awaited<ReturnType<typeof preparationBase>>['contract'],
+  signoff: StoryKnowledgeEvidenceOverlayV1['signoff'],
+  mode: 'human_fact' | 'machine_context',
+): StoryKnowledgeEvidenceOverlayV1 {
+  const humanFact = mode === 'human_fact';
+  return {
+    schema_version: 'story-knowledge-evidence-overlay/v1',
+    overlay_id: `fixture-${mode}-20260731`,
+    entry_name: contract.source_entry.name,
+    source_reviews: [{
+      source_ref_id: contract.sources[0]!.source_ref_id,
+      grade: 'A',
+      verification_status: humanFact ? 'human_verified' : 'machine_mapped',
+      ...(humanFact ? { verified_at: REVIEWED_AT } : {}),
+      note: humanFact
+        ? '合成 fixture 的人工签收路径，仅用于合同测试，不授予真实审核信用。'
+        : '机器候选映射，等待人工审核。',
+    }],
+    claim_mappings: [{
+      claim_id: contract.claims[0]!.claim_id,
+      source_ref_ids: [contract.sources[0]!.source_ref_id],
+      claim_type: humanFact ? 'critical_fact' : 'supporting_fact',
+      certainty: humanFact ? 'verified' : 'probable',
+      usage: humanFact ? 'fact' : 'bounded_context',
+      scope: humanFact
+        ? '合成 fixture 只验证合同开闸，不代表真实文化事实。'
+        : '人工签收前只能作为受限背景。',
+    }],
+    signoff,
+    boundary: {
+      read_only_overlay: true,
+      source_markdown_writeback_allowed: false,
+      generation_consumption_allowed: false,
+      existing_supplement_tasks_mutable: false,
+    },
+  };
+}
+
+describe('story knowledge preparation read-only boundary', () => {
+  it('keeps the default preparation result byte-shape compatible when the feature is not requested', async () => {
+    const baseline = await prepareChinaCultureStoryGeneration(REQUEST);
+    const explicitDefault = await prepareChinaCultureStoryGeneration(REQUEST, {});
+
+    expect(explicitDefault).toEqual(baseline);
+    expect(baseline).not.toHaveProperty('storyKnowledgePreparation');
+  });
+
+  it('returns a base-only contract when read-only preparation is enabled without an overlay', async () => {
+    const { preparation: baseline } = await preparationBase();
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgePreparation).toMatchObject({
+      schema_version: 'story-knowledge-preparation/v1',
+      status: 'base_contract_only',
+      issues: ['evidence overlay was not provided'],
+      boundary: {
+        consumed_by_blueprint: false,
+        consumed_by_prompt: false,
+        consumed_by_fallback: false,
+        persistence_allowed: false,
+        generation_output_changed: false,
+      },
+    });
+    expect(result.storyKnowledgePreparation?.contract.boundary)
+      .toMatchObject({ critical_facts_can_be_asserted: false });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+  });
+
+  it('keeps a pending machine overlay bounded and leaves the blueprint unchanged', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        evidenceOverlay: overlay(contract, {
+          status: 'pending',
+          reason: '等待事实与文化审核。',
+        }, 'machine_context'),
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgePreparation).toMatchObject({
+      status: 'overlay_pending',
+      overlay_id: 'fixture-machine_context-20260731',
+      contract: {
+        sources: [expect.objectContaining({
+          grade: 'A',
+          verification_status: 'machine_mapped',
+        })],
+        boundary: {
+          critical_facts_can_be_asserted: false,
+        },
+      },
+    });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+  });
+
+  it('exposes an approved fixture only as a read-only contract and still leaves the blueprint unchanged', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        evidenceOverlay: overlay(contract, {
+          status: 'approved',
+          reviewed_by: 'fixture-reviewer-not-real',
+          reviewer_role: 'fact_culture_reviewer',
+          reviewed_at: REVIEWED_AT,
+          confirmation: 'human_reviewed_story_knowledge_evidence_overlay',
+        }, 'human_fact'),
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgePreparation).toMatchObject({
+      status: 'overlay_approved_read_only',
+      overlay_id: 'fixture-human_fact-20260731',
+      contract: {
+        boundary: {
+          critical_facts_can_be_asserted: true,
+          consumed_by_generation: false,
+        },
+      },
+      boundary: {
+        real_human_review_credit_granted: false,
+        generation_output_changed: false,
+      },
+    });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+  });
+
+  it('degrades rejected and incompatible overlays to the untouched base contract', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const rejected = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        evidenceOverlay: overlay(contract, {
+          status: 'rejected',
+          reviewed_by: 'fixture-reviewer-not-real',
+          reviewer_role: 'fact_culture_reviewer',
+          reviewed_at: REVIEWED_AT,
+          reason: 'fixture rejection path',
+        }, 'machine_context'),
+      },
+    });
+    const incompatibleVersion = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        evidenceOverlay: {
+          schema_version: 'story-knowledge-evidence-overlay/v2',
+          overlay_id: 'future-overlay',
+        },
+      },
+    });
+    const unknownReference = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        evidenceOverlay: {
+          ...overlay(contract, {
+            status: 'pending',
+            reason: '等待事实与文化审核。',
+          }, 'machine_context'),
+          source_reviews: [{
+            ...overlay(contract, {
+              status: 'pending',
+              reason: '等待事实与文化审核。',
+            }, 'machine_context').source_reviews[0]!,
+            source_ref_id: 'unknown-source',
+          }],
+          claim_mappings: [],
+        },
+      },
+    });
+
+    for (const result of [rejected, incompatibleVersion, unknownReference]) {
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.storyKnowledgePreparation?.contract).toEqual(contract);
+      expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+    }
+    if (rejected.ok) {
+      expect(rejected.storyKnowledgePreparation).toMatchObject({
+        status: 'overlay_rejected',
+        issues: ['fixture rejection path'],
+      });
+    }
+    if (incompatibleVersion.ok) {
+      expect(incompatibleVersion.storyKnowledgePreparation).toMatchObject({
+        status: 'overlay_incompatible',
+      });
+    }
+    if (unknownReference.ok) {
+      expect(unknownReference.storyKnowledgePreparation).toMatchObject({
+        status: 'overlay_incompatible',
+        issues: ['unknown source_ref_id: unknown-source'],
+      });
+    }
+  });
+
+  it('keeps knowledge preparation out of prompt, fallback, blueprint builder and persistence', async () => {
+    const [prompt, fallback, blueprint, document, preparation] = await Promise.all([
+      readFile(new URL('../services/story-generation-prompt.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../services/dramatic-story.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../services/story-blueprint-service.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../domains/china-culture/story-document-service.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../domains/china-culture/story-generation-preparation-service.ts', import.meta.url), 'utf8'),
+    ]);
+
+    expect(preparation).toContain('resolveStoryKnowledgePreparation(');
+    expect(prompt).not.toContain('StoryKnowledgePreparationV1');
+    expect(fallback).not.toContain('StoryKnowledgePreparationV1');
+    expect(blueprint).not.toContain('StoryKnowledgePreparationV1');
+    expect(document).not.toContain('storyKnowledgePreparation');
+  });
+
+  it('keeps the reproducible fixture report synthetic and grants zero real review credit', async () => {
+    const report = JSON.parse(await readFile(
+      new URL('../../../../data/reports/story-agent-knowledge-overlay-m1-fixture-report.json', import.meta.url),
+      'utf8',
+    )) as Record<string, unknown>;
+
+    expect(report).toMatchObject({
+      schema_version: 'story-knowledge-overlay-fixture-audit/v1',
+      status: 'passed',
+      cases: {
+        pending: {
+          preparation_status: 'overlay_pending',
+          critical_fact_ready_count: 0,
+        },
+        approved: {
+          preparation_status: 'overlay_approved_read_only',
+          critical_fact_ready_count: 1,
+        },
+      },
+      invariants: {
+        fixture_is_explicitly_synthetic: true,
+        no_real_human_review_credit: true,
+        pending_overlay_stays_bounded: true,
+        approved_fixture_exercises_evidence_gate: true,
+        preparation_never_changes_generation_output: true,
+        preparation_never_persists: true,
+      },
+      boundary: {
+        fixture_only: true,
+        real_human_review_credit_granted: false,
+        consumed_by_generation: false,
+        persistence_allowed: false,
+      },
+    });
+  });
+});

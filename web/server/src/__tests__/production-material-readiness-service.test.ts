@@ -334,6 +334,54 @@ describe('production-material-readiness-service', () => {
     }
   });
 
+  it('covers all 15 video types with production-depth templates and sample floors', () => {
+    const packs = getProductionMaterialPacks();
+    const configuredVideoTypes = Object.keys(VIDEO_TYPE_CONFIG).sort();
+    const packedVideoTypes = packs.map(pack => pack.video_type).sort();
+    const totalRequiredFieldCount = packs.reduce(
+      (total, pack) => total + pack.material_template.required_fields.length,
+      0,
+    );
+
+    expect(packedVideoTypes).toEqual(configuredVideoTypes);
+    expect(packs).toHaveLength(15);
+    expect(totalRequiredFieldCount).toBeGreaterThanOrEqual(184);
+
+    for (const pack of packs) {
+      expect(pack.sample_entries.length, `${pack.video_type}:samples`).toBeGreaterThanOrEqual(5);
+      expect(pack.material_template.required_fields.length, `${pack.video_type}:fields`)
+        .toBeGreaterThanOrEqual(10);
+      expect(pack.material_template.prompt_layers?.length, `${pack.video_type}:prompt_layers`)
+        .toBeGreaterThanOrEqual(4);
+      expect(pack.material_template.supplement_questions.length, `${pack.video_type}:questions`)
+        .toBeGreaterThanOrEqual(4);
+    }
+  });
+
+  it('ships cross-regional failure-and-repair samples for every M3 expansion pack', () => {
+    const expansionVideoTypes = [
+      'character_story',
+      'historical_drama',
+      'legend_story',
+      'culture_promo',
+      'city_brand_promo',
+      'scene_short',
+      'landscape_mood',
+    ] as const;
+
+    for (const videoType of expansionVideoTypes) {
+      const pack = getProductionMaterialPack(videoType);
+      const regionalAnchors = new Set(pack?.sample_entries.map(sample => sample.regional_anchor));
+
+      expect(pack, videoType).toBeTruthy();
+      expect(regionalAnchors.size, `${videoType}:regions`).toBeGreaterThanOrEqual(4);
+      expect(pack?.sample_entries.every(sample => Boolean(sample.failure_pattern)), `${videoType}:failures`)
+        .toBe(true);
+      expect(pack?.sample_entries.every(sample => Boolean(sample.repair_strategy)), `${videoType}:repairs`)
+        .toBe(true);
+    }
+  });
+
   it('fails closed when an injected production pack set omits its domain sample policy', () => {
     const report = getProductionMaterialPackHealthReport({
       generatedAt: '2026-07-17T00:00:00.000Z',

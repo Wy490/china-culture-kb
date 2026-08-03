@@ -1,9 +1,9 @@
 {
   "schema_version": "kb-asset-split-suggestions/v1",
-  "generated_at": "2026-07-15T17:25:11.082Z",
+  "generated_at": "2026-08-03T14:47:09.256Z",
   "totals": {
     "files": 34,
-    "entries_scanned": 262,
+    "entries_scanned": 289,
     "entries_without_asset_split": 0,
     "entries_with_suggestions": 0,
     "ready_for_editor_review": 0,

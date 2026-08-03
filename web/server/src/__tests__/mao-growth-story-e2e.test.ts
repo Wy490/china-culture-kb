@@ -138,7 +138,11 @@ describe('Mao youth-to-awakening API generation flow', () => {
       female: 1,
       not_applicable: 2,
     });
-    expect(story.quality_report.passed).toBe(true);
+    expect(story.production_material_readiness).toMatchObject({
+      video_type: 'historical_drama',
+      status: 'blocked',
+    });
+    expect(story.quality_report.passed).toBe(false);
     expect(story.quality_report.outline_coverage_report.coverage_score).toBe(100);
     expect(story.quality_report.outline_coverage_report.missing_nodes).toBe(0);
     expect(story.quality_report.issues.join('\n')).not.toMatch(/因果链清楚|人物不是年表|制度压力可见|史实边界明确/);

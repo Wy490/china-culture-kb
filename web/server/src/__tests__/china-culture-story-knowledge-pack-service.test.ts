@@ -50,6 +50,15 @@ describe('china_culture single-entry story knowledge pack', () => {
       })],
     });
     expect(pack.primary_entries[0]?.summary).toContain('待核实');
+    expect(pack.primary_entries[0]?.production_prompts).toEqual(expect.arrayContaining([
+      expect.stringContaining('机器派生生产指导'),
+      expect.stringContaining('对白口吻'),
+      expect.stringContaining('可戏剧化空间'),
+    ]));
+    expect(pack.primary_entries[0]?.review_boundaries).toEqual(expect.arrayContaining([
+      expect.stringContaining('待核验点'),
+      expect.stringContaining('不新增文化事实'),
+    ]));
     expect(pack.supporting_entries.some(entry => entry.knowledge_domain === 'era_setting')).toBe(true);
     expect(pack.supporting_entries.some(entry => entry.knowledge_domain === 'gears_asset')).toBe(true);
     expect(pack.supporting_entries.length).toBeLessThanOrEqual(4);

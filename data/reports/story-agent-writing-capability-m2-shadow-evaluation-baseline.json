@@ -1,0 +1,721 @@
+{
+  "schema_version": "writing-capability-shadow-evaluation-baseline/v1",
+  "generated_at": "2026-08-02T15:40:00+08:00",
+  "status": "passed",
+  "fixture_path": "data/fixtures/story-agent-writing-capability-m2-shadow-evaluation-fixtures.json",
+  "sample_count": 13,
+  "preview_suggestion_count": 18,
+  "closed_suggestion_count": 0,
+  "story_mutation_count": 0,
+  "negative_probe_count": 3,
+  "blocked_negative_probe_count": 3,
+  "baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+  "evaluation_policy": {
+    "schema_version": "writing-capability-shadow-evaluation-policy/v1",
+    "policy_id": "short_drama_ai_comic_shadow_eval_gate_20260802",
+    "policy_revision": 1,
+    "candidate": {
+      "capability_id": "short_drama_develop_write_review",
+      "video_type": "ai_comic_drama",
+      "adapter_id": "short_drama_ai_comic_shadow_adapter",
+      "adapter_revision": 1,
+      "source_commit": "adab39cdfa001f272f03bbcf4e68ed005a43d8b6",
+      "internal_adaptation_version": "short-drama-adapter/v1",
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+    },
+    "thresholds": {
+      "min_sample_count": 12,
+      "min_clean_sample_count": 3,
+      "min_precision": 0.9,
+      "min_recall": 0.9,
+      "max_false_positive_rate": 0.1,
+      "max_clean_sample_false_positive_rate": 0.34,
+      "min_dimension_recall": 0.75,
+      "min_boundary_recall": 1,
+      "min_adapter_rule_coverage": 1,
+      "max_conflict_count": 0,
+      "max_duplicate_suggestion_count": 0
+    },
+    "human_review_checklist": [
+      {
+        "check_id": "verify_causal_diagnostics",
+        "label": "逐样本复核因果链与行动推进诊断。",
+        "required": true
+      },
+      {
+        "check_id": "verify_hook_diagnostics",
+        "label": "复核开场、结尾钩子及兑现判断。",
+        "required": true
+      },
+      {
+        "check_id": "verify_fact_boundaries",
+        "label": "复核事实与知识证据边界未被削弱。",
+        "required": true
+      },
+      {
+        "check_id": "verify_cultural_safety",
+        "label": "复核文化禁区、仪式与地域表述。",
+        "required": true
+      },
+      {
+        "check_id": "verify_rights_clearance",
+        "label": "复核原作、品牌、人物与素材许可边界。",
+        "required": true
+      },
+      {
+        "check_id": "verify_false_findings",
+        "label": "复核误报、漏报、重复建议和可操作性。",
+        "required": true
+      }
+    ],
+    "boundary": {
+      "offline_only": true,
+      "machine_gate_grants_canary": false,
+      "human_review_required": true,
+      "counts_as_human_review": false,
+      "affects_generation": false,
+      "repair_execution_allowed": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "evaluation": {
+    "schema_version": "writing-capability-shadow-evaluation-report/v1",
+    "status": "machine_gate_passed_human_review_required",
+    "machine_gate_status": "passed",
+    "canary_status": "human_review_required",
+    "fixture_set_id": "short_drama_ai_comic_shadow_eval_20260802",
+    "fixture_set_revision": 1,
+    "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+    "policy_id": "short_drama_ai_comic_shadow_eval_gate_20260802",
+    "policy_revision": 1,
+    "capability_id": "short_drama_develop_write_review",
+    "video_type": "ai_comic_drama",
+    "adapter_id": "short_drama_ai_comic_shadow_adapter",
+    "adapter_revision": 1,
+    "metrics": {
+      "sample_count": 13,
+      "clean_sample_count": 3,
+      "expected_issue_count": 16,
+      "predicted_issue_count": 16,
+      "true_positive_count": 15,
+      "false_positive_count": 1,
+      "false_negative_count": 1,
+      "precision": 0.9375,
+      "recall": 0.9375,
+      "false_positive_rate": 0.0625,
+      "clean_sample_false_positive_rate": 0.3333,
+      "boundary_recall": 1,
+      "adapter_rule_coverage": 1,
+      "conflict_count": 0,
+      "duplicate_suggestion_count": 0
+    },
+    "dimension_results": [
+      {
+        "issue_id": "action_progression",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "causal_chain",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "cultural_safety",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "fact_boundary",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "hook_payoff",
+        "expected_count": 4,
+        "true_positive_count": 3,
+        "false_negative_count": 1,
+        "recall": 0.75,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "review_separation",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      },
+      {
+        "issue_id": "rights_clearance",
+        "expected_count": 2,
+        "true_positive_count": 2,
+        "false_negative_count": 0,
+        "recall": 1,
+        "threshold_passed": true
+      }
+    ],
+    "blockers": [],
+    "human_review_checklist": [
+      {
+        "check_id": "verify_causal_diagnostics",
+        "label": "逐样本复核因果链与行动推进诊断。",
+        "required": true,
+        "status": "pending"
+      },
+      {
+        "check_id": "verify_hook_diagnostics",
+        "label": "复核开场、结尾钩子及兑现判断。",
+        "required": true,
+        "status": "pending"
+      },
+      {
+        "check_id": "verify_fact_boundaries",
+        "label": "复核事实与知识证据边界未被削弱。",
+        "required": true,
+        "status": "pending"
+      },
+      {
+        "check_id": "verify_cultural_safety",
+        "label": "复核文化禁区、仪式与地域表述。",
+        "required": true,
+        "status": "pending"
+      },
+      {
+        "check_id": "verify_rights_clearance",
+        "label": "复核原作、品牌、人物与素材许可边界。",
+        "required": true,
+        "status": "pending"
+      },
+      {
+        "check_id": "verify_false_findings",
+        "label": "复核误报、漏报、重复建议和可操作性。",
+        "required": true,
+        "status": "pending"
+      }
+    ],
+    "rollback_evidence": {
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+      "identity_verified": true,
+      "activation_performed": false,
+      "rollback_execution_required": false
+    },
+    "boundary": {
+      "offline_only": true,
+      "canary_allowed": false,
+      "human_review_required": true,
+      "counts_as_human_review": false,
+      "affects_generation": false,
+      "repair_execution_allowed": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "invariants": {
+    "synthetic_fixture_count_is_13": true,
+    "measured_precision_is_09375": true,
+    "measured_recall_is_09375": true,
+    "one_false_positive_is_preserved": true,
+    "one_false_negative_is_preserved": true,
+    "all_seven_adapter_rules_are_covered": true,
+    "fact_culture_rights_boundary_recall_is_complete": true,
+    "machine_gate_passes": true,
+    "machine_gate_does_not_grant_canary": true,
+    "human_review_remains_required": true,
+    "all_human_checks_remain_pending": true,
+    "closed_state_has_no_suggestions": true,
+    "story_text_is_never_mutated": true,
+    "runtime_activation_not_performed": true,
+    "no_repair_execution": true,
+    "all_negative_probes_are_blocked": true,
+    "no_public_api": true,
+    "no_persistence": true,
+    "no_third_party_execution": true
+  },
+  "boundary": {
+    "report_only": true,
+    "offline_only": true,
+    "canary_allowed": false,
+    "counts_as_human_review": false,
+    "affects_generation": false,
+    "repair_execution_allowed": false,
+    "persistence_allowed": false,
+    "public_api_exposed": false,
+    "third_party_code_executed": false
+  },
+  "negative_probes": [
+    {
+      "probe_id": "strict_recall_threshold",
+      "report": {
+        "schema_version": "writing-capability-shadow-evaluation-report/v1",
+        "status": "blocked",
+        "machine_gate_status": "blocked",
+        "canary_status": "blocked",
+        "fixture_set_id": "short_drama_ai_comic_shadow_eval_20260802",
+        "fixture_set_revision": 1,
+        "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+        "policy_id": "short_drama_ai_comic_shadow_eval_gate_20260802",
+        "policy_revision": 1,
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "metrics": {
+          "sample_count": 13,
+          "clean_sample_count": 3,
+          "expected_issue_count": 16,
+          "predicted_issue_count": 16,
+          "true_positive_count": 15,
+          "false_positive_count": 1,
+          "false_negative_count": 1,
+          "precision": 0.9375,
+          "recall": 0.9375,
+          "false_positive_rate": 0.0625,
+          "clean_sample_false_positive_rate": 0.3333,
+          "boundary_recall": 1,
+          "adapter_rule_coverage": 1,
+          "conflict_count": 0,
+          "duplicate_suggestion_count": 0
+        },
+        "dimension_results": [
+          {
+            "issue_id": "action_progression",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "causal_chain",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "cultural_safety",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "fact_boundary",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "hook_payoff",
+            "expected_count": 4,
+            "true_positive_count": 3,
+            "false_negative_count": 1,
+            "recall": 0.75,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "review_separation",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "rights_clearance",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          }
+        ],
+        "blockers": [
+          "overall_recall_below_threshold"
+        ],
+        "human_review_checklist": [
+          {
+            "check_id": "verify_causal_diagnostics",
+            "label": "逐样本复核因果链与行动推进诊断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_hook_diagnostics",
+            "label": "复核开场、结尾钩子及兑现判断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_fact_boundaries",
+            "label": "复核事实与知识证据边界未被削弱。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_cultural_safety",
+            "label": "复核文化禁区、仪式与地域表述。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_rights_clearance",
+            "label": "复核原作、品牌、人物与素材许可边界。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_false_findings",
+            "label": "复核误报、漏报、重复建议和可操作性。",
+            "required": true,
+            "status": "pending"
+          }
+        ],
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": true,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "offline_only": true,
+          "canary_allowed": false,
+          "human_review_required": true,
+          "counts_as_human_review": false,
+          "affects_generation": false,
+          "repair_execution_allowed": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "probe_id": "dataset_adapter_identity_drift",
+      "report": {
+        "schema_version": "writing-capability-shadow-evaluation-report/v1",
+        "status": "blocked",
+        "machine_gate_status": "blocked",
+        "canary_status": "blocked",
+        "fixture_set_id": "short_drama_ai_comic_shadow_eval_20260802",
+        "fixture_set_revision": 1,
+        "dataset_sha256": "333f6aa0ca89fb121f48d95613837231776bf0795efa41e57231f6b74e023991",
+        "policy_id": "short_drama_ai_comic_shadow_eval_gate_20260802",
+        "policy_revision": 1,
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 2,
+        "metrics": {
+          "sample_count": 13,
+          "clean_sample_count": 3,
+          "expected_issue_count": 16,
+          "predicted_issue_count": 16,
+          "true_positive_count": 15,
+          "false_positive_count": 1,
+          "false_negative_count": 1,
+          "precision": 0.9375,
+          "recall": 0.9375,
+          "false_positive_rate": 0.0625,
+          "clean_sample_false_positive_rate": 0.3333,
+          "boundary_recall": 1,
+          "adapter_rule_coverage": 1,
+          "conflict_count": 1,
+          "duplicate_suggestion_count": 0
+        },
+        "dimension_results": [
+          {
+            "issue_id": "action_progression",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "causal_chain",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "cultural_safety",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "fact_boundary",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "hook_payoff",
+            "expected_count": 4,
+            "true_positive_count": 3,
+            "false_negative_count": 1,
+            "recall": 0.75,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "review_separation",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "rights_clearance",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          }
+        ],
+        "blockers": [
+          "conflict_count_above_threshold",
+          "dataset_adapter_identity_mismatch"
+        ],
+        "human_review_checklist": [
+          {
+            "check_id": "verify_causal_diagnostics",
+            "label": "逐样本复核因果链与行动推进诊断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_hook_diagnostics",
+            "label": "复核开场、结尾钩子及兑现判断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_fact_boundaries",
+            "label": "复核事实与知识证据边界未被削弱。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_cultural_safety",
+            "label": "复核文化禁区、仪式与地域表述。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_rights_clearance",
+            "label": "复核原作、品牌、人物与素材许可边界。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_false_findings",
+            "label": "复核误报、漏报、重复建议和可操作性。",
+            "required": true,
+            "status": "pending"
+          }
+        ],
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": false,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "offline_only": true,
+          "canary_allowed": false,
+          "human_review_required": true,
+          "counts_as_human_review": false,
+          "affects_generation": false,
+          "repair_execution_allowed": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "probe_id": "protected_boundary_language",
+      "report": {
+        "schema_version": "writing-capability-shadow-evaluation-report/v1",
+        "status": "blocked",
+        "machine_gate_status": "blocked",
+        "canary_status": "blocked",
+        "fixture_set_id": "short_drama_ai_comic_shadow_eval_20260802",
+        "fixture_set_revision": 1,
+        "dataset_sha256": "a5ba89cd5877bf1eca450181327f4e464e23882037b0e005422bc09c57bdda8a",
+        "policy_id": "short_drama_ai_comic_shadow_eval_gate_20260802",
+        "policy_revision": 1,
+        "capability_id": "short_drama_develop_write_review",
+        "video_type": "ai_comic_drama",
+        "adapter_id": "short_drama_ai_comic_shadow_adapter",
+        "adapter_revision": 1,
+        "metrics": {
+          "sample_count": 13,
+          "clean_sample_count": 3,
+          "expected_issue_count": 16,
+          "predicted_issue_count": 17,
+          "true_positive_count": 15,
+          "false_positive_count": 2,
+          "false_negative_count": 1,
+          "precision": 0.8824,
+          "recall": 0.9375,
+          "false_positive_rate": 0.1176,
+          "clean_sample_false_positive_rate": 0.6667,
+          "boundary_recall": 1,
+          "adapter_rule_coverage": 1,
+          "conflict_count": 1,
+          "duplicate_suggestion_count": 0
+        },
+        "dimension_results": [
+          {
+            "issue_id": "action_progression",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "causal_chain",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "cultural_safety",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "fact_boundary",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "hook_payoff",
+            "expected_count": 4,
+            "true_positive_count": 3,
+            "false_negative_count": 1,
+            "recall": 0.75,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "review_separation",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          },
+          {
+            "issue_id": "rights_clearance",
+            "expected_count": 2,
+            "true_positive_count": 2,
+            "false_negative_count": 0,
+            "recall": 1,
+            "threshold_passed": true
+          }
+        ],
+        "blockers": [
+          "clean_sample_false_positive_rate_above_threshold",
+          "conflict_count_above_threshold",
+          "false_positive_rate_above_threshold",
+          "overall_precision_below_threshold",
+          "protected_boundary_language_conflict"
+        ],
+        "human_review_checklist": [
+          {
+            "check_id": "verify_causal_diagnostics",
+            "label": "逐样本复核因果链与行动推进诊断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_hook_diagnostics",
+            "label": "复核开场、结尾钩子及兑现判断。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_fact_boundaries",
+            "label": "复核事实与知识证据边界未被削弱。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_cultural_safety",
+            "label": "复核文化禁区、仪式与地域表述。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_rights_clearance",
+            "label": "复核原作、品牌、人物与素材许可边界。",
+            "required": true,
+            "status": "pending"
+          },
+          {
+            "check_id": "verify_false_findings",
+            "label": "复核误报、漏报、重复建议和可操作性。",
+            "required": true,
+            "status": "pending"
+          }
+        ],
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": true,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "offline_only": true,
+          "canary_allowed": false,
+          "human_review_required": true,
+          "counts_as_human_review": false,
+          "affects_generation": false,
+          "repair_execution_allowed": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import type {
   SupportedDuration,
   VideoType,
   NarrativePatternId,
+  WritingCapabilityRuntimeContextV1,
 } from '@shared/types.js';
 import type { GenreStoryMatrixResolution } from './genre-story-profiles.js';
 import { getGenreStoryProfile } from './genre-story-profiles.js';
@@ -24,6 +25,9 @@ import {
   getNarrativePatternRequirementLines,
 } from './narrative-pattern-library.js';
 import { inferProtagonist } from './dramatic-story.js';
+import {
+  writingCapabilityGenerationRequirementLines,
+} from './writing-capability-runtime-service.js';
 
 const DURATION_SEC_MAP: Record<string, number> = {
   '30秒': 30,
@@ -49,6 +53,7 @@ export function buildStoryBlueprint(input: {
   creationContract?: CreationContract;
   materialSufficiency?: MaterialSufficiencyReport;
   genreMatrix?: GenreStoryMatrixResolution;
+  writingCapabilityContext?: WritingCapabilityRuntimeContextV1;
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
   const protagonist = inferProtagonist(input.entry, input.videoType);
@@ -91,6 +96,7 @@ export function buildStoryBlueprint(input: {
       ...(input.genreMatrix?.warnings ?? []).map(item => `类型矩阵警告：${item}`),
       ...getNarrativePatternRequirementLines(input.videoType, input.narrativePatternIds ?? []),
       ...getNarrativePatternQualitySignals(input.videoType, input.narrativePatternIds ?? []).map(signal => `流派质量信号：${signal}`),
+      ...writingCapabilityGenerationRequirementLines(input.writingCapabilityContext),
       ...(input.creationContract
         ? [
             `创作场景：${input.creationContract.creation_use_case}`,
@@ -100,6 +106,9 @@ export function buildStoryBlueprint(input: {
           ]
         : []),
     ],
+    ...(input.writingCapabilityContext
+      ? { writing_capability_context: input.writingCapabilityContext }
+      : {}),
     creation_contract: input.creationContract,
     material_sufficiency: input.materialSufficiency,
   };

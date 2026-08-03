@@ -10,6 +10,10 @@ import type {
 } from '@shared/types.js';
 import { getGenreSampleGuidance, getGenreStoryProfile } from './genre-story-profiles.js';
 import { getNarrativePatternQualitySignals, getNarrativePatternRepairActions } from './narrative-pattern-library.js';
+import {
+  evaluateWritingCapabilityQuality,
+  writingCapabilityRepairActions,
+} from './writing-capability-quality-service.js';
 
 type StoryFieldValue = string | string[] | Array<unknown> | undefined;
 
@@ -28,6 +32,11 @@ export function validateGenreStoryQuality(input: {
   const outlineDriftIssues = findOutlineDriftIssues(input.story);
   const adaptationIssues = findAdaptationIssues(input.story);
   const forbiddenPatternsFound = profile.avoid.filter(pattern => storyText(input.story).includes(pattern));
+  const writingCapabilityContext = input.blueprint?.writing_capability_context;
+  const writingCapabilityQuality = evaluateWritingCapabilityQuality({
+    story: input.story,
+    context: writingCapabilityContext,
+  });
   const repairActions = [
     ...missingRequiredElements.map(item => `补齐类型字段：${item}`),
     ...weakBeats.map(item => `强化节拍：${item}`),
@@ -39,9 +48,13 @@ export function validateGenreStoryQuality(input: {
     ...getNarrativePatternRepairActions(input.story.video_type, input.narrativePatternIds ?? []),
     ...profile.repair_guidance,
     ...buildGearsRepairActions(input.story),
+    ...writingCapabilityRepairActions({
+      report: writingCapabilityQuality,
+      context: writingCapabilityContext,
+    }),
   ].filter((item, index, arr) => arr.indexOf(item) === index);
 
-  const genreScore = Math.max(
+  const baseGenreScore = Math.max(
     0,
     100
       - missingRequiredElements.length * 14
@@ -52,6 +65,8 @@ export function validateGenreStoryQuality(input: {
       - forbiddenPatternsFound.length * 10
       - input.baseReport.issues.length * 5,
   );
+  const writingCapabilityFailureCount = writingCapabilityQuality?.failed_check_ids.length ?? 0;
+  const genreScore = Math.max(0, baseGenreScore - writingCapabilityFailureCount * 6);
 
   const genreIssues = [
     ...missingRequiredElements.map(item => `类型字段缺失：${item}`),
@@ -60,6 +75,9 @@ export function validateGenreStoryQuality(input: {
     ...adaptationIssues.map(item => `改编偏差：${item}`),
     ...missingNarrativePatternSignals.slice(0, 4).map(item => `流派质量信号偏弱：${item}`),
     ...forbiddenPatternsFound.map(item => `出现不适配表达：${item}`),
+    ...(writingCapabilityQuality?.checks ?? [])
+      .filter(check => check.status === 'failed')
+      .map(check => `写作能力检查失败 [${check.check_id}]（scene_id=${check.scene_ids.join('、') || '全局'}）：${check.message}`),
   ];
 
   return {
@@ -71,7 +89,11 @@ export function validateGenreStoryQuality(input: {
     weak_beats: weakBeats,
     forbidden_patterns_found: forbiddenPatternsFound,
     repair_actions: repairActions,
-    passed: input.baseReport.passed && genreScore >= 70 && missingRequiredElements.length === 0,
+    ...(writingCapabilityQuality ? { writing_capability_quality: writingCapabilityQuality } : {}),
+    passed: input.baseReport.passed
+      && genreScore >= 70
+      && missingRequiredElements.length === 0
+      && (writingCapabilityQuality?.passed ?? true),
     issues: [...input.baseReport.issues, ...genreIssues],
   };
 }

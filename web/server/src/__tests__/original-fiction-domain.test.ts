@@ -155,9 +155,13 @@ describe('original_fiction production-domain boundary', () => {
     expect(story.gears_segments).toHaveLength(6);
     expect(story.gears_delivery).toMatchObject({
       sourceDomain: 'original_fiction',
-      delivery_status: 'ready',
+      delivery_status: 'needs_input',
     });
-    expect(story.quality_report?.passed).toBe(true);
+    expect(story.production_material_readiness).toMatchObject({
+      video_type: 'character_story',
+      status: 'blocked',
+    });
+    expect(story.quality_report?.passed).toBe(false);
 
     const prompt = await generateProjectQualityRepairPrompt(story.project_id!, {
       include_story_json: false,

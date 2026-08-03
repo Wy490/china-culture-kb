@@ -1,8 +1,8 @@
 {
   "schema_version": "knowledge-base-content-supply-progress/v1",
-  "generated_at": "2026-07-16T01:25:24+08:00",
+  "generated_at": "2026-08-03T22:44:41+08:00",
   "timezone": "Asia/Shanghai",
-  "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3H machine validation complete / human review pending",
+  "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3M machine validation complete / human review pending",
   "progress_scope": "content_supply_only",
   "governance_progress_excluded": true,
   "baseline": {
@@ -23,22 +23,22 @@
     "hunan_share_percent": 73.37
   },
   "current": {
-    "audit_generated_at": "2026-07-15T17:25:10.052Z",
+    "audit_generated_at": "2026-08-03T14:44:41.770Z",
     "province_files": 34,
-    "formal_entries": 262,
-    "sources": 960,
+    "formal_entries": 289,
+    "sources": 1043,
     "regions_with_entries": 34,
     "regions_at_least_two_entries": 34,
-    "regions_at_least_five_entries": 14,
+    "regions_at_least_five_entries": 34,
     "zero_entry_regions": [],
     "one_entry_region_count": 0,
     "hunan_entries": 124,
-    "hunan_share_percent": 47.33,
+    "hunan_share_percent": 42.91,
     "entries_missing_sources": 0,
     "entries_missing_related_locations": 0,
     "entries_missing_verification_method": 0,
-    "entries_with_machine_metadata": 262,
-    "entries_with_asset_split": 262
+    "entries_with_machine_metadata": 289,
+    "entries_with_asset_split": 289
   },
   "m1": {
     "target_formal_entries": 192,
@@ -72,22 +72,34 @@
     "basic_production_field_gaps_after": 184,
     "counts_as_human_review": false
   },
+  "m3_runtime_production_guidance": {
+    "production_audit_generated_at": "2026-08-03T14:44:41.770Z",
+    "audited_entries": 289,
+    "audited_video_types_per_entry": 15,
+    "raw_source_production_field_gaps": 212,
+    "machine_guidance_covered_fields": 212,
+    "effective_runtime_production_field_gaps": 0,
+    "entries_with_machine_guidance": 140,
+    "guidance_facts_added": false,
+    "province_markdown_written": false,
+    "note": "原始缺口继续保留为源素材治理任务；确定性运行时指导仅组织已有资产、地点、类型和待核边界。"
+  },
   "m2": {
     "target_formal_entries": 289,
     "target_new_entries": 97,
-    "machine_researched_written_and_validated": 70,
-    "machine_remaining": 27,
-    "machine_progress_percent": 72.16,
-    "current_batch": "M2-1A, M2-1B, M2-2A, M2-2B, M2-2C, M2-2D, M2-3A, M2-3B, M2-3C, M2-3D, M2-3E, M2-3F, M2-3G and M2-3H",
-    "current_batch_machine_validated": 70,
-    "current_batch_target": 70,
+    "machine_researched_written_and_validated": 97,
+    "machine_remaining": 0,
+    "machine_progress_percent": 100,
+    "current_batch": "M2-1A, M2-1B, M2-2A, M2-2B, M2-2C, M2-2D, M2-3A, M2-3B, M2-3C, M2-3D, M2-3E, M2-3F, M2-3G, M2-3H, M2-3I, M2-3J, M2-3K, M2-3L and M2-3M",
+    "current_batch_machine_validated": 97,
+    "current_batch_target": 97,
     "human_source_and_cultural_reviewed": 0,
-    "human_source_and_cultural_review_pending": 70,
+    "human_source_and_cultural_review_pending": 97,
     "formal_human_acceptance_complete": false,
-    "source_qualified_new_entries": 70,
-    "production_card_score_100": 70,
-    "fixed_retrieval_queries_passed": 70,
-    "fixed_retrieval_queries_total": 70,
+    "source_qualified_new_entries": 97,
+    "production_card_score_100": 97,
+    "fixed_retrieval_queries_passed": 97,
+    "fixed_retrieval_queries_total": 97,
     "next_batch": [],
     "credit_boundary": "written and machine-validated only; not a golden card, human approval, real production artifact or professional pass"
   },
@@ -780,6 +792,205 @@
       "credibility": "基本可靠"
     }
   ],
+  "m2_batch_3i_entries": [
+    {
+      "province": "澳门",
+      "name": "木雕（澳门神像雕刻）——造像、髹饰与百年行业传承",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "重庆",
+      "name": "大足石刻——五山造像、三教题材与世界遗产保护",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "福建",
+      "name": "妈祖信俗——湄洲祖庙、祭典与海洋社群文化纽带",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "广西",
+      "name": "侗族木构建筑营造技艺——掌墨、榫卯与三江村寨空间",
+      "source_count": 4,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "海南",
+      "name": "儋州调声——方言对歌、身体摆动与中秋歌会",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3j_entries": [
+    {
+      "province": "河南",
+      "name": "豫剧——河南梆子声腔、舞台行当与当代院团传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "吉林",
+      "name": "查干淖尔冬捕习俗——冰下走网、祭湖醒网与生态捕捞",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "混合"
+    },
+    {
+      "province": "江苏",
+      "name": "南京云锦木机妆花手工织造技艺——拽花、织手与逐花异色",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "内蒙古",
+      "name": "蒙古族服饰——部落版本、生活身份与裁缝饰品系统",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "四川",
+      "name": "成都漆艺——天然生漆、髹饰层次与地域装饰技法",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3k_entries": [
+    {
+      "province": "台湾",
+      "name": "卑南族传统织布——水平背带织机、衣饰知识与部落传习",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "香港",
+      "name": "香港中式长衫制作技艺——量体、裁剪、熨拔与手工缝制",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "浙江",
+      "name": "金石篆刻（西泠印社）——篆法、章法、刀法与钤拓传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "宁夏",
+      "name": "回族剪纸——生活纹样、绣花底样与宁夏女性传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "宁夏",
+      "name": "固原砖雕——软雕、硬雕与建筑装饰传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3l_entries": [
+    {
+      "province": "青海",
+      "name": "藏医药浴法——青海藏医院、药浴协作与医疗安全",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "青海",
+      "name": "土族盘绣——一针二线、无绷架与互助传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山东",
+      "name": "鲁锦织造技艺——经纬、织机与鲁西南生活织物",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "山东",
+      "name": "泰山皮影戏——影人、灯幕与“十不闲”协作",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "陕西",
+      "name": "皮影戏（华阴老腔）——月琴、帮腔与关中戏曲声场",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "陕西",
+      "name": "秦腔——板式、行当与西北舞台传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
+  "m2_batch_3m_entries": [
+    {
+      "province": "西藏",
+      "name": "藏族唐卡（勉萨画派）——造像度量、线描设色与宗教图像边界",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "西藏",
+      "name": "藏族造纸技艺——雪拉藏纸、手工抄造与有毒原料安全",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "新疆",
+      "name": "新疆维吾尔族艾德莱斯绸织染技艺——扎经染色、木机织造与产品溯源",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "新疆",
+      "name": "哈萨克族毡房营造技艺——木骨架、毛毡围护与搭拆协作",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "云南",
+      "name": "剪纸（傣族剪纸）——剪凿并用、仪式纸饰与芒市传承",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    },
+    {
+      "province": "云南",
+      "name": "普洱茶制作技艺（贡茶制作技艺）——采选、杀青揉晒与宁洱手工边界",
+      "source_count": 3,
+      "production_card_score": 100,
+      "credibility": "基本可靠"
+    }
+  ],
   "excluded_from_completion": {
     "fixtures": 0,
     "simulations": 0,
@@ -791,14 +1002,15 @@
     "generated_stories_written_back": 0
   },
   "verification": {
-    "kb_lint": "passed: 34 files, 262 entries, 262 enriched entries",
-    "tests": "passed: 79 files, 345 tests",
-    "production_audit": "passed: 262 entries, 960 sources, 0 missing verification method, 262 asset splits; 0 entries below production-card score 80",
+    "kb_lint": "passed: 34 files, 289 entries, 289 enriched entries",
+    "tests": "passed: 109 files, 555 tests",
+    "production_audit": "passed: 289 entries, 1043 sources, 0 missing verification method, 289 asset splits; M2-3M entries all production-card score 100",
     "credibility_normalization": "dry-run: 34 files scanned, 0 files changed, 0 entries changed",
     "machine_metadata_enrichment": "dry-run: 34 files scanned, 0 files changed, 0 fields added",
-    "asset_split_suggestions": "262 entries scanned, 0 entries without asset split, 0 suggestions",
-    "production_upgrade_plan": "generated: 13 batches, 399 actions; advisory only",
-    "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5, batch 3E: 5/5, batch 3F: 5/5, batch 3G: 5/5 and batch 3H: 5/5 new-entry queries returned the intended entry at top 1",
+    "asset_split_suggestions": "289 entries scanned, 0 entries without asset split, 0 suggestions",
+    "production_upgrade_plan": "generated: 13 batches, 402 actions; advisory only",
+    "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5, batch 3E: 5/5, batch 3F: 5/5, batch 3G: 5/5, batch 3H: 5/5, batch 3I: 5/5, batch 3J: 5/5, batch 3K: 5/5, batch 3L: 6/6 and batch 3M: 6/6 new-entry queries returned the intended entry at top 1",
+    "knowledge_contract_audit": "not refreshed for M2-3K, M2-3L or M2-3M after the recorded tsx IPC and approval-infrastructure failure; last report remains the M2-3J 272-entry snapshot",
     "git_diff_check": "passed"
   }
 }

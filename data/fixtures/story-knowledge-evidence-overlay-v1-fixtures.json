@@ -1,0 +1,103 @@
+{
+  "schema_version": "story-knowledge-evidence-overlay-fixture-set/v1",
+  "fixture_set_id": "story-knowledge-overlay-m1-closeout-20260731",
+  "audited_at": "2026-07-31T13:00:00+08:00",
+  "fixture_only": true,
+  "real_human_review_credit_granted": false,
+  "generated_story_output_expected_unchanged": true,
+  "legacy_entry": {
+    "name": "知识合同测试故事——用户原创故事种子",
+    "province": "合成测试",
+    "region": "合成测试",
+    "type": "合成测试",
+    "summary": "少年发现古桥即将被洪水冲毁，决定召集伙伴守桥。",
+    "story": "本条目只用于验证 Story Knowledge Contract，不对应真实人物、地点或文化事实。",
+    "culturalSignificance": "纯合成测试数据，不授予知识、文化、事实或人工审核信用。",
+    "relatedLocations": [],
+    "keywords": [
+      "合成测试",
+      "知识合同",
+      "古桥"
+    ],
+    "sources": [
+      "合成 fixture 来源，不代表真实资料"
+    ],
+    "credibility": "测试数据",
+    "verificationMethod": "仅验证 schema、引用、签收和降级路径，不用于真实生成。",
+    "unverifiedPoints": []
+  },
+  "pending_overlay": {
+    "schema_version": "story-knowledge-evidence-overlay/v1",
+    "overlay_id": "fixture-machine_context-20260731",
+    "entry_name": "知识合同测试故事——用户原创故事种子",
+    "source_reviews": [
+      {
+        "source_ref_id": "legacy-source-1",
+        "grade": "A",
+        "verification_status": "machine_mapped",
+        "note": "机器候选映射，等待人工审核。"
+      }
+    ],
+    "claim_mappings": [
+      {
+        "claim_id": "legacy-entry-summary",
+        "source_ref_ids": [
+          "legacy-source-1"
+        ],
+        "claim_type": "supporting_fact",
+        "certainty": "probable",
+        "usage": "bounded_context",
+        "scope": "人工签收前只能作为受限背景。"
+      }
+    ],
+    "signoff": {
+      "status": "pending",
+      "reason": "等待事实与文化审核。"
+    },
+    "boundary": {
+      "read_only_overlay": true,
+      "source_markdown_writeback_allowed": false,
+      "generation_consumption_allowed": false,
+      "existing_supplement_tasks_mutable": false
+    }
+  },
+  "approved_overlay": {
+    "schema_version": "story-knowledge-evidence-overlay/v1",
+    "overlay_id": "fixture-human_fact-20260731",
+    "entry_name": "知识合同测试故事——用户原创故事种子",
+    "source_reviews": [
+      {
+        "source_ref_id": "legacy-source-1",
+        "grade": "A",
+        "verification_status": "human_verified",
+        "verified_at": "2026-07-31T13:00:00+08:00",
+        "note": "合成 fixture 的人工签收路径，仅用于合同测试，不授予真实审核信用。"
+      }
+    ],
+    "claim_mappings": [
+      {
+        "claim_id": "legacy-entry-summary",
+        "source_ref_ids": [
+          "legacy-source-1"
+        ],
+        "claim_type": "critical_fact",
+        "certainty": "verified",
+        "usage": "fact",
+        "scope": "合成 fixture 只验证合同开闸，不代表真实文化事实。"
+      }
+    ],
+    "signoff": {
+      "status": "approved",
+      "reviewed_by": "fixture-reviewer-not-real",
+      "reviewer_role": "fact_culture_reviewer",
+      "reviewed_at": "2026-07-31T13:00:00+08:00",
+      "confirmation": "human_reviewed_story_knowledge_evidence_overlay"
+    },
+    "boundary": {
+      "read_only_overlay": true,
+      "source_markdown_writeback_allowed": false,
+      "generation_consumption_allowed": false,
+      "existing_supplement_tasks_mutable": false
+    }
+  }
+}

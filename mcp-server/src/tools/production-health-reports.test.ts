@@ -403,9 +403,15 @@ describe('production health reports', () => {
       covered_required_pack_ids: [],
       production_ready_pack_ids: [],
     });
-    expect(domainPackHealth.required_pack_ids).toHaveLength(8);
+    expect(domainPackHealth.required_pack_ids).toHaveLength(12);
+    expect(domainPackHealth.required_pack_ids).toContain('ritual_etiquette_taboo_pack');
+    expect(domainPackHealth.required_pack_ids).toEqual(expect.arrayContaining([
+      'architectural_space_furnishing_pack',
+      'regional_language_register_pack',
+      'natural_environment_soundscape_pack',
+    ]));
     expect(domainPackHealth.missing_required_pack_ids).toEqual(domainPackHealth.required_pack_ids);
-    expect(domainPackHealth.issues).toHaveLength(8);
+    expect(domainPackHealth.issues).toHaveLength(12);
     expect(domainPackHealth.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         severity: 'error',
@@ -416,6 +422,26 @@ describe('production health reports', () => {
         severity: 'error',
         issue_type: 'missing_required_pack',
         pack_id: 'explainer_knowledge_structure_pack',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: 'ritual_etiquette_taboo_pack',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: 'architectural_space_furnishing_pack',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: 'regional_language_register_pack',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        issue_type: 'missing_required_pack',
+        pack_id: 'natural_environment_soundscape_pack',
       }),
     ]));
 

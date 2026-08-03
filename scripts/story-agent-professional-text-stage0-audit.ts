@@ -378,7 +378,7 @@ function renderGapMarkdown(input: {
     '',
     '## P1 缺口',
     '',
-    '1. ProductionMaterialPack 仅覆盖 8/15，缺 character_story、historical_drama、legend_story、culture_promo、city_brand_promo、scene_short、landscape_mood。',
+    `1. ProductionMaterialPack 已覆盖 ${input.summary.production_material_pack_count}/15；继续提升条目级素材完整度和跨领域样板，而不是补空片型。`,
     '2. 只有 6 类出现较明确的语义质量证据；其余片型主要依赖通用 profile 信号与字符串命中。',
     '3. 本地确定性质量修复只针对 ai_comic_drama；其他片型依赖通用模型重写，缺少片型级修订证明。',
     '4. 十五个片型均具备 opt-in 专业文本包构建管线；下一缺口是 Coverage、桌读和两轮以上修订的真实项目闭环。',

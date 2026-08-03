@@ -3,6 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FullEntryDetail, VideoType } from '../types.js';
 import { parseEntries, parseFullEntry, readAllProvinceFiles } from '../lib/markdown.js';
+import {
+  buildMachineProductionFieldGuidance,
+  type MachineProductionGuidanceField,
+} from '../lib/production-field-guidance.js';
 
 type ProductionCardField =
   | 'confirmed_facts'
@@ -48,6 +52,8 @@ interface EntryProductionAudit {
   has_asset_split: boolean;
   production_card_score: number;
   missing_production_fields: ProductionCardField[];
+  machine_guidance_fields: ProductionCardField[];
+  effective_missing_production_fields: ProductionCardField[];
   field_audits: FieldAudit[];
   type_template_audits: TypeTemplateAudit[];
   priority: 'high' | 'medium' | 'low';
@@ -71,6 +77,10 @@ interface ProductionMaterialAuditReport {
     entries_with_machine_metadata: number;
     entries_with_asset_split: number;
     non_enum_credibility: number;
+    raw_missing_production_field_count: number;
+    machine_guidance_field_count: number;
+    effective_missing_production_field_count: number;
+    entries_with_machine_guidance: number;
   };
   by_province: Array<{ province: string; count: number }>;
   by_type: Array<{ type: string; count: number }>;
@@ -106,7 +116,14 @@ const CORE_PRODUCTION_FIELDS: Array<{ field: ProductionCardField; label: string 
 ];
 
 const VIDEO_TYPE_LABELS: Partial<Record<VideoType, string>> = {
+  character_story: '人物故事片',
+  historical_drama: '历史剧情片',
+  legend_story: '传说故事片',
+  culture_promo: '文化宣传片',
   heritage_promo: '非遗/工艺宣传片',
+  city_brand_promo: '城市品牌宣传片',
+  scene_short: '场景短片',
+  landscape_mood: '风景氛围片',
   documentary_short: '微纪录片',
   explainer_video: '知识讲解视频',
   children_story: '儿童故事片',
@@ -117,7 +134,14 @@ const VIDEO_TYPE_LABELS: Partial<Record<VideoType, string>> = {
 };
 
 const AUDITED_VIDEO_TYPES: VideoType[] = [
+  'character_story',
+  'historical_drama',
+  'legend_story',
+  'culture_promo',
   'heritage_promo',
+  'city_brand_promo',
+  'scene_short',
+  'landscape_mood',
   'documentary_short',
   'explainer_video',
   'children_story',
@@ -169,6 +193,24 @@ function auditEntry(
   const text = entryText(detail);
   const fieldAudits = CORE_PRODUCTION_FIELDS.map(item => auditProductionField(item.field, item.label, detail, text));
   const missingProductionFields = fieldAudits.filter(item => !item.present).map(item => item.field);
+  const machineGuidance = buildMachineProductionFieldGuidance({
+    name: detail.name,
+    type: detail.type,
+    summary: detail.summary,
+    story: detail.story,
+    culturalSignificance: detail.culturalSignificance,
+    credibility: detail.credibility,
+    unverifiedPoints: detail.unverifiedPoints,
+    relatedLocations: detail.relatedLocations,
+    asset_usage: detail.asset_usage,
+    asset_split: detail.asset_split,
+  });
+  const machineGuidanceFields = missingProductionFields.filter(field =>
+    isMachineGuidanceField(field) && Boolean(machineGuidance.fields[field]),
+  );
+  const effectiveMissingProductionFields = missingProductionFields.filter(
+    field => !machineGuidanceFields.includes(field),
+  );
   const productionCardScore = Math.round(((CORE_PRODUCTION_FIELDS.length - missingProductionFields.length) / CORE_PRODUCTION_FIELDS.length) * 100);
   const typeTemplateAudits = productionPacks
     .filter(pack => AUDITED_VIDEO_TYPES.includes(pack.video_type))
@@ -191,6 +233,8 @@ function auditEntry(
     has_asset_split: hasAssetSplit(detail),
     production_card_score: productionCardScore,
     missing_production_fields: missingProductionFields,
+    machine_guidance_fields: machineGuidanceFields,
+    effective_missing_production_fields: effectiveMissingProductionFields,
     field_audits: fieldAudits,
     type_template_audits: typeTemplateAudits,
     priority: priorityFromReasons(priorityReasons),
@@ -309,7 +353,14 @@ function hasTemplateFieldEvidence(fieldId: string, text: string, detail: FullEnt
 function recommendedVideoTypes(detail: FullEntryDetail): VideoType[] {
   const signal = `${detail.type} ${detail.name} ${detail.keywords.join(' ')}`;
   const types = new Set<VideoType>();
+  if (/历史人物|人物|传承人|名人|英雄|诗人|将领|思想家/.test(signal)) types.add('character_story');
+  if (/历史人物|历史事件|地方掌故|革命|旧址|战役|起义|古迹|书院/.test(signal)) types.add('historical_drama');
+  if (/神话传说|民间故事|地方掌故|传说|志异|神话/.test(signal)) types.add('legend_story');
+  if (/非遗|传统工艺|饮食文化|节庆习俗|民俗活动|地方戏曲|名胜古迹|文化/.test(signal)) types.add('culture_promo');
   if (/非遗|传统工艺|地方戏曲|民俗活动|节庆习俗/.test(signal)) types.add('heritage_promo');
+  if (/城市|古城|名胜古迹|地方文化|饮食文化|文旅|地域/.test(signal)) types.add('city_brand_promo');
+  if (/名胜古迹|旧址|书院|洞|楼|馆|祠|墓|遗址|场景/.test(signal) || detail.relatedLocations.length > 0) types.add('scene_short');
+  if (/山|水|江|湖|河|洞|楼|园林|风景|景观|名胜古迹/.test(signal)) types.add('landscape_mood');
   if (/历史人物|名胜古迹|地方掌故|革命|旧址|纪念|墓|楼|书院|文物/.test(signal)) types.add('documentary_short');
   if (/非遗|传统工艺|饮食文化|节庆习俗|宗教信仰|名胜古迹|历史人物|地方掌故|文物|书院|礼制|工艺/.test(signal)) types.add('explainer_video');
   if (/神话传说|民间故事|节庆习俗|民俗活动|少年|儿童|亲子/.test(signal)) types.add('children_story');
@@ -349,6 +400,13 @@ function priorityFromReasons(reasons: string[]): EntryProductionAudit['priority'
 
 function result(field: ProductionCardField, label: string, present: boolean, reason: string): FieldAudit {
   return { field, label, present, reason: present ? '已覆盖' : reason };
+}
+
+function isMachineGuidanceField(field: ProductionCardField): field is MachineProductionGuidanceField {
+  return field === 'dialogue_tone'
+    || field === 'dramatization_space'
+    || field === 'visual_symbols'
+    || field === 'forbidden_expressions';
 }
 
 function hasAssetSplit(detail: FullEntryDetail): boolean {
@@ -423,6 +481,18 @@ function escapeRegex(value: string): string {
 
 function buildTotals(files: number, entries: EntryProductionAudit[]): ProductionMaterialAuditReport['totals'] {
   const sources = entries.reduce((sum, entry) => sum + entry.source_count, 0);
+  const rawMissingProductionFieldCount = entries.reduce(
+    (sum, entry) => sum + entry.missing_production_fields.length,
+    0,
+  );
+  const machineGuidanceFieldCount = entries.reduce(
+    (sum, entry) => sum + entry.machine_guidance_fields.length,
+    0,
+  );
+  const effectiveMissingProductionFieldCount = entries.reduce(
+    (sum, entry) => sum + entry.effective_missing_production_fields.length,
+    0,
+  );
   return {
     files,
     entries: entries.length,
@@ -437,6 +507,10 @@ function buildTotals(files: number, entries: EntryProductionAudit[]): Production
     entries_with_machine_metadata: entries.filter(entry => entry.has_machine_metadata).length,
     entries_with_asset_split: entries.filter(entry => entry.has_asset_split).length,
     non_enum_credibility: entries.filter(entry => !ALLOWED_CREDIBILITY.has(entry.credibility)).length,
+    raw_missing_production_field_count: rawMissingProductionFieldCount,
+    machine_guidance_field_count: machineGuidanceFieldCount,
+    effective_missing_production_field_count: effectiveMissingProductionFieldCount,
+    entries_with_machine_guidance: entries.filter(entry => entry.machine_guidance_fields.length > 0).length,
   };
 }
 
@@ -493,6 +567,10 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     `- 有机器字段：${report.totals.entries_with_machine_metadata}`,
     `- 有 asset_split：${report.totals.entries_with_asset_split}`,
     `- 可信度非枚举：${report.totals.non_enum_credibility}`,
+    `- 原始生产字段缺口：${report.totals.raw_missing_production_field_count}`,
+    `- 机器派生指导覆盖：${report.totals.machine_guidance_field_count}`,
+    `- 运行时有效生产字段缺口：${report.totals.effective_missing_production_field_count}`,
+    `- 获得机器派生指导的条目：${report.totals.entries_with_machine_guidance}`,
     '',
     '## 类型分布',
     '',
@@ -517,7 +595,8 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     '## 下一步',
     '',
     '- 先处理高优先级条目的来源回溯、相关地点和 asset_split。',
-    '- 对非遗、微纪录、知识讲解、儿童故事、竖屏短视频、宣讲/培训和 AI 漫剧推荐片型覆盖低的条目，按对应 ProductionMaterialPack 补字段。',
+    '- 原始生产字段缺口继续作为源素材治理任务；机器派生指导只在运行时组织已有素材，不等同于源字段已经补齐。',
+    '- 对 15 种成片类型中推荐片型覆盖低的条目，按对应 ProductionMaterialPack 补字段。',
     '- 审计报告只做治理指挥，不自动改写省份 Markdown。',
   ];
   return `${lines.join('\n')}\n`;

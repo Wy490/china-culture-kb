@@ -1,0 +1,321 @@
+{
+  "schema_version": "writing-capability-canary-decision-baseline/v1",
+  "generated_at": "2026-08-02T16:30:00+08:00",
+  "status": "passed",
+  "synthetic_contract_probe_only": true,
+  "counts_as_real_human_review": false,
+  "sample_count": 13,
+  "checklist_count": 6,
+  "judgment_count": 78,
+  "negative_probe_count": 4,
+  "blocked_negative_probe_count": 4,
+  "baseline_sha256": "3c2f03a8df3ac58bac69cce1331e0dbc86f1788f7b924a6124c223155272902a",
+  "binding": {
+    "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+    "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+    "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+    "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+    "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+    "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+    "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+    "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+  },
+  "eligible_contract_probe": {
+    "schema_version": "writing-capability-canary-decision-package/v1",
+    "decision": "eligible",
+    "decision_at": "2026-08-02T16:30:00+08:00",
+    "intake_id": "short_drama_ai_comic_review_contract_probe_20260802",
+    "binding": {
+      "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+      "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+      "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+      "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+      "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+      "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+      "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+    },
+    "blockers": [],
+    "summary": {
+      "reviewed_sample_count": 13,
+      "required_sample_count": 13,
+      "judgment_count": 78,
+      "passed_judgment_count": 78,
+      "failed_judgment_count": 0,
+      "reviewer_count": 1
+    },
+    "reviewer": {
+      "reviewer_id": "contract_probe_reviewer_001",
+      "display_name": "合同探针审核员（非真实人工信用）",
+      "role": "screenwriter_editor",
+      "identity_record_id": "contract-probe-only-001",
+      "actor_type": "human",
+      "machine_generated": false
+    },
+    "rollback_evidence": {
+      "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+      "identity_verified": true,
+      "activation_performed": false,
+      "rollback_execution_required": false
+    },
+    "boundary": {
+      "read_only": true,
+      "canary_executed": false,
+      "capability_enabled": false,
+      "activation_allowed": false,
+      "counts_as_production_authorization": false,
+      "affects_generation": false,
+      "persistence_allowed": false,
+      "public_api_exposed": false,
+      "third_party_code_executed": false
+    }
+  },
+  "negative_probes": [
+    {
+      "probe_id": "machine_self_sign",
+      "decision": {
+        "schema_version": "writing-capability-canary-decision-package/v1",
+        "decision": "blocked",
+        "decision_at": "2026-08-02T16:30:00+08:00",
+        "intake_id": "short_drama_ai_comic_review_contract_probe_20260802",
+        "binding": {
+          "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+          "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+          "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+          "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+          "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+          "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+          "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+        },
+        "blockers": [
+          "machine_or_self_signed_review_forbidden"
+        ],
+        "summary": {
+          "reviewed_sample_count": 13,
+          "required_sample_count": 13,
+          "judgment_count": 78,
+          "passed_judgment_count": 78,
+          "failed_judgment_count": 0,
+          "reviewer_count": 1
+        },
+        "reviewer": {
+          "reviewer_id": "contract_probe_reviewer_001",
+          "display_name": "合同探针审核员（非真实人工信用）",
+          "role": "screenwriter_editor",
+          "identity_record_id": "contract-probe-only-001",
+          "actor_type": "machine",
+          "machine_generated": true
+        },
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": true,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "read_only": true,
+          "canary_executed": false,
+          "capability_enabled": false,
+          "activation_allowed": false,
+          "counts_as_production_authorization": false,
+          "affects_generation": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "probe_id": "missing_sample_coverage",
+      "decision": {
+        "schema_version": "writing-capability-canary-decision-package/v1",
+        "decision": "blocked",
+        "decision_at": "2026-08-02T16:30:00+08:00",
+        "intake_id": "short_drama_ai_comic_review_contract_probe_20260802",
+        "binding": {
+          "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+          "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+          "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+          "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+          "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+          "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+          "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+        },
+        "blockers": [
+          "sample_review_coverage_incomplete"
+        ],
+        "summary": {
+          "reviewed_sample_count": 12,
+          "required_sample_count": 13,
+          "judgment_count": 72,
+          "passed_judgment_count": 72,
+          "failed_judgment_count": 0,
+          "reviewer_count": 1
+        },
+        "reviewer": {
+          "reviewer_id": "contract_probe_reviewer_001",
+          "display_name": "合同探针审核员（非真实人工信用）",
+          "role": "screenwriter_editor",
+          "identity_record_id": "contract-probe-only-001",
+          "actor_type": "human",
+          "machine_generated": false
+        },
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": true,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "read_only": true,
+          "canary_executed": false,
+          "capability_enabled": false,
+          "activation_allowed": false,
+          "counts_as_production_authorization": false,
+          "affects_generation": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "probe_id": "binding_hash_drift",
+      "decision": {
+        "schema_version": "writing-capability-canary-decision-package/v1",
+        "decision": "blocked",
+        "decision_at": "2026-08-02T16:30:00+08:00",
+        "intake_id": "short_drama_ai_comic_review_contract_probe_20260802",
+        "binding": {
+          "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+          "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+          "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+          "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+          "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+          "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+          "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+        },
+        "blockers": [
+          "review_binding_mismatch"
+        ],
+        "summary": {
+          "reviewed_sample_count": 13,
+          "required_sample_count": 13,
+          "judgment_count": 78,
+          "passed_judgment_count": 78,
+          "failed_judgment_count": 0,
+          "reviewer_count": 1
+        },
+        "reviewer": {
+          "reviewer_id": "contract_probe_reviewer_001",
+          "display_name": "合同探针审核员（非真实人工信用）",
+          "role": "screenwriter_editor",
+          "identity_record_id": "contract-probe-only-001",
+          "actor_type": "human",
+          "machine_generated": false
+        },
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": false,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "read_only": true,
+          "canary_executed": false,
+          "capability_enabled": false,
+          "activation_allowed": false,
+          "counts_as_production_authorization": false,
+          "affects_generation": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    },
+    {
+      "probe_id": "expired_evidence",
+      "decision": {
+        "schema_version": "writing-capability-canary-decision-package/v1",
+        "decision": "blocked",
+        "decision_at": "2026-08-17T00:00:00+08:00",
+        "intake_id": "short_drama_ai_comic_review_contract_probe_20260802",
+        "binding": {
+          "dataset_sha256": "8d282b8cda7a2d77a267a6732046c65a2126312a9e1f826413b6d958cc1cfe88",
+          "evaluation_report_sha256": "d5f777d5f28ea80bfaacf844be795cf021496361eee34152095116e83113ba93",
+          "evaluation_baseline_sha256": "11bb22166e2f652b2f311abb8bfc9ca05c15d86a66b570f85acca0f5c396365f",
+          "adapter_sha256": "4e0e837a464e8651bcc2594fb8afc4b815d3112beccd87efa3b4ff50e7bd60fb",
+          "adapter_preflight_sha256": "e860e6642ad0389b93b9529cf18f67c01ad2cdb25746ef39d30420d513489232",
+          "rollout_policy_sha256": "db3b44567c9324daa47653ed9daa8f9db5787e9dd30caff2946d1862f300c640",
+          "evaluation_policy_sha256": "3d749052920fb03d57b2a50b6ffdfce8149ccc696f6a001fa0c797b47e59082d",
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1"
+        },
+        "blockers": [
+          "review_evidence_expired"
+        ],
+        "summary": {
+          "reviewed_sample_count": 13,
+          "required_sample_count": 13,
+          "judgment_count": 78,
+          "passed_judgment_count": 78,
+          "failed_judgment_count": 0,
+          "reviewer_count": 1
+        },
+        "reviewer": {
+          "reviewer_id": "contract_probe_reviewer_001",
+          "display_name": "合同探针审核员（非真实人工信用）",
+          "role": "screenwriter_editor",
+          "identity_record_id": "contract-probe-only-001",
+          "actor_type": "human",
+          "machine_generated": false
+        },
+        "rollback_evidence": {
+          "rollback_id": "disable-short-drama-ai-comic-shadow-v1",
+          "identity_verified": true,
+          "activation_performed": false,
+          "rollback_execution_required": false
+        },
+        "boundary": {
+          "read_only": true,
+          "canary_executed": false,
+          "capability_enabled": false,
+          "activation_allowed": false,
+          "counts_as_production_authorization": false,
+          "affects_generation": false,
+          "persistence_allowed": false,
+          "public_api_exposed": false,
+          "third_party_code_executed": false
+        }
+      }
+    }
+  ],
+  "invariants": {
+    "contract_probe_is_structurally_eligible": true,
+    "contract_probe_is_not_real_human_credit": true,
+    "all_78_judgments_are_bound": true,
+    "all_13_samples_are_bound": true,
+    "all_negative_probes_are_blocked": true,
+    "eligible_does_not_allow_activation": true,
+    "capability_remains_disabled": true,
+    "canary_not_executed": true,
+    "no_generation_effect": true,
+    "no_persistence": true,
+    "no_public_api": true,
+    "no_third_party_execution": true
+  },
+  "boundary": {
+    "report_only": true,
+    "read_only": true,
+    "canary_executed": false,
+    "capability_enabled": false,
+    "activation_allowed": false,
+    "counts_as_production_authorization": false,
+    "affects_generation": false,
+    "persistence_allowed": false,
+    "public_api_exposed": false,
+    "third_party_code_executed": false
+  }
+}

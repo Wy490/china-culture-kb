@@ -1,0 +1,40 @@
+{
+  "schema_version": "story-knowledge-overlay-fixture-audit/v1",
+  "fixture_set_id": "story-knowledge-overlay-m1-closeout-20260731",
+  "audited_at": "2026-07-31T13:00:00+08:00",
+  "status": "passed",
+  "fixture_path": "data/fixtures/story-knowledge-evidence-overlay-v1-fixtures.json",
+  "cases": {
+    "pending": {
+      "overlay_id": "fixture-machine_context-20260731",
+      "preparation_status": "overlay_pending",
+      "source_count": 1,
+      "claim_count": 1,
+      "critical_fact_ready_count": 0,
+      "missing_material_count": 4
+    },
+    "approved": {
+      "overlay_id": "fixture-human_fact-20260731",
+      "preparation_status": "overlay_approved_read_only",
+      "source_count": 1,
+      "claim_count": 1,
+      "critical_fact_ready_count": 1,
+      "missing_material_count": 3
+    }
+  },
+  "invariants": {
+    "fixture_is_explicitly_synthetic": true,
+    "no_real_human_review_credit": true,
+    "pending_overlay_stays_bounded": true,
+    "approved_fixture_exercises_evidence_gate": true,
+    "preparation_never_changes_generation_output": true,
+    "preparation_never_persists": true
+  },
+  "boundary": {
+    "fixture_only": true,
+    "real_human_review_credit_granted": false,
+    "consumed_by_generation": false,
+    "source_markdown_writeback_allowed": false,
+    "persistence_allowed": false
+  }
+}

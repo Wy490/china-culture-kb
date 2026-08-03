@@ -1,12 +1,12 @@
 {
   "schema_version": "kb-production-material-upgrade-plan/v1",
-  "generated_at": "2026-07-15T17:25:10.393Z",
-  "source_audit_generated_at": "2026-07-15T17:25:10.386Z",
+  "generated_at": "2026-08-03T14:47:02.377Z",
+  "source_audit_generated_at": "2026-08-03T14:47:02.366Z",
   "summary": {
-    "total_entries": 262,
-    "high_priority_entries": 204,
+    "total_entries": 289,
+    "high_priority_entries": 289,
     "planned_batches": 13,
-    "planned_entry_actions": 399,
+    "planned_entry_actions": 402,
     "format_only_actions": 0
   },
   "batches": [
@@ -84,7 +84,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -114,7 +114,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -144,7 +144,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -174,7 +174,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、landscape_mood、heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -204,7 +204,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -234,7 +234,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -264,7 +264,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -294,7 +294,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -324,7 +324,37 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "process_steps",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--浙江--金石篆刻-西泠印社-篆法-章法-刀法与钤拓传承",
+          "entry_name": "金石篆刻（西泠印社）——篆法、章法、刀法与钤拓传承",
+          "province": "浙江",
+          "type": "传统美术",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -354,7 +384,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -384,11 +414,41 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
             "tools",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--河南--豫剧-河南梆子声腔-舞台行当与当代院团传承",
+          "entry_name": "豫剧——河南梆子声腔、舞台行当与当代院团传承",
+          "province": "河南",
+          "type": "地方戏曲",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "process_steps",
             "hand_actions",
             "practitioner_or_transmission_line",
             "community_or_practitioner_consent",
@@ -414,7 +474,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -443,7 +503,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -472,7 +532,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -501,7 +561,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -530,7 +590,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -559,7 +619,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -588,7 +648,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -617,7 +677,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -646,7 +706,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -675,7 +735,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -704,7 +764,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -733,7 +793,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -762,7 +822,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -791,7 +851,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -820,7 +880,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -849,7 +909,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -878,7 +938,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -907,7 +967,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -936,7 +996,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -957,6 +1017,35 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "heritage_promo-minimum-pack--吉林--查干淖尔冬捕习俗-冰下走网-祭湖醒网与生态捕捞",
+          "entry_name": "查干淖尔冬捕习俗——冰下走网、祭湖醒网与生态捕捞",
+          "province": "吉林",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "heritage_promo-minimum-pack--广东--潮州木雕-樟木-多层镂通与金漆装饰",
           "entry_name": "潮州木雕——樟木、多层镂通与金漆装饰",
           "province": "广东",
@@ -965,7 +1054,36 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--海南--儋州调声-方言对歌-身体摆动与中秋歌会",
+          "entry_name": "儋州调声——方言对歌、身体摆动与中秋歌会",
+          "province": "海南",
+          "type": "传统音乐",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -994,7 +1112,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1023,7 +1141,36 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、education_training"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、education_training"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--宁夏--固原砖雕-软雕-硬雕与建筑装饰传承",
+          "entry_name": "固原砖雕——软雕、硬雕与建筑装饰传承",
+          "province": "宁夏",
+          "type": "传统美术",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1052,7 +1199,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1081,7 +1228,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1102,6 +1249,35 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "heritage_promo-minimum-pack--福建--妈祖信俗-湄洲祖庙-祭典与海洋社群文化纽带",
+          "entry_name": "妈祖信俗——湄洲祖庙、祭典与海洋社群文化纽带",
+          "province": "福建",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "heritage_promo-minimum-pack--福建--泉州提线木偶戏-丝线操偶与傀儡调",
           "entry_name": "泉州提线木偶戏——丝线操偶与傀儡调",
           "province": "福建",
@@ -1110,7 +1286,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1139,7 +1315,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1168,7 +1344,36 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、social_short、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "official_catalog_or_resource_links",
+            "hand_actions",
+            "practitioner_or_transmission_line",
+            "community_or_practitioner_consent",
+            "documentation_assets",
+            "visual_symbols",
+            "sound_or_texture_details",
+            "modern_connection",
+            "production_risks"
+          ],
+          "recommended_questions": [
+            "这门技艺的材料、工具、工序和手部动作分别是什么？",
+            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
+            "哪些级别、年代、传承谱系必须核实后才能写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "heritage_promo-minimum-pack--香港--香港中式长衫制作技艺-量体-裁剪-熨拔与手工缝制",
+          "entry_name": "香港中式长衫制作技艺——量体、裁剪、熨拔与手工缝制",
+          "province": "香港",
+          "type": "传统技艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1197,7 +1402,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1226,7 +1431,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1255,7 +1460,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1284,7 +1489,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1312,203 +1517,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--凤凰蓝印花布-边城蓝白的湘西素颜",
-          "entry_name": "凤凰蓝印花布——边城蓝白的湘西素颜",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--醴陵釉下五彩瓷-东方陶瓷巅峰的百年传奇",
-          "entry_name": "醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--汨罗江畔端午习俗-龙舟文化的发源地",
-          "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
-          "province": "湖南",
-          "type": "节庆习俗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--土家哭嫁歌-新娘的眼泪与歌声",
-          "entry_name": "土家哭嫁歌——新娘的眼泪与歌声",
-          "province": "湖南",
-          "type": "民俗活动",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--土家族毛古斯舞-中国舞蹈活化石",
-          "entry_name": "土家族毛古斯舞——中国舞蹈活化石",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--湘西土家织锦-西兰卡普-穿在身上的土家史诗",
-          "entry_name": "湘西土家织锦——西兰卡普：穿在身上的土家史诗",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "official_catalog_or_resource_links",
-            "hand_actions",
-            "practitioner_or_transmission_line",
-            "community_or_practitioner_consent",
-            "documentation_assets",
-            "sound_or_texture_details",
-            "modern_connection",
-            "production_risks"
-          ],
-          "recommended_questions": [
-            "这门技艺的材料、工具、工序和手部动作分别是什么？",
-            "传承人、学徒、工坊、展馆或社区之间是什么关系？",
-            "哪些级别、年代、传承谱系必须核实后才能写？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "heritage_promo-minimum-pack--湖南--湘绣-中国四大名绣之一",
-          "entry_name": "湘绣——中国四大名绣之一",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "official_catalog_or_resource_links",
@@ -1551,7 +1560,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1580,7 +1589,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1609,7 +1618,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1638,7 +1647,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1667,7 +1676,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1696,7 +1705,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1725,7 +1734,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1754,7 +1763,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1783,7 +1792,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1812,7 +1821,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1841,7 +1850,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1870,7 +1879,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1899,7 +1908,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1928,7 +1937,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1957,7 +1966,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -1986,7 +1995,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2014,7 +2023,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2042,7 +2051,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2070,7 +2079,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2098,7 +2107,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2126,7 +2135,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2154,7 +2163,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：scene_short、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2182,7 +2191,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2210,7 +2219,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2238,7 +2247,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2266,7 +2275,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2294,7 +2303,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2322,7 +2331,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2350,7 +2359,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2378,7 +2387,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2406,7 +2415,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2434,7 +2443,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2462,7 +2471,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2490,7 +2499,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2518,7 +2527,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2546,7 +2555,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2574,7 +2583,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2602,7 +2611,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2630,7 +2639,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2658,7 +2667,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2686,7 +2695,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2714,7 +2723,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2742,7 +2751,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2770,7 +2779,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2798,7 +2807,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2826,7 +2835,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2854,7 +2863,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2882,7 +2891,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2910,7 +2919,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2938,7 +2947,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "documentary_question",
@@ -2981,7 +2990,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3011,7 +3020,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3041,7 +3050,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3071,7 +3080,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3101,7 +3110,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3130,7 +3139,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3159,7 +3168,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3188,7 +3197,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "core_question",
@@ -3217,7 +3226,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3246,7 +3255,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3275,7 +3284,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3304,7 +3313,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3333,7 +3342,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3362,7 +3371,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3390,7 +3399,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3418,7 +3427,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：scene_short、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3446,7 +3455,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3474,7 +3483,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "argument_points",
@@ -3502,7 +3511,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "argument_points",
@@ -3530,7 +3539,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "argument_points",
@@ -3558,7 +3567,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3586,7 +3595,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3614,7 +3623,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3642,7 +3651,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3670,7 +3679,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3698,7 +3707,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3726,7 +3735,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3754,7 +3763,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3782,7 +3791,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "argument_points",
@@ -3810,7 +3819,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3838,7 +3847,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -3866,7 +3875,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "core_question",
@@ -3894,7 +3903,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3922,7 +3931,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "argument_points",
@@ -3950,7 +3959,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -3978,7 +3987,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "argument_points",
@@ -4006,7 +4015,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -4034,7 +4043,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、culture_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -4062,7 +4071,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -4090,7 +4099,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -4118,7 +4127,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -4138,6 +4147,34 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "explainer_video-minimum-pack--宁夏--固原砖雕-软雕-硬雕与建筑装饰传承",
+          "entry_name": "固原砖雕——软雕、硬雕与建筑装饰传承",
+          "province": "宁夏",
+          "type": "传统美术",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training"
+          ],
+          "recommended_fields": [
+            "audience_level",
+            "argument_points",
+            "concept_definitions",
+            "knowledge_steps",
+            "concrete_examples",
+            "analogy_or_visual_metaphor",
+            "diagram_or_caption_plan",
+            "recap_sentence"
+          ],
+          "recommended_questions": [
+            "观众看完要解决的核心问题是什么？",
+            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
+            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "explainer_video-minimum-pack--黑龙江--桦树皮制作技艺-剥取-软化-缝合与刻压装饰",
           "entry_name": "桦树皮制作技艺——剥取、软化、缝合与刻压装饰",
           "province": "黑龙江",
@@ -4146,7 +4183,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -4174,7 +4211,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：explainer_video、education_training"
+            "推荐片型模板覆盖低：scene_short、explainer_video、education_training"
           ],
           "recommended_fields": [
             "core_question",
@@ -4202,7 +4239,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -4230,7 +4267,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "argument_points",
@@ -4258,7 +4295,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -4286,7 +4323,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "core_question",
@@ -4314,7 +4351,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
@@ -4342,41 +4379,13 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_level",
             "argument_points",
             "knowledge_outline",
             "concept_definitions",
-            "concrete_examples",
-            "analogy_or_visual_metaphor",
-            "diagram_or_caption_plan",
-            "recap_sentence"
-          ],
-          "recommended_questions": [
-            "观众看完要解决的核心问题是什么？",
-            "这个知识点能拆成哪3到5个层级、定义、例子或对比？",
-            "哪些结论有来源支撑，哪些必须标为传说、类比或待核边界？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "explainer_video-minimum-pack--湖南--岳州扇-洞庭湖畔的文人雅扇",
-          "entry_name": "岳州扇——洞庭湖畔的文人雅扇",
-          "province": "湖南",
-          "type": "传统工艺",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "audience_level",
-            "argument_points",
-            "concept_definitions",
-            "knowledge_steps",
             "concrete_examples",
             "analogy_or_visual_metaphor",
             "diagram_or_caption_plan",
@@ -4402,7 +4411,7 @@
       "label": "儿童故事片最小素材包补齐",
       "goal": "补齐儿童故事片生产所需的最小字段。",
       "rationale": "只补目标片型需要的字段，比泛泛扩库更快提升生成质量。",
-      "entry_count": 19,
+      "entry_count": 22,
       "actions": [
         {
           "action_id": "children_story-minimum-pack--湖南--汨罗江畔端午习俗-龙舟文化的发源地",
@@ -4413,7 +4422,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "child_safe_conflict",
@@ -4440,7 +4449,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4467,7 +4476,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：children_story、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、children_story、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4494,7 +4503,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4520,7 +4529,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4546,7 +4555,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4572,7 +4581,33 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "audience_age_band",
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "recommended_questions": [
+            "目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？",
+            "主角面对的善意张力、选择和成长结果分别是什么？",
+            "哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "children_story-minimum-pack--吉林--查干淖尔冬捕习俗-冰下走网-祭湖醒网与生态捕捞",
+          "entry_name": "查干淖尔冬捕习俗——冰下走网、祭湖醒网与生态捕捞",
+          "province": "吉林",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4598,7 +4633,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：children_story、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、children_story、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4624,7 +4659,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4650,7 +4685,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：children_story、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、children_story、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4676,7 +4711,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4702,7 +4737,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4728,7 +4763,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4753,7 +4788,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4778,7 +4813,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4803,7 +4838,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "child_safe_conflict",
@@ -4828,12 +4863,62 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
             "child_safe_conflict",
             "protagonist_choice",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "recommended_questions": [
+            "目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？",
+            "主角面对的善意张力、选择和成长结果分别是什么？",
+            "哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "children_story-minimum-pack--福建--妈祖信俗-湄洲祖庙-祭典与海洋社群文化纽带",
+          "entry_name": "妈祖信俗——湄洲祖庙、祭典与海洋社群文化纽带",
+          "province": "福建",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
+            "emotional_resolution",
+            "parent_teacher_note"
+          ],
+          "recommended_questions": [
+            "目标儿童年龄段是什么，哪些词汇、恐惧尺度和情绪强度必须控制？",
+            "主角面对的善意张力、选择和成长结果分别是什么？",
+            "哪些文化信息可以儿童化讲述，哪些仍必须保留事实边界或禁写？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "children_story-minimum-pack--内蒙古--蒙古族服饰-部落版本-生活身份与裁缝饰品系统",
+          "entry_name": "蒙古族服饰——部落版本、生活身份与裁缝饰品系统",
+          "province": "内蒙古",
+          "type": "民俗活动",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo"
+          ],
+          "recommended_fields": [
+            "child_safe_conflict",
+            "protagonist_choice",
+            "concrete_examples",
             "emotional_resolution",
             "parent_teacher_note"
           ],
@@ -4853,7 +4938,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4878,7 +4963,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、scene_short、landscape_mood、ai_comic_drama"
           ],
           "recommended_fields": [
             "audience_age_band",
@@ -4918,7 +5003,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、documentary_short、explainer_video、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -4947,7 +5032,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -4975,7 +5060,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5003,7 +5088,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5031,7 +5116,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：social_short"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、social_short"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5059,7 +5144,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5087,7 +5172,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5115,7 +5200,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5143,7 +5228,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5171,7 +5256,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5199,7 +5284,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5227,7 +5312,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5255,7 +5340,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5283,7 +5368,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5311,7 +5396,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5339,7 +5424,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5367,7 +5452,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5395,7 +5480,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5423,7 +5508,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5451,7 +5536,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5479,7 +5564,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：legend_story、culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5507,7 +5592,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5534,7 +5619,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5561,7 +5646,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5588,7 +5673,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、landscape_mood、heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5615,7 +5700,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5642,7 +5727,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5669,7 +5754,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5696,7 +5781,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5723,7 +5808,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5750,7 +5835,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5777,7 +5862,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5804,7 +5889,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5831,7 +5916,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5858,7 +5943,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5885,7 +5970,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5912,7 +5997,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5939,7 +6024,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5966,7 +6051,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -5993,7 +6078,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6020,7 +6105,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6047,7 +6132,34 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "opening_hook",
+            "platform_context",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "recommended_questions": [
+            "前三秒钩子、反差问题或冷知识入口是什么？",
+            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
+            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "social_short-minimum-pack--台湾--卑南族传统织布-水平背带织机-衣饰知识与部落传习",
+          "entry_name": "卑南族传统织布——水平背带织机、衣饰知识与部落传习",
+          "province": "台湾",
+          "type": "传统工艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6074,7 +6186,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6101,7 +6213,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6120,6 +6232,33 @@
           "safe_auto_apply": "none"
         },
         {
+          "action_id": "social_short-minimum-pack--浙江--金石篆刻-西泠印社-篆法-章法-刀法与钤拓传承",
+          "entry_name": "金石篆刻（西泠印社）——篆法、章法、刀法与钤拓传承",
+          "province": "浙江",
+          "type": "传统美术",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "opening_hook",
+            "platform_context",
+            "share_trigger",
+            "beat_interval",
+            "vertical_shot_plan",
+            "diagram_or_caption_plan",
+            "comment_prompt"
+          ],
+          "recommended_questions": [
+            "前三秒钩子、反差问题或冷知识入口是什么？",
+            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
+            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
           "action_id": "social_short-minimum-pack--澳门--凉茶配制-澳门街坊生活中的草本饮品与配方边界",
           "entry_name": "凉茶配制——澳门街坊生活中的草本饮品与配方边界",
           "province": "澳门",
@@ -6128,7 +6267,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6155,7 +6294,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6182,7 +6321,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
@@ -6209,66 +6348,12 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "opening_hook",
             "platform_context",
             "beat_interval",
-            "vertical_shot_plan",
-            "diagram_or_caption_plan",
-            "comment_prompt",
-            "fact_boundary_card"
-          ],
-          "recommended_questions": [
-            "前三秒钩子、反差问题或冷知识入口是什么？",
-            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
-            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "social_short-minimum-pack--湖南--通道侗锦-湘西南侗寨的指尖花雨",
-          "entry_name": "通道侗锦——湘西南侗寨的指尖花雨",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "opening_hook",
-            "platform_context",
-            "share_trigger",
-            "beat_interval",
-            "vertical_shot_plan",
-            "diagram_or_caption_plan",
-            "comment_prompt"
-          ],
-          "recommended_questions": [
-            "前三秒钩子、反差问题或冷知识入口是什么？",
-            "竖屏镜头、字幕节奏、分享触发点和评论互动如何安排？",
-            "哪些信息需要做成事实边界卡，避免短视频夸张成未经核实的断言？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "social_short-minimum-pack--湖南--土家族摆手舞-湘西土家的集体仪式",
-          "entry_name": "土家族摆手舞——湘西土家的集体仪式",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "opening_hook",
-            "platform_context",
-            "share_trigger",
             "vertical_shot_plan",
             "diagram_or_caption_plan",
             "comment_prompt",
@@ -6305,7 +6390,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6333,7 +6418,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6361,7 +6446,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6389,7 +6474,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6417,7 +6502,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6445,7 +6530,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6473,7 +6558,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6501,7 +6586,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6529,7 +6614,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6557,7 +6642,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6584,7 +6669,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "communication_goal",
@@ -6611,7 +6696,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6638,7 +6723,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "communication_goal",
@@ -6665,7 +6750,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6692,7 +6777,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6719,7 +6804,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6746,7 +6831,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：lecture_video"
+            "推荐片型模板覆盖低：character_story、scene_short、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6773,7 +6858,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6799,7 +6884,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6825,7 +6910,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6851,7 +6936,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6877,7 +6962,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6903,7 +6988,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6929,7 +7014,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6955,7 +7040,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -6981,7 +7066,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7007,7 +7092,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7033,7 +7118,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、landscape_mood、heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7059,7 +7144,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7085,7 +7170,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7111,7 +7196,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7137,7 +7222,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "communication_goal",
@@ -7163,7 +7248,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7189,7 +7274,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7215,7 +7300,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7241,7 +7326,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7267,7 +7352,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7293,7 +7378,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7319,7 +7404,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、culture_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7345,7 +7430,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7371,7 +7456,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "communication_goal",
@@ -7397,7 +7482,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7423,7 +7508,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7449,7 +7534,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7475,7 +7560,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7501,7 +7586,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7526,7 +7611,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7551,7 +7636,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7576,7 +7661,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7601,7 +7686,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "speaker_position",
@@ -7641,7 +7726,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7671,7 +7756,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7701,7 +7786,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7731,7 +7816,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7760,7 +7845,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7789,7 +7874,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7818,7 +7903,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7847,7 +7932,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7876,7 +7961,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7905,7 +7990,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7934,7 +8019,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7963,7 +8048,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -7992,7 +8077,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8021,7 +8106,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8050,7 +8135,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8079,7 +8164,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8108,7 +8193,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8137,7 +8222,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8166,7 +8251,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8195,7 +8280,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8224,7 +8309,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8253,7 +8338,36 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "learning_objective",
+            "learner_profile",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
+            "assessment_check",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "recommended_questions": [
+            "学习目标、学习者画像和课后掌握标准分别是什么？",
+            "知识步骤、案例、练习任务和测验检查如何形成闭环？",
+            "哪些板书/课件资产、来源线索和误区边界需要先补齐？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "education_training-minimum-pack--澳门--木雕-澳门神像雕刻-造像-髹饰与百年行业传承",
+          "entry_name": "木雕（澳门神像雕刻）——造像、髹饰与百年行业传承",
+          "province": "澳门",
+          "type": "非遗",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8282,7 +8396,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8311,7 +8425,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8340,7 +8454,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8369,7 +8483,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8397,7 +8511,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8425,7 +8539,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8453,7 +8567,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8481,7 +8595,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、landscape_mood、heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8509,7 +8623,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8537,7 +8651,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8565,7 +8679,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8593,7 +8707,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8621,7 +8735,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8649,7 +8763,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learner_profile",
@@ -8677,7 +8791,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8705,7 +8819,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8733,7 +8847,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8761,7 +8875,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8789,7 +8903,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8817,7 +8931,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8845,7 +8959,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8873,7 +8987,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8901,7 +9015,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8929,7 +9043,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8957,7 +9071,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -8977,71 +9091,15 @@
           "safe_auto_apply": "none"
         },
         {
-          "action_id": "education_training-minimum-pack--台湾--大溪木艺-木器产业-分工与手工具传统",
-          "entry_name": "大溪木艺——木器产业、分工与手工具传统",
-          "province": "台湾",
-          "type": "传统工艺",
+          "action_id": "education_training-minimum-pack--吉林--查干淖尔冬捕习俗-冰下走网-祭湖醒网与生态捕捞",
+          "entry_name": "查干淖尔冬捕习俗——冰下走网、祭湖醒网与生态捕捞",
+          "province": "吉林",
+          "type": "民俗活动",
           "priority": "high",
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training"
-          ],
-          "recommended_fields": [
-            "learning_objective",
-            "learner_profile",
-            "concept_definitions",
-            "case_examples",
-            "practice_task",
-            "assessment_check",
-            "slide_or_board_assets",
-            "audience_takeaway"
-          ],
-          "recommended_questions": [
-            "学习目标、学习者画像和课后掌握标准分别是什么？",
-            "知识步骤、案例、练习任务和测验检查如何形成闭环？",
-            "哪些板书/课件资产、来源线索和误区边界需要先补齐？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "education_training-minimum-pack--湖南--凤凰纸扎-边城千年彩扎的湘西风骨",
-          "entry_name": "凤凰纸扎——边城千年彩扎的湘西风骨",
-          "province": "湖南",
-          "type": "非遗",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "learning_objective",
-            "learner_profile",
-            "concept_definitions",
-            "case_examples",
-            "practice_task",
-            "assessment_check",
-            "slide_or_board_assets",
-            "audience_takeaway"
-          ],
-          "recommended_questions": [
-            "学习目标、学习者画像和课后掌握标准分别是什么？",
-            "知识步骤、案例、练习任务和测验检查如何形成闭环？",
-            "哪些板书/课件资产、来源线索和误区边界需要先补齐？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "education_training-minimum-pack--湖北--汉剧-西皮二黄-十大行当与武汉戏码头",
-          "entry_name": "汉剧——西皮二黄、十大行当与武汉戏码头",
-          "province": "湖北",
-          "type": "传统戏剧",
-          "priority": "high",
-          "production_card_score": 100,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、children_story、social_short、education_training"
           ],
           "recommended_fields": [
             "learning_objective",
@@ -9049,7 +9107,35 @@
             "concept_definitions",
             "step_sequence",
             "case_examples",
-            "assessment_check",
+            "practice_task",
+            "slide_or_board_assets",
+            "audience_takeaway"
+          ],
+          "recommended_questions": [
+            "学习目标、学习者画像和课后掌握标准分别是什么？",
+            "知识步骤、案例、练习任务和测验检查如何形成闭环？",
+            "哪些板书/课件资产、来源线索和误区边界需要先补齐？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "education_training-minimum-pack--四川--成都漆艺-天然生漆-髹饰层次与地域装饰技法",
+          "entry_name": "成都漆艺——天然生漆、髹饰层次与地域装饰技法",
+          "province": "四川",
+          "type": "传统工艺",
+          "priority": "high",
+          "production_card_score": 100,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "learning_objective",
+            "learner_profile",
+            "concept_definitions",
+            "step_sequence",
+            "case_examples",
+            "practice_task",
             "slide_or_board_assets",
             "audience_takeaway"
           ],
@@ -9084,7 +9170,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9114,7 +9200,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9144,7 +9230,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9174,7 +9260,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9204,7 +9290,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9234,7 +9320,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9264,7 +9350,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9294,7 +9380,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9324,7 +9410,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9354,7 +9440,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9384,7 +9470,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9414,7 +9500,7 @@
           "production_card_score": 100,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9444,7 +9530,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9474,7 +9560,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9504,7 +9590,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9534,7 +9620,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9564,7 +9650,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9594,7 +9680,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9624,7 +9710,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9654,7 +9740,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9684,7 +9770,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9714,7 +9800,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9744,7 +9830,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9774,7 +9860,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9804,7 +9890,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9834,7 +9920,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9864,7 +9950,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9894,7 +9980,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9924,7 +10010,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9954,7 +10040,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -9984,7 +10070,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10014,7 +10100,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10044,7 +10130,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10074,7 +10160,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10104,7 +10190,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10134,7 +10220,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、documentary_short、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10164,7 +10250,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10194,7 +10280,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10224,7 +10310,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10254,7 +10340,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10284,7 +10370,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10314,7 +10400,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10344,7 +10430,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10374,7 +10460,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10404,7 +10490,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10434,7 +10520,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10464,7 +10550,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10494,7 +10580,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10524,7 +10610,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、culture_promo、scene_short、heritage_promo、documentary_short、children_story、social_short、lecture_video、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10554,7 +10640,7 @@
           "production_card_score": 91,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "episode_hook",
@@ -10599,7 +10685,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10622,7 +10708,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10645,7 +10731,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10668,7 +10754,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10691,7 +10777,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10714,7 +10800,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10737,7 +10823,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10760,7 +10846,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10783,7 +10869,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10806,7 +10892,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10829,7 +10915,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：scene_short、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10852,7 +10938,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10875,7 +10961,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10898,7 +10984,53 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "heritage_process_pack",
+            "documentary_source_pack",
+            "ai_comic_storyboard_pack",
+            "era_and_costume_pack"
+          ],
+          "recommended_questions": [
+            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
+            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "domain-pack-expansion--辽宁--复州皮影戏-灯幕-影人与辽南声腔的协作舞台",
+          "entry_name": "复州皮影戏——灯幕、影人与辽南声腔的协作舞台",
+          "province": "辽宁",
+          "type": "传统戏剧",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：scene_short"
+          ],
+          "recommended_fields": [
+            "heritage_process_pack",
+            "documentary_source_pack",
+            "ai_comic_storyboard_pack",
+            "era_and_costume_pack"
+          ],
+          "recommended_questions": [
+            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
+            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "domain-pack-expansion--辽宁--海城高跷-木跷之上的大场-小场与辽南秧歌",
+          "entry_name": "海城高跷——木跷之上的大场、小场与辽南秧歌",
+          "province": "辽宁",
+          "type": "传统舞蹈",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：scene_short、landscape_mood"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10921,7 +11053,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10944,7 +11076,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10967,7 +11099,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -10990,7 +11122,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11013,7 +11145,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11036,7 +11168,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11059,7 +11191,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11082,7 +11214,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11105,7 +11237,30 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "heritage_process_pack",
+            "documentary_source_pack",
+            "ai_comic_storyboard_pack",
+            "era_and_costume_pack"
+          ],
+          "recommended_questions": [
+            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
+            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "domain-pack-expansion--山西--晋剧-晋中梆子声腔与文武场的山西舞台",
+          "entry_name": "晋剧——晋中梆子声腔与文武场的山西舞台",
+          "province": "山西",
+          "type": "传统戏剧",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：scene_short、landscape_mood"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11128,7 +11283,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11151,7 +11306,30 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、ai_comic_drama"
+          ],
+          "recommended_fields": [
+            "heritage_process_pack",
+            "documentary_source_pack",
+            "ai_comic_storyboard_pack",
+            "era_and_costume_pack"
+          ],
+          "recommended_questions": [
+            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
+            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
+          ],
+          "safe_auto_apply": "none"
+        },
+        {
+          "action_id": "domain-pack-expansion--山西--琉璃烧制技艺-建筑陶件的塑形-素烧与施釉彩烧",
+          "entry_name": "琉璃烧制技艺——建筑陶件的塑形、素烧与施釉彩烧",
+          "province": "山西",
+          "type": "传统技艺",
+          "priority": "high",
+          "production_card_score": 82,
+          "issue_tags": [
+            "存在待核点",
+            "推荐片型模板覆盖低：scene_short、landscape_mood"
           ],
           "recommended_fields": [
             "heritage_process_pack",
@@ -11174,99 +11352,7 @@
           "production_card_score": 82,
           "issue_tags": [
             "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video、lecture_video"
-          ],
-          "recommended_fields": [
-            "heritage_process_pack",
-            "documentary_source_pack",
-            "ai_comic_storyboard_pack",
-            "era_and_costume_pack"
-          ],
-          "recommended_questions": [
-            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
-            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "domain-pack-expansion--湖南--马王堆汉墓-西汉文明的地下宝库",
-          "entry_name": "马王堆汉墓——西汉文明的地下宝库",
-          "province": "湖南",
-          "type": "名胜古迹",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：documentary_short"
-          ],
-          "recommended_fields": [
-            "heritage_process_pack",
-            "documentary_source_pack",
-            "ai_comic_storyboard_pack",
-            "era_and_costume_pack"
-          ],
-          "recommended_questions": [
-            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
-            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "domain-pack-expansion--湖南--汨罗江畔端午习俗-龙舟文化的发源地",
-          "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
-          "province": "湖南",
-          "type": "节庆习俗",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、explainer_video、children_story、social_short、education_training、ai_comic_drama"
-          ],
-          "recommended_fields": [
-            "heritage_process_pack",
-            "documentary_source_pack",
-            "ai_comic_storyboard_pack",
-            "era_and_costume_pack"
-          ],
-          "recommended_questions": [
-            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
-            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "domain-pack-expansion--湖南--南岳衡山-五岳独秀的儒释道名山",
-          "entry_name": "南岳衡山——五岳独秀的儒释道名山",
-          "province": "湖南",
-          "type": "名胜古迹",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：documentary_short、explainer_video"
-          ],
-          "recommended_fields": [
-            "heritage_process_pack",
-            "documentary_source_pack",
-            "ai_comic_storyboard_pack",
-            "era_and_costume_pack"
-          ],
-          "recommended_questions": [
-            "这个缺口是否能通过一个通用 domain pack 覆盖多个条目？",
-            "该 domain pack 应服务事实边界、视觉资产、叙事结构还是交付约束？"
-          ],
-          "safe_auto_apply": "none"
-        },
-        {
-          "action_id": "domain-pack-expansion--天津--泥人张彩塑-塑形与设色相接的天津民间美术",
-          "entry_name": "泥人张彩塑——塑形与设色相接的天津民间美术",
-          "province": "天津",
-          "type": "传统美术",
-          "priority": "high",
-          "production_card_score": 82,
-          "issue_tags": [
-            "存在待核点",
-            "推荐片型模板覆盖低：heritage_promo、social_short、lecture_video、education_training、ai_comic_drama"
+            "推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video"
           ],
           "recommended_fields": [
             "heritage_process_pack",

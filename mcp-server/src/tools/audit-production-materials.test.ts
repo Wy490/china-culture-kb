@@ -81,7 +81,18 @@ describe('auditProductionMaterials', () => {
     expect(report.totals.entries_with_asset_split).toBe(0);
     expect(report.entries[0].has_asset_split).toBe(false);
     expect(report.entries[0].missing_production_fields).toContain('forbidden_expressions');
+    expect(report.entries[0].machine_guidance_fields).toEqual(expect.arrayContaining([
+      'dramatization_space',
+      'dialogue_tone',
+      'forbidden_expressions',
+    ]));
+    expect(report.entries[0].effective_missing_production_fields)
+      .not.toContain('forbidden_expressions');
+    expect(report.totals.machine_guidance_field_count).toBeGreaterThanOrEqual(3);
+    expect(report.totals.effective_missing_production_field_count)
+      .toBeLessThan(report.totals.raw_missing_production_field_count);
     expect(report.entries[0].related_location_count).toBe(1);
+    expect(report.entries[0].type_template_audits).toHaveLength(15);
     expect(report.entries[0].type_template_audits.some(item => item.video_type === 'heritage_promo' && item.recommended)).toBe(true);
     expect(report.entries[0].type_template_audits.some(item => item.video_type === 'explainer_video' && item.recommended)).toBe(true);
     expect(report.entries[0].type_template_audits.some(item => item.video_type === 'social_short' && item.recommended)).toBe(true);

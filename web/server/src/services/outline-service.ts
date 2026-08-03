@@ -35,6 +35,7 @@ import {
 } from '../domains/china-culture/entry-language-helpers.js';
 import { computeChinaCultureMatchScore as computeMatchScore } from '../domains/china-culture/entry-match-service.js';
 import { appendChinaCultureDomainPackEntries } from '../domains/china-culture/domain-pack-production-service.js';
+import { attachMachineProductionGuidance } from '../domains/china-culture/entry-production-guidance-service.js';
 
 // ---------------------------------------------------------------------------
 // Predefined word lists for outline subject extraction
@@ -725,7 +726,7 @@ export async function multiMatchEntries(
 
   for (const [entryName, data] of entryRoleMap) {
     const entry = data.entry;
-    const kpEntry: KnowledgePackEntry = {
+    const kpEntry: KnowledgePackEntry = attachMachineProductionGuidance({
       entry_name: entry.name,
       province: entry.province,
       region: entry.region || '',
@@ -740,7 +741,18 @@ export async function multiMatchEntries(
       era: entry.era,
       asset_usage: entry.asset_usage,
       asset_split: entry.asset_split,
-    };
+    }, {
+      name: entry.name,
+      type: entry.type,
+      summary: entry.summary,
+      story: entry.story,
+      culturalSignificance: entry.culturalSignificance,
+      credibility: entry.credibility,
+      unverifiedPoints: entry.unverifiedText,
+      relatedLocations: entry.relatedLocationText,
+      asset_usage: entry.asset_usage,
+      asset_split: entry.asset_split,
+    });
 
     if (data.score >= 0.75 && primaryRoleIds.includes(data.role)) {
       primaryEntries.push(kpEntry);

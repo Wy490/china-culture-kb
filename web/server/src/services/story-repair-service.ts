@@ -169,6 +169,21 @@ export function buildStoryRepairPromptPackage(input: {
       '=== 修复动作 ===',
       ...repairActions.map(action => `- ${action}`),
       '',
+      ...(input.qualityReport.writing_capability_quality
+        && input.blueprint?.writing_capability_context
+        ? [
+            '=== 写作能力修复上下文 ===',
+            `能力：${input.blueprint.writing_capability_context.capability_id}`,
+            `激活：${input.blueprint.writing_capability_context.activation_id}`,
+            ...(input.qualityReport.writing_capability_quality.evaluation_kind === 'machine_reader_simulation'
+              ? ['评估性质：机器读者模拟，不是真人反馈；只使用下列可定位文本现象。']
+              : []),
+            ...input.qualityReport.writing_capability_quality.checks
+              .filter(check => check.status === 'failed')
+              .map(check => `- [${check.check_id}] scene_id=${check.scene_ids.join('、') || '全局'}：${check.message}；${check.repair_hint ?? '按原类型蓝图局部修复。'}`),
+            '',
+          ]
+        : []),
       `=== ${familyGuidance.family_label}家族门禁 ===`,
       `家族：${familyGuidance.family_label}`,
       `修订角色：${familyGuidance.writer_role}`,

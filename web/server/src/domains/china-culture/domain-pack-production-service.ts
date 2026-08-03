@@ -138,6 +138,26 @@ const REQUIRED_PRODUCTION_DOMAIN_PACKS: RequiredChinaCultureProductionDomainPack
     expected_asset_usage: ['character_clothing', 'credibility_boundary'],
   },
   {
+    pack_id: 'ritual_etiquette_taboo_pack',
+    entry_name: '仪式礼俗与禁忌包——流程角色、空间秩序和文化边界',
+    expected_asset_usage: ['scene_space', 'safety_boundary', 'source_grounding'],
+  },
+  {
+    pack_id: 'architectural_space_furnishing_pack',
+    entry_name: '建筑空间与陈设包——空间层级、动线道具和时代边界',
+    expected_asset_usage: ['scene_space', 'scene_props', 'gears_delivery'],
+  },
+  {
+    pack_id: 'regional_language_register_pack',
+    entry_name: '语言语体与地域表达包——人物身份、语境层级和方言边界',
+    expected_asset_usage: ['dialogue_tone', 'source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'natural_environment_soundscape_pack',
+    entry_name: '自然环境与声景包——季节天气、地貌运动和环境声音',
+    expected_asset_usage: ['scene_space', 'visual_style', 'gears_delivery'],
+  },
+  {
     pack_id: 'explainer_knowledge_structure_pack',
     entry_name: '讲解知识结构包——核心问题、层级例子与图示字幕',
     expected_asset_usage: ['source_grounding', 'visual_style'],
@@ -485,6 +505,18 @@ function priorityDomainPackMatchers(text: string): Array<(seed: ChinaCultureDoma
   }
   if (/思想影响|后世影响|当代转化|学脉|传承|地方化/.test(text)) {
     matchers.push(seed => seed.domain === 'narrative_pattern');
+  }
+  if (/仪式|礼俗|祭礼|祭祀|节庆|婚俗|丧俗|祈愿|禁忌|空间秩序|参与角色/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('仪式礼俗与禁忌包'));
+  }
+  if (/建筑空间|建筑陈设|传统民居|园林|祠庙|官署|书院|空间层级|人物动线|格局|展陈空间/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('建筑空间与陈设包'));
+  }
+  if (/语言语体|地域表达|人物身份|语境层级|称谓|方言|地域语言|对白口吻|旁白语体|口音|古语/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('语言语体与地域表达包'));
+  }
+  if (/自然环境|季节天气|季节|天气|地貌|声景|环境声音|环境声景|季相|野外/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('自然环境与声景包'));
   }
   if (/儿童|少儿|亲子|年龄分层|children_story|children_animation|低龄|善意张力/.test(text)) {
     matchers.push(seed => seed.entry_name.includes('儿童改写规则包') || seed.domain === 'safety_rule');

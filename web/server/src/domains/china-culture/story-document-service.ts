@@ -105,6 +105,9 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
     credibility_note: input.storyResult.credibility_note,
     story_structure: storyStructure,
     story_blueprint: input.finalStoryBlueprint,
+    ...(input.finalStoryBlueprint.writing_capability_context
+      ? { writing_capability_runtime: input.finalStoryBlueprint.writing_capability_context }
+      : {}),
     creation_use_case: creationUseCase,
     truth_mode: truthMode,
     client_type: input.request.client_type,
@@ -173,6 +176,21 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
         input.preparation.referenceGenerationRecipe ?? null,
       reference_generation_context_schema_version:
         input.preparation.referenceGenerationContext?.schema_version ?? null,
+      ...(input.finalStoryBlueprint.writing_capability_context
+        ? {
+            writing_capability_runtime: {
+              capability_id: input.finalStoryBlueprint.writing_capability_context.capability_id,
+              activation_id: input.finalStoryBlueprint.writing_capability_context.activation_id,
+              activation_revision: input.finalStoryBlueprint.writing_capability_context.activation_revision,
+              profile_schema_version: input.finalStoryBlueprint.writing_capability_context.profile_schema_version,
+              source_commit: input.finalStoryBlueprint.writing_capability_context.source_commit,
+              adapter_id: input.finalStoryBlueprint.writing_capability_context.adapter_id,
+              adapter_revision: input.finalStoryBlueprint.writing_capability_context.adapter_revision,
+              internal_adaptation_version: input.finalStoryBlueprint.writing_capability_context.internal_adaptation_version,
+              rollback_id: input.finalStoryBlueprint.writing_capability_context.rollback_id,
+            },
+          }
+        : {}),
     },
   };
 }

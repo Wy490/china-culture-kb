@@ -1759,7 +1759,7 @@ server.tool(
 // kb_get_domain_pack_production_health — read Domain Pack production prompt health
 server.tool(
   'kb_get_domain_pack_production_health',
-  '只读扫描 Domain Pack 生产提示健康。检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构包的生产提示与审稿边界。',
+  '只读扫描 Domain Pack 生产提示健康。检查非遗流程、纪录片来源、AI漫剧分镜、朝代服饰器物、仪式礼俗禁忌、建筑空间陈设、语言语体地域表达、自然环境声景、讲解知识结构、儿童改写、短视频钩子和宣讲培训结构包的生产提示与审稿边界。',
   {
     include_markdown: z.boolean().optional().describe('是否返回 Markdown，默认 true'),
   },

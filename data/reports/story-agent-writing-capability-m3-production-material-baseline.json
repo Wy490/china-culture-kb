@@ -1,0 +1,165 @@
+{
+  "schema_version": "story-agent-writing-capability-m3-production-material-baseline/v1",
+  "generated_at": "2026-08-03T00:00:00.000+08:00",
+  "status": "passed",
+  "source": {
+    "path": "data/production-packs/video-type-material-supplement-packs.json",
+    "schema_version": "video-type-material-supplement-packs/v1",
+    "sha256": "f84dad4a52c74374030862a68b85b619d5b16157a17dc6c00eb3a503d0d617ac",
+    "production_audit_path": "data/reports/knowledge-base-production-audit.json",
+    "production_audit_schema_version": "kb-production-material-audit/v1",
+    "production_audit_generated_at": "2026-08-03T14:44:41.770Z"
+  },
+  "gates": {
+    "video_type_coverage": "15/15",
+    "minimum_samples_per_type": 5,
+    "minimum_fields_per_type": 10,
+    "minimum_prompt_layers_per_type": 4,
+    "minimum_regional_anchors_for_expansion_pack": 4,
+    "failure_repair_required_for_expansion_samples": true,
+    "type_template_audits_per_entry": 15,
+    "effective_runtime_base_field_gap_target": 0
+  },
+  "summary": {
+    "pack_count": 15,
+    "total_required_field_count": 184,
+    "total_sample_count": 100,
+    "expansion_pack_count": 7,
+    "lecture_video_sample_count": 5,
+    "education_training_sample_count": 5,
+    "production_audited_entry_count": 289,
+    "raw_source_production_field_gap_count": 212,
+    "machine_guidance_field_count": 212,
+    "effective_runtime_production_field_gap_count": 0,
+    "entries_with_machine_guidance": 140
+  },
+  "packs": [
+    {
+      "video_type": "character_story",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "historical_drama",
+      "required_field_count": 13,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "legend_story",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "culture_promo",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "city_brand_promo",
+      "required_field_count": 13,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "scene_short",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "landscape_mood",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 5,
+      "failure_repair_sample_count": 5
+    },
+    {
+      "video_type": "heritage_promo",
+      "required_field_count": 15,
+      "prompt_layer_count": 4,
+      "sample_count": 10,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    },
+    {
+      "video_type": "documentary_short",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 10,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    },
+    {
+      "video_type": "explainer_video",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 10,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    },
+    {
+      "video_type": "children_story",
+      "required_field_count": 10,
+      "prompt_layer_count": 4,
+      "sample_count": 6,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    },
+    {
+      "video_type": "social_short",
+      "required_field_count": 10,
+      "prompt_layer_count": 4,
+      "sample_count": 6,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    },
+    {
+      "video_type": "lecture_video",
+      "required_field_count": 10,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 3,
+      "failure_repair_sample_count": 3
+    },
+    {
+      "video_type": "education_training",
+      "required_field_count": 12,
+      "prompt_layer_count": 4,
+      "sample_count": 5,
+      "regional_anchor_count": 1,
+      "failure_repair_sample_count": 3
+    },
+    {
+      "video_type": "ai_comic_drama",
+      "required_field_count": 17,
+      "prompt_layer_count": 5,
+      "sample_count": 13,
+      "regional_anchor_count": 0,
+      "failure_repair_sample_count": 0
+    }
+  ],
+  "issues": [],
+  "boundaries": {
+    "province_markdown_written": false,
+    "human_review_credit_claimed": false,
+    "user_registration_required": false,
+    "third_party_code_executed": false
+  }
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": "video-type-material-supplement-packs/v1",
-  "updated_at": "2026-07-17",
-  "purpose": "Define production-ready material supplement templates and high-quality sample entries for stable output types: heritage_promo, documentary_short, explainer_video, ai_comic_drama, plus second-wave high-frequency packs for children_story, social_short, lecture_video, and education_training.",
+  "updated_at": "2026-08-03",
+  "purpose": "Define production-ready material supplement templates, cross-regional samples, failure patterns, and repair strategies for all 15 supported video types.",
   "health_policy": {
     "required_domain_sample_video_types": [
       "ai_comic_drama",
@@ -159,6 +159,151 @@
     }
   ],
   "packs": [
+    {
+      "video_type": "character_story",
+      "label": "人物故事",
+      "goal": "把人物资料转成限定人生阶段、关系压力、关键选择、变化弧和事实边界清楚的人物叙事。",
+      "material_template": {
+        "required_fields": ["character_subject", "life_stage_window", "formative_pressure", "defining_choice", "relationship_map", "character_desire", "character_flaw_or_limit", "change_arc", "signature_objects", "dialogue_voice", "factual_life_boundary", "ending_legacy"],
+        "prompt_layers": [
+          "人物入口：锁定一个人生阶段、当下欲望和可视化标志物。",
+          "关系压力：用师友、家人、对手或制度压力迫使人物选择。",
+          "变化轨迹：从初始判断、受挫、选择到代价形成完整人物弧。",
+          "事实边界：生平事实、后人评价和戏剧化对白分层表达。"
+        ],
+        "minimum_viable_story_gate": ["人物身份和人生阶段明确", "有一个当下目标和一道压力", "有可拍的关键选择"],
+        "script_ready_gate": ["关系角色各自有立场", "变化弧至少包含受挫与新选择", "虚构对白和生平事实已分层"],
+        "production_ready_gate": ["服饰、标志物和语言声线可连续复用", "关键行动有镜头抓手", "结尾影响不夸大因果"],
+        "supplement_questions": ["故事聚焦人物哪一个人生阶段？", "此刻他最想得到什么？", "谁或什么迫使他改变选择？", "哪些生平细节有来源，哪些只能合理补足？", "结尾如何呈现影响而不写成万能英雄？"]
+      },
+      "sample_entries": [
+        {"sample_id":"character-01","entry_name":"周敦颐——一纸判词前的选择","applicable_source_domains":["china_culture"],"source_status":"existing_material_to_verify","regional_anchor":"湖南","core_story_engine":"用拒绝草率定案的选择显出人物原则。","failure_pattern":"从出生到晚年平铺生平。","repair_strategy":"收束到一次案卷压力和一个有代价的决定。","risk_boundary":"具体案情、对白和官职时间需回到来源。"},
+        {"sample_id":"character-02","entry_name":"苏轼黄州时期——一场雨后的转身","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"湖北","core_story_engine":"以受挫后的生活选择连接作品与人格变化。","failure_pattern":"只堆名句和豁达标签。","repair_strategy":"补足处境压力、具体行动和情绪反复。","risk_boundary":"文学表达不能直接等同于当天实录。"},
+        {"sample_id":"character-03","entry_name":"李清照南渡之后——书箱还剩多少","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"山东—浙江","core_story_engine":"以书画散失和迁徙选择呈现个人与时代碰撞。","failure_pattern":"把人物简化成单一哀愁。","repair_strategy":"用收藏、迁徙、写作与关系选择构成立体行动。","risk_boundary":"行程、藏品和心理对白需区分史料与推测。"},
+        {"sample_id":"character-04","entry_name":"张骞出使——第一次走出关塞","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"陕西—甘肃","core_story_engine":"聚焦出发、受阻与继续前行的关键阶段。","failure_pattern":"把多年经历压成无阻力英雄传奇。","repair_strategy":"保留地理困难、关系压力和信息不确定性。","risk_boundary":"路线细节、人物对白和器物需按时代核实。"},
+        {"sample_id":"character-05","entry_name":"林则徐虎门前夜——禁烟与海防之间","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"福建—广东","core_story_engine":"以制度任务、地方压力和个人判断形成选择戏。","failure_pattern":"只喊口号，不见人物判断。","repair_strategy":"加入证据、对手立场和选择后果。","risk_boundary":"不得编造密谈或把复杂历史归因于一人。"}
+      ]
+    },
+    {
+      "video_type": "historical_drama",
+      "label": "历史剧情短片",
+      "goal": "把历史事件转成时间地点可核、各方立场清楚、因果链完整且戏剧补足可标识的关键时刻。",
+      "material_template": {
+        "required_fields": ["historical_event_anchor", "historical_time_window", "historical_location", "historical_stakes", "faction_positions", "causal_chain", "evidence_hierarchy", "documented_actions", "dramatized_gap", "period_details", "conflict_turning_point", "aftermath", "historical_claim_boundary"],
+        "prompt_layers": ["时空证据：事件、时间、地点和史料层级先锁定。", "立场冲突：各方目标、筹码和风险形成可演对抗。", "戏剧补足：只在史料空白处补动作与对白，并显式标注。", "时代生产：服饰、器物、制度、空间和后果接受一致性检查。"],
+        "minimum_viable_story_gate": ["事件时空明确", "至少两方立场对撞", "知道转折点及其历史后果"],
+        "script_ready_gate": ["因果链可逐场追踪", "有据行动与合理补足分开", "关键历史声称有来源线索"],
+        "production_ready_gate": ["时代服化道不跨期", "地点与人物走位可执行", "片尾边界卡说明戏剧化部分"],
+        "supplement_questions": ["事件发生的最小时间窗口是什么？", "各方分别想守住什么？", "哪些动作有记载，哪些对白必须补足？", "最容易出现哪类时代错置？", "事件后果应如何避免过度单因归纳？"]
+      },
+      "sample_entries": [
+        {"sample_id":"history-01","entry_name":"通道转兵——地图上的下一步","applicable_source_domains":["china_culture"],"source_status":"existing_or_candidate_history_entry","regional_anchor":"湖南","core_story_engine":"围绕路线选择和会议转折组织多方压力。","failure_pattern":"用一场虚构争吵替代历史因果。","repair_strategy":"先列时间线、立场和有据结论，再补克制对白。","risk_boundary":"会议发言和细节不能无来源写成逐字实录。"},
+        {"sample_id":"history-02","entry_name":"玄武门前——一个清晨的权力抉择","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"陕西","core_story_engine":"以有限时空呈现阵营、风险和不可逆选择。","failure_pattern":"只拍动作奇观，省略政治处境。","repair_strategy":"让每次行动对应清晰筹码与后果。","risk_boundary":"人物对白、现场顺序和心理动机需标记补足。"},
+        {"sample_id":"history-03","entry_name":"澶渊之盟前线——战与和的两张奏报","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"河南—河北","core_story_engine":"用前线信息差推动和战立场冲突。","failure_pattern":"把复杂决策写成胆怯或勇敢二选一。","repair_strategy":"补充军情、财政、民生和制度约束。","risk_boundary":"数字、军情和具体议论必须核源。"},
+        {"sample_id":"history-04","entry_name":"土木堡之后——北京城门是否关闭","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"北京—河北","core_story_engine":"围绕危机中的守城选择组织倒计时。","failure_pattern":"虚构单一英雄拯救全局。","repair_strategy":"展现制度协作、不同立场和多环节后果。","risk_boundary":"角色功绩、命令次序和伤亡数据不得夸大。"},
+        {"sample_id":"history-05","entry_name":"虎门销烟——海滩上的执行难题","applicable_source_domains":["china_culture"],"source_status":"candidate_material_to_verify","regional_anchor":"广东","core_story_engine":"从政策目标落到现场流程、监督与风险。","failure_pattern":"只用宏大旁白跳过执行过程。","repair_strategy":"拆出材料、场地、人物职责和群众视角。","risk_boundary":"工艺过程不做危险模仿指南，史实按来源表达。"}
+      ]
+    },
+    {
+      "video_type": "legend_story",
+      "label": "神话/传说故事",
+      "goal": "把多版本神话传说转成规则明确、愿望与禁忌相撞、地域版本和真实度边界清楚的奇幻叙事。",
+      "material_template": {
+        "required_fields": ["legend_source_versions", "oral_or_text_lineage", "supernatural_rule", "mortal_desire", "taboo_or_test", "transformation_cost", "symbolic_motif", "regional_variant", "ritual_or_custom_link", "version_choice", "legend_truth_boundary", "wonder_ending"],
+        "prompt_layers": ["版本选择：列出来源、异文和本次采用口径。", "神异规则：能力、禁忌、代价和可见象征彼此一致。", "凡人行动：愿望必须通过选择和考验推进，而非旁白代办。", "真实度边界：传说、节俗关联和历史事实分层。"],
+        "minimum_viable_story_gate": ["采用版本明确", "神异规则和禁忌可一句话说清", "凡人愿望会触发具体考验"],
+        "script_ready_gate": ["代价随剧情兑现", "地域异文不混成单一真相", "象征母题贯穿开头与结尾"],
+        "production_ready_gate": ["奇观有稳定视觉规则", "仪式和服饰不跨地域拼贴", "片尾使用相传/传说口径"],
+        "supplement_questions": ["有哪些主要版本，本次采用哪一个？", "神异力量能做什么、不能做什么？", "主角触犯或守住了什么禁忌？", "此传说与当地节俗的关系有何来源？", "结尾奇观如何回扣人物代价？"]
+      },
+      "sample_entries": [
+        {"sample_id":"legend-01","entry_name":"柳毅传书——水府来信","applicable_source_domains":["china_culture"],"source_status":"legend_adaptation_with_boundary","regional_anchor":"湖南","core_story_engine":"凡人承诺触发跨界传信和信义考验。","failure_pattern":"把不同版本角色与结局随意拼接。","repair_strategy":"锁定文本口径、神异规则和信件代价。","risk_boundary":"明确唐传奇/地方传说属性，不写成史实。"},
+        {"sample_id":"legend-02","entry_name":"白蛇传——断桥借伞","applicable_source_domains":["china_culture"],"source_status":"regional_legend_to_verify","regional_anchor":"浙江","core_story_engine":"一次借伞让身份秘密、情感愿望和禁忌同时启动。","failure_pattern":"只复述熟悉桥段，没有版本选择。","repair_strategy":"指定地域/文本版本并让禁忌推动选择。","risk_boundary":"民间传说、戏曲改编和当代影视版本不可混写。"},
+        {"sample_id":"legend-03","entry_name":"梁祝——十八相送后的选择","applicable_source_domains":["china_culture"],"source_status":"regional_legend_to_verify","regional_anchor":"浙江—江苏","core_story_engine":"身份秘密和婚姻压力形成凡人选择与化蝶奇观。","failure_pattern":"用化蝶替代前半段人物行动。","repair_strategy":"先建立关系变化、家庭压力和选择代价。","risk_boundary":"地域起源说法和具体细节需标注版本。"},
+        {"sample_id":"legend-04","entry_name":"妈祖传说——风浪中的灯火","applicable_source_domains":["china_culture"],"source_status":"belief_legend_to_verify","regional_anchor":"福建","core_story_engine":"以海上救助愿望连接信仰叙事与沿海生活。","failure_pattern":"把信仰传说直接拍成科学事实。","repair_strategy":"用信众讲述、仪式现场和相传口径分层。","risk_boundary":"尊重信仰实践，不宣称超自然事件已获证实。"},
+        {"sample_id":"legend-05","entry_name":"孟姜女哭长城——版本不同的归途","applicable_source_domains":["china_culture"],"source_status":"multi_version_legend_to_verify","regional_anchor":"河北—陕西","core_story_engine":"寻夫愿望在制度压力与传说奇观中付出代价。","failure_pattern":"把多个时代与地点合成确定史实。","repair_strategy":"选择一个版本并在边界卡列出异文。","risk_boundary":"长城段落、人物年代和哭城情节均按传说表达。"}
+      ]
+    },
+    {
+      "video_type": "culture_promo",
+      "label": "文化宣传片",
+      "goal": "把文化主题转成证据支撑、符号统一、信息层级清楚且权利边界可生产的品牌化短片。",
+      "material_template": {
+        "required_fields": ["communication_goal", "cultural_theme", "audience_impression", "core_value_proposition", "cultural_evidence", "symbol_system", "key_message_hierarchy", "montage_arc", "voiceover_register", "call_to_action", "rights_and_attribution", "representation_risk"],
+        "prompt_layers": ["传播主张：目标受众、核心价值和看完后的印象。", "证据支撑：实物、人物、场所和来源共同承载主张。", "视听系统：色彩、纹样、声音、旁白和蒙太奇统一。", "品牌边界：权利署名、文化再现风险和不可夸大口号。"],
+        "minimum_viable_story_gate": ["传播目标和受众明确", "核心价值有至少两个证据点", "视觉符号可重复识别"],
+        "script_ready_gate": ["主次信息不互相争夺", "旁白每句有画面证据", "行动号召与内容相关"],
+        "production_ready_gate": ["素材权利和署名可追踪", "符号使用避免刻板拼贴", "品牌口号无最/唯一等无来源断言"],
+        "supplement_questions": ["观众看完最应记住哪一句？", "哪两个真实对象可以证明这句主张？", "色彩、纹样和声音如何形成统一系统？", "哪些素材需要授权或署名？", "如何避免把复杂文化压成一个符号？"]
+      },
+      "sample_entries": [
+        {"sample_id":"culture-01","entry_name":"湖湘文脉——书院、江水与今日课堂","applicable_source_domains":["china_culture"],"source_status":"candidate_campaign_to_verify","regional_anchor":"湖南","core_story_engine":"用空间、文本和当代学习构成三段证据。","failure_pattern":"堆叠名人金句和空泛精神。","repair_strategy":"每个价值主张绑定地点、人物行动或实物。","risk_boundary":"人物影响和地域归属不得泛化。"},
+        {"sample_id":"culture-02","entry_name":"江南园林——可行可望的生活美学","applicable_source_domains":["china_culture"],"source_status":"candidate_campaign_to_verify","regional_anchor":"江苏","core_story_engine":"以步移景异的观看路线承载审美主张。","failure_pattern":"把所有江南符号混成古风拼贴。","repair_strategy":"限定园林空间、时代线索和具体观看动作。","risk_boundary":"园名、建筑年代和诗文出处需核实。"},
+        {"sample_id":"culture-03","entry_name":"齐鲁礼乐——从器物到日常秩序","applicable_source_domains":["china_culture"],"source_status":"candidate_campaign_to_verify","regional_anchor":"山东","core_story_engine":"以器物、场所和当代实践解释礼乐的多层含义。","failure_pattern":"只喊礼仪之邦口号。","repair_strategy":"给主张补具体实物和日常行动证据。","risk_boundary":"古代概念不能直接套用为现代单一规范。"},
+        {"sample_id":"culture-04","entry_name":"岭南醒狮——一次腾跃背后的协作","applicable_source_domains":["china_culture"],"source_status":"candidate_campaign_to_verify","regional_anchor":"广东","core_story_engine":"以双人协作、鼓点和社区空间表现共同完成。","failure_pattern":"只拍高难动作，不见文化语境。","repair_strategy":"补训练、乐队、仪式/展演边界和参与者。","risk_boundary":"项目级别、流派和仪式意义需按来源。"},
+        {"sample_id":"culture-05","entry_name":"敦煌色彩——从壁画到当代设计","applicable_source_domains":["china_culture"],"source_status":"candidate_campaign_to_verify","regional_anchor":"甘肃","core_story_engine":"让色彩证据、保护边界和当代转化形成对照。","failure_pattern":"直接复制壁画图像作装饰。","repair_strategy":"说明来源、权利、保护语境与设计转化逻辑。","risk_boundary":"洞窟编号、图像权利和色彩解释必须核实。"}
+      ]
+    },
+    {
+      "video_type": "city_brand_promo",
+      "label": "城市/文旅宣传片",
+      "goal": "把城市身份主张转成空间路线、生活证据、视听记忆和可执行到访行动，而不是地标混剪。",
+      "material_template": {
+        "required_fields": ["communication_goal", "city_identity", "target_audience", "place_proof_points", "route_or_spatial_axis", "season_and_time", "people_and_daily_life", "food_craft_landmark_mix", "city_soundscape", "brand_slogan_boundary", "visitor_action", "location_permissions", "weather_contingency"],
+        "prompt_layers": ["城市主张：面向谁、为何来、为何此地不可替代。", "空间路线：用一条可行走的轴串联地标与日常生活。", "感官证据：食物、工艺、市声、天气和人物共同建立记忆。", "落地边界：口号、拍摄许可、开放时间和天气备选可执行。"],
+        "minimum_viable_story_gate": ["城市身份主张具体", "至少三类地方证明点", "存在一条空间或时间路线"],
+        "script_ready_gate": ["地标与日常生活均有角色", "每段旁白对应真实地点", "口号无无来源极值"],
+        "production_ready_gate": ["场地许可和开放条件明确", "季节天气有备选镜头", "游客行动路径可实际完成"],
+        "supplement_questions": ["这座城市最希望哪类人为什么而来？", "哪条路线能串起地标与生活？", "除了航拍还需要哪些人物行动？", "哪些口号或排名需要来源？", "下雨、闭馆或人流过大时如何替换？"]
+      },
+      "sample_entries": [
+        {"sample_id":"city-01","entry_name":"长沙一日——从江岸到夜市","applicable_source_domains":["china_culture"],"source_status":"candidate_city_campaign","regional_anchor":"湖南长沙","core_story_engine":"沿江岸—街巷—夜间生活建立时间路线。","failure_pattern":"航拍加小吃名单，没有人物行动。","repair_strategy":"让本地人的通勤、阅读、制作和相聚串联空间。","risk_boundary":"网红排名、店铺和开放信息需实时核实。"},
+        {"sample_id":"city-02","entry_name":"泉州——海风穿过古城街巷","applicable_source_domains":["china_culture"],"source_status":"candidate_city_campaign","regional_anchor":"福建泉州","core_story_engine":"用港口记忆、街巷生活和多元遗存构成步行轴。","failure_pattern":"把多元文化当作异域符号拼盘。","repair_strategy":"用具体场所、人物和日常实践说明共存关系。","risk_boundary":"遗产称谓、宗教场所拍摄和仪式边界需核实。"},
+        {"sample_id":"city-03","entry_name":"西安晨昏——城墙内外两种节奏","applicable_source_domains":["china_culture"],"source_status":"candidate_city_campaign","regional_anchor":"陕西西安","core_story_engine":"以晨跑、市场、博物馆与夜色形成古今节奏对照。","failure_pattern":"只用盛唐想象覆盖现代城市。","repair_strategy":"古迹证据与当代生活各占完整段落并相互转场。","risk_boundary":"历史复原画面和现实城市影像必须标识。"},
+        {"sample_id":"city-04","entry_name":"苏州水路——一座城的慢行方法","applicable_source_domains":["china_culture"],"source_status":"candidate_city_campaign","regional_anchor":"江苏苏州","core_story_engine":"以桥、巷、园林和手艺人的慢行路线建立体验。","failure_pattern":"所有画面只剩小桥流水滤镜。","repair_strategy":"加入公共交通、居民生活和具体工艺动作。","risk_boundary":"园林开放、航拍和居民隐私边界需核实。"},
+        {"sample_id":"city-05","entry_name":"成都雨天——茶馆里的城市时间","applicable_source_domains":["china_culture"],"source_status":"candidate_city_campaign","regional_anchor":"四川成都","core_story_engine":"以雨天备选路线进入茶馆、街区和日常交往。","failure_pattern":"用悠闲标签概括所有市民。","repair_strategy":"以不同人物任务和真实空间证据替代刻板印象。","risk_boundary":"商业场所、人物肖像和地方概念需获授权或核实。"}
+      ]
+    },
+    {
+      "video_type": "scene_short",
+      "label": "场景短片",
+      "goal": "把一个文化空间转成目标明确、路线可追踪、动作触发和轴线连续的场景叙事。",
+      "material_template": {
+        "required_fields": ["scene_anchor", "scene_objective", "entering_character", "spatial_zones", "movement_route", "action_trigger", "visual_reveal", "time_of_day", "light_and_weather", "ambient_sound", "shot_sequence", "spatial_continuity"],
+        "prompt_layers": ["空间建模：入口、分区、方向和视觉遮挡先画清。", "人物任务：谁进入、要做什么、什么触发动作。", "镜头揭示：景别、路线、光线和声音逐步打开空间。", "连续性：轴线、视线、出入口和天气状态跨镜保持一致。"],
+        "minimum_viable_story_gate": ["空间锚点明确", "进入人物有任务", "至少一个动作触发空间揭示"],
+        "script_ready_gate": ["路线经过明确分区", "每个镜头改变信息或情绪", "声音与光线服务场景目标"],
+        "production_ready_gate": ["轴线和出入口可画平面图", "景别次序和人物走位可执行", "天气与人流有连续性方案"],
+        "supplement_questions": ["人物从哪个入口进入？", "他要在空间里完成什么？", "哪个动作会揭示新区域？", "镜头是否跨越轴线或跳转方向？", "环境声和光线如何随路线变化？"]
+      },
+      "sample_entries": [
+        {"sample_id":"scene-01","entry_name":"岳麓书院雨夜寻书","applicable_source_domains":["china_culture"],"source_status":"fictionalized_site_scene","regional_anchor":"湖南","core_story_engine":"人物从门厅循滴水声进入讲堂，旧书触发第二空间。","failure_pattern":"空间名称很多但走位不可追踪。","repair_strategy":"建立入口—廊道—讲堂三段路线和方向锚点。","risk_boundary":"现存空间、历史功能和虚构事件分层。"},
+        {"sample_id":"scene-02","entry_name":"福建土楼清晨开门","applicable_source_domains":["china_culture"],"source_status":"candidate_site_scene","regional_anchor":"福建","core_story_engine":"从内院声响到楼层开门动作逐层揭示共同生活空间。","failure_pattern":"只拍建筑全景，无人物任务。","repair_strategy":"用取水、开门和递物动作连接空间层级。","risk_boundary":"居民隐私、拍摄许可和具体土楼信息需确认。"},
+        {"sample_id":"scene-03","entry_name":"苏州园林借景一刻","applicable_source_domains":["china_culture"],"source_status":"candidate_site_scene","regional_anchor":"江苏","core_story_engine":"观者转过漏窗，远近景关系随一步移动发生变化。","failure_pattern":"镜头任意漂移，观众不知身在何处。","repair_strategy":"用漏窗、廊柱和水面作连续方向标。","risk_boundary":"园林名称、空间格局和开放区域需核实。"},
+        {"sample_id":"scene-04","entry_name":"秦腔后台上场前十秒","applicable_source_domains":["china_culture"],"source_status":"candidate_performance_scene","regional_anchor":"陕西","core_story_engine":"锣鼓点触发演员从镜前、帘后到台口的倒计时路线。","failure_pattern":"后台、台口和舞台方向跳变。","repair_strategy":"固定台口方向、人物手中道具和锣鼓节拍。","risk_boundary":"剧种服饰、表演程式和后台许可需核实。"},
+        {"sample_id":"scene-05","entry_name":"川西茶馆一张空桌","applicable_source_domains":["china_culture"],"source_status":"candidate_daily_scene","regional_anchor":"四川","core_story_engine":"一张空桌等待人物到来，声音先于人物揭示关系。","failure_pattern":"只有氛围空镜，没有事件。","repair_strategy":"让送茶、落座和遗留物形成动作触发。","risk_boundary":"避免用单一场景代表全部地方生活。"}
+      ]
+    },
+    {
+      "video_type": "landscape_mood",
+      "label": "山水意境片",
+      "goal": "把真实山水转成季候、景深、自然动态、声景和镜头呼吸统一的意境短片，同时守住地理事实边界。",
+      "material_template": {
+        "required_fields": ["real_world_site_or_object", "landscape_subject", "mood_keyword", "season_and_weather", "light_transition", "foreground_midground_background", "water_wind_cloud_motion", "color_palette", "camera_rhythm", "soundscape_layers", "human_scale_reference", "landscape_claim_boundary"],
+        "prompt_layers": ["真实地点：山水主体、可达视点和季节天气先核清。", "画面层次：前中后景、色彩和光线变化建立空间。", "自然运动：水、风、云、草木和人物尺度形成时间感。", "视听呼吸：镜头速度、自然声和音乐留白统一意境。"],
+        "minimum_viable_story_gate": ["真实地点与主体明确", "意境关键词可转成光色和运动", "至少有三层景深"],
+        "script_ready_gate": ["季候天气与素材匹配", "镜头节奏有起承转合", "自然动态不依赖空泛形容词"],
+        "production_ready_gate": ["机位和安全可达性明确", "声景可分层采集或替代", "地名、季节和航拍声称不失真"],
+        "supplement_questions": ["主景从哪个真实视点观看？", "什么天气最能表达意境？", "前中后景分别放什么？", "水风云如何运动而不只做静态壁纸？", "哪些机位、航拍或季节画面必须核实？"]
+      },
+      "sample_entries": [
+        {"sample_id":"landscape-01","entry_name":"洞庭湖入夜——水天之间的灯","applicable_source_domains":["china_culture"],"source_status":"candidate_landscape_plan","regional_anchor":"湖南","core_story_engine":"从暮色水面到远灯建立开阔与归航的情绪变化。","failure_pattern":"只写浩渺壮阔，没有可拍层次。","repair_strategy":"明确芦苇前景、船影中景和天际后景。","risk_boundary":"季节水位、拍摄点和航行画面需核实。"},
+        {"sample_id":"landscape-02","entry_name":"黄山云海——松枝后的天光","applicable_source_domains":["china_culture"],"source_status":"candidate_landscape_plan","regional_anchor":"安徽","core_story_engine":"以前景松枝固定尺度，让云海和光线完成主运动。","failure_pattern":"把云海当作随时可得的固定景观。","repair_strategy":"标记天气概率、替代雾景和素材来源。","risk_boundary":"观景点、季节与气象条件不可保证式表达。"},
+        {"sample_id":"landscape-03","entry_name":"漓江晨雾——一桨划开倒影","applicable_source_domains":["china_culture"],"source_status":"candidate_landscape_plan","regional_anchor":"广西","core_story_engine":"人物一桨提供尺度与节奏，山影由静到动。","failure_pattern":"套用水墨滤镜替代真实地貌。","repair_strategy":"保留具体峰形、水面反射和现场声。","risk_boundary":"船只、渔事演绎和航拍许可需确认。"},
+        {"sample_id":"landscape-04","entry_name":"祁连山夏季雪线——草原到峰顶","applicable_source_domains":["china_culture"],"source_status":"candidate_landscape_plan","regional_anchor":"甘肃—青海","core_story_engine":"用草叶、行路者和雪峰建立三层尺度跃迁。","failure_pattern":"不同季节素材混剪成同一时刻。","repair_strategy":"统一季候、光向和植被状态并标注素材日期。","risk_boundary":"雪线、天气和生态描述需按实拍/来源。"},
+        {"sample_id":"landscape-05","entry_name":"武夷山溪谷——雨后的岩与茶园","applicable_source_domains":["china_culture"],"source_status":"candidate_landscape_plan","regional_anchor":"福建","core_story_engine":"雨滴、溪流、岩壁和远处茶园形成湿润声景。","failure_pattern":"把自然景观变成茶产品广告。","repair_strategy":"先建立地貌与天气，再克制加入人物尺度。","risk_boundary":"产区、景区和茶类关系需核实，商业品牌不得默认出现。"}
+      ]
+    },
     {
       "video_type": "heritage_promo",
       "label": "非遗/工艺宣传片",
@@ -890,6 +1035,39 @@
           "argument_points": ["材料决定动作", "工具形成工序", "工序才能变成镜头"],
           "visual_assets": ["材料样本", "流程板书", "手部动作B-roll"],
           "risk_boundary": "不把通用方法写成某个具体项目已核事实。"
+        },
+        {
+          "sample_id": "lecture-03",
+          "entry_name": "从园林路线讲中国空间审美",
+          "source_status": "candidate_lecture_to_verify",
+          "regional_anchor": "江苏",
+          "argument_points": ["观看依赖行走", "遮挡制造期待", "借景连接内外"],
+          "visual_assets": ["园林平面图", "漏窗对照", "主讲人行走讲解"],
+          "failure_pattern": "概念堆叠，没有空间证据。",
+          "repair_strategy": "每个论点绑定一个路线动作和一组对照镜头。",
+          "risk_boundary": "园林实例、术语解释和图像权利需核实。"
+        },
+        {
+          "sample_id": "lecture-04",
+          "entry_name": "为什么地方戏曲需要看见后台",
+          "source_status": "candidate_lecture_to_verify",
+          "regional_anchor": "陕西—河南",
+          "argument_points": ["舞台效果来自后台协作", "程式依赖训练", "剧种差异不能混用"],
+          "visual_assets": ["后台流程图", "锣鼓点字幕", "服饰部件示意"],
+          "failure_pattern": "只用名段剪辑支撑所有观点。",
+          "repair_strategy": "补妆造、候场、乐队和上场流程证据。",
+          "risk_boundary": "曲目版权、剧种归属和演员身份需确认。"
+        },
+        {
+          "sample_id": "lecture-05",
+          "entry_name": "博物馆讲解如何区分事实与推测",
+          "source_status": "museum_method_lecture",
+          "regional_anchor": "跨地域方法",
+          "argument_points": ["展签是入口不是全部", "推测要显示依据", "再现必须显式标注"],
+          "visual_assets": ["事实/推测双色卡", "展签局部", "来源层级板书"],
+          "failure_pattern": "把讲解员推断说成馆藏定论。",
+          "repair_strategy": "给每类句子增加证据层级和口径标签。",
+          "risk_boundary": "案例不替代具体馆方解释与最新研究。"
         }
       ]
     },
@@ -962,6 +1140,42 @@
           "practice_task": "把一段旁白标注至少三类 B-roll。",
           "board_assets": ["旁白/B-roll 对照表", "再现边界提示卡"],
           "risk_boundary": "再现镜头不能替代史实证据。"
+        },
+        {
+          "sample_id": "training-03",
+          "entry_name": "用三阶段门禁检查历史短片素材",
+          "source_status": "production_training",
+          "regional_anchor": "跨地域方法",
+          "learning_objective": "能分别判断最低可写、脚本可写和生产可拍。",
+          "practice_task": "给一组混合史料标记阻断项、风险项和可后补项。",
+          "board_assets": ["三阶段门禁表", "阻断/风险/可选标签卡"],
+          "failure_pattern": "把有故事梗概误判为可生产。",
+          "repair_strategy": "逐阶段检查来源、动作、资产与权利。",
+          "risk_boundary": "训练结论不能替代具体史料核验。"
+        },
+        {
+          "sample_id": "training-04",
+          "entry_name": "怎样为人物故事建立连续性账本",
+          "source_status": "production_training",
+          "regional_anchor": "跨地域方法",
+          "learning_objective": "能记录角色外观、关系、道具和未兑现承诺。",
+          "practice_task": "从三场戏中找出一次服饰跳变、一次道具回流错误和一个未兑现承诺。",
+          "board_assets": ["角色状态表", "道具流转表", "承诺回收表"],
+          "failure_pattern": "只检查姓名一致，不检查状态变化。",
+          "repair_strategy": "按场记录进入状态、动作变化和离开状态。",
+          "risk_boundary": "账本辅助机器检查，不声称替代创作判断。"
+        },
+        {
+          "sample_id": "training-05",
+          "entry_name": "把传说改编边界写进镜头提示",
+          "source_status": "production_training",
+          "regional_anchor": "跨地域方法",
+          "learning_objective": "能在旁白、字幕和画面层同时标记传说口径。",
+          "practice_task": "将三条确定式神异表述改成版本明确、画面仍有奇观的表达。",
+          "board_assets": ["史实/传说/创作三栏卡", "提示词边界示例"],
+          "failure_pattern": "只在片尾加免责声明，正文仍写成事实。",
+          "repair_strategy": "在来源、旁白谓词和镜头表现三处同步分层。",
+          "risk_boundary": "地域版本和信仰实践仍需项目级核实。"
         }
       ]
     },

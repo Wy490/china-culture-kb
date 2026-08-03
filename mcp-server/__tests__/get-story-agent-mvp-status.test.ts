@@ -45,6 +45,26 @@ const requiredDomainPackEntries = [
     asset_usage: ['character_clothing', 'character_props', 'credibility_boundary'],
   },
   {
+    pack_id: 'ritual_etiquette_taboo_pack',
+    entry_name: '仪式礼俗与禁忌包——流程角色、空间秩序和文化边界',
+    asset_usage: ['scene_space', 'safety_boundary', 'source_grounding'],
+  },
+  {
+    pack_id: 'architectural_space_furnishing_pack',
+    entry_name: '建筑空间与陈设包——空间层级、动线道具和时代边界',
+    asset_usage: ['scene_space', 'scene_props', 'gears_delivery'],
+  },
+  {
+    pack_id: 'regional_language_register_pack',
+    entry_name: '语言语体与地域表达包——人物身份、语境层级和方言边界',
+    asset_usage: ['dialogue_tone', 'source_grounding', 'credibility_boundary'],
+  },
+  {
+    pack_id: 'natural_environment_soundscape_pack',
+    entry_name: '自然环境与声景包——季节天气、地貌运动和环境声音',
+    asset_usage: ['scene_space', 'visual_style', 'gears_delivery'],
+  },
+  {
     pack_id: 'explainer_knowledge_structure_pack',
     entry_name: '讲解知识结构包——核心问题、层级例子与图示字幕',
     asset_usage: ['plot_structure', 'source_grounding', 'visual_style'],
@@ -377,10 +397,10 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(result.summary.production_material_pack_core_ready_count).toBe(4);
     expect(result.summary.production_material_pack_core_total_count).toBe(4);
     expect(result.summary.domain_pack_status).toBe('passed');
-    expect(result.summary.domain_pack_count).toBe(8);
+    expect(result.summary.domain_pack_count).toBe(12);
     expect(result.summary.domain_pack_issue_count).toBe(0);
-    expect(result.summary.production_domain_pack_ready_count).toBe(8);
-    expect(result.summary.production_domain_pack_required_count).toBe(8);
+    expect(result.summary.production_domain_pack_ready_count).toBe(12);
+    expect(result.summary.production_domain_pack_required_count).toBe(12);
     expect(result.summary.domain_pack_expansion_status).toBe('passed');
     expect(result.summary.domain_pack_expansion_batch_count).toBe(8);
     expect(result.summary.domain_pack_expansion_seed_target_count).toBe(8);
@@ -539,7 +559,7 @@ describe('kb_get_story_agent_mvp_status', () => {
       'production_material_core_ready=4/4',
       'production_material_pack_issues=0',
       'domain_pack_status=passed',
-      'domain_pack_ready=8/8',
+      'domain_pack_ready=12/12',
       'domain_pack_issues=0',
       'domain_pack_expansion_status=passed',
       'domain_pack_expansion_batches=8',
@@ -752,12 +772,16 @@ describe('kb_get_story_agent_mvp_status', () => {
     expect(domainPackHealth).toMatchObject({
       schema_version: 'domain-pack-production-health/v1',
       status: 'passed',
-      pack_count: 8,
+      pack_count: 12,
       production_ready_pack_ids: [
         'heritage_process_pack',
         'documentary_source_pack',
         'ai_comic_storyboard_pack',
         'era_and_costume_pack',
+        'ritual_etiquette_taboo_pack',
+        'architectural_space_furnishing_pack',
+        'regional_language_register_pack',
+        'natural_environment_soundscape_pack',
         'explainer_knowledge_structure_pack',
         'children_adaptation_safety_pack',
         'short_video_hook_pack',

@@ -910,7 +910,7 @@ describe('Story Agent top-level run API', () => {
     )).toBe(true);
     expect(run.workflow_checkpoints.find(
       (checkpoint: { checkpoint: string }) => checkpoint.checkpoint === 'canonical_repair',
-    )?.status).toBe('ready');
+    )?.status).toBe('awaiting_external_action');
 
     const projectId = run.generation_checkpoint.project_id as string;
     const projectPath = resolve(
@@ -1875,11 +1875,15 @@ describe('System API', () => {
         domain_id: 'china_culture',
         status: 'passed',
         pack_count: expect.any(Number),
-        production_pack_count: 8,
+        production_pack_count: 12,
         required_pack_ids: expect.arrayContaining([
           'heritage_process_pack',
           'documentary_source_pack',
           'ai_comic_storyboard_pack',
+          'ritual_etiquette_taboo_pack',
+          'architectural_space_furnishing_pack',
+          'regional_language_register_pack',
+          'natural_environment_soundscape_pack',
           'explainer_knowledge_structure_pack',
         ]),
         missing_required_pack_ids: [],
@@ -1887,6 +1891,10 @@ describe('System API', () => {
           'heritage_process_pack',
           'documentary_source_pack',
           'ai_comic_storyboard_pack',
+          'ritual_etiquette_taboo_pack',
+          'architectural_space_furnishing_pack',
+          'regional_language_register_pack',
+          'natural_environment_soundscape_pack',
           'explainer_knowledge_structure_pack',
         ]),
         issues: [],
@@ -1896,6 +1904,12 @@ describe('System API', () => {
           pack_id: 'education_training_structure_pack',
           production_prompt_count: 3,
           review_boundary_count: 3,
+          status: 'passed',
+        }),
+        expect.objectContaining({
+          pack_id: 'ritual_etiquette_taboo_pack',
+          production_prompt_count: 5,
+          review_boundary_count: 5,
           status: 'passed',
         }),
       ]));
@@ -3884,8 +3898,8 @@ describe('System API', () => {
           domain_pack_status: 'passed',
           domain_pack_count: expect.any(Number),
           domain_pack_issue_count: 0,
-          production_domain_pack_ready_count: 8,
-          production_domain_pack_required_count: 8,
+          production_domain_pack_ready_count: 12,
+          production_domain_pack_required_count: 12,
           domain_pack_expansion_status: 'passed',
           domain_pack_expansion_batch_count: 11,
           domain_pack_expansion_seed_target_count: expect.any(Number),
@@ -4107,7 +4121,7 @@ describe('System API', () => {
         'production_material_core_ready=4/4',
         'production_material_pack_issues=0',
         'domain_pack_status=passed',
-        'domain_pack_ready=8/8',
+        'domain_pack_ready=12/12',
         'domain_pack_issues=0',
         'domain_pack_expansion_status=passed',
         'domain_pack_expansion_batches=11',
@@ -6275,8 +6289,8 @@ describe('System API', () => {
           production_material_pack_core_total_count: 4,
           domain_pack_status: 'passed',
           domain_pack_issue_count: 0,
-          domain_pack_ready_count: 8,
-          domain_pack_required_count: 8,
+          domain_pack_ready_count: 12,
+          domain_pack_required_count: 12,
           required_envs: expect.arrayContaining(['GEARS_EXECUTION_WORKER_API_BASE_URL', 'GEARS_CALLBACK_SECRET']),
         });
         expect(res.body.data.documents.map((doc: any) => doc.id)).toEqual([

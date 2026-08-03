@@ -1,0 +1,155 @@
+{
+  "schema_version": "story-agent-writing-capability-m3-domain-pack-baseline/v1",
+  "generated_at": "2026-08-03T00:00:00.000+08:00",
+  "status": "passed",
+  "source": {
+    "path": "data/domain-packs/china-culture.json",
+    "domain_id": "china_culture",
+    "version": "1.4.0",
+    "sha256": "8cc7ed17b2c087ed3fe27f0665f982dc8630d9debbf48f8f99cd0b0b1f77b84c"
+  },
+  "gates": {
+    "required_production_pack_coverage": "12/12",
+    "minimum_trigger_words_per_pack": 8,
+    "minimum_production_prompts_per_pack": 3,
+    "minimum_review_boundaries_per_pack": 3,
+    "ritual_retrieval_registered": true,
+    "expansion_retrieval_registered": {
+      "architectural_space_furnishing_pack": true,
+      "regional_language_register_pack": true,
+      "natural_environment_soundscape_pack": true
+    },
+    "story_prompt_consumes_production_prompts": true,
+    "story_prompt_consumes_review_boundaries": true,
+    "web_health_contract_registered": true,
+    "mcp_health_contract_registered": true
+  },
+  "summary": {
+    "total_domain_pack_entry_count": 22,
+    "production_pack_count": 12,
+    "production_ready_pack_count": 12,
+    "ritual_pack_count": 1,
+    "ritual_production_prompt_count": 5,
+    "ritual_review_boundary_count": 5,
+    "expansion_pack_count": 3,
+    "expansion_production_prompt_count": 15,
+    "expansion_review_boundary_count": 15
+  },
+  "packs": [
+    {
+      "pack_id": "heritage_process_pack",
+      "entry_name": "非遗流程生产包——材料工具、工序动作与授权边界",
+      "trigger_word_count": 10,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "documentary_source_pack",
+      "entry_name": "纪录片来源包——现实现场、来源线索与再现边界",
+      "trigger_word_count": 10,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "ai_comic_storyboard_pack",
+      "entry_name": "AI漫剧分镜包——关键帧、表情节拍与连续性验收",
+      "trigger_word_count": 9,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "era_and_costume_pack",
+      "entry_name": "朝代服饰与器物包——时代称谓、服装道具和事实边界",
+      "trigger_word_count": 11,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "ritual_etiquette_taboo_pack",
+      "entry_name": "仪式礼俗与禁忌包——流程角色、空间秩序和文化边界",
+      "trigger_word_count": 14,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 6,
+      "status": "passed"
+    },
+    {
+      "pack_id": "architectural_space_furnishing_pack",
+      "entry_name": "建筑空间与陈设包——空间层级、动线道具和时代边界",
+      "trigger_word_count": 14,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 7,
+      "status": "passed"
+    },
+    {
+      "pack_id": "regional_language_register_pack",
+      "entry_name": "语言语体与地域表达包——人物身份、语境层级和方言边界",
+      "trigger_word_count": 14,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "natural_environment_soundscape_pack",
+      "entry_name": "自然环境与声景包——季节天气、地貌运动和环境声音",
+      "trigger_word_count": 16,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 6,
+      "status": "passed"
+    },
+    {
+      "pack_id": "explainer_knowledge_structure_pack",
+      "entry_name": "讲解知识结构包——核心问题、层级例子与图示字幕",
+      "trigger_word_count": 9,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "asset_usage_count": 4,
+      "status": "passed"
+    },
+    {
+      "pack_id": "children_adaptation_safety_pack",
+      "entry_name": "儿童改写规则包——年龄分层、善意张力与事实边界",
+      "trigger_word_count": 9,
+      "production_prompt_count": 3,
+      "review_boundary_count": 3,
+      "asset_usage_count": 4,
+      "status": "passed"
+    },
+    {
+      "pack_id": "short_video_hook_pack",
+      "entry_name": "短视频钩子包——三秒问题、对比反转与平台节奏",
+      "trigger_word_count": 9,
+      "production_prompt_count": 3,
+      "review_boundary_count": 3,
+      "asset_usage_count": 5,
+      "status": "passed"
+    },
+    {
+      "pack_id": "education_training_structure_pack",
+      "entry_name": "宣讲培训结构包——论点案例、练习复盘与行动转化",
+      "trigger_word_count": 10,
+      "production_prompt_count": 3,
+      "review_boundary_count": 3,
+      "asset_usage_count": 5,
+      "status": "passed"
+    }
+  ],
+  "issues": [],
+  "boundaries": {
+    "province_markdown_written": false,
+    "human_review_credit_claimed": false,
+    "user_registration_required": false,
+    "third_party_code_executed": false
+  }
+}

@@ -26,11 +26,31 @@ import { validateReferenceBaselineCompatibility } from '../../services/reference
 import { resolveReferenceGenerationRecipeContract } from '../../services/reference-generation-recipe-service.js';
 import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
+import { buildWritingCapabilityShadowPreparationPlan } from '../../services/writing-capability-rollout-service.js';
+import { buildWritingCapabilityRuntimeResolution } from '../../services/writing-capability-runtime-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
+import { resolveStoryKnowledgePreparation } from './story-knowledge-preparation-service.js';
 import { extractChinaCultureBoldEvents } from './story-planning-service.js';
 import { resolveChinaCultureStorySource } from './story-source-service.js';
 
-export async function prepareChinaCultureStoryGeneration(request: StoryGenerateRequest) {
+export interface ChinaCultureStoryGenerationPreparationOptions {
+  storyKnowledge?: {
+    enabled: true;
+    evidenceOverlay?: unknown;
+  };
+  writingCapability?: {
+    enabled: true;
+    requestedCapabilityIds: readonly string[];
+    rolloutPolicy?: unknown;
+    adapter?: unknown;
+    runtimeActivation?: unknown;
+  };
+}
+
+export async function prepareChinaCultureStoryGeneration(
+  request: StoryGenerateRequest,
+  options: ChinaCultureStoryGenerationPreparationOptions = {},
+) {
   const {
     original_user_query,
     selected_event,
@@ -45,6 +65,24 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     .join('\n');
   const localTone = tone ?? '';
   const videoType = resolveStoryVideoType(request);
+  const writingCapabilityShadowPlan = options.writingCapability?.enabled
+    ? buildWritingCapabilityShadowPreparationPlan({
+      videoType,
+      requestedCapabilityIds: options.writingCapability.requestedCapabilityIds,
+      rolloutPolicy: options.writingCapability.rolloutPolicy,
+      adapter: options.writingCapability.adapter,
+    })
+    : undefined;
+  const writingCapabilityRuntimeResolution = options.writingCapability?.enabled
+    && options.writingCapability.runtimeActivation !== undefined
+    ? buildWritingCapabilityRuntimeResolution({
+      videoType,
+      requestedCapabilityIds: options.writingCapability.requestedCapabilityIds,
+      activation: options.writingCapability.runtimeActivation,
+      rolloutPolicy: options.writingCapability.rolloutPolicy,
+      adapter: options.writingCapability.adapter,
+    })
+    : undefined;
   const generationType = request.generation_type ?? resolveLegacyGenerationType(videoType);
   const presentationStyle = request.presentation_style
     ?? VIDEO_TYPE_CONFIG[videoType].default_presentation_style;
@@ -68,6 +106,12 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
   const sourceResolution = await resolveChinaCultureStorySource(request);
   if (!sourceResolution.ok) return sourceResolution;
   const { primaryEntryName, entry } = sourceResolution;
+  const storyKnowledgePreparation = options.storyKnowledge?.enabled
+    ? resolveStoryKnowledgePreparation(
+      entry,
+      options.storyKnowledge.evidenceOverlay,
+    )
+    : undefined;
 
   let knowledgePackToUse: KnowledgePack | undefined = knowledge_pack;
   let materialPackToUse: MaterialPack | undefined = material_pack;
@@ -265,6 +309,9 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     creationContract,
     materialSufficiency,
     genreMatrix,
+    writingCapabilityContext: writingCapabilityRuntimeResolution?.status === 'active'
+      ? writingCapabilityRuntimeResolution.context
+      : undefined,
   });
 
   return {
@@ -298,6 +345,11 @@ export async function prepareChinaCultureStoryGeneration(request: StoryGenerateR
     selectedModelProfile,
     centralEvent,
     preliminaryStoryBlueprint,
+    ...(storyKnowledgePreparation ? { storyKnowledgePreparation } : {}),
+    ...(writingCapabilityShadowPlan ? { writingCapabilityShadowPlan } : {}),
+    ...(writingCapabilityRuntimeResolution
+      ? { writingCapabilityRuntimeResolution }
+      : {}),
   };
 }
 

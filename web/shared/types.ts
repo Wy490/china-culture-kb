@@ -45,6 +45,414 @@ export type VideoType =
   | 'social_short'
   | 'ai_comic_drama';
 
+// ---------------------------------------------------------------------------
+// Writing capability profiles — audited, static adaptation catalog
+// ---------------------------------------------------------------------------
+
+export interface WritingCapabilityProvenanceV1 {
+  readonly audited_at: string;
+  readonly audit_scope: readonly string[];
+  readonly adopted_methods: readonly string[];
+  readonly excluded_components: readonly string[];
+  readonly risk_notes: readonly string[];
+  readonly static_adaptation_only: true;
+  readonly third_party_code_executed: false;
+  readonly external_network_access_allowed: false;
+  readonly external_file_write_allowed: false;
+  readonly external_command_execution_allowed: false;
+}
+
+export interface WritingCapabilityProfileV1 {
+  readonly schema_version: 'writing-capability-profile/v1';
+  readonly capability_id: string;
+  readonly display_name: string;
+  readonly source_repository: string;
+  readonly source_commit: string;
+  readonly source_author: string;
+  readonly license: string;
+  readonly adapted_rules: readonly string[];
+  readonly allowed_video_types: readonly VideoType[];
+  readonly forbidden_video_types: readonly VideoType[];
+  readonly blueprint_requirements: readonly string[];
+  readonly scene_rules: readonly string[];
+  readonly quality_rules: readonly string[];
+  readonly repair_guidance: readonly string[];
+  readonly provenance: WritingCapabilityProvenanceV1;
+  readonly enabled: boolean;
+}
+
+export interface WritingCapabilityCatalogItemV1 {
+  readonly capability_id: string;
+  readonly display_name: string;
+  readonly source_repository: string;
+  readonly source_commit: string;
+  readonly source_author: string;
+  readonly license: string;
+  readonly allowed_video_types: readonly VideoType[];
+  readonly forbidden_video_types: readonly VideoType[];
+  readonly adapted_rule_count: number;
+  readonly audited_at: string;
+  readonly enabled: boolean;
+}
+
+export interface WritingCapabilityCatalogReportV1 {
+  readonly schema_version: 'writing-capability-catalog-report/v1';
+  readonly profile_schema_version: 'writing-capability-profile/v1';
+  readonly total_count: number;
+  readonly enabled_count: number;
+  readonly disabled_count: number;
+  readonly boundary: {
+    readonly catalog_only: true;
+    readonly affects_generation: false;
+    readonly third_party_code_executed: false;
+    readonly external_execution_allowed: false;
+  };
+  readonly capabilities: readonly WritingCapabilityCatalogItemV1[];
+}
+
+export interface WritingCapabilityRoutingRequestV1 {
+  readonly schema_version: 'writing-capability-routing-request/v1';
+  readonly video_type: VideoType;
+  readonly requested_capability_ids: readonly string[];
+}
+
+export type WritingCapabilityRoutingReasonV1 =
+  | 'unknown_capability'
+  | 'video_type_forbidden'
+  | 'video_type_not_allowed'
+  | 'profile_disabled';
+
+export interface WritingCapabilityRoutingDecisionV1 {
+  readonly capability_id: string;
+  readonly status: 'rejected';
+  readonly reason_code: WritingCapabilityRoutingReasonV1;
+  readonly message: string;
+  readonly profile_enabled?: false;
+  readonly profile_schema_version?: 'writing-capability-profile/v1';
+  readonly source_commit?: string;
+}
+
+export interface WritingCapabilityRoutingReportV1 {
+  readonly schema_version: 'writing-capability-routing-report/v1';
+  readonly video_type: VideoType;
+  readonly requested_capability_ids: readonly string[];
+  readonly active_capability_ids: readonly string[];
+  readonly decisions: readonly WritingCapabilityRoutingDecisionV1[];
+  readonly summary: {
+    readonly requested_count: number;
+    readonly decision_count: number;
+    readonly active_count: 0;
+    readonly eligible_but_disabled_count: number;
+    readonly incompatible_count: number;
+  };
+  readonly boundary: {
+    readonly router_only: true;
+    readonly affects_generation: false;
+    readonly runtime_enablement_supported: false;
+    readonly profile_rules_injected: false;
+    readonly third_party_code_executed: false;
+    readonly all_profiles_default_disabled: true;
+  };
+}
+
+export interface WritingCapabilityRolloutPolicyV1 {
+  readonly schema_version: 'writing-capability-rollout-policy/v1';
+  readonly policy_id: string;
+  readonly policy_revision: number;
+  readonly status: 'disabled' | 'shadow_plan';
+  readonly candidate: {
+    readonly capability_id: string;
+    readonly video_type: VideoType;
+    readonly profile_schema_version: 'writing-capability-profile/v1';
+    readonly source_commit: string;
+    readonly internal_adaptation_version: string;
+    readonly rollback_id: string;
+  };
+  readonly boundary: {
+    readonly exact_single_capability: true;
+    readonly exact_single_video_type: true;
+    readonly global_enablement_allowed: false;
+    readonly runtime_activation_allowed: false;
+    readonly affects_generation: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export type WritingCapabilityAdapterRuleLayerV1 =
+  | 'blueprint_requirements'
+  | 'scene_rules'
+  | 'quality_rules'
+  | 'repair_guidance';
+
+export interface WritingCapabilityAdapterRuleV1 {
+  readonly rule_id: string;
+  readonly layer: WritingCapabilityAdapterRuleLayerV1;
+  readonly text: string;
+  readonly source_profile_field: WritingCapabilityAdapterRuleLayerV1;
+  readonly source_rule_index: number;
+}
+
+export interface WritingCapabilityAdapterV1 {
+  readonly schema_version: 'writing-capability-adapter/v1';
+  readonly adapter_id: string;
+  readonly adapter_revision: number;
+  readonly capability_id: string;
+  readonly video_type: VideoType;
+  readonly profile_schema_version: 'writing-capability-profile/v1';
+  readonly source_commit: string;
+  readonly internal_adaptation_version: string;
+  readonly rollback_id: string;
+  readonly rules: Record<
+    WritingCapabilityAdapterRuleLayerV1,
+    readonly WritingCapabilityAdapterRuleV1[]
+  >;
+  readonly guardrails: {
+    readonly genre_story_profile_precedence: true;
+    readonly story_knowledge_evidence_precedence: true;
+    readonly cultural_safety_precedence: true;
+    readonly rights_clearance_precedence: true;
+    readonly no_rule_removal: true;
+  };
+  readonly boundary: {
+    readonly preview_only: true;
+    readonly affects_generation: false;
+    readonly rules_injected: false;
+    readonly persistence_allowed: false;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export type WritingCapabilityAdapterConflictCodeV1 =
+  | 'invalid_adapter_schema'
+  | 'profile_identity_mismatch'
+  | 'video_type_scope_mismatch'
+  | 'policy_identity_mismatch'
+  | 'duplicate_rule_id'
+  | 'duplicate_rule_text'
+  | 'genre_rule_duplicate'
+  | 'forbidden_boundary_language'
+  | 'missing_guardrail';
+
+export interface WritingCapabilityAdapterPreflightReportV1 {
+  readonly schema_version: 'writing-capability-adapter-preflight-report/v1';
+  readonly status: 'passed' | 'blocked';
+  readonly capability_id: string;
+  readonly video_type: VideoType;
+  readonly adapter_id?: string;
+  readonly adapter_revision?: number;
+  readonly conflicts: readonly {
+    readonly code: WritingCapabilityAdapterConflictCodeV1;
+    readonly path: string;
+    readonly message: string;
+  }[];
+  readonly preview_rules: Record<WritingCapabilityAdapterRuleLayerV1, readonly string[]>;
+  readonly checks: {
+    readonly genre_story_profile: true;
+    readonly story_knowledge_evidence: true;
+    readonly cultural_safety: true;
+    readonly rights_clearance: true;
+    readonly rollback_identity: true;
+  };
+  readonly summary: {
+    readonly preview_rule_count: number;
+    readonly conflict_count: number;
+  };
+  readonly boundary: {
+    readonly preview_only: true;
+    readonly affects_generation: false;
+    readonly rules_injected: false;
+    readonly persistence_allowed: false;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export type WritingCapabilityShadowPreparationStatusV1 =
+  | 'not_requested'
+  | 'policy_disabled'
+  | 'shadow_ready'
+  | 'policy_incompatible'
+  | 'candidate_mismatch'
+  | 'routing_rejected'
+  | 'adapter_blocked';
+
+export interface WritingCapabilityShadowPreparationPlanV1 {
+  readonly schema_version: 'writing-capability-shadow-preparation-plan/v1';
+  readonly status: WritingCapabilityShadowPreparationStatusV1;
+  readonly video_type: VideoType;
+  readonly requested_capability_ids: readonly string[];
+  readonly policy?: {
+    readonly policy_id: string;
+    readonly policy_revision: number;
+    readonly status: 'disabled' | 'shadow_plan';
+    readonly capability_id: string;
+    readonly video_type: VideoType;
+    readonly profile_schema_version: 'writing-capability-profile/v1';
+    readonly source_commit: string;
+    readonly internal_adaptation_version: string;
+    readonly rollback_id: string;
+  };
+  readonly routing_report: WritingCapabilityRoutingReportV1;
+  readonly adapter_preview?: WritingCapabilityAdapterPreflightReportV1;
+  readonly projected_rules: {
+    readonly blueprint_requirements: readonly string[];
+    readonly scene_rules: readonly string[];
+    readonly quality_rules: readonly string[];
+    readonly repair_guidance: readonly string[];
+  };
+  readonly issues: readonly string[];
+  readonly boundary: {
+    readonly shadow_only: true;
+    readonly affects_generation: false;
+    readonly profile_rules_injected: false;
+    readonly runtime_activation_allowed: false;
+    readonly global_enablement_allowed: false;
+    readonly persistence_allowed: false;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export interface WritingCapabilityRuntimeActivationV1 {
+  readonly schema_version: 'writing-capability-runtime-activation/v1';
+  readonly activation_id: string;
+  readonly activation_revision: number;
+  readonly status: 'enabled';
+  readonly candidate: {
+    readonly capability_id: string;
+    readonly video_type: VideoType;
+    readonly profile_schema_version: 'writing-capability-profile/v1';
+    readonly source_commit: string;
+    readonly adapter_id: string;
+    readonly adapter_revision: number;
+    readonly internal_adaptation_version: string;
+    readonly rollback_id: string;
+  };
+  readonly boundary: {
+    readonly default_off: true;
+    readonly exact_single_capability: true;
+    readonly exact_single_video_type: true;
+    readonly internal_opt_in_only: true;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export interface WritingCapabilityRuntimeRuleV1 {
+  readonly rule_id: string;
+  readonly layer: WritingCapabilityAdapterRuleLayerV1;
+  readonly text: string;
+  readonly source_profile_field: WritingCapabilityAdapterRuleLayerV1;
+  readonly source_rule_index: number;
+}
+
+export interface WritingCapabilityRuntimeContextV1 {
+  readonly schema_version: 'writing-capability-runtime-context/v1';
+  readonly status: 'active';
+  readonly activation_id: string;
+  readonly activation_revision: number;
+  readonly capability_id: string;
+  readonly video_type: VideoType;
+  readonly profile_schema_version: 'writing-capability-profile/v1';
+  readonly source_commit: string;
+  readonly adapter_id: string;
+  readonly adapter_revision: number;
+  readonly internal_adaptation_version: string;
+  readonly rollback_id: string;
+  readonly rules: Record<
+    WritingCapabilityAdapterRuleLayerV1,
+    readonly WritingCapabilityRuntimeRuleV1[]
+  >;
+  readonly guardrails: {
+    readonly genre_story_profile_precedence: true;
+    readonly story_knowledge_evidence_precedence: true;
+    readonly cultural_safety_precedence: true;
+    readonly rights_clearance_precedence: true;
+    readonly no_rule_removal: true;
+  };
+  readonly boundary: {
+    readonly default_off: true;
+    readonly explicit_internal_opt_in: true;
+    readonly affects_generation: true;
+    readonly affects_quality: true;
+    readonly affects_repair: true;
+    readonly persistence_allowed: true;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export interface WritingCapabilityRuntimeResolutionV1 {
+  readonly schema_version: 'writing-capability-runtime-resolution/v1';
+  readonly status: 'active' | 'fallback';
+  readonly video_type: VideoType;
+  readonly requested_capability_ids: readonly string[];
+  readonly context?: WritingCapabilityRuntimeContextV1;
+  readonly issues: readonly string[];
+  readonly boundary: {
+    readonly default_off: true;
+    readonly explicit_internal_opt_in: true;
+    readonly fail_closed: true;
+    readonly baseline_preserved_on_fallback: true;
+    readonly public_api_exposed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
+export interface WritingCapabilityQualityCheckV1 {
+  readonly check_id: string;
+  readonly status: 'passed' | 'failed';
+  readonly scene_ids: readonly number[];
+  readonly message: string;
+  readonly repair_hint?: string;
+}
+
+export interface WritingCapabilityContinuityLedgerV1 {
+  readonly characters: readonly {
+    readonly name: string;
+    readonly scene_ids: readonly number[];
+  }[];
+  readonly objects: readonly {
+    readonly label: string;
+    readonly scene_ids: readonly number[];
+    readonly state_events: readonly {
+      readonly scene_id: number;
+      readonly state: 'present' | 'lost_or_destroyed' | 'recovered_or_repaired' | 'used';
+    }[];
+    readonly conflict_scene_ids: readonly number[];
+  }[];
+  readonly promises: readonly {
+    readonly promise_id: string;
+    readonly text: string;
+    readonly setup_scene_id: number;
+    readonly payoff_scene_id?: number;
+    readonly status: 'fulfilled' | 'open';
+  }[];
+}
+
+export interface WritingCapabilityQualityReportV1 {
+  readonly schema_version: 'writing-capability-quality-report/v1';
+  readonly capability_id: string;
+  readonly activation_id: string;
+  readonly evaluation_kind:
+    | 'short_drama_runtime'
+    | 'continuity_state_tracking'
+    | 'machine_reader_simulation';
+  readonly score: number;
+  readonly passed: boolean;
+  readonly checks: readonly WritingCapabilityQualityCheckV1[];
+  readonly failed_check_ids: readonly string[];
+  readonly applied_quality_rule_ids: readonly string[];
+  readonly continuity_ledger?: WritingCapabilityContinuityLedgerV1;
+  readonly boundary: {
+    readonly deterministic_machine_evaluation: true;
+    readonly evidence_localized: true;
+    readonly human_feedback_claimed: false;
+    readonly third_party_code_executed: false;
+  };
+}
+
 export type NarrativePatternId =
   | 'mortal_growth'
   | 'infinite_mission'
@@ -9399,6 +9807,249 @@ export interface KnowledgePack {
   overall_confidence: number;
 }
 
+// ---------------------------------------------------------------------------
+// Story knowledge contract v1 — claim-level evidence and production boundary
+// ---------------------------------------------------------------------------
+
+export type StoryKnowledgeSourceGradeV1 = 'A' | 'B' | 'C' | 'D' | 'ungraded';
+export type StoryKnowledgeSourceVerificationV1 =
+  | 'human_verified'
+  | 'machine_mapped'
+  | 'legacy_unmapped';
+export type StoryKnowledgeClaimTypeV1 =
+  | 'critical_fact'
+  | 'supporting_fact'
+  | 'legend_variant'
+  | 'disputed_or_unknown';
+export type StoryKnowledgeClaimCertaintyV1 =
+  | 'verified'
+  | 'probable'
+  | 'disputed'
+  | 'unverified';
+export type StoryKnowledgeClaimUsageV1 =
+  | 'fact'
+  | 'bounded_context'
+  | 'variant_only'
+  | 'blocked';
+
+export interface StoryKnowledgeSourceRefV1 {
+  source_ref_id: string;
+  citation: string;
+  grade: StoryKnowledgeSourceGradeV1;
+  verification_status: StoryKnowledgeSourceVerificationV1;
+  verified_at?: string;
+  note?: string;
+}
+
+export interface StoryKnowledgeClaimV1 {
+  claim_id: string;
+  claim_type: StoryKnowledgeClaimTypeV1;
+  text: string;
+  subject?: string;
+  event?: string;
+  time?: string;
+  place?: string;
+  object?: string;
+  source_ref_ids: string[];
+  certainty: StoryKnowledgeClaimCertaintyV1;
+  usage: StoryKnowledgeClaimUsageV1;
+  scope?: string;
+  last_verified_at?: string;
+}
+
+export interface StoryKnowledgeCreativeAffordanceV1 {
+  character_goals: string[];
+  pressures: string[];
+  choices: string[];
+  consequences: string[];
+  visible_events: string[];
+  relationships: string[];
+  story_pressures: string[];
+  allowed_dramatization: string[];
+  forbidden_dramatization: string[];
+  legend_variants: string[];
+  dialogue_register: string[];
+  forbidden_language: string[];
+}
+
+export interface StoryKnowledgeProductionMaterialV1 {
+  characters: string[];
+  costume_and_hair: string[];
+  props: string[];
+  architecture_and_spaces: string[];
+  spaces_and_routes: string[];
+  materials_tools_and_process: string[];
+  lighting_season_and_weather: string[];
+  ambient_sound: string[];
+  rituals_and_crowd: string[];
+  interviews_broll_and_archive: string[];
+  rights_clearance_notes: string[];
+}
+
+export type StoryKnowledgeMissingMaterialCategoryV1 =
+  | 'claim_level_source_mapping'
+  | 'authoritative_source'
+  | 'creative_affordance'
+  | 'production_material'
+  | 'rights_clearance';
+
+export interface StoryKnowledgeMissingMaterialV1 {
+  missing_id: string;
+  category: StoryKnowledgeMissingMaterialCategoryV1;
+  label: string;
+  reason: string;
+  blocking_level: 'blocking' | 'risk' | 'optional';
+  affects: string[];
+}
+
+export interface StoryKnowledgeContractV1 {
+  schema_version: 'story-knowledge-contract/v1';
+  source_entry: {
+    name: string;
+    source_domain: string;
+    province?: string;
+    region?: string;
+    entry_type?: string;
+    era?: string;
+  };
+  sources: StoryKnowledgeSourceRefV1[];
+  claims: StoryKnowledgeClaimV1[];
+  creative_affordance: StoryKnowledgeCreativeAffordanceV1;
+  production_material: StoryKnowledgeProductionMaterialV1;
+  missing_material: StoryKnowledgeMissingMaterialV1[];
+  boundary: {
+    legacy_adapter: boolean;
+    consumed_by_generation: false;
+    generated_content_writeback_allowed: false;
+    critical_facts_can_be_asserted: boolean;
+    machine_validation_only: true;
+    human_review_complete: false;
+  };
+}
+
+export type StoryKnowledgeEvidenceOverlaySignoffV1 =
+  | {
+      status: 'pending';
+      reason: string;
+    }
+  | {
+      status: 'approved';
+      reviewed_by: string;
+      reviewer_role: 'fact_culture_reviewer';
+      reviewed_at: string;
+      confirmation: 'human_reviewed_story_knowledge_evidence_overlay';
+    }
+  | {
+      status: 'rejected';
+      reviewed_by: string;
+      reviewer_role: 'fact_culture_reviewer';
+      reviewed_at: string;
+      reason: string;
+    };
+
+export interface StoryKnowledgeEvidenceOverlaySourceReviewV1 {
+  source_ref_id: string;
+  grade: Exclude<StoryKnowledgeSourceGradeV1, 'ungraded'>;
+  verification_status: Extract<
+    StoryKnowledgeSourceVerificationV1,
+    'human_verified' | 'machine_mapped'
+  >;
+  verified_at?: string;
+  note: string;
+}
+
+export interface StoryKnowledgeEvidenceOverlayClaimMappingV1 {
+  claim_id: string;
+  source_ref_ids: string[];
+  claim_type: StoryKnowledgeClaimTypeV1;
+  certainty: StoryKnowledgeClaimCertaintyV1;
+  usage: StoryKnowledgeClaimUsageV1;
+  scope: string;
+}
+
+export interface StoryKnowledgeEvidenceOverlayV1 {
+  schema_version: 'story-knowledge-evidence-overlay/v1';
+  overlay_id: string;
+  entry_name: string;
+  source_reviews: StoryKnowledgeEvidenceOverlaySourceReviewV1[];
+  claim_mappings: StoryKnowledgeEvidenceOverlayClaimMappingV1[];
+  signoff: StoryKnowledgeEvidenceOverlaySignoffV1;
+  boundary: {
+    read_only_overlay: true;
+    source_markdown_writeback_allowed: false;
+    generation_consumption_allowed: false;
+    existing_supplement_tasks_mutable: false;
+  };
+}
+
+export interface StoryKnowledgeEvidenceOverlayAssemblyV1 {
+  schema_version: 'story-knowledge-evidence-overlay-assembly/v1';
+  overlay_id: string;
+  entry_name: string;
+  contract: StoryKnowledgeContractV1;
+  report: {
+    source_review_count: number;
+    claim_mapping_count: number;
+    human_verified_source_count: number;
+    critical_fact_ready_count: number;
+    removed_missing_ids: string[];
+    remaining_missing_count: number;
+  };
+  boundary: {
+    read_only_assembly: true;
+    consumed_by_generation: false;
+    source_markdown_writeback_allowed: false;
+    existing_supplement_tasks_modified: false;
+  };
+}
+
+export type StoryKnowledgePreparationStatusV1 =
+  | 'base_contract_only'
+  | 'overlay_pending'
+  | 'overlay_approved_read_only'
+  | 'overlay_rejected'
+  | 'overlay_incompatible';
+
+export interface StoryKnowledgePreparationV1 {
+  schema_version: 'story-knowledge-preparation/v1';
+  status: StoryKnowledgePreparationStatusV1;
+  entry_name: string;
+  overlay_id?: string;
+  contract: StoryKnowledgeContractV1;
+  issues: string[];
+  report: {
+    source_count: number;
+    claim_count: number;
+    human_verified_source_count: number;
+    critical_fact_ready_count: number;
+    missing_material_count: number;
+  };
+  boundary: {
+    read_only_preparation: true;
+    consumed_by_blueprint: false;
+    consumed_by_prompt: false;
+    consumed_by_fallback: false;
+    persistence_allowed: false;
+    generation_output_changed: false;
+    machine_validation_only: true;
+    real_human_review_credit_granted: false;
+  };
+}
+
+export interface LegacyEntryStoryKnowledgeContractAdapterResultV1 {
+  schema_version: 'legacy-entry-story-knowledge-contract-adapter/v1';
+  contract: StoryKnowledgeContractV1;
+  legacy_entry_snapshot: EntryDetail;
+  mapping_report: {
+    preserved_legacy_fields: string[];
+    source_count: number;
+    ungraded_source_count: number;
+    claim_count: number;
+    critical_fact_ready_count: number;
+    missing_material_count: number;
+  };
+}
+
 export type DomainPackProductionHealthStatus = 'passed' | 'warning' | 'failed';
 export type DomainPackProductionHealthIssueSeverity = 'warning' | 'error';
 
@@ -10362,6 +11013,9 @@ export interface ProductionMaterialSampleEntry {
   entry_name: string;
   applicable_source_domains?: string[];
   source_status?: string;
+  regional_anchor?: string;
+  failure_pattern?: string;
+  repair_strategy?: string;
   core_story_engine?: string;
   must_collect?: string[];
   visual_assets?: string[];
@@ -10585,7 +11239,8 @@ export type KnowledgeSupplementTaskSource =
   | 'knowledge_pack_missing_need'
   | 'material_sufficiency_missing_item'
   | 'production_material_missing_field'
-  | 'professional_evidence_missing';
+  | 'professional_evidence_missing'
+  | 'story_knowledge_contract_missing_material';
 export type KnowledgeSupplementTaskCategory =
   | 'person_experience'
   | 'architecture_detail'
@@ -10622,6 +11277,20 @@ export interface KnowledgeSupplementTask {
   knowledge_writeback_status?: KnowledgeWritebackStatus;
   knowledge_writeback_note?: string;
   knowledge_writeback_updated_at?: string;
+}
+
+export interface StoryKnowledgeSupplementTaskProjectionV1 {
+  schema_version: 'story-knowledge-supplement-task-projection/v1';
+  projection_id: string;
+  entry_name: string;
+  task_count: number;
+  tasks: KnowledgeSupplementTask[];
+  boundary: {
+    read_only_projection: true;
+    persistence_allowed: false;
+    existing_supplement_tasks_modified: false;
+    generation_consumption_allowed: false;
+  };
 }
 
 export interface KnowledgeSupplementTaskUpdateRequest {
@@ -11976,6 +12645,7 @@ export interface StoryQualityReport {
   quality_gates?: StoryQualityGatesV2;
   family_quality_report?: StoryFamilyQualityReport;
   human_review_alignment?: StoryHumanReviewAlignment;
+  writing_capability_quality?: WritingCapabilityQualityReportV1;
 }
 
 export type QualitySignalStatus = 'satisfied' | 'weak' | 'missing';
@@ -14264,6 +14934,7 @@ export interface StoryBlueprint {
   character_arcs: StoryCharacterArcPlan[];
   evidence_boundaries: EvidenceBoundary[];
   type_specific_requirements: string[];
+  writing_capability_context?: WritingCapabilityRuntimeContextV1;
   creation_contract?: CreationContract;
   material_sufficiency?: MaterialSufficiencyReport;
 }
@@ -14276,6 +14947,7 @@ export interface GenreQualityReport extends StoryQualityReport {
   weak_beats: string[];
   forbidden_patterns_found: string[];
   repair_actions: string[];
+  writing_capability_quality?: WritingCapabilityQualityReportV1;
 }
 
 export interface StoryRepairTrace {
@@ -14907,6 +15579,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
   story_blueprint?: StoryBlueprint;
+  writing_capability_runtime?: WritingCapabilityRuntimeContextV1;
   reference_trace?: ReferenceTrace[];
   reference_generation_recipe?: ReferenceGenerationRecipeContract;
   reference_safety_report?: ReferenceGenerationSafetyReport;

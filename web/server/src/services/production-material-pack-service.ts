@@ -45,11 +45,21 @@ const CORE_PRODUCTION_READY_VIDEO_TYPES: VideoType[] = [
 ];
 
 const HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES: VideoType[] = [
-  ...CORE_PRODUCTION_READY_VIDEO_TYPES,
-  'children_story',
-  'social_short',
+  'character_story',
+  'historical_drama',
+  'legend_story',
+  'culture_promo',
+  'heritage_promo',
+  'city_brand_promo',
+  'scene_short',
+  'landscape_mood',
+  'documentary_short',
+  'explainer_video',
   'lecture_video',
   'education_training',
+  'children_story',
+  'social_short',
+  'ai_comic_drama',
 ];
 
 const PACK_HEALTH_GATE_STAGES: MaterialSufficiencyStage[] = [
@@ -127,7 +137,7 @@ export function getProductionMaterialPackHealthReport(input: {
   const coreVideoTypes = input.coreVideoTypes ?? CORE_PRODUCTION_READY_VIDEO_TYPES;
   const highFrequencyVideoTypes = input.highFrequencyVideoTypes ?? HIGH_FREQUENCY_PRODUCTION_VIDEO_TYPES;
   const coreMinimumSampleEntries = input.coreMinimumSampleEntries ?? 10;
-  const highFrequencyMinimumSampleEntries = input.highFrequencyMinimumSampleEntries ?? 2;
+  const highFrequencyMinimumSampleEntries = input.highFrequencyMinimumSampleEntries ?? 5;
   const minimumPromptLayers = input.minimumPromptLayers ?? 4;
   const minimumSupplementQuestions = input.minimumSupplementQuestions ?? 4;
   const minimumGateItemsPerStage = input.minimumGateItemsPerStage ?? 3;

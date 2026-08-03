@@ -42,6 +42,673 @@ export const VideoTypeSchema = z.enum([
   'ai_comic_drama',
 ]);
 
+const WritingCapabilityNonEmptyTextSchema = z.string().trim().min(1);
+const WritingCapabilityIdSchema = z.string().regex(/^[a-z][a-z0-9_]{2,63}$/);
+const WritingCapabilityUniqueVideoTypesSchema = z.array(VideoTypeSchema)
+  .refine(
+    values => new Set(values).size === values.length,
+    'video type lists must not contain duplicates',
+  );
+const WritingCapabilityAllowedVideoTypesSchema = WritingCapabilityUniqueVideoTypesSchema.refine(
+  values => values.length > 0,
+  'allowed_video_types must contain at least one video type',
+);
+
+export const WritingCapabilityProvenanceV1Schema = z.object({
+  audited_at: z.string().datetime({ offset: true }),
+  audit_scope: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  adopted_methods: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  excluded_components: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  risk_notes: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  static_adaptation_only: z.literal(true),
+  third_party_code_executed: z.literal(false),
+  external_network_access_allowed: z.literal(false),
+  external_file_write_allowed: z.literal(false),
+  external_command_execution_allowed: z.literal(false),
+}).strict();
+
+export const WritingCapabilityProfileV1Schema = z.object({
+  schema_version: z.literal('writing-capability-profile/v1'),
+  capability_id: WritingCapabilityIdSchema,
+  display_name: WritingCapabilityNonEmptyTextSchema.max(120),
+  source_repository: z.string().url().refine(
+    value => /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(value),
+    'source_repository must be a canonical GitHub repository URL',
+  ),
+  source_commit: z.string().regex(
+    /^[a-f0-9]{40}$/,
+    'source_commit must be a pinned full Git commit SHA',
+  ),
+  source_author: WritingCapabilityNonEmptyTextSchema.max(120),
+  license: WritingCapabilityNonEmptyTextSchema.max(120),
+  adapted_rules: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  allowed_video_types: WritingCapabilityAllowedVideoTypesSchema,
+  forbidden_video_types: WritingCapabilityUniqueVideoTypesSchema,
+  blueprint_requirements: z.array(WritingCapabilityNonEmptyTextSchema),
+  scene_rules: z.array(WritingCapabilityNonEmptyTextSchema),
+  quality_rules: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  repair_guidance: z.array(WritingCapabilityNonEmptyTextSchema).min(1),
+  provenance: WritingCapabilityProvenanceV1Schema,
+  enabled: z.boolean(),
+}).strict().superRefine((profile, context) => {
+  const forbidden = new Set(profile.forbidden_video_types);
+  const conflicts = profile.allowed_video_types.filter(videoType => forbidden.has(videoType));
+  if (conflicts.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['allowed_video_types'],
+      message: `allowed_video_types conflicts with forbidden_video_types: ${conflicts.join(', ')}`,
+    });
+  }
+});
+
+export const WritingCapabilityCatalogItemV1Schema = z.object({
+  capability_id: WritingCapabilityIdSchema,
+  display_name: WritingCapabilityNonEmptyTextSchema.max(120),
+  source_repository: z.string().url().refine(
+    value => /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(value),
+    'source_repository must be a canonical GitHub repository URL',
+  ),
+  source_commit: z.string().regex(
+    /^[a-f0-9]{40}$/,
+    'source_commit must be a pinned full Git commit SHA',
+  ),
+  source_author: WritingCapabilityNonEmptyTextSchema.max(120),
+  license: WritingCapabilityNonEmptyTextSchema.max(120),
+  allowed_video_types: WritingCapabilityAllowedVideoTypesSchema,
+  forbidden_video_types: WritingCapabilityUniqueVideoTypesSchema,
+  adapted_rule_count: z.number().int().positive(),
+  audited_at: z.string().datetime({ offset: true }),
+  enabled: z.boolean(),
+}).strict();
+
+export const WritingCapabilityCatalogReportV1Schema = z.object({
+  schema_version: z.literal('writing-capability-catalog-report/v1'),
+  profile_schema_version: z.literal('writing-capability-profile/v1'),
+  total_count: z.number().int().nonnegative(),
+  enabled_count: z.number().int().nonnegative(),
+  disabled_count: z.number().int().nonnegative(),
+  boundary: z.object({
+    catalog_only: z.literal(true),
+    affects_generation: z.literal(false),
+    third_party_code_executed: z.literal(false),
+    external_execution_allowed: z.literal(false),
+  }).strict(),
+  capabilities: z.array(WritingCapabilityCatalogItemV1Schema),
+}).strict().superRefine((report, context) => {
+  const enabledCount = report.capabilities.filter(capability => capability.enabled).length;
+  const capabilityIds = report.capabilities.map(capability => capability.capability_id);
+
+  if (report.total_count !== report.capabilities.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['total_count'],
+      message: 'total_count must match capabilities.length',
+    });
+  }
+  if (
+    report.enabled_count !== enabledCount
+    || report.disabled_count !== report.capabilities.length - enabledCount
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['enabled_count'],
+      message: 'enabled_count and disabled_count must match capability states',
+    });
+  }
+  if (new Set(capabilityIds).size !== capabilityIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['capabilities'],
+      message: 'capability identifiers must be unique',
+    });
+  }
+});
+
+export const WritingCapabilityRoutingRequestV1Schema = z.object({
+  schema_version: z.literal('writing-capability-routing-request/v1'),
+  video_type: VideoTypeSchema,
+  requested_capability_ids: z.array(WritingCapabilityIdSchema)
+    .max(20)
+    .refine(
+      values => new Set(values).size === values.length,
+      'requested_capability_ids must be unique',
+    ),
+}).strict();
+
+export const WritingCapabilityRoutingDecisionV1Schema = z.object({
+  capability_id: WritingCapabilityIdSchema,
+  status: z.literal('rejected'),
+  reason_code: z.enum([
+    'unknown_capability',
+    'video_type_forbidden',
+    'video_type_not_allowed',
+    'profile_disabled',
+  ]),
+  message: WritingCapabilityNonEmptyTextSchema,
+  profile_enabled: z.literal(false).optional(),
+  profile_schema_version: z.literal('writing-capability-profile/v1').optional(),
+  source_commit: z.string().regex(/^[a-f0-9]{40}$/).optional(),
+}).strict().superRefine((decision, context) => {
+  const profileFields = [
+    decision.profile_enabled,
+    decision.profile_schema_version,
+    decision.source_commit,
+  ];
+  if (
+    decision.reason_code === 'unknown_capability'
+    && profileFields.some(value => value !== undefined)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['reason_code'],
+      message: 'unknown capabilities cannot claim profile metadata',
+    });
+  }
+  if (
+    decision.reason_code !== 'unknown_capability'
+    && profileFields.some(value => value === undefined)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['profile_schema_version'],
+      message: 'registered capability decisions require complete profile metadata',
+    });
+  }
+});
+
+export const WritingCapabilityRoutingReportV1Schema = z.object({
+  schema_version: z.literal('writing-capability-routing-report/v1'),
+  video_type: VideoTypeSchema,
+  requested_capability_ids: z.array(WritingCapabilityIdSchema),
+  active_capability_ids: z.array(WritingCapabilityIdSchema).max(0),
+  decisions: z.array(WritingCapabilityRoutingDecisionV1Schema),
+  summary: z.object({
+    requested_count: z.number().int().nonnegative(),
+    decision_count: z.number().int().nonnegative(),
+    active_count: z.literal(0),
+    eligible_but_disabled_count: z.number().int().nonnegative(),
+    incompatible_count: z.number().int().nonnegative(),
+  }).strict(),
+  boundary: z.object({
+    router_only: z.literal(true),
+    affects_generation: z.literal(false),
+    runtime_enablement_supported: z.literal(false),
+    profile_rules_injected: z.literal(false),
+    third_party_code_executed: z.literal(false),
+    all_profiles_default_disabled: z.literal(true),
+  }).strict(),
+}).strict().superRefine((report, context) => {
+  const requested = report.requested_capability_ids;
+  const decisionIds = report.decisions.map(decision => decision.capability_id);
+  const sortedRequested = [...requested].sort((left, right) => left.localeCompare(right));
+  const eligibleButDisabledCount = report.decisions.filter(
+    decision => decision.reason_code === 'profile_disabled',
+  ).length;
+  const incompatibleCount = report.decisions.length - eligibleButDisabledCount;
+
+  if (
+    new Set(requested).size !== requested.length
+    || requested.some((id, index) => id !== sortedRequested[index])
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['requested_capability_ids'],
+      message: 'requested_capability_ids must be unique and sorted',
+    });
+  }
+  if (
+    decisionIds.length !== requested.length
+    || decisionIds.some((id, index) => id !== requested[index])
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['decisions'],
+      message: 'decisions must correspond one-to-one with requested_capability_ids',
+    });
+  }
+  if (
+    report.summary.requested_count !== requested.length
+    || report.summary.decision_count !== report.decisions.length
+    || report.summary.eligible_but_disabled_count !== eligibleButDisabledCount
+    || report.summary.incompatible_count !== incompatibleCount
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['summary'],
+      message: 'routing summary counts must match decisions',
+    });
+  }
+});
+
+export const WritingCapabilityRolloutPolicyV1Schema = z.object({
+  schema_version: z.literal('writing-capability-rollout-policy/v1'),
+  policy_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  policy_revision: z.number().int().positive(),
+  status: z.enum(['disabled', 'shadow_plan']),
+  candidate: z.object({
+    capability_id: WritingCapabilityIdSchema,
+    video_type: VideoTypeSchema,
+    profile_schema_version: z.literal('writing-capability-profile/v1'),
+    source_commit: z.string().regex(/^[a-f0-9]{40}$/),
+    internal_adaptation_version: z.string().regex(/^[a-z][a-z0-9-]{2,63}\/v[1-9][0-9]*$/),
+    rollback_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  }).strict(),
+  boundary: z.object({
+    exact_single_capability: z.literal(true),
+    exact_single_video_type: z.literal(true),
+    global_enablement_allowed: z.literal(false),
+    runtime_activation_allowed: z.literal(false),
+    affects_generation: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict();
+
+const WritingCapabilityAdapterRuleLayerV1Schema = z.enum([
+  'blueprint_requirements',
+  'scene_rules',
+  'quality_rules',
+  'repair_guidance',
+]);
+
+const WritingCapabilityAdapterRuleV1Schema = z.object({
+  rule_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  layer: WritingCapabilityAdapterRuleLayerV1Schema,
+  text: WritingCapabilityNonEmptyTextSchema,
+  source_profile_field: WritingCapabilityAdapterRuleLayerV1Schema,
+  source_rule_index: z.number().int().nonnegative(),
+}).strict().superRefine((rule, context) => {
+  if (rule.layer !== rule.source_profile_field) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['source_profile_field'],
+      message: 'source_profile_field must match the adapter rule layer',
+    });
+  }
+});
+
+export const WritingCapabilityAdapterV1Schema = z.object({
+  schema_version: z.literal('writing-capability-adapter/v1'),
+  adapter_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  adapter_revision: z.number().int().positive(),
+  capability_id: WritingCapabilityIdSchema,
+  video_type: VideoTypeSchema,
+  profile_schema_version: z.literal('writing-capability-profile/v1'),
+  source_commit: z.string().regex(/^[a-f0-9]{40}$/),
+  internal_adaptation_version: z.string().regex(/^[a-z][a-z0-9-]{2,63}\/v[1-9][0-9]*$/),
+  rollback_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  rules: z.object({
+    blueprint_requirements: z.array(WritingCapabilityAdapterRuleV1Schema).min(1),
+    scene_rules: z.array(WritingCapabilityAdapterRuleV1Schema).min(1),
+    quality_rules: z.array(WritingCapabilityAdapterRuleV1Schema).min(1),
+    repair_guidance: z.array(WritingCapabilityAdapterRuleV1Schema).min(1),
+  }).strict(),
+  guardrails: z.object({
+    genre_story_profile_precedence: z.literal(true),
+    story_knowledge_evidence_precedence: z.literal(true),
+    cultural_safety_precedence: z.literal(true),
+    rights_clearance_precedence: z.literal(true),
+    no_rule_removal: z.literal(true),
+  }).strict(),
+  boundary: z.object({
+    preview_only: z.literal(true),
+    affects_generation: z.literal(false),
+    rules_injected: z.literal(false),
+    persistence_allowed: z.literal(false),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict().superRefine((adapter, context) => {
+  const entries = Object.entries(adapter.rules) as Array<[
+    keyof typeof adapter.rules,
+    typeof adapter.rules[keyof typeof adapter.rules],
+  ]>;
+  const allRules = entries.flatMap(([, rules]) => rules);
+  for (const [layer, rules] of entries) {
+    rules.forEach((rule, index) => {
+      if (rule.layer !== layer) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['rules', layer, index, 'layer'],
+          message: 'rule layer must match its containing collection',
+        });
+      }
+    });
+  }
+  const ids = allRules.map(rule => rule.rule_id);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rules'],
+      message: 'adapter rule_id values must be unique across all layers',
+    });
+  }
+  const normalizedTexts = allRules.map(rule => rule.text.trim().replace(/\s+/gu, ' '));
+  if (new Set(normalizedTexts).size !== normalizedTexts.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rules'],
+      message: 'adapter rule text values must be unique across all layers',
+    });
+  }
+});
+
+const WritingCapabilityAdapterPreviewRulesV1Schema = z.object({
+  blueprint_requirements: z.array(WritingCapabilityNonEmptyTextSchema),
+  scene_rules: z.array(WritingCapabilityNonEmptyTextSchema),
+  quality_rules: z.array(WritingCapabilityNonEmptyTextSchema),
+  repair_guidance: z.array(WritingCapabilityNonEmptyTextSchema),
+}).strict();
+
+export const WritingCapabilityAdapterPreflightReportV1Schema = z.object({
+  schema_version: z.literal('writing-capability-adapter-preflight-report/v1'),
+  status: z.enum(['passed', 'blocked']),
+  capability_id: WritingCapabilityIdSchema,
+  video_type: VideoTypeSchema,
+  adapter_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/).optional(),
+  adapter_revision: z.number().int().positive().optional(),
+  conflicts: z.array(z.object({
+    code: z.enum([
+      'invalid_adapter_schema',
+      'profile_identity_mismatch',
+      'video_type_scope_mismatch',
+      'policy_identity_mismatch',
+      'duplicate_rule_id',
+      'duplicate_rule_text',
+      'genre_rule_duplicate',
+      'forbidden_boundary_language',
+      'missing_guardrail',
+    ]),
+    path: z.string(),
+    message: WritingCapabilityNonEmptyTextSchema,
+  }).strict()),
+  preview_rules: WritingCapabilityAdapterPreviewRulesV1Schema,
+  checks: z.object({
+    genre_story_profile: z.literal(true),
+    story_knowledge_evidence: z.literal(true),
+    cultural_safety: z.literal(true),
+    rights_clearance: z.literal(true),
+    rollback_identity: z.literal(true),
+  }).strict(),
+  summary: z.object({
+    preview_rule_count: z.number().int().nonnegative(),
+    conflict_count: z.number().int().nonnegative(),
+  }).strict(),
+  boundary: z.object({
+    preview_only: z.literal(true),
+    affects_generation: z.literal(false),
+    rules_injected: z.literal(false),
+    persistence_allowed: z.literal(false),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict().superRefine((report, context) => {
+  const previewRuleCount = Object.values(report.preview_rules)
+    .reduce((count, rules) => count + rules.length, 0);
+  if (
+    report.summary.preview_rule_count !== previewRuleCount
+    || report.summary.conflict_count !== report.conflicts.length
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['summary'],
+      message: 'preflight summary counts must match conflicts and preview rules',
+    });
+  }
+  if (
+    (report.status === 'passed' && (report.conflicts.length > 0 || previewRuleCount === 0))
+    || (report.status === 'blocked' && (report.conflicts.length === 0 || previewRuleCount > 0))
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['status'],
+      message: 'passed requires preview rules without conflicts; blocked requires conflicts and no preview rules',
+    });
+  }
+});
+
+const WritingCapabilityRolloutPolicySnapshotV1Schema = z.object({
+  policy_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  policy_revision: z.number().int().positive(),
+  status: z.enum(['disabled', 'shadow_plan']),
+  capability_id: WritingCapabilityIdSchema,
+  video_type: VideoTypeSchema,
+  profile_schema_version: z.literal('writing-capability-profile/v1'),
+  source_commit: z.string().regex(/^[a-f0-9]{40}$/),
+  internal_adaptation_version: z.string().regex(/^[a-z][a-z0-9-]{2,63}\/v[1-9][0-9]*$/),
+  rollback_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+}).strict();
+
+export const WritingCapabilityShadowPreparationPlanV1Schema = z.object({
+  schema_version: z.literal('writing-capability-shadow-preparation-plan/v1'),
+  status: z.enum([
+    'not_requested',
+    'policy_disabled',
+    'shadow_ready',
+    'policy_incompatible',
+    'candidate_mismatch',
+    'routing_rejected',
+    'adapter_blocked',
+  ]),
+  video_type: VideoTypeSchema,
+  requested_capability_ids: z.array(WritingCapabilityIdSchema),
+  policy: WritingCapabilityRolloutPolicySnapshotV1Schema.optional(),
+  routing_report: WritingCapabilityRoutingReportV1Schema,
+  adapter_preview: WritingCapabilityAdapterPreflightReportV1Schema.optional(),
+  projected_rules: z.object({
+    blueprint_requirements: z.array(WritingCapabilityNonEmptyTextSchema).max(0),
+    scene_rules: z.array(WritingCapabilityNonEmptyTextSchema).max(0),
+    quality_rules: z.array(WritingCapabilityNonEmptyTextSchema).max(0),
+    repair_guidance: z.array(WritingCapabilityNonEmptyTextSchema).max(0),
+  }).strict(),
+  issues: z.array(WritingCapabilityNonEmptyTextSchema)
+    .refine(values => new Set(values).size === values.length, 'issues must be unique'),
+  boundary: z.object({
+    shadow_only: z.literal(true),
+    affects_generation: z.literal(false),
+    profile_rules_injected: z.literal(false),
+    runtime_activation_allowed: z.literal(false),
+    global_enablement_allowed: z.literal(false),
+    persistence_allowed: z.literal(false),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict().superRefine((plan, context) => {
+  const requested = plan.requested_capability_ids;
+  const sortedRequested = [...requested].sort((left, right) => left.localeCompare(right));
+  if (
+    new Set(requested).size !== requested.length
+    || requested.some((id, index) => id !== sortedRequested[index])
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['requested_capability_ids'],
+      message: 'requested_capability_ids must be unique and sorted',
+    });
+  }
+  if (plan.status === 'shadow_ready') {
+    const decision = plan.routing_report.decisions[0];
+    if (
+      !plan.policy
+      || plan.policy.status !== 'shadow_plan'
+      || plan.video_type !== plan.policy.video_type
+      || requested.length !== 1
+      || requested[0] !== plan.policy.capability_id
+      || decision?.reason_code !== 'profile_disabled'
+      || plan.issues.length > 0
+      || plan.adapter_preview?.status === 'blocked'
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'shadow_ready requires one exact disabled-profile candidate and no issues',
+      });
+    }
+  }
+  if (
+    plan.status === 'policy_disabled'
+    && plan.policy?.status !== 'disabled'
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['policy', 'status'],
+      message: 'policy_disabled requires a disabled policy snapshot',
+    });
+  }
+  if (
+    plan.status === 'adapter_blocked'
+    && (
+      !plan.policy
+      || plan.policy.status !== 'shadow_plan'
+      || plan.video_type !== plan.policy.video_type
+      || requested.length !== 1
+      || requested[0] !== plan.policy.capability_id
+      || plan.routing_report.decisions[0]?.reason_code !== 'profile_disabled'
+      || plan.adapter_preview?.status !== 'blocked'
+      || plan.issues.length === 0
+    )
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['adapter_preview'],
+      message: 'adapter_blocked requires one exact disabled-profile candidate, a blocked preview, and issues',
+    });
+  }
+});
+
+export const WritingCapabilityRuntimeActivationV1Schema = z.object({
+  schema_version: z.literal('writing-capability-runtime-activation/v1'),
+  activation_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  activation_revision: z.number().int().positive(),
+  status: z.literal('enabled'),
+  candidate: z.object({
+    capability_id: WritingCapabilityIdSchema,
+    video_type: VideoTypeSchema,
+    profile_schema_version: z.literal('writing-capability-profile/v1'),
+    source_commit: z.string().regex(/^[a-f0-9]{40}$/),
+    adapter_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+    adapter_revision: z.number().int().positive(),
+    internal_adaptation_version: z.string().regex(/^[a-z][a-z0-9-]{2,63}\/v[1-9][0-9]*$/),
+    rollback_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  }).strict(),
+  boundary: z.object({
+    default_off: z.literal(true),
+    exact_single_capability: z.literal(true),
+    exact_single_video_type: z.literal(true),
+    internal_opt_in_only: z.literal(true),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict();
+
+const WritingCapabilityRuntimeRuleV1Schema = z.object({
+  rule_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  layer: WritingCapabilityAdapterRuleLayerV1Schema,
+  text: WritingCapabilityNonEmptyTextSchema,
+  source_profile_field: WritingCapabilityAdapterRuleLayerV1Schema,
+  source_rule_index: z.number().int().nonnegative(),
+}).strict().superRefine((rule, context) => {
+  if (rule.layer !== rule.source_profile_field) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['source_profile_field'],
+      message: 'runtime rule source_profile_field must match layer',
+    });
+  }
+});
+
+const WritingCapabilityRuntimeRulesV1Schema = z.object({
+  blueprint_requirements: z.array(WritingCapabilityRuntimeRuleV1Schema).min(1),
+  scene_rules: z.array(WritingCapabilityRuntimeRuleV1Schema).min(1),
+  quality_rules: z.array(WritingCapabilityRuntimeRuleV1Schema).min(1),
+  repair_guidance: z.array(WritingCapabilityRuntimeRuleV1Schema).min(1),
+}).strict();
+
+export const WritingCapabilityRuntimeContextV1Schema = z.object({
+  schema_version: z.literal('writing-capability-runtime-context/v1'),
+  status: z.literal('active'),
+  activation_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  activation_revision: z.number().int().positive(),
+  capability_id: WritingCapabilityIdSchema,
+  video_type: VideoTypeSchema,
+  profile_schema_version: z.literal('writing-capability-profile/v1'),
+  source_commit: z.string().regex(/^[a-f0-9]{40}$/),
+  adapter_id: z.string().regex(/^[a-z][a-z0-9_]{2,95}$/),
+  adapter_revision: z.number().int().positive(),
+  internal_adaptation_version: z.string().regex(/^[a-z][a-z0-9-]{2,63}\/v[1-9][0-9]*$/),
+  rollback_id: z.string().regex(/^[a-z][a-z0-9-]{2,95}$/),
+  rules: WritingCapabilityRuntimeRulesV1Schema,
+  guardrails: z.object({
+    genre_story_profile_precedence: z.literal(true),
+    story_knowledge_evidence_precedence: z.literal(true),
+    cultural_safety_precedence: z.literal(true),
+    rights_clearance_precedence: z.literal(true),
+    no_rule_removal: z.literal(true),
+  }).strict(),
+  boundary: z.object({
+    default_off: z.literal(true),
+    explicit_internal_opt_in: z.literal(true),
+    affects_generation: z.literal(true),
+    affects_quality: z.literal(true),
+    affects_repair: z.literal(true),
+    persistence_allowed: z.literal(true),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict().superRefine((runtime, context) => {
+  const entries = Object.entries(runtime.rules) as Array<[
+    keyof typeof runtime.rules,
+    typeof runtime.rules[keyof typeof runtime.rules],
+  ]>;
+  const allRules = entries.flatMap(([, rules]) => rules);
+  for (const [layer, rules] of entries) {
+    rules.forEach((rule, index) => {
+      if (rule.layer !== layer) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['rules', layer, index, 'layer'],
+          message: 'runtime rule layer must match its collection',
+        });
+      }
+    });
+  }
+  if (new Set(allRules.map(rule => rule.rule_id)).size !== allRules.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rules'],
+      message: 'runtime rule identifiers must be unique',
+    });
+  }
+});
+
+export const WritingCapabilityRuntimeResolutionV1Schema = z.object({
+  schema_version: z.literal('writing-capability-runtime-resolution/v1'),
+  status: z.enum(['active', 'fallback']),
+  video_type: VideoTypeSchema,
+  requested_capability_ids: z.array(WritingCapabilityIdSchema),
+  context: WritingCapabilityRuntimeContextV1Schema.optional(),
+  issues: z.array(WritingCapabilityNonEmptyTextSchema),
+  boundary: z.object({
+    default_off: z.literal(true),
+    explicit_internal_opt_in: z.literal(true),
+    fail_closed: z.literal(true),
+    baseline_preserved_on_fallback: z.literal(true),
+    public_api_exposed: z.literal(false),
+    third_party_code_executed: z.literal(false),
+  }).strict(),
+}).strict().superRefine((resolution, context) => {
+  if (
+    (resolution.status === 'active' && (!resolution.context || resolution.issues.length > 0))
+    || (resolution.status === 'fallback' && (resolution.context || resolution.issues.length === 0))
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['status'],
+      message: 'active requires context without issues; fallback requires issues without context',
+    });
+  }
+});
+
 export const NarrativePatternIdSchema = z.enum([
   'mortal_growth',
   'infinite_mission',
@@ -1475,6 +2142,454 @@ export const KnowledgePackSchema = z.object({
   supporting_entries: z.array(KnowledgePackEntrySchema),
   missing_needs: z.array(KnowledgePackMissingSchema),
   overall_confidence: z.number(),
+});
+
+const StoryKnowledgeNonEmptyTextSchema = z.string().trim().min(1);
+const StoryKnowledgeUniqueTextArraySchema = z.array(StoryKnowledgeNonEmptyTextSchema)
+  .refine(values => new Set(values).size === values.length, 'values must be unique');
+
+export const StoryKnowledgeSourceGradeV1Schema = z.enum([
+  'A',
+  'B',
+  'C',
+  'D',
+  'ungraded',
+]);
+
+export const StoryKnowledgeSourceRefV1Schema = z.object({
+  source_ref_id: z.string().regex(/^[a-z][a-z0-9_-]{2,95}$/),
+  citation: StoryKnowledgeNonEmptyTextSchema,
+  grade: StoryKnowledgeSourceGradeV1Schema,
+  verification_status: z.enum([
+    'human_verified',
+    'machine_mapped',
+    'legacy_unmapped',
+  ]),
+  verified_at: z.string().datetime({ offset: true }).optional(),
+  note: StoryKnowledgeNonEmptyTextSchema.optional(),
+}).strict().superRefine((source, context) => {
+  if (source.verification_status === 'human_verified') {
+    if (source.grade === 'ungraded') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['grade'],
+        message: 'human_verified sources must have an explicit A-D grade',
+      });
+    }
+    if (!source.verified_at) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['verified_at'],
+        message: 'human_verified sources must include verified_at',
+      });
+    }
+  }
+  if (source.verification_status === 'legacy_unmapped' && source.grade !== 'ungraded') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['grade'],
+      message: 'legacy_unmapped sources must remain ungraded',
+    });
+  }
+});
+
+export const StoryKnowledgeClaimV1Schema = z.object({
+  claim_id: z.string().regex(/^[a-z][a-z0-9_-]{2,127}$/),
+  claim_type: z.enum([
+    'critical_fact',
+    'supporting_fact',
+    'legend_variant',
+    'disputed_or_unknown',
+  ]),
+  text: StoryKnowledgeNonEmptyTextSchema,
+  subject: StoryKnowledgeNonEmptyTextSchema.optional(),
+  event: StoryKnowledgeNonEmptyTextSchema.optional(),
+  time: StoryKnowledgeNonEmptyTextSchema.optional(),
+  place: StoryKnowledgeNonEmptyTextSchema.optional(),
+  object: StoryKnowledgeNonEmptyTextSchema.optional(),
+  source_ref_ids: StoryKnowledgeUniqueTextArraySchema,
+  certainty: z.enum(['verified', 'probable', 'disputed', 'unverified']),
+  usage: z.enum(['fact', 'bounded_context', 'variant_only', 'blocked']),
+  scope: StoryKnowledgeNonEmptyTextSchema.optional(),
+  last_verified_at: z.string().datetime({ offset: true }).optional(),
+}).strict().superRefine((claim, context) => {
+  if (claim.usage === 'fact' && claim.certainty !== 'verified') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['certainty'],
+      message: 'fact usage requires verified certainty',
+    });
+  }
+  if (claim.claim_type === 'disputed_or_unknown' && claim.usage === 'fact') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['usage'],
+      message: 'disputed_or_unknown claims cannot be used as facts',
+    });
+  }
+});
+
+export const StoryKnowledgeCreativeAffordanceV1Schema = z.object({
+  character_goals: StoryKnowledgeUniqueTextArraySchema,
+  pressures: StoryKnowledgeUniqueTextArraySchema,
+  choices: StoryKnowledgeUniqueTextArraySchema,
+  consequences: StoryKnowledgeUniqueTextArraySchema,
+  visible_events: StoryKnowledgeUniqueTextArraySchema,
+  relationships: StoryKnowledgeUniqueTextArraySchema,
+  story_pressures: StoryKnowledgeUniqueTextArraySchema,
+  allowed_dramatization: StoryKnowledgeUniqueTextArraySchema,
+  forbidden_dramatization: StoryKnowledgeUniqueTextArraySchema,
+  legend_variants: StoryKnowledgeUniqueTextArraySchema,
+  dialogue_register: StoryKnowledgeUniqueTextArraySchema,
+  forbidden_language: StoryKnowledgeUniqueTextArraySchema,
+}).strict();
+
+export const StoryKnowledgeProductionMaterialV1Schema = z.object({
+  characters: StoryKnowledgeUniqueTextArraySchema,
+  costume_and_hair: StoryKnowledgeUniqueTextArraySchema,
+  props: StoryKnowledgeUniqueTextArraySchema,
+  architecture_and_spaces: StoryKnowledgeUniqueTextArraySchema,
+  spaces_and_routes: StoryKnowledgeUniqueTextArraySchema,
+  materials_tools_and_process: StoryKnowledgeUniqueTextArraySchema,
+  lighting_season_and_weather: StoryKnowledgeUniqueTextArraySchema,
+  ambient_sound: StoryKnowledgeUniqueTextArraySchema,
+  rituals_and_crowd: StoryKnowledgeUniqueTextArraySchema,
+  interviews_broll_and_archive: StoryKnowledgeUniqueTextArraySchema,
+  rights_clearance_notes: StoryKnowledgeUniqueTextArraySchema,
+}).strict();
+
+export const StoryKnowledgeMissingMaterialV1Schema = z.object({
+  missing_id: z.string().regex(/^[a-z][a-z0-9_-]{2,127}$/),
+  category: z.enum([
+    'claim_level_source_mapping',
+    'authoritative_source',
+    'creative_affordance',
+    'production_material',
+    'rights_clearance',
+  ]),
+  label: StoryKnowledgeNonEmptyTextSchema,
+  reason: StoryKnowledgeNonEmptyTextSchema,
+  blocking_level: z.enum(['blocking', 'risk', 'optional']),
+  affects: StoryKnowledgeUniqueTextArraySchema,
+}).strict();
+
+export const StoryKnowledgeContractV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-contract/v1'),
+  source_entry: z.object({
+    name: StoryKnowledgeNonEmptyTextSchema,
+    source_domain: StoryKnowledgeNonEmptyTextSchema,
+    province: StoryKnowledgeNonEmptyTextSchema.optional(),
+    region: StoryKnowledgeNonEmptyTextSchema.optional(),
+    entry_type: StoryKnowledgeNonEmptyTextSchema.optional(),
+    era: StoryKnowledgeNonEmptyTextSchema.optional(),
+  }).strict(),
+  sources: z.array(StoryKnowledgeSourceRefV1Schema),
+  claims: z.array(StoryKnowledgeClaimV1Schema).min(1),
+  creative_affordance: StoryKnowledgeCreativeAffordanceV1Schema,
+  production_material: StoryKnowledgeProductionMaterialV1Schema,
+  missing_material: z.array(StoryKnowledgeMissingMaterialV1Schema),
+  boundary: z.object({
+    legacy_adapter: z.boolean(),
+    consumed_by_generation: z.literal(false),
+    generated_content_writeback_allowed: z.literal(false),
+    critical_facts_can_be_asserted: z.boolean(),
+    machine_validation_only: z.literal(true),
+    human_review_complete: z.literal(false),
+  }).strict(),
+}).strict().superRefine((contract, context) => {
+  const sourceById = new Map(contract.sources.map(source => [source.source_ref_id, source]));
+  const sourceIds = contract.sources.map(source => source.source_ref_id);
+  const claimIds = contract.claims.map(claim => claim.claim_id);
+  const missingIds = contract.missing_material.map(item => item.missing_id);
+  if (new Set(sourceIds).size !== sourceIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['sources'],
+      message: 'source_ref_id values must be unique',
+    });
+  }
+  if (new Set(claimIds).size !== claimIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['claims'],
+      message: 'claim_id values must be unique',
+    });
+  }
+  if (new Set(missingIds).size !== missingIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['missing_material'],
+      message: 'missing_id values must be unique',
+    });
+  }
+
+  const criticalFacts = contract.claims.filter(claim => claim.claim_type === 'critical_fact');
+  const eligibleCriticalFacts = criticalFacts.filter(claim => (
+    claim.certainty === 'verified'
+    && claim.usage === 'fact'
+    && claim.source_ref_ids.some(sourceRefId => {
+      const source = sourceById.get(sourceRefId);
+      return source?.verification_status === 'human_verified'
+        && (source.grade === 'A' || source.grade === 'B');
+    })
+  ));
+
+  for (const [claimIndex, claim] of contract.claims.entries()) {
+    for (const sourceRefId of claim.source_ref_ids) {
+      if (!sourceById.has(sourceRefId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['claims', claimIndex, 'source_ref_ids'],
+          message: `unknown source_ref_id: ${sourceRefId}`,
+        });
+      }
+    }
+    if (
+      claim.claim_type === 'critical_fact'
+      && claim.usage === 'fact'
+      && !eligibleCriticalFacts.includes(claim)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['claims', claimIndex, 'source_ref_ids'],
+        message: 'critical facts require a human-verified A/B source',
+      });
+    }
+  }
+
+  if (
+    contract.boundary.critical_facts_can_be_asserted
+    && (criticalFacts.length === 0 || eligibleCriticalFacts.length !== criticalFacts.length)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['boundary', 'critical_facts_can_be_asserted'],
+      message: 'critical_facts_can_be_asserted requires every critical fact to pass its evidence gate',
+    });
+  }
+  if (
+    !contract.boundary.critical_facts_can_be_asserted
+    && eligibleCriticalFacts.length > 0
+    && eligibleCriticalFacts.length === criticalFacts.length
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['boundary', 'critical_facts_can_be_asserted'],
+      message: 'critical_facts_can_be_asserted must reflect the verified critical facts',
+    });
+  }
+});
+
+export const StoryKnowledgeEvidenceOverlaySourceReviewV1Schema = z.object({
+  source_ref_id: z.string().regex(/^[a-z][a-z0-9_-]{2,95}$/),
+  grade: z.enum(['A', 'B', 'C', 'D']),
+  verification_status: z.enum(['human_verified', 'machine_mapped']),
+  verified_at: z.string().datetime({ offset: true }).optional(),
+  note: StoryKnowledgeNonEmptyTextSchema,
+}).strict().superRefine((review, context) => {
+  if (review.verification_status === 'human_verified' && !review.verified_at) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['verified_at'],
+      message: 'human_verified source reviews must include verified_at',
+    });
+  }
+  if (review.verification_status === 'machine_mapped' && review.verified_at) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['verified_at'],
+      message: 'machine_mapped source reviews cannot include verified_at',
+    });
+  }
+});
+
+export const StoryKnowledgeEvidenceOverlayClaimMappingV1Schema = z.object({
+  claim_id: z.string().regex(/^[a-z][a-z0-9_-]{2,127}$/),
+  source_ref_ids: z.array(StoryKnowledgeNonEmptyTextSchema)
+    .min(1)
+    .refine(values => new Set(values).size === values.length, 'values must be unique'),
+  claim_type: z.enum([
+    'critical_fact',
+    'supporting_fact',
+    'legend_variant',
+    'disputed_or_unknown',
+  ]),
+  certainty: z.enum(['verified', 'probable', 'disputed', 'unverified']),
+  usage: z.enum(['fact', 'bounded_context', 'variant_only', 'blocked']),
+  scope: StoryKnowledgeNonEmptyTextSchema,
+}).strict().superRefine((mapping, context) => {
+  if (mapping.usage === 'fact' && mapping.certainty !== 'verified') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['certainty'],
+      message: 'fact usage requires verified certainty',
+    });
+  }
+  if (mapping.claim_type === 'disputed_or_unknown' && mapping.usage === 'fact') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['usage'],
+      message: 'disputed_or_unknown claims cannot be used as facts',
+    });
+  }
+});
+
+export const StoryKnowledgeEvidenceOverlaySignoffV1Schema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('pending'),
+    reason: StoryKnowledgeNonEmptyTextSchema,
+  }).strict(),
+  z.object({
+    status: z.literal('approved'),
+    reviewed_by: StoryKnowledgeNonEmptyTextSchema,
+    reviewer_role: z.literal('fact_culture_reviewer'),
+    reviewed_at: z.string().datetime({ offset: true }),
+    confirmation: z.literal('human_reviewed_story_knowledge_evidence_overlay'),
+  }).strict(),
+  z.object({
+    status: z.literal('rejected'),
+    reviewed_by: StoryKnowledgeNonEmptyTextSchema,
+    reviewer_role: z.literal('fact_culture_reviewer'),
+    reviewed_at: z.string().datetime({ offset: true }),
+    reason: StoryKnowledgeNonEmptyTextSchema,
+  }).strict(),
+]);
+
+export const StoryKnowledgeEvidenceOverlayV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-evidence-overlay/v1'),
+  overlay_id: z.string().regex(/^[a-z][a-z0-9_-]{2,127}$/),
+  entry_name: StoryKnowledgeNonEmptyTextSchema,
+  source_reviews: z.array(StoryKnowledgeEvidenceOverlaySourceReviewV1Schema),
+  claim_mappings: z.array(StoryKnowledgeEvidenceOverlayClaimMappingV1Schema),
+  signoff: StoryKnowledgeEvidenceOverlaySignoffV1Schema,
+  boundary: z.object({
+    read_only_overlay: z.literal(true),
+    source_markdown_writeback_allowed: z.literal(false),
+    generation_consumption_allowed: z.literal(false),
+    existing_supplement_tasks_mutable: z.literal(false),
+  }).strict(),
+}).strict().superRefine((overlay, context) => {
+  const sourceReviewIds = overlay.source_reviews.map(review => review.source_ref_id);
+  const claimMappingIds = overlay.claim_mappings.map(mapping => mapping.claim_id);
+  if (new Set(sourceReviewIds).size !== sourceReviewIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['source_reviews'],
+      message: 'source_ref_id values must be unique within an overlay',
+    });
+  }
+  if (new Set(claimMappingIds).size !== claimMappingIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['claim_mappings'],
+      message: 'claim_id values must be unique within an overlay',
+    });
+  }
+
+  const signedOff = overlay.signoff.status === 'approved';
+  if (!signedOff) {
+    for (const [reviewIndex, review] of overlay.source_reviews.entries()) {
+      if (review.verification_status === 'human_verified') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['source_reviews', reviewIndex, 'verification_status'],
+          message: 'human_verified source reviews require approved human signoff',
+        });
+      }
+    }
+    for (const [mappingIndex, mapping] of overlay.claim_mappings.entries()) {
+      if (mapping.usage === 'fact') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['claim_mappings', mappingIndex, 'usage'],
+          message: 'fact promotion requires approved human signoff',
+        });
+      }
+    }
+  }
+
+  const reviewedSourceById = new Map(
+    overlay.source_reviews.map(review => [review.source_ref_id, review]),
+  );
+  for (const [mappingIndex, mapping] of overlay.claim_mappings.entries()) {
+    if (mapping.claim_type !== 'critical_fact' || mapping.usage !== 'fact') continue;
+    const hasHumanVerifiedAuthoritativeSource = mapping.source_ref_ids.some(sourceRefId => {
+      const review = reviewedSourceById.get(sourceRefId);
+      return review?.verification_status === 'human_verified'
+        && (review.grade === 'A' || review.grade === 'B');
+    });
+    if (!hasHumanVerifiedAuthoritativeSource) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['claim_mappings', mappingIndex, 'source_ref_ids'],
+        message: 'critical fact promotion requires an explicitly reviewed human A/B source',
+      });
+    }
+  }
+});
+
+export const StoryKnowledgePreparationV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-preparation/v1'),
+  status: z.enum([
+    'base_contract_only',
+    'overlay_pending',
+    'overlay_approved_read_only',
+    'overlay_rejected',
+    'overlay_incompatible',
+  ]),
+  entry_name: StoryKnowledgeNonEmptyTextSchema,
+  overlay_id: z.string().regex(/^[a-z][a-z0-9_-]{2,127}$/).optional(),
+  contract: StoryKnowledgeContractV1Schema,
+  issues: StoryKnowledgeUniqueTextArraySchema,
+  report: z.object({
+    source_count: z.number().int().nonnegative(),
+    claim_count: z.number().int().nonnegative(),
+    human_verified_source_count: z.number().int().nonnegative(),
+    critical_fact_ready_count: z.number().int().nonnegative(),
+    missing_material_count: z.number().int().nonnegative(),
+  }).strict(),
+  boundary: z.object({
+    read_only_preparation: z.literal(true),
+    consumed_by_blueprint: z.literal(false),
+    consumed_by_prompt: z.literal(false),
+    consumed_by_fallback: z.literal(false),
+    persistence_allowed: z.literal(false),
+    generation_output_changed: z.literal(false),
+    machine_validation_only: z.literal(true),
+    real_human_review_credit_granted: z.literal(false),
+  }).strict(),
+}).strict().superRefine((preparation, context) => {
+  if (
+    preparation.status !== 'base_contract_only'
+    && preparation.status !== 'overlay_incompatible'
+    && !preparation.overlay_id
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['overlay_id'],
+      message: `${preparation.status} requires overlay_id`,
+    });
+  }
+  if (
+    preparation.status === 'overlay_approved_read_only'
+    && preparation.issues.length > 0
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issues'],
+      message: 'approved read-only overlays cannot carry preparation issues',
+    });
+  }
+  if (
+    preparation.status === 'base_contract_only'
+    && preparation.contract.boundary.critical_facts_can_be_asserted
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['contract', 'boundary', 'critical_facts_can_be_asserted'],
+      message: 'base-only legacy preparation cannot assert critical facts',
+    });
+  }
 });
 
 export const MaterialPurposeSchema = z.enum([

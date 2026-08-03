@@ -250,6 +250,15 @@ describe('outline-service', () => {
     const mao = res.data?.matched_knowledge_pack.primary_entries.find(entry => entry.entry_name.startsWith('毛泽东——'));
     expect(mao?.type).toBe('历史人物');
     expect(mao?.role_in_story).toBe('main_character');
+    expect(mao?.production_prompts).toEqual(expect.arrayContaining([
+      expect.stringContaining('机器派生生产指导'),
+      expect.stringContaining('对白口吻'),
+      expect.stringContaining('可戏剧化空间'),
+    ]));
+    expect(mao?.review_boundaries).toEqual(expect.arrayContaining([
+      expect.stringContaining('机器派生审稿边界'),
+      expect.stringContaining('不新增文化事实'),
+    ]));
     expect(res.data?.matched_knowledge_pack.primary_entries[0]?.entry_name).toMatch(/^毛泽东——/);
     expect(res.data?.matched_knowledge_pack.overall_confidence).toBe(1);
     expect(res.data?.matched_knowledge_pack.supporting_entries.length).toBeLessThanOrEqual(15);

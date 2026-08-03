@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
@@ -11,6 +12,13 @@ import {
   materialPackFromKnowledgePack,
 } from '../services/creation-contract-service.js';
 import { resolveGenreStoryMatrix } from '../services/genre-story-profiles.js';
+import { buildChinaCultureDomainPackEntries } from '../domains/china-culture/domain-pack-production-service.js';
+
+beforeAll(() => {
+  if (!process.env.KB_ROOT) {
+    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  }
+});
 
 function makeEntry(): EntryDetail {
   return {
@@ -140,6 +148,76 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('先读取素材域、条目角色、时代、用途、资产拆分、可信度和风险提示');
     expect(pkg.output_contract.should_respect).toContain('按结构化项目素材库做创作决策，不把素材包当资料仓库堆砌');
     expect(pkg.user_prompt).toContain('不要把设定包内容写成主条目的史实');
+  });
+
+  it('injects ritual etiquette production guidance and taboos into the model prompt', () => {
+    const knowledgePack = makeKnowledgePack();
+    knowledgePack.supporting_entries.push({
+      entry_name: '仪式礼俗与禁忌包——流程角色、空间秩序和文化边界',
+      province: '通用',
+      region: '通用',
+      type: 'Domain Pack',
+      summary: '用于礼俗与仪式题材的跨条目生产约束。',
+      score: 0.9,
+      role_in_story: 'rule_pack',
+      match_reason: '自动注入知识包',
+      keywords: ['仪式', '礼俗', '禁忌'],
+      knowledge_domain: 'safety_rule',
+      entry_role: 'rule_pack',
+      asset_usage: ['scene_space', 'scene_props', 'dialogue_tone', 'safety_boundary'],
+      production_prompts: ['按前置准备、参与角色、空间秩序、核心动作和收束五层拆解仪式'],
+      review_boundaries: ['未经来源与授权确认，不展示封闭性、危险性或神圣性仪式细节'],
+    });
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request: {
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'culture_promo',
+        original_user_query: '制作一支礼俗仪式短片',
+      },
+      videoType: 'culture_promo',
+      presentationStyle: 'cinematic',
+      storyStructure: 'object_clue_journey',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack,
+    });
+
+    expect(pkg.user_prompt).toContain('仪式礼俗与禁忌包');
+    expect(pkg.user_prompt).toContain('生产提示：按前置准备、参与角色、空间秩序、核心动作和收束五层拆解仪式');
+    expect(pkg.user_prompt).toContain('审稿边界：未经来源与授权确认');
+  });
+
+  it('injects architecture, regional language, and natural soundscape packs into the model prompt', () => {
+    const knowledgePack = makeKnowledgePack();
+    const productionEntries = buildChinaCultureDomainPackEntries({
+      query: '历史文化短片需要建筑空间层级、陈设与人物动线，人物身份对应的地域语言语体，以及季节天气、地貌运动和环境声景',
+      limit: 6,
+    });
+    knowledgePack.supporting_entries.push(...productionEntries);
+
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(),
+      request: {
+        entry_name: '周敦颐——理学开山鼻祖',
+        video_type: 'culture_promo',
+        original_user_query: '用空间、语言和自然声景完成文化短片',
+      },
+      videoType: 'culture_promo',
+      presentationStyle: 'cinematic',
+      storyStructure: 'object_clue_journey',
+      targetDuration: '1分钟',
+      tone: '',
+      knowledgePack,
+    });
+
+    expect(pkg.user_prompt).toContain('建筑空间与陈设包');
+    expect(pkg.user_prompt).toContain('语言语体与地域表达包');
+    expect(pkg.user_prompt).toContain('自然环境与声景包');
+    expect(pkg.user_prompt).toContain('生产提示：先画出空间层级');
+    expect(pkg.user_prompt).toContain('审稿边界：通用语体包不能替代具体地域、时代和人物身份的语言核验');
+    expect(pkg.user_prompt).toContain('生产提示：先锁定有来源支撑的地域、季节和时段');
   });
 
   it('includes detected unnamed character hints in the model prompt', () => {
@@ -390,7 +468,14 @@ describe('story-generation-prompt', () => {
   });
 
   it('auto-selects production material packs by video type only', () => {
+    expect(getProductionMaterialPack('character_story')?.label).toBe('人物故事');
+    expect(getProductionMaterialPack('historical_drama')?.label).toBe('历史剧情短片');
+    expect(getProductionMaterialPack('legend_story')?.label).toBe('神话/传说故事');
+    expect(getProductionMaterialPack('culture_promo')?.label).toBe('文化宣传片');
     expect(getProductionMaterialPack('heritage_promo')?.label).toBe('非遗/工艺宣传片');
+    expect(getProductionMaterialPack('city_brand_promo')?.label).toBe('城市/文旅宣传片');
+    expect(getProductionMaterialPack('scene_short')?.label).toBe('场景短片');
+    expect(getProductionMaterialPack('landscape_mood')?.label).toBe('山水意境片');
     expect(getProductionMaterialPack('documentary_short')?.label).toBe('微纪录片');
     expect(getProductionMaterialPack('explainer_video')?.label).toBe('知识讲解视频');
     expect(getProductionMaterialPack('ai_comic_drama')?.label).toBe('AI漫剧');
@@ -398,7 +483,6 @@ describe('story-generation-prompt', () => {
     expect(getProductionMaterialPack('social_short')?.label).toBe('竖屏短视频');
     expect(getProductionMaterialPack('lecture_video')?.label).toBe('宣讲片');
     expect(getProductionMaterialPack('education_training')?.label).toBe('教育/培训片');
-    expect(getProductionMaterialPack('character_story')).toBeUndefined();
   });
 
   it('scopes production sample entries to the active source domain', () => {

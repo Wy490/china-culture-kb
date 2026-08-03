@@ -36,7 +36,17 @@
     "smoke:story-agent-15x3-stability": "tsx scripts/story-agent-15x3-stability-matrix.mts",
     "smoke:story-agent-15x3-image-recovery": "tsx scripts/story-agent-15x3-image-recovery.mts",
     "smoke:story-agent-p0e2-reliability": "tsx scripts/story-agent-p0e2-reliability-matrix.mts",
-    "smoke:story-agent-persistent-lifecycle": "tsx scripts/story-agent-persistent-lifecycle-smoke.mts"
+    "smoke:story-agent-persistent-lifecycle": "tsx scripts/story-agent-persistent-lifecycle-smoke.mts",
+    "audit:story-knowledge-contract": "tsx scripts/story-knowledge-contract-audit.mts",
+    "audit:story-knowledge-overlay-fixtures": "tsx scripts/story-knowledge-overlay-fixture-audit.mts",
+    "audit:writing-capability-routing": "tsx scripts/writing-capability-routing-audit.mts",
+    "audit:writing-capability-shadow-plan": "tsx scripts/writing-capability-shadow-plan-audit.mts",
+    "audit:writing-capability-adapter-preflight": "tsx scripts/writing-capability-adapter-preflight-audit.mts",
+    "audit:writing-capability-shadow-evaluation": "tsx scripts/writing-capability-shadow-evaluation-audit.mts",
+    "audit:writing-capability-canary-decision": "tsx scripts/writing-capability-canary-decision-audit.mts",
+    "audit:writing-capability-runtime-integration": "tsx scripts/writing-capability-runtime-integration-audit.mts",
+    "audit:production-material-m3": "node scripts/production-material-pack-m3-audit.mjs",
+    "audit:domain-pack-m3": "node scripts/domain-pack-m3-audit.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
