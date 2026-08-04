@@ -1,6 +1,6 @@
 # 素材库生产化审计报告
 
-生成时间：2026-08-03T14:44:41.770Z
+生成时间：2026-08-04T16:41:57.240Z
 
 ## 总览
 
@@ -17,10 +17,11 @@
 - 有机器字段：289
 - 有 asset_split：289
 - 可信度非枚举：0
-- 原始生产字段缺口：212
-- 机器派生指导覆盖：212
+- 原始生产字段缺口：67
+- 仅在源 Markdown 专节中可见的已覆盖字段：164
+- 机器派生指导覆盖：67
 - 运行时有效生产字段缺口：0
-- 获得机器派生指导的条目：140
+- 获得机器派生指导的条目：67
 
 ## 类型分布
 
@@ -76,36 +77,36 @@
 
 | 条目 | 省份 | 类型 | 生产卡片分 | 优先级 | 原因 |
 |---|---|---|---:|---|---|
-| 北大红楼——新文化运动的策源地 | 北京 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
-| 泥人张彩塑——塑形与设色相接的天津民间美术 | 天津 | 传统美术 | 82 | high | 存在待核点；推荐片型模板覆盖低：character_story、culture_promo、scene_short、landscape_mood、heritage_promo、social_short、lecture_video、education_training、ai_comic_drama |
-| 天津时调——天津方言节奏中的时调小曲 | 天津 | 曲艺 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 天津风筝魏制作技艺——可拆折软翅风筝的扎、绘、糊与试飞 | 天津 | 传统技艺 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、explainer_video |
-| 卢沟桥与七七事变——全面抗战的起点 | 河北 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video |
-| 定瓷烧制技艺——曲阳白瓷的制坯、刻花、施釉与窑火 | 河北 | 传统技艺 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、documentary_short、explainer_video |
-| 平型关大捷——抗战以来中国军队首次大胜 | 山西 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 平遥推光漆器髹饰技艺——大漆髹涂与逐层推光 | 山西 | 传统技艺 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 晋剧——晋中梆子声腔与文武场的山西舞台 | 山西 | 传统戏剧 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 琉璃烧制技艺——建筑陶件的塑形、素烧与施釉彩烧 | 山西 | 传统技艺 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 大青山抗日游击根据地——草原上的铁骑兵 | 内蒙古 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 辽沈战役——解放东北的决定性一战 | 辽宁 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、ai_comic_drama |
-| 医巫闾山满族剪纸——辽西山地的纸上民俗记忆 | 辽宁 | 传统美术 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 复州皮影戏——灯幕、影人与辽南声腔的协作舞台 | 辽宁 | 传统戏剧 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short |
-| 海城高跷——木跷之上的大场、小场与辽南秧歌 | 辽宁 | 传统舞蹈 | 82 | high | 存在待核点；推荐片型模板覆盖低：scene_short、landscape_mood |
-| 杨靖宇——长白山上的抗日孤雄 | 吉林 | 历史人物 | 82 | high | 存在待核点；推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 渡江战役——百万雄师过大江 | 江苏 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama |
-| 浙东抗日根据地——四明山上的"浙东延安" | 浙江 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video |
-| 大别山革命根据地——红军的摇篮与坚持 | 安徽 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video |
-| 瑞金中央苏区——红色共和国的试验田 | 江西 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
-| 于都——长征出发的渡口 | 江西 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 台儿庄大战——抗战正面战场首次大捷 | 山东 | 地方掌故 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 湘绣——中国四大名绣之一 | 湖南 | 非遗 | 82 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama |
-| 湖南花鼓戏——湖南人的戏 | 湖南 | 地方戏曲 | 82 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama |
-| 湘菜与辣椒文化——从美洲外来物到湘魂之味的逆袭 | 湖南 | 饮食文化 | 82 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、social_short |
-| 韶山——红色文化圣地 | 湖南 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video |
-| 贺捷生——长征中最小的参与者 | 湖南 | 历史人物 | 82 | high | 存在待核点；推荐片型模板覆盖低：character_story、historical_drama、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama |
-| 马王堆汉墓——西汉文明的地下宝库 | 湖南 | 名胜古迹 | 82 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
-| 醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇 | 湖南 | 非遗 | 82 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama |
-| 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 82 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、explainer_video、social_short、education_training、ai_comic_drama |
+| 岳阳楼——先忧后乐的精神地标 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 洞庭湖君山——传说叠加的洞庭明珠 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama |
+| 周敦颐——理学开山鼻祖 | 湖南 | 历史人物 | 91 | high | 存在待核点；推荐片型模板覆盖低：character_story、historical_drama、scene_short、landscape_mood、documentary_short、ai_comic_drama |
+| 湘绣——中国四大名绣之一 | 湖南 | 非遗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、social_short、education_training、ai_comic_drama |
+| 湖南花鼓戏——湖南人的戏 | 湖南 | 地方戏曲 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama |
+| 湘菜与辣椒文化——从美洲外来物到湘魂之味的逆袭 | 湖南 | 饮食文化 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、city_brand_promo、scene_short、social_short |
+| 韶山——红色文化圣地 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、lecture_video |
+| 张家界武陵源——3.8亿年雕琢的世界自然遗产 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 马王堆汉墓——西汉文明的地下宝库 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 醴陵釉下五彩瓷——东方陶瓷巅峰的百年传奇 | 湖南 | 非遗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama |
+| 苗族鼓舞——湘西大山的节奏 | 湖南 | 非遗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama |
+| 桑植民歌——长征路上的歌声与守望 | 湖南 | 非遗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、social_short、education_training、ai_comic_drama |
+| 岳麓书院——千年学府弦歌不绝 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video |
+| 爱晚亭——枫林晚处的四大名亭 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 橘子洲——一江碧水映文心 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 天心阁——古城墙上的守望 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 贾谊故居——太平街里的千年古宅 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video |
+| 通道转兵与侗族百姓——红军长征的关键转折与地方传说 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama |
+| 红军长征过湖南百姓记忆——普通人与长征的故事 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：character_story、historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、lecture_video、ai_comic_drama |
+| 湘南湘西抗战游击——大山深处的抵抗群像 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：character_story、historical_drama、legend_story、scene_short、landscape_mood、documentary_short、explainer_video、ai_comic_drama |
+| 汨罗江畔端午习俗——龙舟文化的发源地 | 湖南 | 节庆习俗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、landscape_mood、heritage_promo、education_training、ai_comic_drama |
+| 苗族赶秋节——湘西秋收的盛大礼赞 | 湖南 | 节庆习俗 | 91 | high | 存在待核点；推荐片型模板覆盖低：culture_promo、scene_short、heritage_promo、children_story、education_training、ai_comic_drama |
+| 南岳衡山——五岳独秀的儒释道名山 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short |
+| 凤凰古城——沈从文笔下的边城与苗族文化 | 湖南 | 名胜古迹 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、culture_promo、city_brand_promo、scene_short、landscape_mood、documentary_short、explainer_video |
+| 秋收起义——湖南土地上"枪杆子里面出政权"的第一声枪响 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、landscape_mood、documentary_short、ai_comic_drama |
+| 湘江战役——长征中最惨烈的血战 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama |
+| 文夕大火——千年古城的自毁之殇 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama |
+| 衡阳保卫战——抗战中最惨烈的城市坚守 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、city_brand_promo、scene_short、documentary_short、ai_comic_drama |
+| 常德会战与常德细菌战——湘北战场的血与疫 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、documentary_short、explainer_video、lecture_video、ai_comic_drama |
+| 厂窖惨案——洞庭湖畔被遗忘的大屠杀 | 湖南 | 地方掌故 | 91 | high | 存在待核点；推荐片型模板覆盖低：historical_drama、legend_story、scene_short、landscape_mood、documentary_short、ai_comic_drama |
 
 ## 下一步
 

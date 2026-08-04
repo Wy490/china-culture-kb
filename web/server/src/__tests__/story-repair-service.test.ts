@@ -150,6 +150,21 @@ function makeBlueprint(): StoryBlueprint {
       note: '保留条目边界。',
     }],
     type_specific_requirements: ['完整流程'],
+    domain_pack_context: {
+      schema_version: 'story-domain-pack-context/v1',
+      selected_packs: [{
+        entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+        knowledge_domain: 'production_process',
+        entry_role: 'asset_pack',
+        production_prompts: ['把材料、工具和工序动作拆成可拍步骤。'],
+        review_boundaries: ['通用流程包不能替代具体项目、地区和传承人的工序核验。'],
+      }],
+      production_prompt_count: 1,
+      review_boundary_count: 1,
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    },
   };
 }
 
@@ -201,5 +216,9 @@ describe('story-repair-service', () => {
     expect(pkg.system_prompt).not.toContain('AI 漫剧生产编剧');
     expect(pkg.user_prompt).toContain('宣传传播家族门禁');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('价值主张');
+    expect(pkg.user_prompt).toContain('Domain Pack 修复边界');
+    expect(pkg.user_prompt).toContain('把材料、工具和工序动作拆成可拍步骤');
+    expect(pkg.user_prompt).toContain('通用流程包不能替代具体项目');
+    expect(pkg.output_contract.should_respect.join('\n')).toContain('Domain Pack 审稿边界');
   });
 });

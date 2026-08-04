@@ -7,6 +7,7 @@ import type {
   ProductionMaterialPack,
   ProductionMaterialReadinessReport,
   ProductionMaterialReadinessStatus,
+  StoryDomainPackContextV1,
 } from '@shared/types.js';
 
 export interface ProductionMaterialFieldSpec {
@@ -238,6 +239,7 @@ export function buildProductionMaterialReadinessReport(input: {
   materialPack?: MaterialPack;
   contextText?: string;
   sourceDomain?: string;
+  domainPackContext?: StoryDomainPackContextV1;
 }): ProductionMaterialReadinessReport | undefined {
   const { productionMaterialPack } = input;
   if (!productionMaterialPack) return undefined;
@@ -269,6 +271,7 @@ export function buildProductionMaterialReadinessReport(input: {
       .map(field => field.recommended_question)
       .filter((question, index, arr) => arr.indexOf(question) === index)
       .slice(0, 8),
+    ...(input.domainPackContext ? { domain_pack_context: input.domainPackContext } : {}),
   };
 }
 

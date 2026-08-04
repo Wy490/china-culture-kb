@@ -54,6 +54,52 @@ describe('china_culture story generation preparation service', () => {
     expect(result.entry.verificationMethod).toContain('用户素材主导');
   });
 
+  it('threads selected Domain Pack guidance through readiness and the preliminary blueprint', async () => {
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'heritage_promo',
+      creation_use_case: 'institutional_promo',
+      original_user_query: '非遗工艺项目记录材料、工具、制作工序、匠人手部动作和传承人授权边界。',
+    });
+
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(result.preliminaryStoryBlueprint.domain_pack_context).toMatchObject({
+      schema_version: 'story-domain-pack-context/v1',
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+    expect(result.preliminaryStoryBlueprint.domain_pack_context?.production_prompt_count).toBeGreaterThan(0);
+    expect(result.preliminaryStoryBlueprint.domain_pack_context?.review_boundary_count).toBeGreaterThan(0);
+    expect(result.preliminaryStoryBlueprint.domain_pack_context?.selected_packs)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+        }),
+      ]));
+    expect(result.productionMaterialReadiness?.domain_pack_context)
+      .toEqual(result.preliminaryStoryBlueprint.domain_pack_context);
+  });
+
+  it('uses the resolved video type to retrieve its production Domain Pack', async () => {
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'children_story',
+      presentation_style: 'children_animation',
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'fictional_original',
+      original_user_query: '一只小纸鸢帮助孩子理解守信与合作。',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.preliminaryStoryBlueprint.domain_pack_context?.selected_packs)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          entry_name: '儿童改写规则包——年龄分层、善意张力与事实边界',
+        }),
+      ]));
+  });
+
   it('keeps the person and event scoped when an original theme opens with time and place context', async () => {
     const result = await prepareChinaCultureStoryGeneration({
       video_type: 'ai_comic_drama',

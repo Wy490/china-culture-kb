@@ -9,6 +9,7 @@
     "dev": "tsc --watch",
     "kb:lint": "node ../scripts/kb-lint.mjs",
     "kb:production-audit": "../web/node_modules/.bin/tsx src/tools/run-production-material-audit.ts",
+    "kb:raw-field-gap-audit": "../web/node_modules/.bin/tsx src/tools/run-raw-production-field-gap-audit.ts",
     "kb:production-upgrade-plan": "../web/node_modules/.bin/tsx src/tools/run-production-material-upgrade-plan.ts",
     "kb:normalize-credibility": "../web/node_modules/.bin/tsx src/tools/run-credibility-normalization.ts",
     "kb:enrich-machine-metadata": "../web/node_modules/.bin/tsx src/tools/run-machine-metadata-enrichment.ts",

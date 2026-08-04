@@ -10,6 +10,7 @@ import type {
   PresentationStyle,
   StoryBlueprint,
   StoryCharacterArcPlan,
+  StoryDomainPackContextV1,
   StoryGenreBeat,
   StoryScene,
   StoryStructureType,
@@ -28,6 +29,10 @@ import { inferProtagonist } from './dramatic-story.js';
 import {
   writingCapabilityGenerationRequirementLines,
 } from './writing-capability-runtime-service.js';
+import {
+  buildStoryDomainPackContext,
+  storyDomainPackRequirementLines,
+} from './story-domain-pack-trace-service.js';
 
 const DURATION_SEC_MAP: Record<string, number> = {
   '30秒': 30,
@@ -54,10 +59,12 @@ export function buildStoryBlueprint(input: {
   materialSufficiency?: MaterialSufficiencyReport;
   genreMatrix?: GenreStoryMatrixResolution;
   writingCapabilityContext?: WritingCapabilityRuntimeContextV1;
+  domainPackContext?: StoryDomainPackContextV1;
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
   const protagonist = inferProtagonist(input.entry, input.videoType);
   const evidenceBoundaries = buildEvidenceBoundaries(input.entry, input.knowledgePack, input.centralEvent);
+  const domainPackContext = input.domainPackContext ?? buildStoryDomainPackContext(input.knowledgePack);
   const sceneCount = input.scenes?.length ?? estimateSceneCount(input.targetDuration, profile.dramatic_structure.min_scenes, profile.dramatic_structure.max_scenes);
   const templates = expandTemplates(profile.dramatic_structure.scene_templates, sceneCount);
   const genreBeats = templates.map<StoryGenreBeat>((template, index) => {
@@ -97,6 +104,7 @@ export function buildStoryBlueprint(input: {
       ...getNarrativePatternRequirementLines(input.videoType, input.narrativePatternIds ?? []),
       ...getNarrativePatternQualitySignals(input.videoType, input.narrativePatternIds ?? []).map(signal => `流派质量信号：${signal}`),
       ...writingCapabilityGenerationRequirementLines(input.writingCapabilityContext),
+      ...storyDomainPackRequirementLines(domainPackContext),
       ...(input.creationContract
         ? [
             `创作场景：${input.creationContract.creation_use_case}`,
@@ -109,6 +117,7 @@ export function buildStoryBlueprint(input: {
     ...(input.writingCapabilityContext
       ? { writing_capability_context: input.writingCapabilityContext }
       : {}),
+    ...(domainPackContext ? { domain_pack_context: domainPackContext } : {}),
     creation_contract: input.creationContract,
     material_sufficiency: input.materialSufficiency,
   };

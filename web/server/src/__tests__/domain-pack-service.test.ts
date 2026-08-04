@@ -219,6 +219,20 @@ describe('china_culture domain-pack production service', () => {
     ]));
   });
 
+  it('prioritizes cultural safety boundaries before era, folklore, and visual packs when the limit conflicts', () => {
+    const entries = buildChinaCultureDomainPackEntries({
+      query: '宋代民间传说仪式祭礼短片，需要礼俗禁忌、参与角色、分镜、场景道具和时代服饰边界',
+      limit: 2,
+    });
+
+    expect(entries[0]?.entry_name).toBe('仪式礼俗与禁忌包——流程角色、空间秩序和文化边界');
+    expect(entries[0]?.review_boundaries?.length).toBeGreaterThan(0);
+    expect(entries[1]).toMatchObject({
+      knowledge_domain: 'era_setting',
+      era: '宋',
+    });
+  });
+
   it('keeps the legacy path logic-free and production consumers on the domain service', async () => {
     const [legacySource, storySource, preparationSource, storyKnowledgeSource, outlineSource, statusSource, gearsSource, systemSource] = await Promise.all([
       readFile(new URL('../services/domain-pack-service.ts', import.meta.url), 'utf-8'),

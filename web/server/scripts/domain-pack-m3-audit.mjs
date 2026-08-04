@@ -23,6 +23,37 @@ const promptServicePath = resolve(
   'services',
   'story-generation-prompt.ts',
 );
+const traceServicePath = resolve(repositoryRoot, 'web', 'server', 'src', 'services', 'story-domain-pack-trace-service.ts');
+const blueprintServicePath = resolve(repositoryRoot, 'web', 'server', 'src', 'services', 'story-blueprint-service.ts');
+const readinessServicePath = resolve(repositoryRoot, 'web', 'server', 'src', 'services', 'production-material-readiness-service.ts');
+const qualityServicePath = resolve(repositoryRoot, 'web', 'server', 'src', 'services', 'genre-quality-service.ts');
+const repairServicePath = resolve(repositoryRoot, 'web', 'server', 'src', 'services', 'story-repair-service.ts');
+const preparationServicePath = resolve(
+  repositoryRoot,
+  'web',
+  'server',
+  'src',
+  'domains',
+  'china-culture',
+  'story-generation-preparation-service.ts',
+);
+const storyKnowledgeServicePath = resolve(
+  repositoryRoot,
+  'web',
+  'server',
+  'src',
+  'domains',
+  'china-culture',
+  'story-knowledge-pack-service.ts',
+);
+const comparisonServicePath = resolve(
+  repositoryRoot,
+  'web',
+  'server',
+  'src',
+  'services',
+  'story-domain-pack-comparison-service.ts',
+);
 const mcpHealthPath = resolve(
   repositoryRoot,
   'mcp-server',
@@ -36,6 +67,7 @@ const reportPath = resolve(
   'reports',
   'story-agent-writing-capability-m3-domain-pack-baseline.json',
 );
+const baselineGeneratedAt = '2026-08-04T00:00:00.000+08:00';
 
 const requiredPacks = [
   ['heritage_process_pack', '非遗流程生产包——材料工具、工序动作与授权边界'],
@@ -93,11 +125,32 @@ function addIssue(issues, condition, message) {
   if (!condition) issues.push(message);
 }
 
-const [source, webService, promptService, mcpHealth] = await Promise.all([
+const [
+  source,
+  webService,
+  promptService,
+  mcpHealth,
+  traceService,
+  blueprintService,
+  readinessService,
+  qualityService,
+  repairService,
+  preparationService,
+  storyKnowledgeService,
+  comparisonService,
+] = await Promise.all([
   readFile(sourcePath, 'utf8'),
   readFile(webServicePath, 'utf8'),
   readFile(promptServicePath, 'utf8'),
   readFile(mcpHealthPath, 'utf8'),
+  readFile(traceServicePath, 'utf8'),
+  readFile(blueprintServicePath, 'utf8'),
+  readFile(readinessServicePath, 'utf8'),
+  readFile(qualityServicePath, 'utf8'),
+  readFile(repairServicePath, 'utf8'),
+  readFile(preparationServicePath, 'utf8'),
+  readFile(storyKnowledgeServicePath, 'utf8'),
+  readFile(comparisonServicePath, 'utf8'),
 ]);
 const data = JSON.parse(source);
 const entries = Array.isArray(data.entries) ? data.entries : [];
@@ -145,6 +198,32 @@ for (const usage of ['scene_space', 'dialogue_tone', 'safety_boundary', 'source_
 addIssue(issues, webService.includes("seed.entry_name.includes('仪式礼俗与禁忌包')"), 'Web retrieval priority is missing ritual pack');
 addIssue(issues, promptService.includes('entry.production_prompts?.length'), 'story prompt does not consume production_prompts');
 addIssue(issues, promptService.includes('entry.review_boundaries?.length'), 'story prompt does not consume review_boundaries');
+addIssue(
+  issues,
+  webService.includes("resolve(import.meta.dirname, '..', '..', '..', '..', '..', 'data')"),
+  'default Domain Pack KB root does not resolve to repository data',
+);
+addIssue(issues, traceService.includes("schema_version: 'story-domain-pack-context/v1'"), 'Domain Pack trace contract is missing');
+addIssue(issues, traceService.includes("schema_version: 'story-domain-pack-quality/v1'"), 'Domain Pack quality contract is missing');
+addIssue(issues, blueprintService.includes('storyDomainPackRequirementLines(domainPackContext)'), 'StoryBlueprint does not consume Domain Pack guidance');
+addIssue(issues, readinessService.includes('domain_pack_context: input.domainPackContext'), 'readiness does not carry Domain Pack trace');
+addIssue(issues, preparationService.includes('domainPackContext,'), 'generation preparation does not thread Domain Pack trace');
+addIssue(issues, qualityService.includes('evaluateStoryDomainPackQuality'), 'genre quality does not evaluate Domain Pack leakage');
+addIssue(issues, repairService.includes('=== Domain Pack 修复边界 ==='), 'story repair does not carry Domain Pack boundaries');
+addIssue(issues, storyKnowledgeService.includes('context.videoType'), 'Domain Pack retrieval is not video-type aware');
+addIssue(issues, webService.includes('hasProductionGuidance(candidate.seed)'), 'Domain Pack selection does not prefer production-ready packs');
+addIssue(
+  issues,
+  webService.indexOf("seed.entry_name.includes('仪式礼俗与禁忌包')")
+    < webService.indexOf('if (detectChinaCultureEra(text))'),
+  'cultural safety Domain Pack priority is not ahead of era packs',
+);
+addIssue(
+  issues,
+  comparisonService.includes("schema_version: 'story-domain-pack-15-type-comparison/v1'")
+    && comparisonService.includes('STORY_DOMAIN_PACK_EXPECTED_PACK_BY_VIDEO_TYPE'),
+  '15-type Domain Pack comparison contract is missing',
+);
 for (const [packId] of requiredPacks) {
   addIssue(issues, webService.includes(`pack_id: '${packId}'`), `Web health contract is missing ${packId}`);
   addIssue(issues, mcpHealth.includes(`pack_id: '${packId}'`), `MCP health contract is missing ${packId}`);
@@ -163,7 +242,7 @@ for (const contract of expansionPackContracts) {
 
 const report = {
   schema_version: 'story-agent-writing-capability-m3-domain-pack-baseline/v1',
-  generated_at: `${data.updated_at}T00:00:00.000+08:00`,
+  generated_at: baselineGeneratedAt,
   status: issues.length === 0 ? 'passed' : 'failed',
   source: {
     path: 'data/domain-packs/china-culture.json',
@@ -183,6 +262,23 @@ const report = {
     ])),
     story_prompt_consumes_production_prompts: promptService.includes('entry.production_prompts?.length'),
     story_prompt_consumes_review_boundaries: promptService.includes('entry.review_boundaries?.length'),
+    default_kb_root_resolves_repository_data: webService.includes(
+      "resolve(import.meta.dirname, '..', '..', '..', '..', '..', 'data')",
+    ),
+    blueprint_trace_registered: traceService.includes("schema_version: 'story-domain-pack-context/v1'")
+      && blueprintService.includes('storyDomainPackRequirementLines(domainPackContext)'),
+    readiness_trace_registered: readinessService.includes('domain_pack_context: input.domainPackContext')
+      && preparationService.includes('domainPackContext,'),
+    quality_leak_gate_registered: traceService.includes("schema_version: 'story-domain-pack-quality/v1'")
+      && qualityService.includes('evaluateStoryDomainPackQuality'),
+    repair_boundary_registered: repairService.includes('=== Domain Pack 修复边界 ==='),
+    video_type_aware_retrieval_registered: storyKnowledgeService.includes('context.videoType'),
+    production_ready_selection_preferred: webService.includes('hasProductionGuidance(candidate.seed)'),
+    cultural_safety_priority_registered: webService.indexOf("seed.entry_name.includes('仪式礼俗与禁忌包')")
+      < webService.indexOf('if (detectChinaCultureEra(text))'),
+    fifteen_type_comparison_registered: comparisonService.includes(
+      "schema_version: 'story-domain-pack-15-type-comparison/v1'",
+    ) && comparisonService.includes('STORY_DOMAIN_PACK_EXPECTED_PACK_BY_VIDEO_TYPE'),
     web_health_contract_registered: webService.includes(`pack_id: '${ritualPackId}'`),
     mcp_health_contract_registered: mcpHealth.includes(`pack_id: '${ritualPackId}'`),
   },

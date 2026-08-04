@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EntryDetail, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
+import type { EntryDetail, KnowledgePack, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
 import { buildStoryBlueprint, attachBlueprintScenes } from '../services/story-blueprint-service.js';
 import { validateGenreStoryQuality } from '../services/genre-quality-service.js';
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
@@ -33,6 +33,29 @@ function makeBaseReport(): StoryQualityReport {
     isNotBiographySummary: true,
     passed: true,
     issues: [],
+  };
+}
+
+function makeDomainKnowledgePack(): KnowledgePack {
+  return {
+    primary_entries: [],
+    supporting_entries: [{
+      entry_name: '建筑空间与陈设包——空间层级、动线道具和时代边界',
+      province: '通用',
+      region: '通用',
+      type: 'Domain Pack',
+      summary: '用于组织建筑空间与陈设。',
+      score: 1,
+      role_in_story: 'asset_pack',
+      match_reason: '测试 Domain Pack',
+      keywords: ['建筑空间', '人物动线'],
+      knowledge_domain: 'gears_asset',
+      entry_role: 'asset_pack',
+      production_prompts: ['先画出空间层级，再标注人物动线。'],
+      review_boundaries: ['通用建筑包不能替代具体建筑的测绘与年代核验。'],
+    }],
+    missing_needs: [],
+    overall_confidence: 1,
   };
 }
 
@@ -105,6 +128,95 @@ function makeStory(): StoryGenerateResult {
 }
 
 describe('story blueprint and genre quality', () => {
+  it('projects selected Domain Pack prompts and boundaries into a machine-only blueprint trace', () => {
+    const blueprint = buildStoryBlueprint({
+      entry: makeEntry(),
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      knowledgePack: makeDomainKnowledgePack(),
+    });
+
+    expect(blueprint.domain_pack_context).toMatchObject({
+      schema_version: 'story-domain-pack-context/v1',
+      production_prompt_count: 1,
+      review_boundary_count: 1,
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+    expect(blueprint.domain_pack_context?.selected_packs[0]).toMatchObject({
+      entry_name: '建筑空间与陈设包——空间层级、动线道具和时代边界',
+      production_prompts: ['先画出空间层级，再标注人物动线。'],
+    });
+    expect(blueprint.type_specific_requirements.join('\n')).toContain('Domain Pack 生产提示');
+    expect(blueprint.type_specific_requirements.join('\n')).toContain('Domain Pack 审稿边界');
+  });
+
+  it('fails machine quality when internal Domain Pack instructions leak into audience text', () => {
+    const story = {
+      ...makeStory(),
+      full_text: '生产提示：先画出空间层级，再标注人物动线。随后周敦颐走进月岩洞。',
+    };
+    const blueprint = buildStoryBlueprint({
+      entry: makeEntry(),
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      knowledgePack: makeDomainKnowledgePack(),
+    });
+    const report = validateGenreStoryQuality({
+      story,
+      baseReport: makeBaseReport(),
+      blueprint,
+    });
+
+    expect(report.domain_pack_quality).toMatchObject({
+      schema_version: 'story-domain-pack-quality/v1',
+      status: 'instruction_leak',
+      passed: false,
+      selected_pack_count: 1,
+      boundary_review_status: 'not_human_reviewed',
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+    expect(report.passed).toBe(false);
+    expect(report.issues.join('\n')).toContain('Domain Pack 内部指令泄漏');
+    expect(report.repair_actions.join('\n')).toContain('移除观众文本中的 Domain Pack 内部指令');
+  });
+
+  it('records a machine-only trace-ready result when Domain Pack instructions stay internal', () => {
+    const blueprint = buildStoryBlueprint({
+      entry: makeEntry(),
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '1分钟',
+      knowledgePack: makeDomainKnowledgePack(),
+    });
+    const report = validateGenreStoryQuality({
+      story: makeStory(),
+      baseReport: makeBaseReport(),
+      blueprint,
+    });
+
+    expect(report.domain_pack_quality).toMatchObject({
+      schema_version: 'story-domain-pack-quality/v1',
+      status: 'trace_ready',
+      passed: true,
+      selected_pack_count: 1,
+      internal_instruction_leaks: [],
+      boundary_review_status: 'not_human_reviewed',
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+    expect(report.issues.join('\n')).not.toContain('Domain Pack 内部指令泄漏');
+  });
+
   it('builds and attaches scene-aware genre beats', () => {
     const entry = makeEntry();
     const story = makeStory();

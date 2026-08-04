@@ -408,7 +408,7 @@ function loadDomainPackFile(): ChinaCultureDomainPackFile {
 }
 
 function kbRoot(): string {
-  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+  return process.env.KB_ROOT || resolve(import.meta.dirname, '..', '..', '..', '..', '..', 'data');
 }
 
 function isValidDomainPackSeed(seed: Partial<ChinaCultureDomainPackSeed>): seed is ChinaCultureDomainPackSeed {
@@ -457,9 +457,11 @@ function selectDomainPackSeeds(
 
   for (const matcher of priorityDomainPackMatchers(text)) {
     if (selected.length >= limit) break;
-    const item = scored.find(candidate =>
+    const matches = (candidate: { seed: ChinaCultureDomainPackSeed }) => (
       !selectedNames.has(candidate.seed.entry_name) && matcher(candidate.seed)
     );
+    const item = scored.find(candidate => matches(candidate) && hasProductionGuidance(candidate.seed))
+      ?? scored.find(matches);
     if (!item) continue;
     selected.push(item);
     selectedNames.add(item.seed.entry_name);
@@ -487,8 +489,40 @@ function selectDomainPackSeeds(
 function priorityDomainPackMatchers(text: string): Array<(seed: ChinaCultureDomainPackSeed) => boolean> {
   const matchers: Array<(seed: ChinaCultureDomainPackSeed) => boolean> = [];
 
+  if (/仪式|礼俗|祭礼|祭祀|节庆|婚俗|丧俗|祈愿|禁忌|空间秩序|参与角色/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('仪式礼俗与禁忌包'));
+  }
+  if (/儿童|少儿|亲子|年龄分层|children_story|children_animation|低龄|善意张力/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('儿童改写规则包'));
+  }
+  if (/heritage_promo|非遗流程包|非遗|传统工艺|工序|传承人授权/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('非遗流程生产包'));
+  }
+  if (/documentary_short|微纪录|纪录片|现实现场|来源线索|B-roll/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('纪录片来源包'));
+  }
+  if (/ai_comic_drama|AI漫剧|漫画分镜|关键帧|表情节拍|连续性验收/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('AI漫剧分镜包'));
+  }
+  if (/explainer_video|知识讲解|核心问题|知识大纲|图示|字幕/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('讲解知识结构包'));
+  }
+  if (/短视频|竖屏|前三秒|三秒钩子|完播|评论区|social_short|平台节奏|对比反转/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('短视频钩子包'));
+  }
+  if (/宣讲|培训|课程|学习目标|练习|板书|lecture_video|education_training|行动转化/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('宣讲培训结构包'));
+  }
+  if (/character_story|historical_drama|legend_story/.test(text)) {
+    matchers.push(seed => seed.entry_name.includes('朝代服饰与器物包'));
+  }
+
   if (detectChinaCultureEra(text)) {
-    matchers.push(seed => seed.domain === 'era_setting' && (!seed.era || text.includes(seed.era)));
+    matchers.push(seed => (
+      seed.domain === 'era_setting'
+      && Boolean(seed.era)
+      && text.includes(seed.era ?? '')
+    ));
   }
   if (/民间传说|地方传说|传说|志异|神话|狐仙|鬼怪|显灵|托梦/.test(text)) {
     matchers.push(seed => seed.domain === 'folklore_zhiyi');
@@ -532,6 +566,13 @@ function priorityDomainPackMatchers(text: string): Array<(seed: ChinaCultureDoma
   }
 
   return matchers;
+}
+
+function hasProductionGuidance(seed: ChinaCultureDomainPackSeed): boolean {
+  return Boolean(
+    seed.production_prompts?.some(item => item.trim())
+    || seed.review_boundaries?.some(item => item.trim()),
+  );
 }
 
 function seedToKnowledgePackEntry(seed: ChinaCultureDomainPackSeed, score: number): KnowledgePackEntry {

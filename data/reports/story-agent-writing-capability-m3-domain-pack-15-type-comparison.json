@@ -1,0 +1,377 @@
+{
+  "schema_version": "story-domain-pack-15-type-comparison/v1",
+  "status": "passed",
+  "mode": "machine_pre_generation_counterfactual",
+  "selection_policy": "cultural_safety_then_type_specific_then_production_ready_diversity/v1",
+  "generated_at": "2026-08-04T00:00:00.000+08:00",
+  "coverage": {
+    "type_count": 15,
+    "trace_covered_type_count": 15,
+    "prompt_delta_type_count": 15,
+    "readiness_score_stable_type_count": 15,
+    "expected_pack_matched_type_count": 15
+  },
+  "invariants": {
+    "every_video_type_present": true,
+    "every_type_has_domain_pack_trace": true,
+    "every_type_has_expected_domain_pack": true,
+    "every_active_prompt_has_guidance": true,
+    "every_control_prompt_suppresses_guidance": true,
+    "every_readiness_score_is_stable": true
+  },
+  "failed_invariants": [],
+  "boundary": {
+    "machine_comparison_only": true,
+    "external_model_invoked": false,
+    "story_output_quality_measured": false,
+    "human_review_complete": false,
+    "real_production_credit_granted": false
+  },
+  "items": [
+    {
+      "case_id": "canonical-character_story",
+      "video_type": "character_story",
+      "status": "passed",
+      "selected_pack_names": [
+        "仪式礼俗与禁忌包——流程角色、空间秩序和文化边界",
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界"
+      ],
+      "expected_pack_names": [
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "711480a509a87c58f7758ecc1a8eb4413147124048d0a5959a8b2eddb511c9ab",
+      "control_prompt_sha256": "9f9f697af7b39cf093c1071d28a25750e98abec6d5236e1fbb4f61b95ed97961",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-historical_drama",
+      "video_type": "historical_drama",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界",
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "expected_pack_names": [
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 3,
+      "production_prompt_count": 15,
+      "review_boundary_count": 15,
+      "active_prompt_sha256": "6c08d19bca4b1921ec92819ad8c52c4e83e6d67668a2c5e54f49db7414512861",
+      "control_prompt_sha256": "bef1d248e053ccbb62729b481df3be7cd4bee8d54f87885e04685c169d971fe5",
+      "active_guidance_line_count": 30,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 30,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-legend_story",
+      "video_type": "legend_story",
+      "status": "passed",
+      "selected_pack_names": [
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界"
+      ],
+      "expected_pack_names": [
+        "朝代服饰与器物包——时代称谓、服装道具和事实边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 1,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "active_prompt_sha256": "6bfb65bf2daf0767f7f94e6cfaf83c995a1132a3fcf8efa49596909524233a28",
+      "control_prompt_sha256": "96d8c5d2485da81237c4911877bc14a3e062a991552f2ac267618f08db892899",
+      "active_guidance_line_count": 10,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 10,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-children_story",
+      "video_type": "children_story",
+      "status": "passed",
+      "selected_pack_names": [
+        "儿童改写规则包——年龄分层、善意张力与事实边界"
+      ],
+      "expected_pack_names": [
+        "儿童改写规则包——年龄分层、善意张力与事实边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 1,
+      "production_prompt_count": 3,
+      "review_boundary_count": 3,
+      "active_prompt_sha256": "420590813e5c49023e352505979b12365d1f999850c3889b071b347cf4825994",
+      "control_prompt_sha256": "a5763e34e2a7d9e4307294432126184cccf9bd29d74455a2a47b7a788c016277",
+      "active_guidance_line_count": 6,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 6,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-ai_comic_drama",
+      "video_type": "ai_comic_drama",
+      "status": "passed",
+      "selected_pack_names": [
+        "AI漫剧分镜包——关键帧、表情节拍与连续性验收"
+      ],
+      "expected_pack_names": [
+        "AI漫剧分镜包——关键帧、表情节拍与连续性验收"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 1,
+      "production_prompt_count": 5,
+      "review_boundary_count": 5,
+      "active_prompt_sha256": "a8e3d4df570bbaae41138ff21c976fa2665493840c5dc84552d7bd14dff768c7",
+      "control_prompt_sha256": "89eb91279655fdd21085b9e494fd18e9bba7fc67dd859e79fe3888c85db7b1df",
+      "active_guidance_line_count": 10,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 10,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-culture_promo",
+      "video_type": "culture_promo",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "expected_pack_names": [
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "c33da7789f448683c0291417498e9725af51787798d08b37e6dd28883ccc1e86",
+      "control_prompt_sha256": "488467b47711974dc9377cc1fa1c97bc48c35708f80fba655af3eafedd917458",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-heritage_promo",
+      "video_type": "heritage_promo",
+      "status": "passed",
+      "selected_pack_names": [
+        "非遗流程生产包——材料工具、工序动作与授权边界",
+        "纪录片来源包——现实现场、来源线索与再现边界"
+      ],
+      "expected_pack_names": [
+        "非遗流程生产包——材料工具、工序动作与授权边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "c59dc1abf8199dc1c1cf6496bab6b2cbd9ae98e005b6979f739f50acf20674c3",
+      "control_prompt_sha256": "02ca4091239d189a86743e8180cfbfc3559a01502852e47fcf13a68e4fcc775f",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-city_brand_promo",
+      "video_type": "city_brand_promo",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "expected_pack_names": [
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "bea9c69097f7fb289f4f3b81f6205e5f69c477035fd65b93e154b85b118b3266",
+      "control_prompt_sha256": "e7b6125b5312ec0a20a704ad0a500c3ce5d02d2364407d718066aa8357977006",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-social_short",
+      "video_type": "social_short",
+      "status": "passed",
+      "selected_pack_names": [
+        "非遗流程生产包——材料工具、工序动作与授权边界",
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "短视频钩子包——三秒问题、对比反转与平台节奏"
+      ],
+      "expected_pack_names": [
+        "短视频钩子包——三秒问题、对比反转与平台节奏"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 3,
+      "production_prompt_count": 13,
+      "review_boundary_count": 13,
+      "active_prompt_sha256": "f000bb5a748817fe05ce94c772633b08f84ff5eb88af292658fcd48351316776",
+      "control_prompt_sha256": "d1774e85383724fb0bc11d7aed03dc8e821a90a0731842bc9e279c9e5de653bb",
+      "active_guidance_line_count": 26,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 26,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-documentary_short",
+      "video_type": "documentary_short",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "expected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "d7b4ae09ab64efd57e02103ff623b7589b09a4f267ab52ff88f02a5e986c27fe",
+      "control_prompt_sha256": "cd96da7c7be588ed38c75060c242542a8d14f85c3d85f7cdf57825e4ab788659",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-explainer_video",
+      "video_type": "explainer_video",
+      "status": "passed",
+      "selected_pack_names": [
+        "仪式礼俗与禁忌包——流程角色、空间秩序和文化边界",
+        "讲解知识结构包——核心问题、层级例子与图示字幕",
+        "自然环境与声景包——季节天气、地貌运动和环境声音"
+      ],
+      "expected_pack_names": [
+        "讲解知识结构包——核心问题、层级例子与图示字幕"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 3,
+      "production_prompt_count": 15,
+      "review_boundary_count": 15,
+      "active_prompt_sha256": "d32fed1e20e8fd06f03b2c82eed43a4abea1369fa87408d87ec338abe35369dc",
+      "control_prompt_sha256": "84c3a77f7696e91c22c175234dd1c5e8e4e5102ad20a99a8a6f77d326f0ffdee",
+      "active_guidance_line_count": 30,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 30,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-lecture_video",
+      "video_type": "lecture_video",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "宣讲培训结构包——论点案例、练习复盘与行动转化"
+      ],
+      "expected_pack_names": [
+        "宣讲培训结构包——论点案例、练习复盘与行动转化"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 8,
+      "review_boundary_count": 8,
+      "active_prompt_sha256": "c67826f350ec01056772b6c68aa80b1c2e28f58b82ff746bacb8326e82c40b31",
+      "control_prompt_sha256": "78b581d56ce91a8da03cb9063620a626ba1f97f648728e4603001df4bb405a9e",
+      "active_guidance_line_count": 16,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 16,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-education_training",
+      "video_type": "education_training",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "宣讲培训结构包——论点案例、练习复盘与行动转化"
+      ],
+      "expected_pack_names": [
+        "宣讲培训结构包——论点案例、练习复盘与行动转化"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 8,
+      "review_boundary_count": 8,
+      "active_prompt_sha256": "8be51df0c62fe20ff758a754fcd5a226f2bc6398891ae70a842341fba02314bd",
+      "control_prompt_sha256": "8bcd90c14399bed26d8d5e4358d2c824f19adfe821ffd2a36ee68d7cd83f5f3a",
+      "active_guidance_line_count": 16,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 16,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-scene_short",
+      "video_type": "scene_short",
+      "status": "passed",
+      "selected_pack_names": [
+        "纪录片来源包——现实现场、来源线索与再现边界",
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "expected_pack_names": [
+        "建筑空间与陈设包——空间层级、动线道具和时代边界"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "b6f640ecb00b9d24b516b612c3c106fc51875a2df0c0561d9a20bddcbc30e350",
+      "control_prompt_sha256": "a4cae0ca3f61fedf4333ee232dea56c0411cc711046d8c9ce75044559287d97a",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    },
+    {
+      "case_id": "canonical-landscape_mood",
+      "video_type": "landscape_mood",
+      "status": "passed",
+      "selected_pack_names": [
+        "仪式礼俗与禁忌包——流程角色、空间秩序和文化边界",
+        "自然环境与声景包——季节天气、地貌运动和环境声音"
+      ],
+      "expected_pack_names": [
+        "自然环境与声景包——季节天气、地貌运动和环境声音"
+      ],
+      "missing_expected_pack_names": [],
+      "selected_pack_count": 2,
+      "production_prompt_count": 10,
+      "review_boundary_count": 10,
+      "active_prompt_sha256": "8b65515623993b6c2b2d71a431a6e4aeb01fc2de67f05c85bb83737e185a4b87",
+      "control_prompt_sha256": "8ae64b36e9874fb808da6928f97123460e574c683cecee88d6d916e0713cd144",
+      "active_guidance_line_count": 20,
+      "control_guidance_line_count": 0,
+      "prompt_added_guidance_line_count": 20,
+      "readiness_score_delta": 0,
+      "issues": []
+    }
+  ]
+}

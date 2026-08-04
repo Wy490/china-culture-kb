@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-writing-capability-m3-domain-pack-baseline/v1",
-  "generated_at": "2026-08-03T00:00:00.000+08:00",
+  "generated_at": "2026-08-04T00:00:00.000+08:00",
   "status": "passed",
   "source": {
     "path": "data/domain-packs/china-culture.json",
@@ -21,6 +21,15 @@
     },
     "story_prompt_consumes_production_prompts": true,
     "story_prompt_consumes_review_boundaries": true,
+    "default_kb_root_resolves_repository_data": true,
+    "blueprint_trace_registered": true,
+    "readiness_trace_registered": true,
+    "quality_leak_gate_registered": true,
+    "repair_boundary_registered": true,
+    "video_type_aware_retrieval_registered": true,
+    "production_ready_selection_preferred": true,
+    "cultural_safety_priority_registered": true,
+    "fifteen_type_comparison_registered": true,
     "web_health_contract_registered": true,
     "mcp_health_contract_registered": true
   },

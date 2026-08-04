@@ -1,6 +1,6 @@
 {
   "schema_version": "knowledge-base-content-supply-progress/v1",
-  "generated_at": "2026-08-03T22:44:41+08:00",
+  "generated_at": "2026-08-04T12:44:33+08:00",
   "timezone": "Asia/Shanghai",
   "phase": "Phase 0 machine baseline complete / M1 machine validation complete / M2-1 through M2-3M machine validation complete / human review pending",
   "progress_scope": "content_supply_only",
@@ -23,7 +23,7 @@
     "hunan_share_percent": 73.37
   },
   "current": {
-    "audit_generated_at": "2026-08-03T14:44:41.770Z",
+    "audit_generated_at": "2026-08-04T04:44:33.940Z",
     "province_files": 34,
     "formal_entries": 289,
     "sources": 1043,
@@ -73,16 +73,17 @@
     "counts_as_human_review": false
   },
   "m3_runtime_production_guidance": {
-    "production_audit_generated_at": "2026-08-03T14:44:41.770Z",
+    "production_audit_generated_at": "2026-08-04T04:44:33.940Z",
     "audited_entries": 289,
     "audited_video_types_per_entry": 15,
-    "raw_source_production_field_gaps": 212,
-    "machine_guidance_covered_fields": 212,
+    "raw_source_production_field_gaps": 168,
+    "source_authored_fields_recovered_from_raw_markdown": 44,
+    "machine_guidance_covered_fields": 168,
     "effective_runtime_production_field_gaps": 0,
-    "entries_with_machine_guidance": 140,
+    "entries_with_machine_guidance": 111,
     "guidance_facts_added": false,
     "province_markdown_written": false,
-    "note": "原始缺口继续保留为源素材治理任务；确定性运行时指导仅组织已有资产、地点、类型和待核边界。"
+    "note": "审计已读取源 Markdown 专节并恢复识别 44 项；剩余原始缺口继续保留为逐项源素材治理任务，确定性运行时指导仅组织已有资产、地点、类型和待核边界。"
   },
   "m2": {
     "target_formal_entries": 289,

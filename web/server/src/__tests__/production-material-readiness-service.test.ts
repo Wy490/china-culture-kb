@@ -595,6 +595,43 @@ describe('production-material-readiness-service', () => {
     expect(report?.recommended_next_questions.length).toBeGreaterThan(0);
   });
 
+  it('carries Domain Pack trace into readiness without claiming human review or changing the score', () => {
+    const pack = getProductionMaterialPack('heritage_promo');
+    const materialPack = makeMaterialPack('非遗工艺素材：记录材料、工具和制作流程。');
+    const baseline = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+    });
+    const traced = buildProductionMaterialReadinessReport({
+      productionMaterialPack: pack,
+      materialPack,
+      domainPackContext: {
+        schema_version: 'story-domain-pack-context/v1',
+        selected_packs: [{
+          entry_name: '非遗流程生产包——材料工具、工序动作与授权边界',
+          knowledge_domain: 'production_process',
+          entry_role: 'asset_pack',
+          production_prompts: ['把材料、工具和工序动作拆成可拍步骤。'],
+          review_boundaries: ['通用流程包不能替代具体项目工序核验。'],
+        }],
+        production_prompt_count: 1,
+        review_boundary_count: 1,
+        machine_validation_only: true,
+        human_review_complete: false,
+        real_credit_granted: false,
+      },
+    });
+
+    expect(traced?.score).toBe(baseline?.score);
+    expect(traced?.available_fields).toEqual(baseline?.available_fields);
+    expect(traced?.domain_pack_context).toMatchObject({
+      selected_packs: [expect.objectContaining({ entry_name: '非遗流程生产包——材料工具、工序动作与授权边界' })],
+      machine_validation_only: true,
+      human_review_complete: false,
+      real_credit_granted: false,
+    });
+  });
+
   it('does not count missing needs as production material evidence', () => {
     const pack = getProductionMaterialPack('ai_comic_drama');
     const materialPack = {

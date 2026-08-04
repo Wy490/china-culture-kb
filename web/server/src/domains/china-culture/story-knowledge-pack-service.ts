@@ -1,4 +1,4 @@
-import type { EntryDetail, KnowledgePack, KnowledgePackEntry } from '@shared/types.js';
+import type { EntryDetail, KnowledgePack, KnowledgePackEntry, VideoType } from '@shared/types.js';
 import { buildChinaCultureEntryKnowledgeSummary } from './entry-knowledge-service.js';
 import { extractChinaCultureKeywords } from './entry-language-helpers.js';
 import { appendChinaCultureDomainPackEntries } from './domain-pack-production-service.js';
@@ -8,6 +8,7 @@ export interface ChinaCultureSingleEntryKnowledgePackContext {
   selectedEvent?: string;
   originalUserQuery?: string;
   outline?: string;
+  videoType?: VideoType;
 }
 
 export function buildChinaCultureSingleEntryKnowledgePack(
@@ -18,6 +19,7 @@ export function buildChinaCultureSingleEntryKnowledgePack(
     context.originalUserQuery,
     context.outline,
     context.selectedEvent,
+    context.videoType,
     entry.name,
   ].filter(Boolean).join(' ');
   const extractedKeywords = extractChinaCultureKeywords(queryText);

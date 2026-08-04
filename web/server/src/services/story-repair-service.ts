@@ -88,6 +88,30 @@ function buildRepairContractPromptLines(story: StoryGenerateResult): string[] {
   return lines;
 }
 
+function buildDomainPackRepairLines(blueprint: StoryBlueprint | undefined): {
+  shouldRespect: string[];
+  promptLines: string[];
+} {
+  const context = blueprint?.domain_pack_context;
+  if (!context) return { shouldRespect: [], promptLines: [] };
+
+  const guidanceLines = context.selected_packs.flatMap(pack => [
+    ...pack.production_prompts.map(prompt => `Domain Pack 生产提示（${pack.entry_name}）：${prompt}`),
+    ...pack.review_boundaries.map(boundary => `Domain Pack 审稿边界（${pack.entry_name}）：${boundary}`),
+  ]);
+  return {
+    shouldRespect: [
+      'Domain Pack 仅作内部机器生成与校验约束，不得把提示标签或原文写进观众文本，也不得视为人工审校或真实生产 credit。',
+      ...guidanceLines,
+    ],
+    promptLines: [
+      '=== Domain Pack 修复边界 ===',
+      '以下内容仅供内部机器修复使用；不得原样泄漏到标题、正文、场景、对白/旁白或视觉提示中。',
+      ...guidanceLines,
+    ],
+  };
+}
+
 export function buildStoryRepairPromptPackage(input: {
   basePackage: StoryGenerationPromptPackage;
   story: StoryGenerateResult;
@@ -113,6 +137,7 @@ export function buildStoryRepairPromptPackage(input: {
   ].filter((action, index, all) => all.indexOf(action) === index);
   const repairContractShouldRespect = buildRepairContractShouldRespect(input.story);
   const repairContractPromptLines = buildRepairContractPromptLines(input.story);
+  const domainPackRepair = buildDomainPackRepairLines(input.blueprint);
   const strictnessLine = input.strictness === 'strict'
     ? '严格模式：必须优先满足类型结构、类型必填字段和场景功能。'
     : input.strictness === 'loose'
@@ -130,6 +155,7 @@ export function buildStoryRepairPromptPackage(input: {
         `优先修改字段：${familyGuidance.focus_fields.join('、')}。`,
         ...repairActions,
         ...repairContractShouldRespect,
+        ...domainPackRepair.shouldRespect,
       ],
       return_json_fields: getGenreReturnJsonFields(input.story.video_type),
     },
@@ -193,6 +219,10 @@ export function buildStoryRepairPromptPackage(input: {
       '',
       ...(repairContractPromptLines.length > 0 ? [
         ...repairContractPromptLines,
+        '',
+      ] : []),
+      ...(domainPackRepair.promptLines.length > 0 ? [
+        ...domainPackRepair.promptLines,
         '',
       ] : []),
       ...(input.qualityReport.outline_coverage_report ? [

@@ -26,6 +26,7 @@ import { validateReferenceBaselineCompatibility } from '../../services/reference
 import { resolveReferenceGenerationRecipeContract } from '../../services/reference-generation-recipe-service.js';
 import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
+import { buildStoryDomainPackContext } from '../../services/story-domain-pack-trace-service.js';
 import { buildWritingCapabilityShadowPreparationPlan } from '../../services/writing-capability-rollout-service.js';
 import { buildWritingCapabilityRuntimeResolution } from '../../services/writing-capability-runtime-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
@@ -123,6 +124,7 @@ export async function prepareChinaCultureStoryGeneration(
       selectedEvent: selected_event,
       originalUserQuery: original_user_query,
       outline,
+      videoType,
     });
   }
   if (!materialPackToUse) {
@@ -211,10 +213,12 @@ export async function prepareChinaCultureStoryGeneration(
   const adaptationAnalysis = request.source_material_mode === 'adapt_user_novel'
     ? buildAdaptationAnalysis(original_user_query ?? outline)
     : undefined;
+  const domainPackContext = buildStoryDomainPackContext(knowledgePackToUse);
   const productionMaterialReadiness = buildProductionMaterialReadinessReport({
     productionMaterialPack,
     materialPack: materialPackToUse,
     sourceDomain: 'china_culture',
+    domainPackContext,
     contextText: [
       original_user_query,
       outline,
@@ -305,6 +309,7 @@ export async function prepareChinaCultureStoryGeneration(
     targetDuration,
     centralEvent,
     knowledgePack: knowledgePackToUse,
+    domainPackContext,
     narrativePatternIds,
     creationContract,
     materialSufficiency,

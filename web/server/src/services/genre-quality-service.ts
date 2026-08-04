@@ -14,6 +14,10 @@ import {
   evaluateWritingCapabilityQuality,
   writingCapabilityRepairActions,
 } from './writing-capability-quality-service.js';
+import {
+  evaluateStoryDomainPackQuality,
+  storyDomainPackRepairActions,
+} from './story-domain-pack-trace-service.js';
 
 type StoryFieldValue = string | string[] | Array<unknown> | undefined;
 
@@ -37,6 +41,10 @@ export function validateGenreStoryQuality(input: {
     story: input.story,
     context: writingCapabilityContext,
   });
+  const domainPackQuality = evaluateStoryDomainPackQuality({
+    story: input.story,
+    context: input.blueprint?.domain_pack_context,
+  });
   const repairActions = [
     ...missingRequiredElements.map(item => `补齐类型字段：${item}`),
     ...weakBeats.map(item => `强化节拍：${item}`),
@@ -52,6 +60,7 @@ export function validateGenreStoryQuality(input: {
       report: writingCapabilityQuality,
       context: writingCapabilityContext,
     }),
+    ...storyDomainPackRepairActions(domainPackQuality),
   ].filter((item, index, arr) => arr.indexOf(item) === index);
 
   const baseGenreScore = Math.max(
@@ -66,7 +75,10 @@ export function validateGenreStoryQuality(input: {
       - input.baseReport.issues.length * 5,
   );
   const writingCapabilityFailureCount = writingCapabilityQuality?.failed_check_ids.length ?? 0;
-  const genreScore = Math.max(0, baseGenreScore - writingCapabilityFailureCount * 6);
+  const domainPackPenalty = domainPackQuality?.passed === false
+    ? Math.min(24, Math.max(1, domainPackQuality.internal_instruction_leaks.length) * 12)
+    : 0;
+  const genreScore = Math.max(0, baseGenreScore - writingCapabilityFailureCount * 6 - domainPackPenalty);
 
   const genreIssues = [
     ...missingRequiredElements.map(item => `类型字段缺失：${item}`),
@@ -78,6 +90,8 @@ export function validateGenreStoryQuality(input: {
     ...(writingCapabilityQuality?.checks ?? [])
       .filter(check => check.status === 'failed')
       .map(check => `写作能力检查失败 [${check.check_id}]（scene_id=${check.scene_ids.join('、') || '全局'}）：${check.message}`),
+    ...(domainPackQuality?.internal_instruction_leaks ?? [])
+      .map(leak => `Domain Pack 内部指令泄漏：${leak}`),
   ];
 
   return {
@@ -90,10 +104,12 @@ export function validateGenreStoryQuality(input: {
     forbidden_patterns_found: forbiddenPatternsFound,
     repair_actions: repairActions,
     ...(writingCapabilityQuality ? { writing_capability_quality: writingCapabilityQuality } : {}),
+    ...(domainPackQuality ? { domain_pack_quality: domainPackQuality } : {}),
     passed: input.baseReport.passed
       && genreScore >= 70
       && missingRequiredElements.length === 0
-      && (writingCapabilityQuality?.passed ?? true),
+      && (writingCapabilityQuality?.passed ?? true)
+      && (domainPackQuality?.passed ?? true),
     issues: [...input.baseReport.issues, ...genreIssues],
   };
 }

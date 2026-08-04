@@ -8,7 +8,7 @@ import {
   type MachineProductionGuidanceField,
 } from '../lib/production-field-guidance.js';
 
-type ProductionCardField =
+export type ProductionCardField =
   | 'confirmed_facts'
   | 'unverified_facts'
   | 'dramatization_space'
@@ -21,11 +21,12 @@ type ProductionCardField =
   | 'forbidden_expressions'
   | 'source_grades';
 
-interface FieldAudit {
+export interface FieldAudit {
   field: ProductionCardField;
   label: string;
   present: boolean;
   reason: string;
+  evidence_origin: 'structured_detail' | 'raw_markdown' | 'missing';
 }
 
 interface TypeTemplateAudit {
@@ -36,7 +37,7 @@ interface TypeTemplateAudit {
   readiness_score: number;
 }
 
-interface EntryProductionAudit {
+export interface EntryProductionAudit {
   name: string;
   province: string;
   region: string;
@@ -60,7 +61,7 @@ interface EntryProductionAudit {
   priority_reasons: string[];
 }
 
-interface ProductionMaterialAuditReport {
+export interface ProductionMaterialAuditReport {
   schema_version: 'kb-production-material-audit/v1';
   generated_at: string;
   totals: {
@@ -78,6 +79,7 @@ interface ProductionMaterialAuditReport {
     entries_with_asset_split: number;
     non_enum_credibility: number;
     raw_missing_production_field_count: number;
+    source_authored_fields_visible_only_in_raw_markdown: number;
     machine_guidance_field_count: number;
     effective_missing_production_field_count: number;
     entries_with_machine_guidance: number;
@@ -190,8 +192,22 @@ function auditEntry(
   productionPacks: ProductionPackFile['packs'],
   rawEntryText: string,
 ): EntryProductionAudit {
-  const text = entryText(detail);
-  const fieldAudits = CORE_PRODUCTION_FIELDS.map(item => auditProductionField(item.field, item.label, detail, text));
+  // Some production-ready fields intentionally live in dedicated Markdown
+  // sections that are not part of FullEntryDetail's public retrieval contract.
+  // Audit both views so source-authored guidance is not misclassified as a gap.
+  const structuredText = entryText(detail);
+  const text = [structuredText, rawEntryText].filter(Boolean).join('\n');
+  const fieldAudits = CORE_PRODUCTION_FIELDS.map(item => {
+    const structuredAudit = auditProductionField(item.field, item.label, detail, structuredText);
+    if (structuredAudit.present) {
+      return { ...structuredAudit, evidence_origin: 'structured_detail' as const };
+    }
+    const sourceAudit = auditProductionField(item.field, item.label, detail, text);
+    return {
+      ...sourceAudit,
+      evidence_origin: sourceAudit.present ? 'raw_markdown' as const : 'missing' as const,
+    };
+  });
   const missingProductionFields = fieldAudits.filter(item => !item.present).map(item => item.field);
   const machineGuidance = buildMachineProductionFieldGuidance({
     name: detail.name,
@@ -247,7 +263,7 @@ function auditProductionField(
   label: string,
   detail: FullEntryDetail,
   text: string,
-): FieldAudit {
+): Omit<FieldAudit, 'evidence_origin'> {
   const normalized = text.toLowerCase();
   switch (field) {
     case 'confirmed_facts':
@@ -267,12 +283,18 @@ function auditProductionField(
     case 'visual_symbols':
       return result(field, label, detail.asset_usage?.some(item => item.includes('visual') || item.includes('scene')) === true || /视觉|纹样|图案|色彩|象征|符号|江水|月光/.test(text), '需要视觉符号。');
     case 'dialogue_tone':
-      return result(field, label, detail.asset_usage?.includes('dialogue_tone') === true || /对白|口吻|旁白|语气|台词|问/.test(text), '需要对白或旁白口吻。');
+      return result(field, label, hasDialogueToneEvidence(detail.asset_usage, text), '需要对白或旁白口吻。');
     case 'forbidden_expressions':
       return result(field, label, /不得|不要|不可|不能写成|禁用|边界|不等同/.test(text), '需要禁用表达和事实边界。');
     case 'source_grades':
       return result(field, label, detail.sources.some(source => /[ABCD]级/.test(source)) || /[ABCD]级/.test(text), '需要来源等级。');
   }
+}
+
+export function hasDialogueToneEvidence(assetUsage: readonly string[] | undefined, text: string): boolean {
+  if (assetUsage?.includes('dialogue_tone')) return true;
+  return /(?:对白(?:[/／、和与]旁白)?|旁白(?:[/／、和与]对白)?|台词)(?:的)?(?:口吻|语气|风格)(?:（[^）\n]*）|\([^）)\n]*\))?(?:应|需|须|为|[:：])/.test(text)
+    || /(?:^|\n)[-*]?\s*(?:口吻|语气|风格)\s*[:：]/.test(text);
 }
 
 function auditTypeTemplate(
@@ -398,7 +420,12 @@ function priorityFromReasons(reasons: string[]): EntryProductionAudit['priority'
   return 'low';
 }
 
-function result(field: ProductionCardField, label: string, present: boolean, reason: string): FieldAudit {
+function result(
+  field: ProductionCardField,
+  label: string,
+  present: boolean,
+  reason: string,
+): Omit<FieldAudit, 'evidence_origin'> {
   return { field, label, present, reason: present ? '已覆盖' : reason };
 }
 
@@ -493,6 +520,12 @@ function buildTotals(files: number, entries: EntryProductionAudit[]): Production
     (sum, entry) => sum + entry.effective_missing_production_fields.length,
     0,
   );
+  const sourceAuthoredFieldsVisibleOnlyInRawMarkdown = entries.reduce(
+    (sum, entry) => sum + entry.field_audits.filter(
+      fieldAudit => fieldAudit.evidence_origin === 'raw_markdown',
+    ).length,
+    0,
+  );
   return {
     files,
     entries: entries.length,
@@ -508,6 +541,7 @@ function buildTotals(files: number, entries: EntryProductionAudit[]): Production
     entries_with_asset_split: entries.filter(entry => entry.has_asset_split).length,
     non_enum_credibility: entries.filter(entry => !ALLOWED_CREDIBILITY.has(entry.credibility)).length,
     raw_missing_production_field_count: rawMissingProductionFieldCount,
+    source_authored_fields_visible_only_in_raw_markdown: sourceAuthoredFieldsVisibleOnlyInRawMarkdown,
     machine_guidance_field_count: machineGuidanceFieldCount,
     effective_missing_production_field_count: effectiveMissingProductionFieldCount,
     entries_with_machine_guidance: entries.filter(entry => entry.machine_guidance_fields.length > 0).length,
@@ -568,6 +602,7 @@ function buildMarkdown(report: Omit<ProductionMaterialAuditReport, 'markdown'>):
     `- 有 asset_split：${report.totals.entries_with_asset_split}`,
     `- 可信度非枚举：${report.totals.non_enum_credibility}`,
     `- 原始生产字段缺口：${report.totals.raw_missing_production_field_count}`,
+    `- 仅在源 Markdown 专节中可见的已覆盖字段：${report.totals.source_authored_fields_visible_only_in_raw_markdown}`,
     `- 机器派生指导覆盖：${report.totals.machine_guidance_field_count}`,
     `- 运行时有效生产字段缺口：${report.totals.effective_missing_production_field_count}`,
     `- 获得机器派生指导的条目：${report.totals.entries_with_machine_guidance}`,

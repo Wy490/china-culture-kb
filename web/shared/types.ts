@@ -9807,6 +9807,38 @@ export interface KnowledgePack {
   overall_confidence: number;
 }
 
+export interface StoryDomainPackContextEntry {
+  entry_name: string;
+  knowledge_domain?: string;
+  entry_role?: string;
+  production_prompts: string[];
+  review_boundaries: string[];
+}
+
+export interface StoryDomainPackContextV1 {
+  schema_version: 'story-domain-pack-context/v1';
+  selected_packs: StoryDomainPackContextEntry[];
+  production_prompt_count: number;
+  review_boundary_count: number;
+  machine_validation_only: true;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
+export interface StoryDomainPackQualityReportV1 {
+  schema_version: 'story-domain-pack-quality/v1';
+  status: 'trace_ready' | 'instruction_leak';
+  passed: boolean;
+  selected_pack_count: number;
+  production_prompt_count: number;
+  review_boundary_count: number;
+  internal_instruction_leaks: string[];
+  boundary_review_status: 'not_human_reviewed';
+  machine_validation_only: true;
+  human_review_complete: false;
+  real_credit_granted: false;
+}
+
 // ---------------------------------------------------------------------------
 // Story knowledge contract v1 — claim-level evidence and production boundary
 // ---------------------------------------------------------------------------
@@ -11157,6 +11189,7 @@ export interface ProductionMaterialReadinessReport {
   missing_fields: ProductionMaterialMissingField[];
   gate_reports: ProductionMaterialGateReport[];
   recommended_next_questions: string[];
+  domain_pack_context?: StoryDomainPackContextV1;
 }
 
 export type MaterialSufficiencyStage =
@@ -12646,6 +12679,7 @@ export interface StoryQualityReport {
   family_quality_report?: StoryFamilyQualityReport;
   human_review_alignment?: StoryHumanReviewAlignment;
   writing_capability_quality?: WritingCapabilityQualityReportV1;
+  domain_pack_quality?: StoryDomainPackQualityReportV1;
 }
 
 export type QualitySignalStatus = 'satisfied' | 'weak' | 'missing';
@@ -14934,6 +14968,7 @@ export interface StoryBlueprint {
   character_arcs: StoryCharacterArcPlan[];
   evidence_boundaries: EvidenceBoundary[];
   type_specific_requirements: string[];
+  domain_pack_context?: StoryDomainPackContextV1;
   writing_capability_context?: WritingCapabilityRuntimeContextV1;
   creation_contract?: CreationContract;
   material_sufficiency?: MaterialSufficiencyReport;

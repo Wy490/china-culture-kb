@@ -6995,6 +6995,7 @@ const QUALITY_REPAIR_PROMPT_PROTECTED_FIELDS = [
   'presentation_style',
   'story_structure',
   'story_blueprint.evidence_boundaries',
+  'story_blueprint.domain_pack_context',
   'creation_contract',
   'material_sufficiency',
   'material_pack',
@@ -7088,7 +7089,7 @@ async function buildQualityRepairPromptText(input: {
     '硬性输出规则：',
     '1. 只输出一个 JSON 对象，不要 Markdown、解释、代码围栏或额外文本。',
     '2. JSON 根对象必须是完整 StoryGenerateResult；不要只输出 patch/diff。',
-    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、story_blueprint.evidence_boundaries、creation_contract、material_sufficiency、material_pack 和 credibility_note，除非修复动作明确要求调整。',
+    '3. 保留 storyId、project_id、source_entry、video_type、presentation_style、story_structure、story_blueprint.evidence_boundaries、story_blueprint.domain_pack_context、creation_contract、material_sufficiency、material_pack 和 credibility_note，除非修复动作明确要求调整。',
     '4. 同步修复 full_text、scene_breakdown、gears_segments 和 quality_report，避免正文、分场和 GEARS 单元互相矛盾。',
     '5. script_text 只写观众可听/可见的剧本内容；visual_prompt 只写可见画面元素；camera_suggestion 只写镜头语言；validation_notes 不得混入提示词字段。',
     ...revisionGuidance.source_boundary_rules.map((rule, index) => `${index + 6}. ${rule}`),
@@ -7380,6 +7381,13 @@ function ignoredProtectedFieldChanges(before: StoryGenerateResult, attempted: St
     && !sameJsonValue(before.story_blueprint.evidence_boundaries, attempted.story_blueprint.evidence_boundaries)
   ) {
     ignored.push('story_blueprint.evidence_boundaries');
+  }
+  if (
+    attempted.story_blueprint?.domain_pack_context
+    && before.story_blueprint?.domain_pack_context
+    && !sameJsonValue(before.story_blueprint.domain_pack_context, attempted.story_blueprint.domain_pack_context)
+  ) {
+    ignored.push('story_blueprint.domain_pack_context');
   }
   return ignored;
 }
@@ -7746,6 +7754,7 @@ function normalizeRepairedStoryCandidate(
     ? {
         ...repaired.story_blueprint,
         evidence_boundaries: current.story_blueprint?.evidence_boundaries ?? repaired.story_blueprint.evidence_boundaries,
+        domain_pack_context: current.story_blueprint?.domain_pack_context ?? repaired.story_blueprint.domain_pack_context,
       }
     : current.story_blueprint;
   return {
