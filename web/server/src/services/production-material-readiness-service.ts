@@ -7,6 +7,7 @@ import type {
   ProductionMaterialPack,
   ProductionMaterialReadinessReport,
   ProductionMaterialReadinessStatus,
+  StoryGenerateResult,
   StoryDomainPackContextV1,
 } from '@shared/types.js';
 
@@ -238,16 +239,26 @@ export function buildProductionMaterialReadinessReport(input: {
   productionMaterialPack?: ProductionMaterialPack;
   materialPack?: MaterialPack;
   contextText?: string;
+  generatedContextText?: string;
   sourceDomain?: string;
   domainPackContext?: StoryDomainPackContextV1;
 }): ProductionMaterialReadinessReport | undefined {
   const { productionMaterialPack } = input;
   if (!productionMaterialPack) return undefined;
 
-  const materialText = normalizeSearchText(materialPackToText(input.materialPack, input.contextText));
+  const sourceMaterialText = normalizeSearchText(materialPackToText(input.materialPack, input.contextText));
+  const generatedContextText = normalizeSearchText(input.generatedContextText ?? '');
+  const materialText = [sourceMaterialText, generatedContextText].filter(Boolean).join('\n');
   const fields = productionMaterialPack.material_template.required_fields;
   const availableFields = fields.filter(fieldId =>
-    hasFieldEvidence(fieldId, productionMaterialPack.video_type, materialText, input.materialPack, input.sourceDomain),
+    hasFieldEvidence(
+      fieldId,
+      productionMaterialPack.video_type,
+      materialText,
+      input.materialPack,
+      input.sourceDomain,
+      sourceMaterialText,
+    ),
   );
   const missingFields = fields
     .filter(fieldId => !availableFields.includes(fieldId))
@@ -273,6 +284,19 @@ export function buildProductionMaterialReadinessReport(input: {
       .slice(0, 8),
     ...(input.domainPackContext ? { domain_pack_context: input.domainPackContext } : {}),
   };
+}
+
+export function refreshStoryProductionMaterialReadiness(
+  story: StoryGenerateResult,
+): ProductionMaterialReadinessReport | undefined {
+  return buildProductionMaterialReadinessReport({
+    productionMaterialPack: story.production_material_pack,
+    materialPack: story.material_pack,
+    contextText: story.original_user_query,
+    generatedContextText: generatedStoryProductionMaterialText(story),
+    sourceDomain: story.sourceDomain,
+    domainPackContext: story.production_material_readiness?.domain_pack_context,
+  });
 }
 
 export function getProductionMaterialFieldSpec(
@@ -386,7 +410,12 @@ function hasFieldEvidence(
   materialText: string,
   materialPack: MaterialPack | undefined,
   sourceDomain?: string,
+  sourceMaterialText = materialText,
 ): boolean {
+  if (EXTERNAL_EVIDENCE_FIELD_IDS.has(fieldId)) {
+    const externalSpec = getProductionMaterialFieldSpec(fieldId, sourceDomain);
+    return externalSpec?.keywords.some(keyword => sourceMaterialText.includes(keyword.toLowerCase())) ?? false;
+  }
   if (fieldId === 'project_name') return Boolean(materialPack?.primary_materials.length || materialPack?.brand_or_institution_profile?.name || materialPack?.source_work_profile?.title);
   if (fieldId === 'confirmed_status_and_sources') return Boolean(materialPack?.verified_facts.length || materialPack?.uncertain_claims.length || /来源|出处|核实|source|verified/.test(materialText));
   if (fieldId === 'production_risks') return Boolean(materialPack?.uncertain_claims.length || materialPack?.brand_or_institution_profile?.forbidden_claims?.length || /风险|禁用|待核实|边界/.test(materialText));
@@ -398,6 +427,289 @@ function hasFieldEvidence(
   const spec = getProductionMaterialFieldSpec(fieldId, sourceDomain);
   if (!spec) return materialText.includes(fieldId.toLowerCase());
   return spec.keywords.some(keyword => materialText.includes(keyword.toLowerCase()));
+}
+
+const EXTERNAL_EVIDENCE_FIELD_IDS = new Set([
+  'official_catalog_or_resource_links',
+  'community_or_practitioner_consent',
+  'documentation_assets',
+  'interview_clip_selection',
+  'field_notes',
+  'reference_images_or_keyframes',
+  'single_shot_test',
+  'rights_and_attribution',
+  'location_permissions',
+]);
+
+function generatedStoryProductionMaterialText(story: StoryGenerateResult): string {
+  return [
+    story.title,
+    story.logline,
+    story.theme,
+    story.full_text,
+    story.credibility_note,
+    story.characters?.map(character => [
+      `人物主体与身份：${character.name}，${character.role}`,
+      character.description,
+      character.arc ? `人物变化弧：${character.arc}` : '',
+    ].filter(Boolean).join('；')).join('\n'),
+    story.protagonist_arc?.map(arc => [
+      `人物欲望与目标：${arc.starting_state}`,
+      `定义人物的选择：${arc.turning_point}`,
+      `人物变化弧：${arc.resolution}`,
+    ].join('；')).join('\n'),
+    ...story.scene_breakdown.flatMap(scene => [
+      `场景叙事目标：${scene.dramatic_function}`,
+      scene.title,
+      scene.location,
+      `日夜时段：${scene.time_of_day}`,
+      scene.plot,
+      `动作触发与关键行动：${scene.key_action}`,
+      `进入空间的人物：${scene.characters.join('、')}`,
+      scene.visual_prompt,
+      `镜头次序建议：${scene.camera_suggestion}`,
+      scene.conflict,
+      scene.dialogue_or_narration ? `对白与旁白：${scene.dialogue_or_narration}` : '',
+      scene.cultural_note,
+      scene.factual_basis ? `有据可查的行动与事实依据：${scene.factual_basis}` : '',
+      ...(scene.fictionalized_elements ?? []).map(item => `戏剧化补足区：${item}`),
+    ]),
+    ...story.gears_segments.flatMap(segment => [
+      segment.script_text,
+      segment.purpose,
+      ...(segment.visual_focus ?? []),
+      ...(segment.cultural_constraints ?? []),
+    ]),
+    story.visual_symbols?.length ? `视觉符号系统：${story.visual_symbols.join('、')}` : '',
+    story.craft_or_ritual_process,
+    story.modern_connection ? `当代连接：${story.modern_connection}` : '',
+    story.core_message ? `核心传播价值与主信息：${story.core_message}` : '',
+    story.slogan_or_key_sentence ? `总结记忆句：${story.slogan_or_key_sentence}` : '',
+    story.spatial_identity ? `空间分区与山水主体：${story.spatial_identity}` : '',
+    story.visual_route?.length ? `空间路线与镜头次序：${story.visual_route.join('；')}` : '',
+    story.time_layer ? `时代与光线变化：${story.time_layer}` : '',
+    story.atmosphere ? `意境与声音质感：${story.atmosphere}` : '',
+    story.dialogue?.flatMap(block => block.lines.map(line =>
+      `人物语言声线与对白气泡：${line.character}（${line.emotion}）：${line.text}`,
+    )).join('\n'),
+    story.argument_points?.length ? `讲解论点：${story.argument_points.join('；')}` : '',
+    story.knowledge_outline?.length ? `知识大纲：${story.knowledge_outline.join('；')}` : '',
+    story.source_quotes?.length ? `来源提示或引用线索：${story.source_quotes.join('；')}` : '',
+    ...generatedCharacterProductionEvidence(story),
+    ...generatedTrainingProductionEvidence(story),
+    ...generatedChildrenProductionEvidence(story),
+    ...generatedComicProductionEvidence(story),
+    ...generatedHistoricalProductionEvidence(story),
+    ...generatedSceneShortProductionEvidence(story),
+  ].filter((item): item is string => Boolean(item)).join('\n');
+}
+
+function generatedCharacterProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'character_story') return [];
+
+  const characterText = story.characters?.map(character =>
+    `${character.name} ${character.role} ${character.description} ${character.arc ?? ''}`,
+  ).join('\n') ?? '';
+  const storyAndCharacterText = `${story.full_text}\n${characterText}`;
+  const hasLifeStageWindow = /少年|青年|中年|晚年|暮年|幼年|童年|初任|新任|刚到.{0,12}任|任.{0,12}期间|生涯.{0,8}阶段/.test(
+    storyAndCharacterText,
+  );
+  const hasRelationshipMap = (story.characters?.length ?? 0) >= 2
+    && story.scene_breakdown.some(scene => scene.characters.length >= 2);
+  const hasDialogueVoice = story.scene_breakdown.some(scene =>
+    Boolean(scene.dialogue_or_narration?.trim()) && scene.characters.length > 0,
+  ) || Boolean(story.dialogue?.some(block => block.lines.length > 0));
+  const hasFactualLifeBoundary = /来源|依据|知识条目|史料/.test(story.credibility_note)
+    && /创作|影视化|虚构|补位|调度/.test(story.credibility_note)
+    && story.scene_breakdown.some(scene => Boolean(scene.factual_basis?.trim()));
+  const endingScene = story.scene_breakdown.at(-1);
+  const hasEndingLegacy = Boolean(
+    endingScene?.plot.trim()
+    && /结尾|收束|余韵|后果|落点/.test(endingScene.dramatic_function),
+  ) || Boolean(story.protagonist_arc?.some(arc => arc.resolution.trim()));
+
+  return [
+    hasLifeStageWindow ? `人生阶段窗口：${characterText || story.full_text}` : '',
+    hasRelationshipMap
+      ? `人物关系图：${story.characters?.map(character => `${character.name}（${character.role}）`).join('、')}`
+      : '',
+    hasDialogueVoice ? '人物语言声线：对白或旁白已绑定出场人物与具体场景。' : '',
+    hasFactualLifeBoundary ? '生平边界：事实依据与影视化补足已逐场分层。' : '',
+    hasEndingLegacy ? `结尾影响与余韵：${endingScene?.plot ?? story.protagonist_arc?.at(-1)?.resolution}` : '',
+  ];
+}
+
+function generatedTrainingProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'education_training') return [];
+
+  const conceptScene = story.scene_breakdown.find((scene) => {
+    if (!/知识讲授|概念讲解|分步讲解/.test(scene.dramatic_function)) return false;
+    const plot = scene.plot.trim();
+    if (plot.length < 24) return false;
+    const hasExplicitDefinition = /是指|定义为|指的是|意味着/.test(plot);
+    const hasOrderedDistinction = /第一|首先/.test(plot)
+      && /第二|其次|再/.test(plot)
+      && /区分|分清|属于|对应|分类/.test(`${plot}${scene.key_action}`);
+    return hasExplicitDefinition || hasOrderedDistinction;
+  });
+  const assessmentScene = story.scene_breakdown.find((scene) => {
+    if (!/检验|评估|掌握检查/.test(scene.dramatic_function)) return false;
+    const taskText = `${scene.plot}\n${scene.key_action}`;
+    return scene.plot.trim().length >= 24
+      && /能否|指出|判断|选择|回答|完成|说明/.test(taskText)
+      && /分别|属于|答案|反馈|依据|标准|正确|关系/.test(taskText);
+  });
+
+  return [
+    conceptScene ? `概念定义：${conceptScene.plot}` : '',
+    assessmentScene ? `掌握检查：${assessmentScene.plot}；${assessmentScene.key_action}` : '',
+  ];
+}
+
+function generatedChildrenProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'children_story') return [];
+
+  const concreteExampleScene = story.scene_breakdown.find((scene) => {
+    if (!/学习成长|探索发现|做出选择|勇敢选择/.test(scene.dramatic_function)) return false;
+    const actionText = `${scene.plot}\n${scene.key_action}`;
+    const hasObservableAction = /看见|观察|听|核对|捡|捆|送|放下|帮助|道歉|尝试|选择|判断/.test(actionText);
+    const hasActionSequence = /先.{0,40}再|一根根|一起.{0,20}(完成|面对|送|放|走)|最后/.test(actionText);
+    return scene.plot.trim().length >= 36
+      && scene.key_action.trim().length >= 8
+      && hasObservableAction
+      && hasActionSequence;
+  });
+  const endingScene = story.scene_breakdown.at(-1);
+  const endingText = endingScene ? `${endingScene.plot}\n${endingScene.key_action}` : '';
+  const hasReusableBehaviorRecap = Boolean(
+    endingScene
+    && /温暖结尾|成长收获|情绪安放/.test(endingScene.dramatic_function)
+    && endingScene.plot.trim().length >= 32
+    && /提醒孩子|也记住|学会|明白|可以练习/.test(endingText)
+    && /先.{0,30}再|要看.{0,30}(行动|真心)|需要.{0,30}(勇敢|判断|合作|倾听)|可以练习/.test(endingText),
+  );
+
+  return [
+    concreteExampleScene
+      ? `具体例子：${concreteExampleScene.plot}；${concreteExampleScene.key_action}`
+      : '',
+    hasReusableBehaviorRecap
+      ? `家长/教师提示：可用结尾的行为复盘引导孩子讨论——${endingScene?.plot}`
+      : '',
+  ];
+}
+
+function generatedComicProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'ai_comic_drama') return [];
+
+  const layeredSegment = story.gears_segments.find((segment) => {
+    const scene = story.scene_breakdown.find(item => item.scene_id === segment.source_scene_id);
+    if (!scene) return false;
+    const promptText = [
+      scene.visual_prompt,
+      scene.camera_suggestion,
+      segment.segment_prompt_hint,
+      ...(segment.visual_focus ?? []),
+    ].filter(Boolean).join('\n');
+    const hasSubjectAndAction = scene.characters.length > 0
+      && scene.key_action.trim().length >= 8
+      && /主体|人物|动作|手|眼|视线|转身|停|放下|护住|逼近|对峙/.test(promptText);
+    const hasSpatialComposition = /前景|中景|后景|构图|同框|空间|位置|左|右|远近/.test(promptText);
+    const hasCameraLayer = /特写|近景|中景|全景|远景|对切|跟拍|推进|拉远|俯拍|仰拍|镜头/.test(promptText);
+    const hasLightOrTime = /光线|雷光|侧光|逆光|晨光|暖光|冷光|冷蓝|雨夜|白天|黄昏|夜晚|清晨/.test(promptText);
+    return hasSubjectAndAction && hasSpatialComposition && hasCameraLayer && hasLightOrTime;
+  });
+
+  return layeredSegment
+    ? [`镜头提示词分层：场景与 GEARS 已对齐主体动作、空间构图、镜头层和光线层；${layeredSegment.segment_prompt_hint}`]
+    : [];
+}
+
+function generatedHistoricalProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'historical_drama') return [];
+
+  const datedScenes = story.scene_breakdown.filter(scene =>
+    /(?:18|19|20)\d{2}年|\d{1,2}月\d{1,2}日/.test(`${scene.time_of_day}\n${scene.plot}`),
+  );
+  const sourcedScenes = story.scene_breakdown.filter(scene =>
+    Boolean(scene.factual_basis?.trim()) && /依据|条目|记载|用户素材|知识/.test(scene.factual_basis ?? ''),
+  );
+  const boundedScenes = story.scene_breakdown.filter(scene =>
+    Boolean(scene.fictionalized_elements?.some(item =>
+      /再现|影视化|合成|不作为|不替代|不声称|不虚构/.test(item),
+    )),
+  );
+  const chainText = story.scene_breakdown.map(scene => `${scene.plot}\n${scene.key_action}\n${scene.conflict ?? ''}`).join('\n');
+  const distinctLocations = new Set(story.scene_breakdown.map(scene => scene.location.trim()).filter(Boolean));
+  const hasCausalProgression = distinctLocations.size >= 2
+    && /(因为|由于|导致|迫使|才有|才能|获得.{0,20}后|随后|由此)/.test(chainText);
+  const hasVisibleStakes = story.scene_breakdown.some(scene =>
+    /风险|伤亡|失败|搜捕|暴露|封锁|无法|不能/.test(`${scene.plot}\n${scene.conflict ?? ''}`)
+    && /选择|决定|等待|提前|承担|必须/.test(`${scene.plot}\n${scene.key_action}\n${scene.conflict ?? ''}`),
+  );
+  const factionText = story.scene_breakdown.flatMap(scene => scene.characters).join('、') + chainText;
+  const factionSignals = ['新军士兵', '起义军', '普通士兵', '清军', '守军', '军官']
+    .filter(label => factionText.includes(label));
+  const hasFactionPositions = new Set(factionSignals).size >= 3
+    && /阻拦|封锁|搜捕|对峙|逼近|推进/.test(chainText);
+  const hasEvidenceHierarchy = sourcedScenes.length >= 2
+    && boundedScenes.length >= 2
+    && /来源|依据|知识条目/.test(story.credibility_note)
+    && /创作|影视化|补位|再现/.test(story.credibility_note);
+  const hasHistoricalChain = datedScenes.length >= 2
+    && sourcedScenes.length >= 2
+    && boundedScenes.length >= 2
+    && hasCausalProgression
+    && hasVisibleStakes;
+  const eventAnchor = datedScenes[0];
+  const turningScene = story.scene_breakdown.find(scene =>
+    /关键行动|高潮|冲突升级/.test(scene.dramatic_function)
+    && /推开|攻占|搬出|分发|冲开|发动|推进/.test(`${scene.plot}\n${scene.key_action}`),
+  );
+
+  if (!hasHistoricalChain || !eventAnchor || !turningScene) return [];
+  return [
+    `历史事件锚点：${story.title}；${eventAnchor.plot}`,
+    `历史时间窗口：${datedScenes.map(scene => scene.time_of_day).join('—')}`,
+    `历史利害与风险：${story.scene_breakdown.find(scene => scene.conflict)?.conflict ?? eventAnchor.plot}`,
+    hasFactionPositions ? `各方立场：${[...new Set(factionSignals)].join('、')}围绕搜捕、封锁与推进形成行动对撞。` : '',
+    `事件因果链：${story.scene_breakdown.map(scene => scene.key_action).join(' → ')}`,
+    hasEvidenceHierarchy ? '史料证据层级：逐场区分知识条目/用户素材依据与合成再现、影视化补足。' : '',
+    `有据行动：${sourcedScenes.map(scene => scene.factual_basis).join('；')}`,
+    `冲突转折点：${turningScene.plot}；${turningScene.key_action}`,
+  ];
+}
+
+function generatedSceneShortProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'scene_short') return [];
+
+  const scenes = story.scene_breakdown;
+  const observerNames = scenes.flatMap(scene => scene.characters).filter(Boolean);
+  const observer = observerNames.find(name =>
+    scenes.filter(scene => scene.characters.includes(name)).length >= Math.min(3, scenes.length),
+  );
+  const distinctLocations = [...new Set(scenes.map(scene => scene.location.trim()).filter(Boolean))];
+  const routeText = scenes.map(scene => `${scene.plot}\n${scene.key_action}\n${scene.camera_suggestion}`).join('\n');
+  const revealScene = scenes.find(scene =>
+    /揭示|显现|打开|推开|转过|进入视野/.test(`${scene.plot}\n${scene.key_action}`)
+    && /前景|后景|由暗到明|遮挡|入口|门槛/.test(scene.visual_prompt),
+  );
+  const hasMovementRoute = Boolean(observer)
+    && distinctLocations.length >= 2
+    && /从.{1,30}(进入|走向|经过)|沿.{1,30}(前行|走到|返回)|由外向内/.test(routeText);
+  const hasSpatialContinuity = scenes.some(scene =>
+    /原路线返回|回程/.test(`${scene.plot}\n${scene.key_action}`)
+    && /保持同侧|同一方向|不跨轴|方向锚点/.test(`${scene.visual_prompt}\n${scene.camera_suggestion}`),
+  );
+
+  return [
+    observer ? `进入人物：${observer}作为跨场观察者进入空间。` : '',
+    hasMovementRoute
+      ? `人物运动路线：${scenes.map(scene => `${scene.location}（${scene.key_action}）`).join(' → ')}`
+      : '',
+    revealScene ? `空间揭示：${revealScene.plot}；${revealScene.visual_prompt}` : '',
+    hasSpatialContinuity ? '空间连续：人物沿原路线回程，方向锚点保持同侧且镜头不跨轴。' : '',
+  ];
 }
 
 function materialPackHasPurpose(materialPack: MaterialPack | undefined, purpose: string): boolean {

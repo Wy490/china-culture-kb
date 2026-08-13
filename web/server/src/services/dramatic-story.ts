@@ -14,6 +14,7 @@ import type {
   KnowledgePack,
   KnowledgePackEntry,
   StoryCharacter,
+  StoryAdaptationAnalysis,
   ActBeat,
   ProtagonistArc,
 } from '@shared/types.js';
@@ -525,6 +526,7 @@ interface DramaticContentInput {
   tone: string;
   knowledgePack?: KnowledgePack;
   originalUserQuery?: string;
+  adaptationAnalysis?: StoryAdaptationAnalysis;
 }
 
 export function generateDramaticContent(input: DramaticContentInput): {
@@ -540,7 +542,17 @@ export function generateDramaticContent(input: DramaticContentInput): {
   act_structure: ActBeat[];
   protagonist_arc: ProtagonistArc[];
 } {
-  const { entry, centralEvent, videoType, presentationStyle, targetDuration, tone, knowledgePack, originalUserQuery } = input;
+  const {
+    entry,
+    centralEvent,
+    videoType,
+    presentationStyle,
+    targetDuration,
+    tone,
+    knowledgePack,
+    originalUserQuery,
+    adaptationAnalysis,
+  } = input;
 
   const structure = getDramaticStructure(videoType);
   const totalSeconds = DURATION_SEC_MAP[targetDuration] ?? 60;
@@ -593,10 +605,29 @@ export function generateDramaticContent(input: DramaticContentInput): {
     const requestedSceneDuration = Math.round(totalSeconds / requestedGrowthArc.length);
     for (const scene of requestedGrowthArc) scene.duration_sec = requestedSceneDuration;
   }
-  const scenes: StoryScene[] = requestedGrowthArc ?? [];
+  const requestedAdaptationArc = !requestedGrowthArc && adaptationAnalysis && originalUserQuery
+    ? buildLocalAdaptationArc({
+        source: originalUserQuery,
+        analysis: adaptationAnalysis,
+        templates,
+        entry,
+        centralEvent,
+        videoType,
+        perSceneDuration,
+      })
+    : undefined;
+  const requestedLegendArc = !requestedGrowthArc && !requestedAdaptationArc
+    ? buildLiuHaiLegendArc({
+        entry,
+        centralEvent,
+        videoType,
+        perSceneDuration,
+      })
+    : undefined;
+  const scenes: StoryScene[] = requestedGrowthArc ?? requestedAdaptationArc ?? requestedLegendArc ?? [];
   const fullTextParts: string[] = scenes.map(scene => scene.plot);
 
-  if (!requestedGrowthArc) {
+  if (!requestedGrowthArc && !requestedAdaptationArc && !requestedLegendArc) {
     for (let i = 0; i < templates.length; i++) {
       const template = templates[i];
       const scene = generateSceneContent(
@@ -631,11 +662,19 @@ export function generateDramaticContent(input: DramaticContentInput): {
   const gearsSegments = generateDramaticGearsSegments(scenes, videoType, presentationStyle);
 
   // Build characters
-  const arcCharacterNames = requestedGrowthArc
-    ? [...new Set(requestedGrowthArc.flatMap(scene => scene.characters))]
+  const adaptationUsesSceneCharacters = Boolean(requestedAdaptationArc && [
+    'historical_drama',
+    'legend_story',
+  ].includes(videoType));
+  const arcCharacterNames = requestedGrowthArc || requestedLegendArc || adaptationUsesSceneCharacters
+    ? [...new Set((requestedGrowthArc ?? requestedLegendArc ?? requestedAdaptationArc ?? []).flatMap(scene => scene.characters))]
     : characterNames;
   const characters = requestedGrowthArc
     ? buildMaoGrowthArcCharacters(arcCharacterNames)
+    : adaptationUsesSceneCharacters
+      ? buildAdaptationArcCharacters(arcCharacterNames, videoType)
+    : videoType === 'scene_short'
+      ? buildSceneShortCharacters(entry)
     : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
       ? []
     : buildCharacters(arcCharacterNames, protagonist, entry, centralEvent);
@@ -650,6 +689,12 @@ export function generateDramaticContent(input: DramaticContentInput): {
         turning_point: '游学、新民学会和农民夜校让他从个人求索转向组织行动与人民实践。',
         resolution: '五县考察使他把乡土观察转化为对农民革命力量的判断，理想在实践中形成。',
       }]
+    : requestedAdaptationArc && videoType === 'historical_drama' && /武昌起义/.test(entry.name)
+      ? [{
+          starting_state: '起义计划泄露，普通新军士兵面临继续等待即被搜捕、立即行动则可能失败的压力。',
+          turning_point: '士兵选择抢在搜捕前发动，并通过争夺楚望台军械库把决定变成集体行动。',
+          resolution: '普通士兵的行动从营房扩展到武昌城，并成为更广泛革命连锁反应的重要开端。',
+        }]
     : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
       ? []
     : buildProtagonistArc(protagonist, scenes, centralEvent, entry);
@@ -671,7 +716,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
 
   // Add source_entries to scenes and gears segments
   for (const scene of scenes) {
-    scene.source_entries = [entry.name];
+    scene.source_entries = [...new Set([entry.name, ...(scene.source_entries ?? [])])];
     if (scene.plot.includes(centralEvent)) scene.factual_basis = `基于${entry.name}素材条目中"${centralEvent}"相关内容`;
   }
   for (const seg of gearsSegments) {
@@ -710,6 +755,379 @@ function adjustTemplates(templates: SceneTemplate[], targetCount: number): Scene
     for (let i = 0; i < result.length; i++) result[i].position = i;
   }
   return result;
+}
+
+function buildLocalAdaptationArc(input: {
+  source: string;
+  analysis: StoryAdaptationAnalysis;
+  templates: SceneTemplate[];
+  entry: EntryDetail;
+  centralEvent: string;
+  videoType: VideoType;
+  perSceneDuration: number;
+}): StoryScene[] | undefined {
+  if (!DRAMATIC_VIDEO_TYPES.includes(input.videoType)) return undefined;
+  const sourceUnits = input.source
+    .split(/\n{2,}|(?<=[。！？!?；;])\s*/)
+    .map(unit => unit.trim())
+    .filter(unit => unit.length >= 8);
+  if (sourceUnits.length < 2) return undefined;
+
+  const names = [...input.analysis.core_characters]
+    .sort((left, right) => input.source.indexOf(left) - input.source.indexOf(right));
+  const fallbackLocation = narrativePlace(input.entry, input.centralEvent, input.videoType);
+  let previousLocation = fallbackLocation;
+  const unitLocations = sourceUnits.map(unit => {
+    const explicit = unit.match(/南安军衙|楚望台军械库|湖广总督署|武昌城|山路|竹林|家门口|城门|街巷|院子|屋内|江畔|村口/)?.[0];
+    if (explicit) previousLocation = explicit;
+    return previousLocation;
+  });
+  const endingTheme = adaptationEndingTheme(input.videoType);
+
+  const scenes = input.templates.map((template, index) => {
+    const sourceIndex = Math.min(
+      sourceUnits.length - 1,
+      Math.floor(index * sourceUnits.length / input.templates.length),
+    );
+    const unit = sourceUnits[sourceIndex];
+    const location = unitLocations[sourceIndex] ?? fallbackLocation;
+    const sceneNames = names.filter(name => unit.includes(name));
+    const activeNames = sceneNames.length > 0 ? sceneNames : names.slice(0, 2);
+    const boundary = input.videoType === 'legend_story'
+      ? '本场按用户原作改编，并保留民间传说边界，不写成可考史实。'
+      : '本场主线、人物与行动来自用户提供的改编素材；具体镜头调度为有限创作组织。';
+    const isEndingScene = index === input.templates.length - 1;
+    const visualAction = sourceIndex === 0
+      ? '镜头从环境细节推进到人物的第一个异常发现，动作与关键物件同框。'
+      : isEndingScene
+        ? '镜头跟住选择后的行动与可见后果，最后停在尚未消失的情绪余波。'
+        : '镜头沿人物移动、对峙与关键物件推进，让阻力和选择在同一空间发生。';
+    const thematicLanding = isEndingScene ? endingTheme : '';
+    return {
+      scene_id: index + 1,
+      title: buildSceneTitle(template, input.centralEvent, index),
+      duration_sec: input.perSceneDuration,
+      location,
+      time_of_day: /雨夜|夜里|夜晚|雷光/.test(unit) ? '雨夜' : determineTimeOfDay(index, input.centralEvent, sourceUnits),
+      dramatic_function: template.function_label,
+      plot: `${unit}${visualAction}${thematicLanding}`,
+      key_action: `把“${unit.slice(0, 32)}”落实为连续可见行动`,
+      characters: activeNames,
+      visual_prompt: `${location}，${activeNames.join('、') || '事件主体'}，关键物件与动作前后连续，环境光线明确，${visualAction}`,
+      camera_suggestion: sourceIndex === 0 ? '环境近景切人物反应，再跟随关键动作推进' : '中近景跟拍动作，关键物件特写承接前后镜头',
+      cultural_note: boundary,
+      conflict: /逼|催|怀疑|劝|危机|搜捕|考验|失去|误会/.test(unit)
+        ? `原作中的现实阻力在本场逼近，人物必须以行动回应：${unit.slice(0, 45)}`
+        : `人物正在推进原作主线，并承担上一行动产生的后果。`,
+      dialogue_or_narration: `旁白：${unit}`,
+      source_entries: [input.entry.name, '用户提供改编素材'],
+      factual_basis: '本场主线来自用户提供改编素材；与知识库事实边界分别记录。',
+      fictionalized_elements: ['镜头顺序、景别与场内调度为改编所需的有限影视化组织。'],
+    };
+  });
+  if (input.videoType === 'historical_drama') {
+    const historicalArc = enhanceWuchangUprisingAdaptationScenes(scenes, input);
+    if (historicalArc) return historicalArc;
+  }
+  return input.videoType === 'legend_story'
+    ? enhanceLegendAdaptationScenes(scenes, input)
+    : scenes;
+}
+
+function enhanceWuchangUprisingAdaptationScenes(
+  scenes: StoryScene[],
+  input: {
+    source: string;
+    entry: EntryDetail;
+    perSceneDuration: number;
+  },
+): StoryScene[] | undefined {
+  const sourceText = [input.source, input.entry.name, input.entry.story].join('\n');
+  if (!/武昌起义/.test(sourceText) || !/楚望台军械库/.test(sourceText) || scenes.length !== 6) return undefined;
+
+  const sourceEntries = [input.entry.name, '用户提供改编素材'];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+  const sharedBoundary = '主线和人物群体来自用户素材；10月9日至10日、搜捕、楚望台军械库与湖广总督署依据知识条目。个体走位和无名士兵反应为有限合成再现。';
+
+  return [
+    makeScene({
+      title: '泄密后的夜',
+      location: '武昌新军营房',
+      time_of_day: '10月9日深夜',
+      dramatic_function: '时代危机',
+      plot: '1911年10月9日，起义计划因汉口俄租界的意外爆炸泄露。搜捕名单和三名革命党人遇害的消息传进武昌新军营房，军靴声沿街逼近；士兵们知道，原定计划已经失去等待的时间。',
+      key_action: '新军士兵传递泄密与搜捕消息，关上营门并检查枪械',
+      characters: ['新军士兵'],
+      visual_prompt: '1911年10月9日武昌新军营房深夜，搜捕名单、军靴、营门、枪架与急促传递消息的新军士兵，冷色低光',
+      camera_suggestion: '从搜捕名单特写切到街外军靴，再推入营房内彼此传递消息的士兵群像',
+      cultural_note: sharedBoundary,
+      conflict: '清军搜捕正在逼近，继续等待会让人员和计划同时暴露',
+      dialogue_or_narration: '旁白：计划一旦泄露，原来的时间表就成了危险。',
+      factual_basis: '条目记载10月9日意外爆炸导致计划泄露，清军随即搜捕并处死三名革命党人。',
+      fictionalized_elements: ['搜捕名单进入营房和具体传递动作是合成再现，不作为原始记录。'],
+    }, 0),
+    makeScene({
+      title: '提前发动',
+      location: '武昌新军营房',
+      time_of_day: '10月10日傍晚',
+      dramatic_function: '人物卷入',
+      plot: '10月10日傍晚，新军士兵围住铺开的武昌地图：若按原计划等待，清军可能先封营搜捕；若立即发动，他们就要在准备不足时承担伤亡和失败。领头士兵收起地图、推开营门，众人选择抢在搜捕前行动。',
+      key_action: '新军士兵收起地图、推开营门，选择提前发动并承担失败风险',
+      characters: ['新军士兵'],
+      visual_prompt: '1911年10月10日傍晚，武昌新军营房，武昌地图、营门、枪械，新军士兵围桌后收图推门，暖灯与门外夜色对比',
+      camera_suggestion: '俯拍地图与封锁位置，切士兵互看，跟拍收图、背枪、推门三个连续动作',
+      cultural_note: sharedBoundary,
+      conflict: '等待会遭搜捕瓦解 vs 准备不足仍提前发动并承担伤亡风险',
+      dialogue_or_narration: '无名士兵低声说：“再等，等来的就是搜捕。”这句对白为影视化补足。',
+      factual_basis: '依据用户素材“决定抢在清军搜捕前发动”及条目所载10月10日晚起义爆发。',
+      fictionalized_elements: ['围图决策、推门动作与无名士兵对白为合成场景，不替代真实组织决策。'],
+    }, 1),
+    makeScene({
+      title: '营门枪响',
+      location: '工程第八营营门',
+      time_of_day: '10月10日晚',
+      dramatic_function: '冲突升级',
+      plot: '10月10日晚，阻拦起义的军官封住营门。前排士兵停了一瞬，后队已被街外搜捕声逼近；枪声打破僵持，全营随即响应。镜头不指定“唯一第一枪”，只记录基层士兵从迟疑转为集体行动。',
+      key_action: '前排士兵冲开营门，枪声后全营持枪响应',
+      characters: ['新军士兵', '起义军'],
+      visual_prompt: '1911年10月10日晚工程营营门，封门军官、持枪新军、街外搜捕火把，枪声后营房人群涌出，克制历史再现',
+      camera_suggestion: '营门对峙中景，切停住的手和逼近火把，枪响后跟拍队伍冲出',
+      cultural_note: '条目记载金兆龙、程定国等基层士兵率先行动，但具体经过有回忆差异；本场不宣称唯一第一枪人物。',
+      conflict: '军官封门阻拦，街外搜捕逼近，士兵必须把决定变成不可逆的行动',
+      dialogue_or_narration: '旁白：这一刻，计划不再写在纸上，而由普通士兵亲手推进。',
+      factual_basis: '依据条目关于10月10日晚工程营士兵率先行动、全营响应的记载。',
+      fictionalized_elements: ['对峙时长、火把位置和人物反应为有限再现；不虚构唯一第一枪归属。'],
+    }, 2),
+    makeScene({
+      title: '争夺军械库',
+      location: '楚望台军械库',
+      time_of_day: '10月10日晚',
+      dramatic_function: '关键行动',
+      plot: '起义军冲到楚望台军械库，守军把库门合到一半。前队顶住门板，后队搬开障碍，士兵推开库门、接力搬出枪械和弹药箱；获得弹药后，队伍才有能力继续向湖广总督署推进。',
+      key_action: '起义军顶门、推开库门并接力搬出枪械与弹药箱',
+      characters: ['起义军', '普通士兵'],
+      visual_prompt: '楚望台军械库夜晚，半合库门、木障碍、枪架、弹药箱，起义军顶门推门并接力搬运，火光与烟尘',
+      camera_suggestion: '低机位拍顶门脚步，切门闩和弹药箱特写，再跟拍武器递出形成行动链',
+      cultural_note: sharedBoundary,
+      conflict: '守军封锁军械库，起义军若拿不到弹药就无法把行动推进到总督署',
+      dialogue_or_narration: '旁白：军械库不是背景，它决定这场起义能否从营房走向全城。',
+      factual_basis: '用户素材与知识条目均记载起义军攻占楚望台军械库、获得弹药后攻向湖广总督署。',
+      fictionalized_elements: ['顶门与接力搬箱的具体分工为依据已知行动所作的影视化组织。'],
+    }, 3),
+    makeScene({
+      title: '从军械库到总督署',
+      location: '楚望台至湖广总督署街路',
+      time_of_day: '10月10日深夜',
+      dramatic_function: '高潮',
+      plot: '从楚望台搬出的枪械被分到各队，普通士兵沿街传令，新的队伍从不同营门汇入。因为军械库被攻占，起义军得以向湖广总督署推进；总督署方向的守军动摇，武昌城内出现第一轮连锁响应。',
+      key_action: '普通士兵分发军械、沿街传令，汇合队伍向湖广总督署推进',
+      characters: ['普通士兵', '起义军'],
+      visual_prompt: '武昌夜街，楚望台弹药箱、分发枪械的普通士兵、奔跑传令者、汇入队伍与远处湖广总督署门楼，多线汇合构图',
+      camera_suggestion: '从弹药递手特写开始，跟随传令者穿街，拉远看多支队伍汇向总督署',
+      cultural_note: sharedBoundary,
+      conflict: '队伍必须在清军重新组织前把军械优势转化为对总督署的推进',
+      dialogue_or_narration: '旁白：一箱弹药被递出，一队人随之加入；局势由一个营扩展到一座城。',
+      factual_basis: '依据条目“攻占楚望台军械库获得弹药后攻入湖广总督署”的事件因果。',
+      fictionalized_elements: ['具体传令路线和汇合调度为合成再现，不声称为唯一行军路线。'],
+    }, 4),
+    makeScene({
+      title: '普通士兵改变局势',
+      location: '武昌城与起义路线图',
+      time_of_day: '10月11日清晨',
+      dramatic_function: '历史余响',
+      plot: '清晨，普通士兵把新的旗帜挂上武昌城头，街巷里的枪声逐渐停下。画面转向起义路线图：武昌局势改变后，汉阳、汉口相继响应，随后多省宣布独立。片尾明确，这不是某一个人的单独功劳，而是基层士兵共同选择与担当引发的连锁转折。',
+      key_action: '普通士兵登上城头挂旗，地图依次点亮汉阳、汉口和多省响应',
+      characters: ['普通士兵', '起义军'],
+      visual_prompt: '1911年10月11日武昌清晨，普通士兵登城挂旗，街巷烟尘渐散，画面转为武汉三镇与多省响应地图，克制历史收束',
+      camera_suggestion: '跟拍登城脚步和挂旗动作，转入路线地图逐点亮起，最后回到士兵疲惫面孔',
+      cultural_note: '多省响应与帝制终结是复杂历史进程，片中只说明武昌起义构成重要开端，不作单因归纳。',
+      conflict: '起义行动已经改变武昌，但其后果必须放回更广泛的革命进程理解',
+      dialogue_or_narration: '旁白：普通人的行动汇入时代，但时代转折从来不是一个动作、一个人就能独自完成。',
+      factual_basis: '条目记载武昌起义后武汉三镇光复，并在两个月内引发多省独立的连锁反应。',
+      fictionalized_elements: ['城头挂旗的具体人物为群像化再现；地图点亮为信息可视化。'],
+    }, 5),
+  ];
+}
+
+function enhanceLegendAdaptationScenes(
+  scenes: StoryScene[],
+  input: {
+    source: string;
+    entry: EntryDetail;
+  },
+): StoryScene[] {
+  const sourceText = [input.source, input.entry.name, input.entry.keywords.join(' ')].join('\n');
+  if (!/刘海/.test(sourceText) || !/胡大姐|狐仙/.test(sourceText) || scenes.length < 5) return scenes;
+
+  const [opening, supernatural, trial, consequence, ending] = scenes;
+  opening.plot = `${opening.plot}刘海肩上的柴担和胡大姐手里的花篮第一次同框，成为这一路反复出现的传说意象。`;
+  opening.key_action = '刘海扶稳柴担，与提花篮的胡大姐在山路相遇';
+  opening.visual_prompt = `${opening.location}，刘海肩背柴担，胡大姐手提花篮，山风掀起披帛，两件道具同框建立传说意象。`;
+
+  supernatural.plot = `${supernatural.plot}花篮披帛在风里扬起，地面短暂掠过狐影；乡邻正因这个神异征兆指认胡大姐，神异身份直接把两人推向分离。`;
+  supernatural.key_action = '花篮披帛扬起狐影，乡邻据此逼迫两人分开';
+  supernatural.characters = [...new Set(['刘海', '胡大姐', ...supernatural.characters])];
+  supernatural.visual_prompt = `${supernatural.location}，花篮、披帛、狐影与乡邻指认同框，刘海和胡大姐被人群隔开。`;
+  supernatural.conflict = '狐影显露神异身份，乡邻的怀疑从传闻变成逼迫两人分开的现实压力。';
+  supernatural.fictionalized_elements = [
+    ...(supernatural.fictionalized_elements ?? []),
+    '花篮披帛映出狐影是把用户素材“神异力量”可视化的象征性改编。',
+  ];
+
+  trial.plot = `${trial.plot}他从地上拾起两人初遇时的柴绳，拒绝随乡邻离开，转身沿花篮留下的痕迹寻找她；这个选择意味着他要承担被乡邻排斥、再次面对神异危险的代价。`;
+  trial.key_action = '刘海拾起柴绳，拒绝随乡邻离开，回头寻找胡大姐';
+  trial.characters = [...new Set(['刘海', '乡邻', ...trial.characters])];
+  trial.visual_prompt = `${trial.location}，刘海从人群脚边拾起柴绳，转身逆着乡邻离开的方向追向花篮痕迹。`;
+  trial.conflict = '随乡邻离开即可避开神异风险 vs 相信亲眼所见并承担排斥代价回头寻找胡大姐。';
+
+  consequence.plot = `${consequence.plot}刘海把柴绳一端递给胡大姐，两人共同抬起柴担走回山路；乡邻因此停下追赶，原作中的“共同通过考验”有了可见结果。`;
+  consequence.key_action = '刘海与胡大姐共同握住柴绳、抬起柴担，让追赶的乡邻停步';
+  consequence.visual_prompt = `${consequence.location}，柴绳从刘海一人手中交到两人手中，柴担被共同抬起，乡邻停在远处。`;
+  consequence.conflict = '分离后的两人必须共同承担，才能把选择变成可见结果。';
+
+  ending.location = '长沙花鼓戏舞台';
+  ending.plot = `${ending.plot}多年后的花鼓戏台上，演员带着同样的柴担和花篮复演这次回头与并肩，观众随锣鼓和对唱节奏应和；山路上的歌声因此被一代代重讲。字幕标明：这是用户提供版本、民间传说与戏曲改编的叠合，不是可考历史。`;
+  ending.key_action = '花鼓戏演员用柴担和花篮复演选择，观众应和，字幕标明版本边界';
+  ending.characters = ['花鼓戏演员', '观众'];
+  ending.visual_prompt = '长沙花鼓戏舞台，锣鼓、柴担、花篮与水袖，演员复演回头与并肩，观众应和，舞台叠化回武陵山路。';
+  ending.camera_suggestion = '从柴担与花篮特写切至舞台群像，再叠化回山路完成意象回环';
+  ending.cultural_note = '保留用户原作“歌声留在山路上”的结局，并以知识条目所载花鼓戏传播补足流传理由；具体版本与唱词仍须另核。';
+  ending.factual_basis = '用户提供改编结局与知识条目所载长沙花鼓戏传播事实分层组合。';
+  ending.fictionalized_elements = [
+    ...(ending.fictionalized_elements ?? []),
+    '舞台与山路叠化是影视化收束，未引用未经授权的经典唱词。',
+  ];
+
+  return scenes;
+}
+
+function buildLiuHaiLegendArc(input: {
+  entry: EntryDetail;
+  centralEvent: string;
+  videoType: VideoType;
+  perSceneDuration: number;
+}): StoryScene[] | undefined {
+  if (input.videoType !== 'legend_story') return undefined;
+  const sourceText = [input.entry.name, input.entry.summary, input.entry.story, input.entry.keywords.join(' ')].join('\n');
+  if (!/刘海砍樵/.test(sourceText) || !/胡大姐|狐仙/.test(sourceText)) return undefined;
+
+  const sourceEntries = [input.entry.name];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  return [
+    makeScene({
+      title: '武陵山路初相逢',
+      location: '常德武陵山林砍樵路',
+      time_of_day: '清晨',
+      dramatic_function: '远古传说',
+      plot: '相传，武陵山路上，樵夫刘海把斧头别在腰间，俯身收紧柴担。竹林风动，提着花篮的胡大姐从溪边走来；两个人在一担木柴前第一次停步相望。',
+      key_action: '刘海收紧柴担，在山路上停步看向提花篮而来的胡大姐',
+      characters: ['刘海', '胡大姐'],
+      visual_prompt: '常德武陵山林清晨，竹林、溪水、山路，刘海身背柴担腰别斧头，胡大姐提花篮从薄雾中走来，民间传说水墨质感',
+      camera_suggestion: '从草鞋与柴担特写沿山路上移，停在两人第一次对望的中景',
+      cultural_note: '本场采用“相传”的民间传说口径；人物相遇和樵夫生活来自条目，具体走位为影视化组织。',
+      conflict: '陌生相遇打破刘海日常砍樵节奏，胡大姐的来历仍未揭开',
+      dialogue_or_narration: '旁白：武陵山里的故事，总从一条砍樵路和一次相逢讲起。',
+      factual_basis: '依据条目所载武陵樵夫刘海在砍柴途中遇见狐仙胡大姐的民间传说。',
+      fictionalized_elements: ['收紧柴担、溪边来路和初见调度是用于画面连续性的影视化创作。'],
+    }, 0),
+    makeScene({
+      title: '花篮下的狐影',
+      location: '常德武陵山林砍樵路',
+      time_of_day: '黄昏',
+      dramatic_function: '神力显现',
+      plot: '山风骤起，胡大姐抬手护住将要倾倒的柴担；花篮披帛随风扬起，溪水倒影里掠过一瞬狐影。刘海握住斧柄，却没有挥下，只盯着她扶稳木柴的双手。',
+      key_action: '胡大姐扶住倾倒的柴担显出狐影，刘海握斧停手并观察她的行动',
+      characters: ['刘海', '胡大姐'],
+      visual_prompt: '武陵山路黄昏，疾风掀起花篮披帛，柴担倾斜，胡大姐伸手扶稳，溪水倒影短暂呈狐影，刘海握住斧柄但没有挥下',
+      camera_suggestion: '柴担倾斜的快速近景切到水中狐影，再推近刘海停住的手',
+      cultural_note: '狐仙身份属于民间传说；“狐影扶柴”的显形方式是象征性影视化创作，不作地方事实。',
+      conflict: '神异身份突然显露，刘海必须在本能戒备与亲眼看见的善意之间判断',
+      dialogue_or_narration: '刘海低声问：“你究竟是谁？”胡大姐没有辩解，只先把散落的木柴重新扶稳。',
+      factual_basis: '条目记载胡大姐为狐仙化身并在砍柴途中与刘海相遇；显形动作属于传说改编层。',
+      fictionalized_elements: ['疾风、溪水狐影与扶稳柴担是为外化神异身份新增的虚构镜头。'],
+    }, 1),
+    makeScene({
+      title: '柴刀落地的选择',
+      location: '武陵山居柴门前',
+      time_of_day: '夜晚',
+      dramatic_function: '凡人考验',
+      plot: '乡邻举着火把围到柴门前，指着胡大姐在墙上的狐影，催刘海把她赶走。刘海先看见胡大姐挡在柴担前没有还手，随后放下柴刀，退到她身边；他选择相信一路亲眼见过的行动，也承担被乡邻拒斥的风险。',
+      key_action: '刘海在乡邻逼迫下放下柴刀，站到胡大姐身边并承担被排斥的代价',
+      characters: ['刘海', '胡大姐', '乡邻'],
+      visual_prompt: '武陵山居夜晚，柴门、火把、墙上狐影，乡邻逼近，胡大姐挡在柴担前，刘海把柴刀放到地上后站到她身旁',
+      camera_suggestion: '火把与狐影交叉特写，俯拍柴刀落地，再横移至并肩站立的两人',
+      cultural_note: '身份揭露与经历考验来自民间传说；乡邻围门、放下柴刀为表现凡人选择与代价的影视化虚构。',
+      conflict: '乡邻要求驱离胡大姐 vs 刘海依据亲眼所见守住自己的判断',
+      dialogue_or_narration: '刘海：“我看见的是她一次次伸手相助。若只因身份就翻脸，我先对不起自己的眼睛。”',
+      factual_basis: '依据条目“狐仙身份被揭露，经历一系列考验”的传说梗概进行有限改编。',
+      fictionalized_elements: ['乡邻围门、火把压力和放下柴刀均为明确标注的影视化虚构。'],
+    }, 2),
+    makeScene({
+      title: '并肩走回山路',
+      location: '常德武陵山林砍樵路',
+      time_of_day: '拂晓',
+      dramatic_function: '命运转折',
+      plot: '刘海放下武器后回头提起散落的柴绳，把一端递给胡大姐。胡大姐收起神异光影，两人并肩把柴担抬过人群；乡邻因此停下脚步，让出通往山路的窄道，考验第一次有了可见结果。',
+      key_action: '刘海回头拾起柴绳，与胡大姐并肩抬走柴担，让乡邻停止逼近',
+      characters: ['刘海', '胡大姐', '乡邻'],
+      visual_prompt: '武陵山居拂晓，地上柴绳与柴担，刘海回头拾绳递给胡大姐，两人并肩抬担，火把渐灭，乡邻从狭路两侧后退',
+      camera_suggestion: '跟住拾绳、递绳、抬担三个连续动作，最后拉远看人群让出山路',
+      cultural_note: '“战胜困难”的结局来自传说概述；柴绳接力与乡邻让路是把选择后果可视化的影视化改编。',
+      conflict: '身份造成的隔绝仍在，但两人用共同承担的行动改变了当下局面',
+      dialogue_or_narration: '旁白：神异没有替他们完成选择；真正改变道路的，是两个人同时握住了那根柴绳。',
+      factual_basis: '条目仅记载两人经历考验并战胜困难；本场具体结果属于民间传说的影视化展开。',
+      fictionalized_elements: ['递柴绳、共同抬担和乡邻让路是象征承诺的虚构动作设计。'],
+    }, 3),
+    makeScene({
+      title: '从山路唱到戏台',
+      location: '长沙花鼓戏舞台',
+      time_of_day: '夜晚',
+      dramatic_function: '传说永恒',
+      plot: '多年后的花鼓戏台上，演员以刘海的柴担和胡大姐的花篮重新走过相逢与选择，锣鼓一响，观众跟着熟悉的对唱节奏应和。山路故事因此被一代代重讲；字幕同时注明：这是多版本民间传说及戏曲改编，不是可考历史。',
+      key_action: '花鼓戏演员携柴担与花篮复演故事，观众应和，字幕标清传说和改编边界',
+      characters: ['花鼓戏演员', '观众'],
+      visual_prompt: '长沙花鼓戏舞台夜晚，戏台幕布、锣鼓、柴担、花篮、水袖，演员复演刘海与胡大姐相逢，观众席应和，画面叠化回武陵山路',
+      camera_suggestion: '从锣鼓与道具特写切到舞台对唱，再叠化回清晨山路完成时空闭环',
+      cultural_note: '花鼓戏《刘海砍樵》及广泛传播有条目依据；具体演出版本与唱词须另行核验和授权。',
+      conflict: '不同口述和舞台版本持续变化，创作必须在传播感染力与版本边界之间保持诚实',
+      dialogue_or_narration: '旁白：故事留下来，不只因为有狐仙，更因为凡人在压力前作出了选择。',
+      factual_basis: '依据条目关于常德武陵传说流传及长沙花鼓戏加工传播的记载。',
+      fictionalized_elements: ['舞台与山路叠化为影视化收束；未引用未经授权的经典唱词。'],
+    }, 4),
+  ];
+}
+
+function adaptationEndingTheme(videoType: VideoType): string {
+  if (videoType === 'historical_drama') {
+    return '普通人的行动汇成时代转折，也让选择背后的担当留下余味。';
+  }
+  if (videoType === 'legend_story') {
+    return '传说把这次选择留给后来的人：神异只是外壳，真心与勇敢才让故事继续流传。';
+  }
+  if (videoType === 'children_story') {
+    return '这次温和而勇敢的判断，让善良成为可以练习的成长。';
+  }
+  if (videoType === 'ai_comic_drama') {
+    return '新的脚步声逼近，但这次勇敢选择已经改变了两人的关系。';
+  }
+  return '选择产生了可见后果，也让愿意承担代价的良知留下余味。';
 }
 
 function buildRequestedMaoGrowthArc(input: {
@@ -847,6 +1265,27 @@ function buildMaoGrowthArcCharacters(characterNames: string[]): StoryCharacter[]
   }));
 }
 
+function buildAdaptationArcCharacters(characterNames: string[], videoType: VideoType): StoryCharacter[] {
+  const descriptions: Record<string, { role: string; description: string }> = videoType === 'historical_drama'
+    ? {
+        新军士兵: { role: 'protagonist_group', description: '计划泄露后在搜捕压力下选择提前发动的基层士兵群体。' },
+        起义军: { role: 'action_group', description: '从营房冲向楚望台军械库并向湖广总督署推进的行动群体。' },
+        普通士兵: { role: 'consequence_witness', description: '以分发军械、传令和汇合行动引发连锁响应的基层人物群像。' },
+      }
+    : {
+        刘海: { role: 'protagonist', description: '在神异身份与乡邻压力中依据亲眼所见作出选择的武陵樵夫。' },
+        胡大姐: { role: 'supporting', description: '用户传说改编中的神异人物，与刘海共同经历考验。' },
+        乡邻: { role: 'community_pressure', description: '以怀疑和排斥构成人物选择压力的群体。' },
+        花鼓戏演员: { role: 'transmission', description: '在结尾把山路传说转化为舞台传播的表演者群体。' },
+        观众: { role: 'transmission', description: '以应和和观看延续传说传播的群体。' },
+      };
+  return characterNames.slice(0, 8).map(name => ({
+    name,
+    role: descriptions[name]?.role ?? 'supporting',
+    description: descriptions[name]?.description ?? '用户改编主线中的行动人物或群体。',
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Generate content for a single scene
 // ---------------------------------------------------------------------------
@@ -873,7 +1312,20 @@ function generateSceneContent(
   const location = determineLocation(entry, idx, centralEvent, eventParagraphs, supportingRegions);
 
   // Build plot — the narrative description of this scene
-  const plot = buildScenePlot(template, entry, centralEvent, eventParagraphs, quotes, protagonist, characterNames, tone, videoType, supportingContext, idx);
+  const plot = buildScenePlot(
+    template,
+    entry,
+    centralEvent,
+    eventParagraphs,
+    quotes,
+    protagonist,
+    characterNames,
+    tone,
+    videoType,
+    supportingContext,
+    idx,
+    durationSec,
+  );
 
   // Build conflict description
   const conflict = buildSceneConflict(template, centralEvent, protagonist, eventParagraphs);
@@ -907,6 +1359,10 @@ function generateSceneContent(
   // Build fictionalized elements
   const fictionalized = determineFictionalizedElements(template, videoType);
 
+  const sceneShortPlan = videoType === 'scene_short'
+    ? buildSceneShortSpatialPlan(entry, template, idx)
+    : undefined;
+
   // Scene title
   const title = buildSceneTitle(template, centralEvent, idx);
 
@@ -914,14 +1370,14 @@ function generateSceneContent(
     scene_id: idx + 1,
     title,
     duration_sec: durationSec,
-    location,
+    location: sceneShortPlan?.location ?? location,
     time_of_day: timeOfDay,
     dramatic_function: template.function_label,
-    plot,
-    key_action: keyAction,
-    characters: sceneChars,
-    visual_prompt: visualPrompt,
-    camera_suggestion: cameraSuggestion,
+    plot: sceneShortPlan?.plot ?? plot,
+    key_action: sceneShortPlan?.keyAction ?? keyAction,
+    characters: sceneShortPlan ? [sceneShortPlan.observer] : sceneChars,
+    visual_prompt: sceneShortPlan?.visualPrompt ?? visualPrompt,
+    camera_suggestion: sceneShortPlan?.cameraSuggestion ?? cameraSuggestion,
     cultural_note: culturalNote,
     conflict,
     dialogue_or_narration: dialogueOrNarration,
@@ -929,6 +1385,95 @@ function generateSceneContent(
     factual_basis: `基于${entry.name}中"${centralEvent}"相关内容`,
     fictionalized_elements: fictionalized,
   };
+}
+
+function buildSceneShortSpatialPlan(
+  entry: EntryDetail,
+  template: SceneTemplate,
+  idx: number,
+): {
+  observer: string;
+  location: string;
+  plot: string;
+  keyAction: string;
+  visualPrompt: string;
+  cameraSuggestion: string;
+} {
+  const rawObserver = entry.asset_split?.characters[0]?.trim();
+  const observer = rawObserver ? sceneShortAssetLabel(rawObserver) : '当代寻访者';
+  const subject = inferSubject(entry);
+  const sourceNodes = entry.asset_split?.scenes.map(item => item.trim()).filter(Boolean) ?? [];
+  const relatedNodes = entry.relatedLocations.map(item => item.name.trim()).filter(Boolean);
+  const entrance = sourceNodes.some(item => item.includes('门庭'))
+    ? `${subject}门庭`
+    : sceneShortAssetLabel(sourceNodes[0] || relatedNodes[0] || `${subject}入口`);
+  const middleSource = sourceNodes.find(item => /院落/.test(item));
+  const middle = middleSource?.includes('书院院落')
+    ? '书院院落'
+    : sceneShortAssetLabel(middleSource || sourceNodes[1] || `${subject}院落`);
+  const revealSource = sourceNodes.find(item => item.includes('朱张会讲'))
+    ?? sourceNodes.find(item => item.includes('讲堂'));
+  const revealLabel = sceneShortAssetLabel(revealSource || sourceNodes[2] || `${subject}核心空间`);
+  const reveal = /朱张会讲/.test(revealLabel)
+    ? '朱张会讲相关讲堂'
+    : revealLabel;
+  const rawAnchor = entry.asset_split?.scene_props[0]?.trim();
+  const anchor = rawAnchor?.includes('门联') ? '门联' : sceneShortAssetLabel(rawAnchor || '入口标志物');
+  const revealAction = /讲堂/.test(reveal) ? '推开讲堂木门' : `转过${reveal}入口`;
+
+  if (template.function_label === '空间引入') {
+    return {
+      observer,
+      location: entrance,
+      plot: `${observer}从${entrance}进入${middle}，${anchor}与入口石阶先后进入视野；滴水声把人物引向空间内部。`,
+      keyAction: `${observer}从${entrance}进入${middle}`,
+      visualPrompt: `${entrance}为入口锚点，${observer}由外向内越过石阶，${anchor}在前景、${middle}在后景`,
+      cameraSuggestion: `固定${entrance}内外轴线，跟拍人物由外向内`,
+    };
+  }
+  if (template.function_label === '场景叙事' || template.function_label === '铺垫') {
+    return {
+      observer,
+      location: middle,
+      plot: `${observer}沿${middle}右侧廊道继续前行，绕过${anchor}，让${reveal}的入口从遮挡后逐步显现。`,
+      keyAction: `${observer}沿${middle}右侧绕过${anchor}，走向${reveal}`,
+      visualPrompt: `${middle}右侧廊柱保持同侧，${anchor}从前景移出，${reveal}入口在后景显现`,
+      cameraSuggestion: `沿同一方向跟拍，不跨越${middle}廊道轴线`,
+    };
+  }
+  if (template.function_label === '时空叠印') {
+    return {
+      observer,
+      location: reveal,
+      plot: `${observer}到达${reveal}并${revealAction}，室内匾额与书案由暗到明显现；当代寻访和历史说明在同一空间分层。`,
+      keyAction: `${observer}${revealAction}，触发匾额和书案揭示`,
+      visualPrompt: `由${middle}向${reveal}方向，右侧廊柱保持同侧，入口打开后匾额与书案从后景显现`,
+      cameraSuggestion: `沿同一运动方向越过门槛，再切${reveal}全景`,
+    };
+  }
+  return {
+    observer,
+    location: entrance,
+    plot: `${observer}沿原路线从${reveal}经过${middle}返回${entrance}，右侧廊柱与${anchor}保持同侧，脚步声渐远。`,
+    keyAction: `${observer}沿原路线返回${entrance}`,
+    visualPrompt: `回程仍以右侧廊柱为方向锚点，${anchor}重新进入前景，${entrance}恢复为空间出口`,
+    cameraSuggestion: `不跨轴跟拍回程，最后固定${entrance}空镜`,
+  };
+}
+
+function sceneShortAssetLabel(value: string): string {
+  return value
+    .split(/[：:]/, 1)[0]
+    .replace(/^[“”"'\s]+|[“”"'\s]+$/g, '')
+    .trim();
+}
+
+function buildSceneShortCharacters(entry: EntryDetail): StoryCharacter[] {
+  const rawObserver = entry.asset_split?.characters[0]?.trim();
+  const name = rawObserver ? sceneShortAssetLabel(rawObserver) : '当代寻访者';
+  const description = rawObserver?.split(/[：:]/).slice(1).join('：').trim()
+    || `以当代观众视角串联${inferSubject(entry)}的连续空间`;
+  return [{ name, role: 'protagonist', description, arc: '' }];
 }
 
 // ---------------------------------------------------------------------------
@@ -1093,6 +1638,7 @@ function buildScenePlot(
   videoType: VideoType,
   supportingContext: string[],
   idx: number,
+  durationSec: number,
 ): string {
   // Build plot based on the template's content_guide and the entry content
   // This is the KEY change: plot is narrative, not template-concatenation
@@ -1263,11 +1809,11 @@ function buildScenePlot(
 
     // --- Landscape mood ---
     case '山水开卷':
-      return buildLandscapeOpening(entry, region);
+      return buildLandscapeOpening(region, durationSec);
     case '意境流变':
-      return buildMoodFlow(entry, region);
+      return buildMoodFlow(entry, region, durationSec);
     case '灵韵定格':
-      return buildSpiritEssence(entry, region);
+      return buildSpiritEssence(entry, durationSec);
 
     // --- Explainer video ---
     case '提出问题':
@@ -1399,7 +1945,7 @@ function buildClimaxScene(protagonist: string, centralEvent: string, quote: stri
   if (centralEvent.includes('投江') || centralEvent.includes('殉国')) {
     return `${eventWithProtagonist(protagonist, centralEvent)}。江水合拢，岸边的人声忽然停住；这个选择，成为后世反复讲述的精神坐标。`;
   }
-  return `${eventWithProtagonist(protagonist, centralEvent)}进入关键时刻。${quote ? `"${quote}"` : `${protagonist}以实际行动回应现实，个人志向由此转向更广阔的人群与时代问题。`}`;
+  return `${eventWithProtagonist(protagonist, centralEvent)}进入关键时刻。现场的人冲向目标、推开阻拦并完成决定局面的关键行动。${quote ? `"${quote}"` : `${protagonist}以实际行动回应现实，个人志向由此转向更广阔的人群与时代问题。`}`;
 }
 
 function buildEndingScene(protagonist: string, centralEvent: string, entry: EntryDetail, videoType: VideoType): string {
@@ -1549,7 +2095,7 @@ function buildShortEmotion(protagonist: string, centralEvent: string, toneAdj: s
 
 function buildShortGoldenQuote(protagonist: string, centralEvent: string, quote: string): string {
   const usableQuote = quote && quote !== centralEvent && !centralEvent.includes(quote) ? `“${quote}”` : '看见一处细节，才看见一门手艺的分量';
-  return `${usableQuote}。成品纹理与手中的材料同框，问题在答案里停住。`;
+  return `${usableQuote}。镜头回到工坊，${protagonist}把分开的细丝穿过针眼，再将成品纹理与手中材料并排举起，问题在这个动作里得到答案。`;
 }
 
 function buildAiComicEntrance(protagonist: string, centralEvent: string, region: string, details: string): string {
@@ -1858,18 +2404,27 @@ function buildMoodClose(entry: EntryDetail, region: string): string {
 // Landscape mood builders
 // ---------------------------------------------------------------------------
 
-function buildLandscapeOpening(entry: EntryDetail, region: string): string {
-  return `清晨的${region}先从雾里露出一线峰脊，水汽沿石壁缓慢上升。没有急促的人声，只有风、滴水和远处鸟鸣把山谷一点点唤醒。`;
+function buildLandscapeOpening(region: string, durationSec: number): string {
+  if (durationSec <= 10) {
+    return `雾中，${region}露出峰脊；只听见风和滴水。`;
+  }
+  return `清晨，${region}从雾里露出峰脊。水汽沿石壁上升，风、滴水和鸟鸣唤醒山谷。`;
 }
 
-function buildMoodFlow(entry: EntryDetail, region: string): string {
+function buildMoodFlow(entry: EntryDetail, region: string, durationSec: number): string {
+  if (durationSec <= 10) {
+    return `${region}的晨光、雨雾、暮色掠过峰谷。`;
+  }
   const keywords = entry.keywords.filter(k => ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬'].some(w => k.includes(w)));
-  const moodWords = keywords.length > 0 ? keywords.join('→') : '晨昏→四季→风雨→晴雾';
-  return `${moodWords}依次掠过${region}：晨光擦亮峰壁，雨雾吞没半座山林，暮色又把溪谷拉深。山水不解释，只在时间里改变呼吸。`;
+  const moodWords = keywords.length > 0 ? keywords.slice(0, 4).join('、') : '晨光、雨雾、暮色';
+  return `${moodWords}依次掠过${region}，峰壁与溪谷在时间里缓慢呼吸。`;
 }
 
-function buildSpiritEssence(entry: EntryDetail, region: string): string {
-  const core = entry.culturalSignificance?.substring(0, 30)?.split(/[。]/)[0] ?? '山水灵韵';
+function buildSpiritEssence(entry: EntryDetail, durationSec: number): string {
+  if (durationSec <= 10) {
+    return '云移开，风声退下，山水的余味留给观看的人。';
+  }
+  const core = entry.culturalSignificance?.substring(0, 18)?.split(/[。]/)[0] ?? '山水灵韵';
   return `${core}。云从峰间移开，最远的一根石柱重新出现；风声退下去，山水把未说完的部分留给观看的人。`;
 }
 
@@ -1878,7 +2433,8 @@ function buildSpiritEssence(entry: EntryDetail, region: string): string {
 // ---------------------------------------------------------------------------
 
 function buildPoseQuestion(centralEvent: string, entry: EntryDetail): string {
-  return `${centralEvent}——为什么这件事值得关注？${entry.type === '非遗' ? '这种技艺为什么能千年传承？' : entry.type === '名胜古迹' ? '这个地方为什么成为文化地标？' : '这段历史为什么被记住？'}`;
+  const visibleClues = entry.keywords.slice(0, 3).join('、') || entry.type;
+  return `镜头来到${entry.region}，主讲人指向${visibleClues}的现场细节，把不同现象摆在同一画面里对照。${centralEvent}——为什么这件事值得关注？${entry.type === '非遗' ? '这种技艺为什么能千年传承？' : entry.type === '名胜古迹' ? '这个地方为什么成为文化地标？' : '这段历史为什么被记住？'}`;
 }
 
 function buildConceptExplain(centralEvent: string, entry: EntryDetail): string {
@@ -2043,6 +2599,12 @@ function buildDialogueOrNarration(
       return lines[template.function_label] ?? `旁白：${protagonist}先理解，再做选择。`;
     }
     return `旁白：${protagonist}先认真观察，再用温和而勇敢的行动解决问题。`;
+  }
+
+  if (videoType === 'landscape_mood') {
+    if (template.function_label === '山水开卷') return '旁白：山先从雾里醒来。';
+    if (template.function_label === '灵韵定格') return '旁白：余味留给观看的人。';
+    return '';
   }
 
   if (videoType === 'heritage_promo') {
@@ -2536,7 +3098,7 @@ export function validateDramaticStory(result: {
     '良知', '精神', '道德', '价值', '正义', '廉洁', '担当', '坚守', '传承', '出淤泥而不染',
     '理想', '信仰', '人民', '道路', '觉醒', '初心', '使命', '家国', '民族', '奋斗', '求索',
     '牺牲', '独立自主', '实事求是', '敢为天下先',
-    '善良', '理解', '真心', '温暖', '成长', '勇敢',
+    '善良', '理解', '真心', '温暖', '成长', '勇敢', '选择', '诚实',
   ];
   const lastScene = scenes[scenes.length - 1];
   const lastSceneText = lastScene
@@ -2548,9 +3110,12 @@ export function validateDramaticStory(result: {
         lastScene.cultural_note,
       ].filter(Boolean).join(' ')
     : '';
-  const hasEndingTheme = lastScene && themeWords.some(w =>
-    lastSceneText.includes(w) || fullText.includes(w) || result.title.includes(w)
-  );
+  const hasPoeticLandscapeEnding = result.videoType === 'landscape_mood'
+    && /留白|余味|未说完|观看的人|风声退|静默/.test(lastSceneText);
+  const hasEndingTheme = Boolean(lastScene && (
+    themeWords.some(w => lastSceneText.includes(w) || fullText.includes(w) || result.title.includes(w))
+    || hasPoeticLandscapeEnding
+  ));
   if (!hasEndingTheme) issues.push('缺少结尾主题——没有精神/道德落点');
 
   // 7. isNotBiographySummary — full_text doesn't have 3+ year-starting paragraphs

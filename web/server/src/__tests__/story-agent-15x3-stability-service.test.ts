@@ -40,7 +40,7 @@ describe('Story Agent 15x3 stability matrix', () => {
   it('covers three input profiles per type and resumes a partial image import', async () => {
     const first = await prepareStoryAgent15x3StabilityMatrix();
 
-    expect(first.ok).toBe(true);
+    expect(first.ok, JSON.stringify(first.error)).toBe(true);
     expect(first.data).toMatchObject({
       schema_version: 'story-agent-15x3-stability-matrix/v1',
       status: 'awaiting_imagegen',
@@ -66,6 +66,42 @@ describe('Story Agent 15x3 stability matrix', () => {
         unique_projects: true,
         unique_image_runs: true,
       },
+      machine_evaluation: {
+        schema_version: 'story-agent-15x3-machine-evaluation/v1',
+        machine_validation_only: true,
+        human_review_complete: false,
+        professional_credit_granted: false,
+        case_count: 45,
+        quality_report_count: 45,
+        story_quality_passed_count: expect.any(Number),
+        production_material_ready_count: expect.any(Number),
+        factual_cultural_gate_passed_count: 45,
+        fact_boundary_ready_count: 45,
+        cultural_boundary_ready_count: 45,
+        shootability_ready_count: 45,
+        metric_contract: {
+          quality_passed: 'legacy_quality_report_aggregate',
+          story_quality_passed: 'story_publishable_and_pattern_and_gears',
+          story_publishable: 'story_scope_quality_gates',
+          production_material_ready: 'production_material_gate',
+          production_ready: 'all_story_and_production_gates',
+        },
+        invariants: {
+          every_case_evaluated: true,
+          every_factual_cultural_gate_passed: true,
+          every_scene_fact_bound: true,
+          every_scene_cultural_bound: true,
+          every_scene_shootable: true,
+          repair_attempt_covers_story_quality_failures: true,
+        },
+        failure_clusters: {
+          story_blocking_gate_counts: expect.any(Object),
+          production_blocking_gate_counts: expect.any(Object),
+          open_repair_target_counts: expect.any(Object),
+          weak_pattern_signal_counts: expect.any(Object),
+          gears_issue_counts: expect.any(Object),
+        },
+      },
     });
     expect(first.data?.items).toHaveLength(45);
     expect(new Set(first.data?.items.map(item => item.case_id)).size).toBe(45);
@@ -90,6 +126,81 @@ describe('Story Agent 15x3 stability matrix', () => {
       && item.matrix_item.image_status === 'awaiting_imagegen'
       && item.matrix_item.pending_image_task_count > 0
     ))).toBe(true);
+    expect(first.data?.items.every(item => (
+      item.matrix_item.machine_evaluation?.schema_version
+        === 'story-agent-machine-quality-evidence/v1'
+      && item.matrix_item.machine_evaluation.evaluation_recomputed_from_canonical_story
+      && item.matrix_item.machine_evaluation.machine_validation_only
+      && !item.matrix_item.machine_evaluation.human_review_complete
+      && !item.matrix_item.machine_evaluation.professional_credit_granted
+      && item.matrix_item.machine_evaluation.story_quality_passed
+        === (
+          item.matrix_item.machine_evaluation.story_publishable
+          && (item.matrix_item.machine_evaluation.pattern_quality_score ?? 0) >= 70
+          && (item.matrix_item.machine_evaluation.gears_readiness_score ?? 0) >= 70
+        )
+      && typeof item.matrix_item.machine_evaluation.production_material_ready === 'boolean'
+      && item.matrix_item.machine_evaluation.scene_count > 0
+      && item.matrix_item.machine_evaluation.fact_boundary_scene_count
+        === item.matrix_item.machine_evaluation.scene_count
+      && item.matrix_item.machine_evaluation.cultural_boundary_scene_count
+        === item.matrix_item.machine_evaluation.scene_count
+      && item.matrix_item.machine_evaluation.shootable_scene_count
+        === item.matrix_item.machine_evaluation.scene_count
+    ))).toBe(true);
+    expect(first.data?.machine_evaluation.by_variant).toHaveLength(3);
+    expect(first.data?.machine_evaluation.repair_attempted_case_count).toBeGreaterThan(0);
+    expect(first.data?.machine_evaluation.repair_attempted_case_count).toBeGreaterThanOrEqual(
+      (first.data?.machine_evaluation.case_count ?? 0)
+        - (first.data?.machine_evaluation.story_quality_passed_count ?? 0),
+    );
+    expect(first.data?.items.filter(item => (
+      !item.matrix_item.machine_evaluation.story_quality_passed
+      && item.matrix_item.machine_evaluation.repair_attempt_count === 0
+    ))).toHaveLength(0);
+    expect(first.data?.machine_evaluation.repair_applied_case_count).toBe(0);
+    expect(first.data?.machine_evaluation.total_open_repair_action_count)
+      .toBeGreaterThanOrEqual(0);
+    expect(first.data?.machine_evaluation.quality_passed_count)
+      .toBeLessThan(first.data?.machine_evaluation.case_count ?? 0);
+    expect(first.data?.machine_evaluation.story_quality_passed_count).toBe(
+      first.data?.items.filter(
+        item => item.matrix_item.machine_evaluation.story_quality_passed,
+      ).length,
+    );
+    expect(first.data?.machine_evaluation.production_material_ready_count).toBe(
+      first.data?.items.filter(
+        item => item.matrix_item.machine_evaluation.production_material_ready,
+      ).length,
+    );
+    expect(first.data?.machine_evaluation.story_quality_passed_count)
+      .toBeGreaterThan(first.data?.machine_evaluation.quality_passed_count ?? 0);
+    expect(first.data?.machine_evaluation.production_material_ready_count)
+      .toBeGreaterThan(first.data?.machine_evaluation.production_ready_count ?? 0);
+    expect(first.data?.machine_evaluation.by_variant.every(slice => (
+      slice.story_quality_passed_count
+        >= slice.quality_passed_count
+      && slice.production_material_ready_count
+        >= slice.production_ready_count
+    ))).toBe(true);
+    expect(first.data?.machine_evaluation.status).toBe('passed');
+    expect(first.data?.machine_evaluation.story_quality_passed_count).toBe(45);
+    expect(first.data?.machine_evaluation.invariants.every_story_quality_passed).toBe(true);
+    expect(first.data?.machine_evaluation.failed_invariants).toEqual([]);
+    expect(first.data?.machine_evaluation.failure_clusters.story_blocking_gate_counts)
+      .toEqual({});
+    expect(first.data?.machine_evaluation.invariants.every_story_publishable).toBe(true);
+    expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts)
+      .toHaveProperty('combined');
+    expect(Object.keys(
+      first.data?.machine_evaluation.failure_clusters.weak_pattern_signal_counts ?? {},
+    ).length).toBeGreaterThan(0);
+    expect(first.data?.machine_evaluation.failure_clusters.gears_issue_counts)
+      .toEqual(expect.any(Object));
+    expect(first.data?.items.every(item => (
+      Array.isArray(item.matrix_item.machine_evaluation.weak_pattern_signal_labels)
+      && Array.isArray(item.matrix_item.machine_evaluation.gears_issues)
+    ))).toBe(true);
 
     const repeated = await prepareStoryAgent15x3StabilityMatrix({
       previous_report: first.data!,
@@ -100,6 +211,10 @@ describe('Story Agent 15x3 stability matrix', () => {
       .toEqual(first.data?.items.map(item => item.matrix_item.project_id));
     expect(repeated.data?.items.map(item => item.matrix_item.image_run_id))
       .toEqual(first.data?.items.map(item => item.matrix_item.image_run_id));
+    expect(repeated.data?.items.map(item => item.matrix_item.machine_evaluation))
+      .toEqual(first.data?.items.map(item => item.matrix_item.machine_evaluation));
+    expect(repeated.data?.machine_evaluation)
+      .toEqual(first.data?.machine_evaluation);
 
     const executions = [];
     for (const item of repeated.data!.items) {
@@ -154,6 +269,9 @@ describe('Story Agent 15x3 stability matrix', () => {
       executions,
     });
     expect(completed.ok).toBe(true);
+    expect(completed.data?.matrix.items.filter(item => (
+      item.matrix_item.preproduction_status !== 'ready'
+    ))).toEqual([]);
     expect(completed.data).toMatchObject({
       schema_version: 'story-agent-15x3-composite-board-import/v1',
       status: 'ready',

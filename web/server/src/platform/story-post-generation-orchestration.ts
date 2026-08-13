@@ -17,6 +17,7 @@ import {
 } from './story-quality-evaluation.js';
 import type { StoryAssembly } from './story-model-output-merge.js';
 import { orchestrateStoryRepair } from './story-repair-orchestration.js';
+import { refreshStoryProductionMaterialReadiness } from '../services/production-material-readiness-service.js';
 
 export async function orchestrateStoryPostGeneration(input: {
   storyId: string;
@@ -40,6 +41,8 @@ export async function orchestrateStoryPostGeneration(input: {
   ) => void;
   evaluateBaseQuality: (storyResult: StoryAssembly) => StoryQualityReport;
 }) {
+  input.story.production_material_readiness = refreshStoryProductionMaterialReadiness(input.story)
+    ?? input.story.production_material_readiness;
   input.story.quality_report = evaluateStoryQualityReport({
     story: input.story,
     baseReport: input.baseQualityReport,
@@ -62,19 +65,25 @@ export async function orchestrateStoryPostGeneration(input: {
     videoType: input.videoType,
     presentationStyle: input.presentationStyle,
     applyStoryAssembly: input.applyStoryAssembly,
-    evaluateStoryQuality: candidate => evaluateStoryQualityReport({
-      story: input.story,
-      baseReport: input.evaluateBaseQuality(candidate),
-      blueprint: input.blueprint,
-      narrativePatternIds: input.narrativePatternIds,
-      truthMode: input.truthMode,
-      materialSufficiency: input.materialSufficiency,
-    }),
+    evaluateStoryQuality: candidate => {
+      input.story.production_material_readiness = refreshStoryProductionMaterialReadiness(input.story)
+        ?? input.story.production_material_readiness;
+      return evaluateStoryQualityReport({
+        story: input.story,
+        baseReport: input.evaluateBaseQuality(candidate),
+        blueprint: input.blueprint,
+        narrativePatternIds: input.narrativePatternIds,
+        truthMode: input.truthMode,
+        materialSufficiency: input.materialSufficiency,
+      });
+    },
   });
   input.story.quality_report = repairResult.qualityReport;
   if (repairResult.repairTrace.length > 0) {
     input.story.repair_trace = repairResult.repairTrace;
   }
+  input.story.production_material_readiness = refreshStoryProductionMaterialReadiness(input.story)
+    ?? input.story.production_material_readiness;
   input.story.gears_delivery = buildGearsDeliveryPackage(input.story);
   input.story.quality_report = enrichStoryQualityWithDelivery({
     story: input.story,

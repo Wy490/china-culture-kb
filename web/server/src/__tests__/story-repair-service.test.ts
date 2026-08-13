@@ -186,6 +186,28 @@ describe('story-repair-service', () => {
     })).toBe(false);
   });
 
+  it('does not rewrite story text when only the legacy production aggregate fails', () => {
+    const report = makeQualityReport(82, false);
+    report.pattern_quality_report = { pattern_score: 90 } as StoryQualityReport['pattern_quality_report'];
+    report.gears_readiness_report = { readiness_score: 100 } as StoryQualityReport['gears_readiness_report'];
+    report.quality_gates = {
+      story_publishable: true,
+    } as StoryQualityReport['quality_gates'];
+
+    expect(shouldAttemptStoryRepair({
+      autoRepair: true,
+      qualityReport: report,
+      strictness: 'balanced',
+    })).toBe(false);
+
+    report.pattern_quality_report = { pattern_score: 69 } as StoryQualityReport['pattern_quality_report'];
+    expect(shouldAttemptStoryRepair({
+      autoRepair: true,
+      qualityReport: report,
+      strictness: 'balanced',
+    })).toBe(true);
+  });
+
   it('builds a focused repair package with quality issues and blueprint beats', () => {
     const story = makeStory();
     const familyQuality = validateStoryFamilyBaseQuality(story);

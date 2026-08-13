@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import type { EntryDetail } from '@shared/types.js';
 import { generateChinaCultureLocalStoryAssembly } from '../domains/china-culture/story-local-generation-service.js';
+import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 
 const entry: EntryDetail = {
   name: '沈括——梦溪求真',
@@ -35,6 +36,65 @@ describe('china_culture local story generation dispatch', () => {
     expect(result.storyResult.scene_breakdown.length).toBeGreaterThanOrEqual(3);
     expect(result.memoryMosaicSeed).toBeUndefined();
     expect(result.referenceTrace).toBeUndefined();
+  });
+
+  it('builds a scene-short route with an entering observer, spatial reveals, and a stable return axis', () => {
+    const result = generateChinaCultureLocalStoryAssembly({
+      entry: {
+        ...entry,
+        name: '岳麓书院——千年学府弦歌不绝',
+        region: '长沙→岳麓区',
+        type: '名胜古迹',
+        relatedLocations: [
+          { name: '岳麓书院', description: '长沙市岳麓山脚下' },
+          { name: '爱晚亭', description: '书院附近' },
+        ],
+        asset_split: {
+          characters: [
+            '岳麓书院讲解员/寻访者：连接书院建筑、湖湘文脉和观众视角的当代叙事入口',
+            '湖南大学学生：千年学府延续到现代大学的当代人物',
+          ],
+          scenes: [
+            '岳麓书院主轴空间：讲堂、门庭、书院院落和湖湘文脉主场景',
+            '“惟楚有材，于斯为盛”门联位置：湖湘文化自信视觉锚点',
+            '朱张会讲相关空间/讲堂：学术对话和听众聚集再现场景',
+            '爱晚亭与岳麓山：书院周边文教山水场景',
+          ],
+          character_props: ['导览册', '学生笔记本'],
+          scene_props: ['门联', '石阶', '讲堂匾额'],
+        },
+      },
+      centralEvent: '岳麓书院空间导览',
+      videoType: 'scene_short',
+      presentationStyle: 'cinematic',
+      storyStructure: 'object_clue_journey',
+      targetDuration: '1分钟',
+      tone: '克制',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    const scenes = result.storyResult.scene_breakdown;
+    expect(scenes).toHaveLength(4);
+    expect(scenes.every(scene => scene.characters.includes('岳麓书院讲解员/寻访者'))).toBe(true);
+    expect(result.storyResult.characters.map(character => character.name))
+      .toContain('岳麓书院讲解员/寻访者');
+    expect(scenes.map(scene => scene.location)).toEqual([
+      '岳麓书院门庭',
+      '书院院落',
+      '朱张会讲相关讲堂',
+      '岳麓书院门庭',
+    ]);
+    expect(scenes[0].key_action).toContain('从岳麓书院门庭进入书院院落');
+    expect(scenes[1].key_action).toContain('门联');
+    expect(scenes[2].key_action).toContain('推开讲堂木门');
+    expect(scenes[3].key_action).toContain('沿原路线返回岳麓书院门庭');
+    expect(scenes[2].visual_prompt).toContain('由书院院落向朱张会讲相关讲堂方向');
+    expect(scenes.map(scene => scene.location)).toEqual(expect.arrayContaining([
+      '岳麓书院门庭',
+      '书院院落',
+      '朱张会讲相关讲堂',
+    ]));
   });
 
   it('runs memory mosaic with a seed and a default trace when no style pack is selected', () => {
@@ -78,6 +138,62 @@ describe('china_culture local story generation dispatch', () => {
       reason: 'memory_mosaic_witnesses_missing',
       message: '回忆拼图结构需要至少一位可从资料中识别的见证人物，请补充人物关系或改用其他故事结构',
     });
+  });
+
+  it.each([
+    {
+      videoType: 'character_story' as const,
+      source: '雨夜，周敦颐在南安军衙翻到矛盾证词。\n\n知军王逵催他画押；周敦颐决定拒签并交还任命文书。\n\n案卷重开，囚犯免死，他愿承担失去官职的代价。',
+      expected: ['周敦颐', '王逵', '拒签', '失去官职'],
+      expectedEnding: '良知',
+    },
+    {
+      videoType: 'historical_drama' as const,
+      source: '武昌起义消息提前泄露，新军士兵连夜集结。\n\n起义军冲向楚望台军械库，推开库门并搬出枪械。\n\n普通士兵的行动引发连锁响应，武昌城局势改变。',
+      expected: ['新军士兵', '起义军', '楚望台军械库', '普通士兵'],
+      expectedEnding: '担当',
+    },
+    {
+      videoType: 'legend_story' as const,
+      source: '刘海在山路遇见胡大姐，她以神异力量挡开危机。\n\n乡邻怀疑迫使两人分开；刘海回头寻找胡大姐。\n\n两人共同通过考验，这是民间传说中的讲法。',
+      expected: ['刘海', '胡大姐', '乡邻', '民间传说'],
+      expectedEnding: '真心',
+    },
+    {
+      videoType: 'children_story' as const,
+      source: '小刘海在山路丢了柴绳，胡大姐帮他捆好木柴。\n\n别人劝他不要相信陌生人；小刘海决定先看行动。\n\n误会解开，两人把柴担送到家门口。',
+      expected: ['小刘海', '胡大姐', '先看行动', '柴担'],
+      expectedEnding: '成长',
+    },
+    {
+      videoType: 'ai_comic_drama' as const,
+      source: '雨夜，刘海发现胡大姐的影子在雷光里变成狐形。\n\n村人逼他交人；胡大姐挡在受伤孩子前。\n\n刘海放下柴刀护住胡大姐，门外响起新的脚步声。',
+      expected: ['刘海', '胡大姐', '狐形', '放下柴刀'],
+      expectedEnding: '勇敢',
+    },
+  ])('uses the user source as the local $videoType adaptation spine', ({ videoType, source, expected, expectedEnding }) => {
+    const adaptationAnalysis = buildAdaptationAnalysis(source);
+    const result = generateChinaCultureLocalStoryAssembly({
+      entry,
+      centralEvent: '用户原作核心事件',
+      videoType,
+      presentationStyle: videoType === 'ai_comic_drama' ? 'ai_comic' : 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '克制',
+      originalUserQuery: source,
+      adaptationAnalysis,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    for (const phrase of expected) expect(result.storyResult.full_text).toContain(phrase);
+    expect(result.storyResult.scene_breakdown.at(-1)?.plot).toContain(expectedEnding);
+    expect(result.storyResult.scene_breakdown.every(scene => scene.plot.length >= 20)).toBe(true);
+    if (videoType === 'character_story') {
+      expect(new Set(result.storyResult.scene_breakdown.map(scene => scene.location)))
+        .toEqual(new Set(['南安军衙']));
+    }
   });
 
   it('keeps the top-level orchestrator free of direct local engine dispatch', async () => {

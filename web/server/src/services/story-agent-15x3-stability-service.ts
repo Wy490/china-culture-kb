@@ -33,6 +33,84 @@ export interface StoryAgent15x3StabilityItem {
   matrix_item: StoryAgent15TypeMatrixItem;
 }
 
+export interface StoryAgent15x3MachineEvaluationSlice {
+  slice_id: string;
+  case_count: number;
+  quality_passed_count: number;
+  story_quality_passed_count: number;
+  story_publishable_count: number;
+  production_material_ready_count: number;
+  production_ready_count: number;
+  factual_cultural_gate_passed_count: number;
+  fact_boundary_ready_count: number;
+  cultural_boundary_ready_count: number;
+  shootability_ready_count: number;
+  repair_attempted_case_count: number;
+  repair_applied_case_count: number;
+  total_open_repair_action_count: number;
+  average_genre_score: number;
+  average_outline_coverage_score: number;
+  average_pattern_quality_score: number;
+  average_gears_readiness_score: number;
+  average_professional_candidate_score: number;
+}
+
+export interface StoryAgent15x3MachineEvaluation {
+  schema_version: 'story-agent-15x3-machine-evaluation/v1';
+  status: 'passed' | 'attention_required';
+  machine_validation_only: true;
+  human_review_complete: false;
+  professional_credit_granted: false;
+  case_count: number;
+  quality_report_count: number;
+  quality_passed_count: number;
+  story_quality_passed_count: number;
+  story_publishable_count: number;
+  production_material_ready_count: number;
+  production_ready_count: number;
+  factual_cultural_gate_passed_count: number;
+  fact_boundary_ready_count: number;
+  cultural_boundary_ready_count: number;
+  shootability_ready_count: number;
+  repair_attempted_case_count: number;
+  repair_applied_case_count: number;
+  total_repair_attempt_count: number;
+  total_repair_applied_count: number;
+  total_open_repair_action_count: number;
+  average_genre_score: number;
+  average_outline_coverage_score: number;
+  average_pattern_quality_score: number;
+  average_gears_readiness_score: number;
+  average_professional_candidate_score: number;
+  metric_contract: {
+    quality_passed: 'legacy_quality_report_aggregate';
+    story_quality_passed: 'story_publishable_and_pattern_and_gears';
+    story_publishable: 'story_scope_quality_gates';
+    production_material_ready: 'production_material_gate';
+    production_ready: 'all_story_and_production_gates';
+  };
+  invariants: {
+    every_case_evaluated: boolean;
+    every_story_quality_passed: boolean;
+    every_story_publishable: boolean;
+    every_factual_cultural_gate_passed: boolean;
+    every_scene_fact_bound: boolean;
+    every_scene_cultural_bound: boolean;
+    every_scene_shootable: boolean;
+    repair_attempt_covers_story_quality_failures: boolean;
+  };
+  failed_invariants: string[];
+  failure_clusters: {
+    story_blocking_gate_counts: Record<string, number>;
+    production_blocking_gate_counts: Record<string, number>;
+    open_repair_target_counts: Record<string, number>;
+    weak_pattern_signal_counts: Record<string, number>;
+    gears_issue_counts: Record<string, number>;
+  };
+  by_variant: StoryAgent15x3MachineEvaluationSlice[];
+  by_video_type: StoryAgent15x3MachineEvaluationSlice[];
+}
+
 export interface StoryAgent15x3StabilityMatrixReport {
   schema_version: 'story-agent-15x3-stability-matrix/v1';
   status: 'ready' | 'awaiting_imagegen' | 'blocked';
@@ -73,6 +151,7 @@ export interface StoryAgent15x3StabilityMatrixReport {
     unique_projects: boolean;
     unique_image_runs: boolean;
   };
+  machine_evaluation: StoryAgent15x3MachineEvaluation;
   failed_invariants: string[];
   items: StoryAgent15x3StabilityItem[];
 }
@@ -111,12 +190,38 @@ function extendedBrief(item: StoryAgent15TypeMatrixCase): string {
 }
 
 function adaptationBrief(item: StoryAgent15TypeMatrixCase): string {
-  return [
-    `标题：${item.selected_event}改编稿。`,
-    `原作第一段以“${item.selected_event}”发生前的一次具体行动开场，人物先面对现实阻力，再作出不可轻易撤回的选择。`,
-    '原作第二段保留人物关系、核心因果和文化语境，通过可见动作、道具与场景变化推进，不另写无关支线。',
-    '原作结尾不改变主题，只把文字叙述压缩成可拍摄场景；涉及史实或传说边界时使用来源允许的表达，不冒充已核实新事实。',
-  ].join('');
+  const sourceByType: Partial<Record<VideoType, string[]>> = {
+    character_story: [
+      '雨夜，周敦颐在南安军衙翻到案卷中互相矛盾的证词，签笔停在文书上方。',
+      '知军王逵催他画押；周敦颐决定拒签，并交还任命文书，愿意承担失去官职的代价。',
+      '案卷被重新打开，囚犯因此免死；周敦颐守住了人命面前不能含糊的良知。',
+    ],
+    historical_drama: [
+      '武昌起义消息提前泄露，新军士兵连夜集结，决定抢在清军搜捕前发动。',
+      '起义军冲向楚望台军械库，推开库门、搬出枪械，再向湖广总督署推进。',
+      '普通士兵的行动引发连锁响应，武昌城的局势由此改变。',
+    ],
+    legend_story: [
+      '刘海在山路砍樵时遇见胡大姐，她用神异力量替他挡开危机，却没有立刻说明身份。',
+      '乡邻的怀疑迫使两人分开；刘海决定相信一路看见的行动，回头寻找胡大姐。',
+      '两人共同通过考验，歌声留在山路上；这是民间传说中的讲法。',
+    ],
+    children_story: [
+      '小刘海在山路上丢了柴绳，胡大姐停下来帮他把散落的木柴一根根捆好。',
+      '别人劝他不要相信陌生人；小刘海决定先看行动，再用一个温和的办法核实误会。',
+      '误会解开后，两人把柴担送到家门口，也记住了善良需要勇敢和判断。',
+    ],
+    ai_comic_drama: [
+      '雨夜，刘海发现胡大姐的影子在雷光里短暂变成狐形，手中的柴刀停在半空。',
+      '追来的村人逼他交人；胡大姐挡在受伤孩子前，刘海必须在怀疑与亲眼所见之间选择。',
+      '刘海放下柴刀护住胡大姐，门外却响起新的脚步声，神异身份引出下一场危机。',
+    ],
+  };
+  return (sourceByType[item.video_type] ?? [
+    `${item.selected_event}发生前，主体在具体地点完成一次可见行动。`,
+    '现实阻力迫使主体作出选择，关键物件和人物关系随行动发生变化。',
+    '行动产生可见后果，主题由结尾画面收束。',
+  ]).join('\n\n');
 }
 
 function compactBrief(item: StoryAgent15TypeMatrixCase): string {
@@ -211,6 +316,189 @@ function reportStatus(input: {
   return input.readyCount === input.caseCount ? 'ready' : 'awaiting_imagegen';
 }
 
+function average(values: Array<number | undefined>): number {
+  const present = values.filter((value): value is number => value !== undefined);
+  if (present.length === 0) return 0;
+  return Math.round((present.reduce((sum, value) => sum + value, 0) / present.length) * 100) / 100;
+}
+
+function frequency(values: string[]): Record<string, number> {
+  return Object.fromEntries(
+    [...values.reduce((counts, value) => {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>()).entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])),
+  );
+}
+
+function machineEvaluationSlice(
+  sliceId: string,
+  items: StoryAgent15x3StabilityItem[],
+): StoryAgent15x3MachineEvaluationSlice {
+  const evidence = items.map(item => item.matrix_item.machine_evaluation);
+  return {
+    slice_id: sliceId,
+    case_count: evidence.length,
+    quality_passed_count: evidence.filter(item => item.quality_passed).length,
+    story_quality_passed_count: evidence.filter(item => item.story_quality_passed).length,
+    story_publishable_count: evidence.filter(item => item.story_publishable).length,
+    production_material_ready_count: evidence.filter(
+      item => item.production_material_ready,
+    ).length,
+    production_ready_count: evidence.filter(item => item.production_ready).length,
+    factual_cultural_gate_passed_count: evidence.filter(
+      item => item.factual_cultural_gate_passed,
+    ).length,
+    fact_boundary_ready_count: evidence.filter(
+      item => item.scene_count > 0 && item.fact_boundary_scene_count === item.scene_count,
+    ).length,
+    cultural_boundary_ready_count: evidence.filter(
+      item => item.scene_count > 0 && item.cultural_boundary_scene_count === item.scene_count,
+    ).length,
+    shootability_ready_count: evidence.filter(
+      item => item.scene_count > 0 && item.shootable_scene_count === item.scene_count,
+    ).length,
+    repair_attempted_case_count: evidence.filter(item => item.repair_attempt_count > 0).length,
+    repair_applied_case_count: evidence.filter(item => item.repair_applied_count > 0).length,
+    total_open_repair_action_count: evidence.reduce(
+      (sum, item) => sum + item.open_repair_action_count,
+      0,
+    ),
+    average_genre_score: average(evidence.map(item => item.genre_score)),
+    average_outline_coverage_score: average(
+      evidence.map(item => item.outline_coverage_score),
+    ),
+    average_pattern_quality_score: average(evidence.map(item => item.pattern_quality_score)),
+    average_gears_readiness_score: average(evidence.map(item => item.gears_readiness_score)),
+    average_professional_candidate_score: average(
+      evidence.map(item => item.professional_candidate_score),
+    ),
+  };
+}
+
+export function summarizeStoryAgent15x3MachineEvaluation(
+  items: StoryAgent15x3StabilityItem[],
+): StoryAgent15x3MachineEvaluation {
+  const evidence = items.map(item => item.matrix_item.machine_evaluation);
+  const caseCount = evidence.length;
+  const qualityReportCount = evidence.filter(item => item.quality_report_present).length;
+  const qualityPassedCount = evidence.filter(item => item.quality_passed).length;
+  const storyQualityPassedCount = evidence.filter(item => item.story_quality_passed).length;
+  const storyPublishableCount = evidence.filter(item => item.story_publishable).length;
+  const factualCulturalGatePassedCount = evidence.filter(
+    item => item.factual_cultural_gate_passed,
+  ).length;
+  const factBoundaryReadyCount = evidence.filter(
+    item => item.scene_count > 0 && item.fact_boundary_scene_count === item.scene_count,
+  ).length;
+  const culturalBoundaryReadyCount = evidence.filter(
+    item => item.scene_count > 0 && item.cultural_boundary_scene_count === item.scene_count,
+  ).length;
+  const shootabilityReadyCount = evidence.filter(
+    item => item.scene_count > 0 && item.shootable_scene_count === item.scene_count,
+  ).length;
+  const invariants: StoryAgent15x3MachineEvaluation['invariants'] = {
+    every_case_evaluated: qualityReportCount === caseCount,
+    every_story_quality_passed: storyQualityPassedCount === caseCount,
+    every_story_publishable: storyPublishableCount === caseCount,
+    every_factual_cultural_gate_passed: factualCulturalGatePassedCount === caseCount,
+    every_scene_fact_bound: factBoundaryReadyCount === caseCount,
+    every_scene_cultural_bound: culturalBoundaryReadyCount === caseCount,
+    every_scene_shootable: shootabilityReadyCount === caseCount,
+    repair_attempt_covers_story_quality_failures: evidence.every(
+      item => item.story_quality_passed || item.repair_attempt_count > 0,
+    ),
+  };
+  const failedInvariants = Object.entries(invariants)
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+  const variantIds: StoryAgent15x3VariantId[] = [
+    'canonical_1m',
+    'extended_3m',
+    'adaptation_or_compact',
+  ];
+  return {
+    schema_version: 'story-agent-15x3-machine-evaluation/v1',
+    status: failedInvariants.length === 0 ? 'passed' : 'attention_required',
+    machine_validation_only: true,
+    human_review_complete: false,
+    professional_credit_granted: false,
+    case_count: caseCount,
+    quality_report_count: qualityReportCount,
+    quality_passed_count: qualityPassedCount,
+    story_quality_passed_count: storyQualityPassedCount,
+    story_publishable_count: storyPublishableCount,
+    production_material_ready_count: evidence.filter(
+      item => item.production_material_ready,
+    ).length,
+    production_ready_count: evidence.filter(item => item.production_ready).length,
+    factual_cultural_gate_passed_count: factualCulturalGatePassedCount,
+    fact_boundary_ready_count: factBoundaryReadyCount,
+    cultural_boundary_ready_count: culturalBoundaryReadyCount,
+    shootability_ready_count: shootabilityReadyCount,
+    repair_attempted_case_count: evidence.filter(item => item.repair_attempt_count > 0).length,
+    repair_applied_case_count: evidence.filter(item => item.repair_applied_count > 0).length,
+    total_repair_attempt_count: evidence.reduce(
+      (sum, item) => sum + item.repair_attempt_count,
+      0,
+    ),
+    total_repair_applied_count: evidence.reduce(
+      (sum, item) => sum + item.repair_applied_count,
+      0,
+    ),
+    total_open_repair_action_count: evidence.reduce(
+      (sum, item) => sum + item.open_repair_action_count,
+      0,
+    ),
+    average_genre_score: average(evidence.map(item => item.genre_score)),
+    average_outline_coverage_score: average(
+      evidence.map(item => item.outline_coverage_score),
+    ),
+    average_pattern_quality_score: average(evidence.map(item => item.pattern_quality_score)),
+    average_gears_readiness_score: average(evidence.map(item => item.gears_readiness_score)),
+    average_professional_candidate_score: average(
+      evidence.map(item => item.professional_candidate_score),
+    ),
+    metric_contract: {
+      quality_passed: 'legacy_quality_report_aggregate',
+      story_quality_passed: 'story_publishable_and_pattern_and_gears',
+      story_publishable: 'story_scope_quality_gates',
+      production_material_ready: 'production_material_gate',
+      production_ready: 'all_story_and_production_gates',
+    },
+    invariants,
+    failed_invariants: failedInvariants,
+    failure_clusters: {
+      story_blocking_gate_counts: frequency(
+        evidence.flatMap(item => item.story_blocking_gate_ids),
+      ),
+      production_blocking_gate_counts: frequency(
+        evidence.flatMap(item => item.production_blocking_gate_ids),
+      ),
+      open_repair_target_counts: frequency(
+        evidence.flatMap(item => item.open_repair_targets),
+      ),
+      weak_pattern_signal_counts: frequency(
+        evidence.flatMap(item => item.weak_pattern_signal_labels),
+      ),
+      gears_issue_counts: frequency(
+        evidence.flatMap(item => item.gears_issues),
+      ),
+    },
+    by_variant: variantIds.map(variantId => machineEvaluationSlice(
+      variantId,
+      items.filter(item => item.variant_id === variantId),
+    )),
+    by_video_type: STORY_AGENT_15_TYPE_MATRIX_CASES.map(item => item.video_type).map(
+      videoType => machineEvaluationSlice(
+        videoType,
+        items.filter(item => item.video_type === videoType),
+      ),
+    ),
+  };
+}
+
 export async function prepareStoryAgent15x3StabilityMatrix(
   options: PrepareStoryAgent15x3StabilityMatrixOptions = {},
 ): Promise<ApiResponse<StoryAgent15x3StabilityMatrixReport>> {
@@ -234,7 +522,7 @@ export async function prepareStoryAgent15x3StabilityMatrix(
       return fail(
         (prepared.error?.code as typeof ErrorCodes[keyof typeof ErrorCodes])
           ?? ErrorCodes.INTERNAL_ERROR,
-        prepared.error?.message ?? `Failed to prepare "${matrixCase.case_id}"`,
+        `Failed to prepare "${matrixCase.case_id}": ${prepared.error?.message ?? 'unknown error'}`,
         prepared.error?.details,
       );
     }
@@ -312,6 +600,7 @@ export async function prepareStoryAgent15x3StabilityMatrix(
       0,
     ),
   };
+  const machineEvaluation = summarizeStoryAgent15x3MachineEvaluation(items);
   return success({
     schema_version: 'story-agent-15x3-stability-matrix/v1',
     status: reportStatus({
@@ -330,6 +619,7 @@ export async function prepareStoryAgent15x3StabilityMatrix(
     },
     coverage,
     invariants,
+    machine_evaluation: machineEvaluation,
     failed_invariants: failedInvariants,
     items,
   });

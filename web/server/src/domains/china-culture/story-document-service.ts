@@ -15,6 +15,20 @@ export type ChinaCultureGeneratedStoryDocument = StoryGenerateResult & {
   _request_meta: Record<string, unknown>;
 };
 
+export function refreshChinaCultureGeneratedStorySupplementTasks(input: {
+  story: ChinaCultureGeneratedStoryDocument;
+  preparation: PreparedChinaCultureStoryGeneration;
+  storyId: string;
+  createdAt: string;
+}): void {
+  input.story.supplement_tasks = buildChinaCultureStorySupplementTasks(
+    input.preparation.knowledgePackToUse,
+    input.preparation.materialSufficiency,
+    input.story.production_material_readiness,
+    { storyId: input.storyId, createdAt: input.createdAt },
+  );
+}
+
 export function buildChinaCultureGeneratedStoryDocument(input: {
   request: StoryGenerateRequest;
   sourceDomain?: string;

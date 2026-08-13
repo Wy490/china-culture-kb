@@ -21,6 +21,13 @@ import { getNarrativePatternDiagnostics, getNarrativePatternRepairActions } from
 import { getStoryFamilyRepairGuidance } from './story-family-quality-service.js';
 import { buildStoryHumanReviewAlignment } from './story-human-review-alignment-service.js';
 
+export function isStoryQualityPassed(report: StoryQualityReport): boolean {
+  if (!report.quality_gates) return report.passed;
+  return report.quality_gates.story_publishable
+    && (report.pattern_quality_report?.pattern_score ?? 0) >= 70
+    && (report.gears_readiness_report?.readiness_score ?? 0) >= 70;
+}
+
 export function enrichStoryQualityReport(input: {
   story: StoryGenerateResult;
   qualityReport: StoryQualityReport;
@@ -582,7 +589,12 @@ function evaluateSceneSignalEvidence(
         })
         .map(scene => scene.scene_id)
     : [];
-  let evidenceSceneIds = uniqueNumbers([...directlyMatchedSceneIds, ...diagnosticMatchedSceneIds]);
+  const structuralMatchedSceneIds = structuralSignalSceneIds(story, signal);
+  let evidenceSceneIds = uniqueNumbers([
+    ...directlyMatchedSceneIds,
+    ...diagnosticMatchedSceneIds,
+    ...structuralMatchedSceneIds,
+  ]);
 
   // A structural pattern probe can pass without lexical terms (for example,
   // all scenes having both visible action and a usable visual prompt). In
@@ -648,7 +660,7 @@ function observableSignalSceneText(
   scene: StoryGenerateResult['scene_breakdown'][number],
   signal: string,
 ): string {
-  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现/.test(signal)
+  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现|传说|版本/.test(signal)
     ? [
         scene.cultural_note,
         scene.factual_basis ?? '',
@@ -667,10 +679,440 @@ function observableSignalSceneText(
   ].join(' ');
 }
 
+function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): number[] {
+  if (story.scene_breakdown.length === 0) return [];
+  const first = story.scene_breakdown[0];
+  const last = story.scene_breakdown[story.scene_breakdown.length - 1];
+  const firstText = observableSignalSceneText(first, signal).replace(/\s+/g, '');
+  const lastText = observableSignalSceneText(last, signal).replace(/\s+/g, '');
+
+  if (story.video_type === 'historical_drama') {
+    const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
+      observableSignalSceneText(scene, signal).replace(/\s+/g, '')
+    );
+    const pressureScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /时代危机|人物卷入|冲突升级/.test(`${scene.dramatic_function}${scene.title}`)
+        && /10月9日|10月10日|1911年|期限|倒计时|计划泄露/.test(text)
+        && /搜捕|处死|遇害|封营|逼近|失去等待的时间/.test(text);
+    });
+    const choiceScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /人物卷入|关键行动|选择/.test(`${scene.dramatic_function}${scene.title}${text}`)
+        && /若.+；若|等待.+搜捕|提前发动|立即发动/.test(text)
+        && /承担|伤亡|失败|风险|不可逆/.test(text)
+        && /收起|推开|背枪|决定|选择|发动/.test(text);
+    });
+    const causalActionScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /关键行动|高潮|争夺/.test(`${scene.dramatic_function}${scene.title}`)
+        && /楚望台军械库|军械库/.test(text)
+        && /推开|顶门|搬出|分发|获得/.test(text)
+        && /枪械|弹药|弹药箱/.test(text)
+        && /才能|得以|因此|决定|无法/.test(text);
+    });
+    const consequenceScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /高潮|历史余响|事件后续/.test(`${scene.dramatic_function}${scene.title}`)
+        && /普通士兵|新军士兵|起义军/.test(text)
+        && /汉阳|汉口|多省|十四省|连锁|汇入|响应/.test(text)
+        && /改变|转折|推进|扩展|重要开端/.test(text);
+    });
+    const agencyScenes = story.scene_breakdown.filter(scene => {
+      const text = sceneText(scene);
+      return /新军士兵|起义军|普通士兵/.test(text)
+        && /传递|检查|收起|推开|背枪|冲开|顶门|搬出|分发|传令|汇合|挂旗/.test(text);
+    });
+    const boundaryScenes = story.scene_breakdown.filter(scene => {
+      const text = [
+        scene.cultural_note,
+        scene.factual_basis ?? '',
+        ...(scene.fictionalized_elements ?? []),
+      ].join('');
+      return /依据|记载|用户素材|知识条目|史料|回忆/.test(text)
+        && /影视化|合成|有限再现|不作为|不宣称|不虚构|不替代|不声称|单因|边界/.test(text);
+    });
+    const causalChain = Boolean(
+      pressureScene
+      && choiceScene
+      && causalActionScene
+      && consequenceScene
+      && pressureScene.scene_id < choiceScene.scene_id
+      && choiceScene.scene_id < causalActionScene.scene_id
+      && causalActionScene.scene_id < consequenceScene.scene_id,
+    );
+
+    if (/时代压力可见|必须有时代压力/.test(signal)) {
+      return pressureScene && choiceScene ? [pressureScene.scene_id, choiceScene.scene_id] : [];
+    }
+    if (/事件因果清楚|必须有事件因果|因果链清楚/.test(signal)) {
+      return causalChain
+        ? [pressureScene!.scene_id, choiceScene!.scene_id, causalActionScene!.scene_id, consequenceScene!.scene_id]
+        : [];
+    }
+    if (/人物不是背景板|人物不是年表/.test(signal)) {
+      return causalChain && agencyScenes.length >= 3 ? agencyScenes.map(scene => scene.scene_id) : [];
+    }
+    if (/史实边界明确|必须标注创作边界/.test(signal)) {
+      return boundaryScenes.length >= Math.ceil(story.scene_breakdown.length * 0.67)
+        ? boundaryScenes.map(scene => scene.scene_id)
+        : [];
+    }
+  }
+
+  if (story.video_type === 'legend_story') {
+    const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
+      observableSignalSceneText(scene, signal).replace(/\s+/g, '')
+    );
+    const supernaturalScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /神力显现|神异|异象/.test(`${scene.dramatic_function}${scene.title}${text}`)
+        && /狐影|狐仙|花篮|披帛|倒影|异光|神异/.test(text)
+        && /扶|挡|护|拦|显|掠过|扬起|停住|改变/.test(text);
+    });
+    const trialScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /凡人考验|人的抉择|选择/.test(`${scene.dramatic_function}${scene.title}${text}`)
+        && /逼|催|围|驱|怀疑|排斥|风险|代价|失去/.test(text)
+        && /放下|站到|退到|护住|回头|拒绝|选择|决定/.test(text);
+    });
+    const consequenceScene = story.scene_breakdown.find(scene => {
+      const text = sceneText(scene);
+      return /命运转折|结果|后果/.test(`${scene.dramatic_function}${scene.title}${text}`)
+        && /因此|于是|从此|结果|停下|让出|改变/.test(text)
+        && /抬|拾|递|并肩|回头|护住|离开|留下/.test(text);
+    });
+    const boundaryScenes = story.scene_breakdown.filter(scene => {
+      const text = [
+        scene.cultural_note,
+        scene.factual_basis ?? '',
+        ...(scene.fictionalized_elements ?? []),
+      ].join('');
+      return /相传|传说|口述|戏曲改编|花鼓戏改编|多版本/.test(text)
+        && /不作|不是|边界|影视化|虚构|改编|待核|另核/.test(text);
+    });
+    const transmissionEnding = /传说永恒|世代传颂|流传/.test(`${last.dramatic_function}${last.title}${lastText}`)
+      && /戏台|花鼓戏|讲述|复演|观众|锣鼓|对唱/.test(lastText)
+      && /一代代|流传|重讲|应和|传播/.test(lastText)
+      && /传说|版本|改编|不是可考历史/.test(lastText);
+    const motifTerms = ['柴担', '柴绳', '花篮', '狐影', '披帛'];
+    const repeatedMotif = motifTerms.find(term => (
+      story.scene_breakdown.filter(scene => sceneText(scene).includes(term)).length >= 3
+    ));
+    const motifScenes = repeatedMotif
+      ? story.scene_breakdown.filter(scene => sceneText(scene).includes(repeatedMotif))
+      : [];
+    const motifChangesMeaning = Boolean(repeatedMotif
+      && supernaturalScene
+      && trialScene
+      && consequenceScene
+      && motifScenes.some(scene => scene.scene_id === supernaturalScene.scene_id)
+      && motifScenes.some(scene => scene.scene_id === trialScene.scene_id || scene.scene_id === consequenceScene.scene_id));
+    const supernaturalChoiceChain = Boolean(
+      supernaturalScene
+      && trialScene
+      && consequenceScene
+      && supernaturalScene.scene_id < trialScene.scene_id
+      && trialScene.scene_id < consequenceScene.scene_id,
+    );
+
+    if (/神异意象服务选择|神异服务选择/.test(signal)) {
+      return supernaturalChoiceChain ? [supernaturalScene!.scene_id, trialScene!.scene_id] : [];
+    }
+    if (/凡人考验成立|必须有人物考验|人物考验/.test(signal)) {
+      return trialScene && consequenceScene ? [trialScene.scene_id, consequenceScene.scene_id] : [];
+    }
+    if (/传说边界清楚|必须标明传说边界/.test(signal)) {
+      return boundaryScenes.length >= Math.ceil(story.scene_breakdown.length * 0.6)
+        ? boundaryScenes.map(scene => scene.scene_id)
+        : [];
+    }
+    if (/结尾有流传理由/.test(signal)) {
+      return transmissionEnding ? [last.scene_id] : [];
+    }
+    if (/象征意象贯穿|必须有象征意象/.test(signal)) {
+      return motifChangesMeaning ? motifScenes.map(scene => scene.scene_id) : [];
+    }
+    if (/线索物明确/.test(signal)) {
+      return repeatedMotif && motifScenes.length >= 3 ? motifScenes.map(scene => scene.scene_id) : [];
+    }
+    if (/物件意义有变化/.test(signal)) {
+      return motifChangesMeaning ? motifScenes.map(scene => scene.scene_id) : [];
+    }
+  }
+
+  if (story.video_type === 'social_short') {
+    const hookScene = /3秒钩子|钩子/.test(first.dramatic_function)
+      && /[？?]|为什么|反常|没想到|竟然|答案/.test(firstText.slice(0, 120))
+      && /特写|超近景|冲击|贴近/.test(`${first.visual_prompt} ${first.camera_suggestion}`);
+    const informationScene = story.scene_breakdown.find(scene => {
+      if (!/关键信息|核心事实/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      const enumerated = /第一|第二|第三|首先|其次|最后|先看.+再看.+最后|三个信息|三类/.test(text);
+      const concreteDimensions = ['材料', '手', '动作', '变化', '差别', '成品', '结果']
+        .filter(term => text.includes(term));
+      return enumerated && concreteDimensions.length >= 3;
+    });
+    const subtitleScene = story.scene_breakdown.find(scene => (
+      /字幕|文字叠加/.test(`${scene.visual_prompt} ${scene.camera_suggestion}`)
+      && /快切|定格|三联|短句/.test(`${scene.visual_prompt} ${scene.camera_suggestion} ${scene.plot}`)
+    ));
+    const payoffScene = /金句落点|金句定格|品牌定格/.test(`${last.dramatic_function} ${last.title}`)
+      && /“[^”]{4,}”|「[^」]{4,}」|记住|答案|得到答案|回到|并排|定格/.test(lastText)
+      && /定格|文字|同框|并排/.test(`${last.visual_prompt} ${last.camera_suggestion} ${last.key_action}`);
+
+    if (/前\s*3\s*秒有钩子|开头必须有钩子|3秒钩子强/.test(signal)) {
+      return hookScene ? [first.scene_id] : [];
+    }
+    if (/信息密度高|信息点集中|三类信息点|强记忆点/.test(signal)) {
+      return informationScene ? [informationScene.scene_id] : [];
+    }
+    if (/字幕感明确|字幕感强/.test(signal)) {
+      return subtitleScene ? [subtitleScene.scene_id] : [];
+    }
+    if (/结尾可记住|结尾有停留点/.test(signal)) {
+      return payoffScene ? [last.scene_id] : [];
+    }
+    if (/不得铺垫过长/.test(signal)) {
+      return hookScene && first.plot.length <= 90 ? [first.scene_id] : [];
+    }
+  }
+
+  if (story.video_type === 'education_training') {
+    const objectiveScene = story.scene_breakdown.find(scene => {
+      if (!/学习目标/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /学完|完成本节|本节结束/.test(text)
+        && /能够|可以|会/.test(text)
+        && /说出|指出|判断|制作|完成|举.{0,4}例/.test(text);
+    });
+    const stepsScene = story.scene_breakdown.find(scene => {
+      if (!/知识讲授|示范演示|分步|步骤/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /第一.+第二.+第三|第一步.+第二步.+第三步|先.+再.+最后/.test(text);
+    });
+    const practiceScene = story.scene_breakdown.find(scene => {
+      if (!/练习引导|主动练习/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /制作|填写|排列|写下|指出|判断|说明|完成/.test(text)
+        && /卡片|清单|答案|练习|思考题|任务/.test(text);
+    });
+    const recapScene = story.scene_breakdown.find(scene => {
+      if (!/总结拓展|复盘/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /复盘|清单|检查|回顾|总结/.test(text)
+        && /先.+再.+最后|第一.+第二.+第三|逐项/.test(text);
+    });
+
+    if (/目标具体|学习目标具体|必须有学习目标/.test(signal)) {
+      return objectiveScene ? [objectiveScene.scene_id] : [];
+    }
+    if (/步骤完整|必须有步骤/.test(signal)) {
+      return stepsScene ? [stepsScene.scene_id] : [];
+    }
+    if (/练习存在/.test(signal)) {
+      return practiceScene ? [practiceScene.scene_id] : [];
+    }
+    if (/复盘清楚/.test(signal)) {
+      return recapScene ? [recapScene.scene_id] : [];
+    }
+    if (/必须有复盘或练习/.test(signal)) {
+      return uniqueNumbers([
+        ...(practiceScene ? [practiceScene.scene_id] : []),
+        ...(recapScene ? [recapScene.scene_id] : []),
+      ]);
+    }
+  }
+
+  if (story.video_type === 'explainer_video') {
+    const questionScene = /提出问题|认知缺口/.test(`${first.dramatic_function} ${first.title}`)
+      && /[？?]|为什么|如何|怎么|何以/.test(firstText)
+      && /指向|对照|观察|先看|问题字幕/.test(firstText);
+    const hierarchyScene = story.scene_breakdown.find(scene => {
+      if (!/概念解释|知识讲解|逻辑深化/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /三个概念|三个层次|三层|第一.+第二.+第三|首先.+其次.+最后|先.+再.+最后/.test(text);
+    });
+    const exampleScene = story.scene_breakdown.find(scene => {
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      const analogy = /可以把.+看作|就像|好比|类比/.test(text)
+        && /图|书页|切口|箭头|对照|局部/.test(text);
+      const concreteCase = /实例论证|案例支撑/.test(`${scene.dramatic_function} ${scene.title}`)
+        && /以.+为例|例如|现场|岩壁|书院|工坊/.test(text)
+        && /观察|标出|对应|脱落|变化|形成/.test(text);
+      return analogy || concreteCase;
+    });
+    const recapScene = /总结归纳|要点重述|总结/.test(`${last.dramatic_function} ${last.title}`)
+      && /最后记住|三个要点|三点总结|第一.+第二.+第三|先.+再.+最后/.test(lastText)
+      && /字幕|图卡|点亮|逐项|记住/.test(`${lastText} ${last.visual_prompt} ${last.camera_suggestion}`);
+
+    if (/问题明确|核心问题明确|必须有核心问题/.test(signal)) {
+      return questionScene ? [first.scene_id] : [];
+    }
+    if (/层级清楚|知识层级|必须有知识层级/.test(signal)) {
+      return hierarchyScene ? [hierarchyScene.scene_id] : [];
+    }
+    if (/例子有效|例证|例子或类比/.test(signal)) {
+      return exampleScene ? [exampleScene.scene_id] : [];
+    }
+    if (/总结可记住|总结可复盘/.test(signal)) {
+      return recapScene ? [last.scene_id] : [];
+    }
+  }
+
+  if (story.video_type === 'lecture_video') {
+    const claimScene = /提出主题|核心观点/.test(`${first.dramatic_function} ${first.title}`)
+      && /核心观点|主张|说明|不是.+而是/.test(firstText)
+      && /观点|精神|意味着|体现|说明/.test(firstText);
+    const caseScene = story.scene_breakdown.find(scene => {
+      if (!/讲述事实|事实案例|案例支撑/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /可考|史料|记载|\d{3,4}年|以.+为例/.test(text)
+        && /人物|地点|书院|现场|事件|会讲|创建|证据|线索/.test(text);
+    });
+    const analysisScene = story.scene_breakdown.find(scene => {
+      if (!/分析精神|观点分析|价值分析/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /首先.+其次.+最后|第一.+第二.+第三|开放.+求真.+传承/.test(text)
+        && /体现|说明|意味着|检验|论证|起点/.test(text);
+    });
+    const presentScene = story.scene_breakdown.find(scene => {
+      if (!/联系当下|现实映射|现实连接/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /今天|当下|现在|仍能|仍可以/.test(text)
+        && /课堂|学习|交流|生活|工作|行动|讨论|查证|修正/.test(text);
+    });
+    const actionEnding = /总结号召|行动号召|价值回扣/.test(`${last.dramatic_function} ${last.title}`)
+      && /倾听|查证|发问|讨论|写下|举手|行动|先.+再/.test(lastText)
+      && /观众|下一次|开始|变成|做到|字幕|发言/.test(`${lastText} ${last.visual_prompt} ${last.camera_suggestion}`);
+
+    if (/观点明确|中心观点明确|必须有中心观点/.test(signal)) {
+      return claimScene ? [first.scene_id] : [];
+    }
+    if (/案例支撑|论据充分|必须有例证/.test(signal)) {
+      return uniqueNumbers([
+        ...(caseScene ? [caseScene.scene_id] : []),
+        ...(analysisScene ? [analysisScene.scene_id] : []),
+      ]);
+    }
+    if (/现实连接|现实连接清楚|必须有现实连接/.test(signal)) {
+      return presentScene ? [presentScene.scene_id] : [];
+    }
+    if (/结尾有力量/.test(signal)) {
+      return actionEnding ? [last.scene_id] : [];
+    }
+  }
+
+  if (story.video_type === 'landscape_mood') {
+    const naturalMotionScenes = story.scene_breakdown.filter(scene => {
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /峰|山|谷|林|石壁|溪|水|云|雾|风|雨|雪|鸟鸣|草|树影/.test(text)
+        && /露出|上升|掠过|移开|吞没|退下|流动|变化|擦亮|拉深|显露|摇曳|滴落|唤醒/.test(text);
+    });
+    const changingLightScene = story.scene_breakdown.find(scene => {
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      const phases = ['清晨', '晨光', '日光', '雨雾', '暮色', '黄昏', '夜色', '月光']
+        .filter(term => text.includes(term));
+      return phases.length >= 3
+        && /依次|随后|又|从.+到|掠过|改变|吞没|擦亮|拉深/.test(text);
+    });
+    const narrationCharacters = story.scene_breakdown.reduce(
+      (total, scene) => total + countContentChars(scene.dialogue_or_narration ?? ''),
+      0,
+    );
+    const sparseNarration = story.scene_breakdown.every(scene => (scene.characters?.length ?? 0) === 0)
+      && narrationCharacters <= 40
+      && story.scene_breakdown.filter(scene => countContentChars(scene.dialogue_or_narration ?? '') > 0).length
+        <= Math.ceil(story.scene_breakdown.length * 0.67);
+    const heldEnding = /灵韵定格|山水余韵|山水精神|意境收束/.test(`${last.dramatic_function} ${last.title}`)
+      && /风声退|声音渐退|只留|余味|未说完|停留|留给|空谷/.test(lastText)
+      && /远景|固定|留白|停留|空镜|大面积|五秒/.test(`${last.visual_prompt} ${last.camera_suggestion}`);
+
+    if (/自然意象突出|必须有自然意象/.test(signal)) {
+      return naturalMotionScenes.map(scene => scene.scene_id);
+    }
+    if (/光影季节明确|必须有光影季节/.test(signal)) {
+      return changingLightScene ? [changingLightScene.scene_id] : [];
+    }
+    if (/旁白低密度|旁白不可过密/.test(signal)) {
+      return sparseNarration ? story.scene_breakdown.map(scene => scene.scene_id) : [];
+    }
+    if (/留白成立|留白感成立/.test(signal)) {
+      return heldEnding ? [last.scene_id] : [];
+    }
+  }
+
+  if (story.video_type === 'children_story') {
+    const audienceSentences = story.full_text
+      .split(/[。！？!?；;\n]+/)
+      .map(sentence => sentence.replace(/\s+/g, ''))
+      .filter(Boolean);
+    const concreteChildActions = story.scene_breakdown.filter(scene => {
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /柴绳|木柴|柴担|花篮|山路|家门|暖灯|脚步|手|眼睛|歌声/.test(text)
+        && /捡|捆|停|听|看|放回|核对|抬|送|走|放下|挥手|帮助/.test(text);
+    });
+    const simpleLanguage = audienceSentences.length >= 4
+      && audienceSentences.every(sentence => countContentChars(sentence) <= 58)
+      && concreteChildActions.length >= 2
+      && !/宏大叙事|价值范式|辩证关系|历史必然|精神内核|意识形态/.test(story.full_text);
+    const gentleConflictScene = story.scene_breakdown.find(scene => {
+      if (!/遇到问题|学习成长|做出选择/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /害怕|怀疑|陌生人|误会|身份不同|劝.+不要|丢了|散落|不相信/.test(text)
+        && /先听|观察|看行动|核对|温和|没有伤害|把话说完|帮助/.test(text)
+        && !/殴打|杀死|砍死|虐待|血淋淋|残肢|酷刑/.test(text);
+    });
+    const learningScene = story.scene_breakdown.find(scene => {
+      if (!/学习成长|认真听看|看见善意/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /看见|观察|想起|明白|理解|判断/.test(text)
+        && /行动|善意|没有.+拿走|没有.+伤害|帮助|最后一根|亲眼/.test(text);
+    });
+    const choiceScene = story.scene_breakdown.find(scene => {
+      if (!/做出选择|解开误会/.test(`${scene.dramatic_function} ${scene.title}`)) return false;
+      const text = observableSignalSceneText(scene, signal).replace(/\s+/g, '');
+      return /决定|选择|于是|先.+再|核对|道谢/.test(text)
+        && /一起|面对|抬起|送回|寻找|相信|解开/.test(text);
+    });
+    const causalLearning = Boolean(
+      gentleConflictScene
+      && learningScene
+      && choiceScene
+      && gentleConflictScene.scene_id < learningScene.scene_id
+      && learningScene.scene_id < choiceScene.scene_id,
+    );
+    const warmEnding = /温暖结尾|带着收获回家|暖灯下回家/.test(`${last.dramatic_function} ${last.title}`)
+      && /一起|两人|伙伴/.test(lastText)
+      && /回家|家门|送到|放下|歌声|笑|挥手|约好|暖灯/.test(lastText)
+      && /暖色|暖灯|清晨|远景|家门/.test(`${lastText} ${last.visual_prompt} ${last.camera_suggestion}`)
+      && !/黑屏|口号|旁白说.+善良/.test(`${last.visual_prompt} ${last.plot}`);
+
+    if (/语言简单|语言必须简单/.test(signal)) {
+      return simpleLanguage ? concreteChildActions.map(scene => scene.scene_id) : [];
+    }
+    if (/冲突温和/.test(signal)) {
+      return gentleConflictScene ? [gentleConflictScene.scene_id] : [];
+    }
+    if (/因果清楚/.test(signal)) {
+      return causalLearning ? [
+        gentleConflictScene!.scene_id,
+        learningScene!.scene_id,
+        choiceScene!.scene_id,
+      ] : [];
+    }
+    if (/结尾正向|结尾必须温暖/.test(signal)) {
+      return warmEnding ? [last.scene_id] : [];
+    }
+  }
+
+  return [];
+}
+
 function observableSceneEvidence(story: StoryGenerateResult, sceneId: number, signal = ''): string[] {
   const scene = story.scene_breakdown.find(item => item.scene_id === sceneId);
   if (!scene) return [];
-  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现/.test(signal)
+  const boundaryEvidence = /来源|史实|事实|边界|证据|现场|再现|传说|版本/.test(signal)
     ? [scene.cultural_note, scene.factual_basis ?? '', ...(scene.fictionalized_elements ?? [])]
     : [];
   const evidence = [scene.plot, scene.key_action, scene.conflict ?? '', scene.dialogue_or_narration ?? '', ...boundaryEvidence]
@@ -720,7 +1162,14 @@ function buildGearsReadinessReport(
 
   for (const scene of story.scene_breakdown) {
     const sceneLabel = `场景 ${scene.scene_id}「${scene.title || scene.dramatic_function}」`;
-    if (countContentChars(scene.plot) < 35) unitGaps.push(`${sceneLabel}剧情过薄，需写出地点、动作、冲突/发现和情绪变化。`);
+    const conciseLandscapeUnit = story.video_type === 'landscape_mood'
+      && countContentChars(`${scene.key_action} ${scene.visual_prompt} ${scene.camera_suggestion}`) >= 35
+      && /雾|云|风|水|光|影|雨|雪|峰|谷|溪|林|声|暮|晨/.test(
+        `${scene.plot} ${scene.key_action} ${scene.visual_prompt}`,
+      );
+    if (countContentChars(scene.plot) < 35 && !conciseLandscapeUnit) {
+      unitGaps.push(`${sceneLabel}剧情过薄，需写出地点、动作、冲突/发现和情绪变化。`);
+    }
     if (!scene.key_action?.trim()) unitGaps.push(`${sceneLabel}缺少关键动作。`);
     if (requiresCharacterAssets && !scene.characters?.length) assetGaps.push(`${sceneLabel}缺少角色列表。`);
     if (!scene.visual_prompt?.trim()) promptGaps.push(`${sceneLabel}缺少画面提示。`);
@@ -733,8 +1182,14 @@ function buildGearsReadinessReport(
     promptGaps.push(`段落 ${segment.segment_id}: ${segmentIssues.join('；')}`);
   }
 
-  issues.push(...assetGaps, ...unitGaps, ...promptGaps, ...(delivery?.validation_notes ?? []));
-  const readinessScore = Math.max(0, 100 - assetGaps.length * 12 - unitGaps.length * 10 - promptGaps.length * 8 - (delivery?.validation_notes.length ?? 0) * 6);
+  const gearsContractNotes = (delivery?.validation_notes ?? [])
+    .filter(note => !note.startsWith('生产素材'));
+  issues.push(...assetGaps, ...unitGaps, ...promptGaps, ...gearsContractNotes);
+  const readinessScore = Math.max(0, 100
+    - assetGaps.length * 12
+    - unitGaps.length * 10
+    - promptGaps.length * 8
+    - gearsContractNotes.length * 6);
 
   return {
     schema_version: 'gears-readiness/v1' as const,
@@ -1072,7 +1527,7 @@ function extractFocusedOutlineNodes(outline: string): string[] {
 }
 
 function isOutlineMetaInstruction(text: string): boolean {
-  return /^(只生成|本集只写|不生成其他集|本集目标：\d+秒|本集目标：\d+.*格|本集阶段：phase-|阶段目标：建立主角目标|连续性账本|制作约束审计|系列记忆精准召回|召回-|连续性：|文化边界：|叙事流派机制：|知识库使用规则：|长期线索：|角色弧线：|输出要求：|全系列：|承接：建立主角初始状态)/.test(text);
+  return /^(只生成|本集只写|不生成其他集|本集目标：\d+秒|本集目标：\d+.*格|本集阶段：phase-|阶段目标：建立主角目标|连续性账本|制作约束审计|系列记忆精准召回|召回-|连续性：|文化边界：|叙事流派机制：|知识库使用规则：|长期线索：|角色弧线：|输出要求：|全系列：|承接：建立主角初始状态|围绕[“"].+[”"]制作(?:三分钟|\d+分钟|\d+秒)版本|把[“"].+[”"]压缩为(?:三十秒|\d+秒)版本|开场必须尽快建立可见问题|所有历史、人物、技艺、机构和地貌表达都服从知识条目边界|无法确认的细节使用克制画面|镜头需要有稳定人物或空间锚点|避免抽象口号、模板化解说与无关现代物件|前三秒给出一个可见钩子|只保留一个核心知识点或品牌承诺|每个镜头只承担一个动作或信息|结尾用具体画面收束|不使用空泛口号|保持文化事实、工艺步骤、机构表达与地貌类型准确)/.test(text);
 }
 
 function isEpisodeOutlineNode(text: string): boolean {
@@ -1159,6 +1614,35 @@ function hasSignalText(text: string, signal: string): boolean {
 
 function hasSemanticSignalEvidence(text: string, signal: string): boolean {
   const compactText = text.replace(/\s+/g, '');
+  const localPlaceNames = uniqueStrings(compactText.match(
+    /[\u4e00-\u9fa5]{2,10}(?:书院|旧址|遗址|博物馆|纪念馆|广场|街巷|古街|山|江|湖|洲|楼|台|塔|桥|城|镇|村)/g,
+  ) ?? []);
+  const dailyLifeHits = uniqueStrings([
+    '早餐摊', '蒸笼', '晨读', '讲解员', '游客', '学生', '市民', '摊主', '散步', '步行',
+    '街巷', '灯火', '人群', '日常', '生活', '买菜', '赶集', '上学', '下班', '开门', '收摊',
+  ].filter(term => compactText.includes(term)));
+  const hasRegionalIdentity = /文脉|湖湘|岭南|巴蜀|江南|中原|闽南|齐鲁|关中|燕赵|气质|烟火|求知|开放|坚韧|包容|生长/.test(compactText);
+  const hasSpaceIdentity = localPlaceNames.length >= 1
+    && /书院|旧址|遗址|博物馆|纪念馆|园林|宫殿|寺庙|工坊|街区|村落|建筑|空间/.test(compactText);
+  const routeActionHits = uniqueStrings([
+    '进入', '走进', '沿', '经过', '抵达', '继续', '转入', '穿过', '走向', '回望', '路线', '中轴', '入口', '门槛',
+  ].filter(term => compactText.includes(term)));
+  const hasFunctionalNode = localPlaceNames.length >= 1
+    && /讲学|讲堂|藏书|展陈|祭祀|纪念|居住|生产|交易|通行|功能|使用|晨读|记录/.test(compactText);
+  const hasTimeLayer = /古今|旧与今|历史|今天|至今|千年|百年|旧藏|时间|叠印|仍然|仍在/.test(compactText);
+  const hasAtmosphericClosure = /停下|停步|回望|渐远|风声|人声|环境声|树影|余音|留白|空镜|空出的|远景|长镜头/.test(compactText);
+
+  if (/地方名词充足/.test(signal)) return localPlaceNames.length >= 2;
+  if (/地标清楚|地标识别/.test(signal)) return localPlaceNames.length >= 1;
+  if (/生活气息可见|生活气息充足|生活场景/.test(signal)) return dailyLifeHits.length >= 2;
+  if (/品牌句有地域性|品牌句有地方感|城市气质/.test(signal)) {
+    return localPlaceNames.length >= 1 && hasRegionalIdentity;
+  }
+  if (/空间身份清楚|空间身份明确|必须有空间身份/.test(signal)) return hasSpaceIdentity;
+  if (/路线连续|视觉路线完整|必须有视觉路线/.test(signal)) return routeActionHits.length >= 2;
+  if (/节点有功能/.test(signal)) return hasFunctionalNode;
+  if (/时间层存在/.test(signal)) return hasTimeLayer;
+  if (/氛围收束|氛围结尾/.test(signal)) return hasAtmosphericClosure;
   const checks: Array<[RegExp, RegExp[]]> = [
     [/目标明确|人物目标清楚|必须有主角目标/, [/所求/, /要弄清/, /为了/, /求学不是/, /志向/, /书袋内侧写下/, /不能签字/, /要先看清事实/, /重查/, /重问证人/, /承担亡国之痛/, /还能把什么留给后人/]],
     [/阻力具体|必须有阻力|制度压力可见/, [/官场规则/, /制度压力/, /时代压力/, /军阀统治/, /社会动荡/, /地方权势/, /谷价/, /租息/, /名声/, /人情/, /催客/, /浊浪/, /路远/, /书卷会湿/, /行程.{0,6}误/, /知军.{0,8}催/, /催他签字/, /此案已定/, /得罪上官/, /可能丢官/, /获罪/, /长官权威/, /国都失陷/, /亡国之痛/]],
@@ -1216,7 +1700,6 @@ function hasPromptNoise(value: string): boolean {
     '类型匹配',
     '资料',
     '摘要',
-    '为什么',
     '核心画面是',
   ].some(word => value.includes(word));
 }

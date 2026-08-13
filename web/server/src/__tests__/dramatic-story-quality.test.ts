@@ -57,6 +57,47 @@ describe('validateDramaticStory', () => {
     expect(report.issues).not.toContain('缺少结尾主题——没有精神/道德落点');
   });
 
+  it('keeps a 30-second landscape story sparse and accepts a poetic ending', () => {
+    const entry: EntryDetail = {
+      name: '张家界武陵源——峰林云海',
+      province: '湖南',
+      region: '张家界武陵源',
+      type: '世界自然遗产',
+      summary: '石英砂岩峰林在云雾、晨光和雨水中呈现持续变化的山水景观。',
+      story: '清晨云雾沿峰林移动，雨水从石壁落入溪谷，暮色让远峰逐渐隐去。',
+      culturalSignificance: '武陵源展现自然地貌与时间共同塑造的山水灵韵。',
+      relatedLocations: [{ name: '武陵源观景台', description: '观察峰林云海的空间节点' }],
+      keywords: ['山', '水', '云', '雾', '风'],
+      sources: ['知识库测试条目'],
+      credibility: '高',
+      unverifiedPoints: [],
+    };
+
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '峰林云海从清晨流向暮色',
+      videoType: 'landscape_mood',
+      presentationStyle: 'ink_style',
+      targetDuration: '30秒',
+      tone: '空灵',
+    });
+    const duration = story.scene_breakdown.reduce((sum, item) => sum + item.duration_sec, 0);
+    const contentChars = story.full_text.replace(/[\s\p{P}\p{S}]/gu, '').length;
+    const report = validateDramaticStory({
+      ...story,
+      selectedEvent: '峰林云海从清晨流向暮色',
+      videoType: 'landscape_mood',
+    });
+
+    expect(duration).toBe(30);
+    expect(contentChars / duration).toBeLessThanOrEqual(2.5);
+    expect(story.scene_breakdown.at(-1)?.plot).toMatch(/留白|余味|未说完/);
+    expect(story.scene_breakdown.filter(item => item.dialogue_or_narration?.trim())).toHaveLength(2);
+    expect(story.scene_breakdown.map(item => item.dialogue_or_narration).join('\n')).not.toContain('来源');
+    expect(report.hasEndingTheme).toBe(true);
+    expect(report.issues).not.toContain('缺少结尾主题——没有精神/道德落点');
+  });
+
   it('generates a usable Zhou Dunyi refusal character story without polluted place or quote fields', () => {
     const entry: EntryDetail = {
       name: '周敦颐——理学开山鼻祖',
@@ -182,6 +223,128 @@ describe('validateDramaticStory', () => {
     }
   });
 
+  it('keeps historical climaxes and explainer openings concrete enough for GEARS delivery', () => {
+    const historicalEntry: EntryDetail = {
+      name: '武昌起义——辛亥革命的第一声枪响',
+      province: '湖北',
+      region: '武汉武昌',
+      type: '历史事件',
+      summary: '武昌起义中新军行动并争夺楚望台军械库。',
+      story: '起义士兵冲向楚望台军械库，守军封门，双方在库门前争夺武器。',
+      culturalSignificance: '武昌起义成为辛亥革命的重要开端。',
+      relatedLocations: [{ name: '楚望台军械库', description: '起义军争夺军械的现场' }],
+      keywords: ['武昌起义', '新军', '楚望台军械库'],
+      sources: ['测试史料'],
+      credibility: '高',
+      unverifiedPoints: [],
+      era: '近代',
+    };
+    const historical = generateDramaticContent({
+      entry: historicalEntry,
+      centralEvent: '武昌起义提前发动并争夺楚望台军械库',
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      targetDuration: '1分钟',
+      tone: '',
+    });
+    const historicalClimax = historical.scene_breakdown.find(scene => scene.dramatic_function === '高潮');
+
+    expect(historicalClimax?.plot.length).toBeGreaterThanOrEqual(35);
+    expect(historicalClimax?.plot).toMatch(/楚望台军械库|库门/);
+    expect(historicalClimax?.plot).toMatch(/冲|推|夺|开|举/);
+
+    const explainerEntry: EntryDetail = {
+      ...historicalEntry,
+      name: '张家界武陵源——石英砂岩峰林',
+      region: '张家界武陵源观景台',
+      type: '世界自然遗产',
+      summary: '石英砂岩在节理、流水侵蚀与重力作用下形成峰林。',
+      story: '观景台可同时看到连片峰墙、被切开的峡谷和孤立峰柱。',
+      culturalSignificance: '武陵源以独特峰林地貌展示漫长地质作用。',
+      keywords: ['石英砂岩', '垂直节理', '流水侵蚀'],
+    };
+    const explainer = generateDramaticContent({
+      entry: explainerEntry,
+      centralEvent: '石英砂岩峰林如何形成',
+      videoType: 'explainer_video',
+      presentationStyle: 'host_narration',
+      targetDuration: '1分钟',
+      tone: '',
+    });
+    const question = explainer.scene_breakdown[0];
+
+    expect(question.plot.length).toBeGreaterThanOrEqual(35);
+    expect(question.plot).toMatch(/观景台|峰墙|峡谷|峰柱/);
+    expect(question.plot).toMatch(/指|摆|对照|圈/);
+  });
+
+  it('turns a Wuchang uprising adaptation into six distinct causal scenes led by ordinary soldiers', () => {
+    const entry: EntryDetail = {
+      name: '武昌起义——辛亥革命的第一声枪响',
+      province: '湖北',
+      region: '武汉武昌',
+      type: '地方掌故',
+      summary: '1911年10月10日，新军在武昌发动起义并攻占湖广总督署。',
+      story: [
+        '10月9日，汉口俄租界炸弹意外爆炸，起义计划泄露，清军开始搜捕革命党人。',
+        '10月10日晚，新军士兵响应起义，起义军攻占楚望台军械库获得弹药后攻入湖广总督署。',
+        '武昌起义成功后，两个月内多省先后宣布独立。',
+      ].join('\n\n'),
+      culturalSignificance: '武昌起义由新军中的普通士兵率先发动，成为辛亥革命的重要开端。',
+      relatedLocations: [
+        { name: '楚望台军械库', description: '起义军获得弹药的转折空间' },
+        { name: '湖广总督署', description: '起义军攻入的官署空间' },
+      ],
+      keywords: ['武昌起义', '辛亥革命', '新军起义', '金兆龙', '程定国', '楚望台军械库'],
+      sources: ['辛亥革命武昌起义纪念馆官方资料'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['率先开枪的具体经过在不同回忆中有细微差异'],
+      era: '近代',
+    };
+    const source = [
+      '武昌起义消息提前泄露，新军士兵连夜集结，决定抢在清军搜捕前发动。',
+      '起义军冲向楚望台军械库，推开库门、搬出枪械，再向湖广总督署推进。',
+      '普通士兵的行动引发连锁响应，武昌城的局势由此改变。',
+    ].join('\n\n');
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '武昌起义提前发动并争夺楚望台军械库',
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      targetDuration: '3分钟',
+      tone: '紧张克制',
+      originalUserQuery: source,
+      adaptationAnalysis: {
+        source_mode: 'user_novel',
+        source_length: source.length,
+        source_summary: '普通新军士兵在计划泄露后提前发动起义并引发连锁响应。',
+        core_characters: ['新军士兵', '起义军', '普通士兵'],
+        plot_beats: source.split('\n\n'),
+        must_keep: ['新军士兵', '起义军', '普通士兵', '提前发动', '楚望台军械库', '连锁响应'],
+        compressible_parts: [],
+        visual_setpieces: ['夜间搜捕', '军械库争夺', '湖广总督署推进'],
+        adaptation_risks: ['不得虚构唯一的第一枪人物或把复杂历史结果归为单因'],
+      },
+    });
+
+    expect(story.scene_breakdown).toHaveLength(6);
+    expect(new Set(story.scene_breakdown.map(item => item.plot)).size).toBe(6);
+    expect(story.scene_breakdown[0].plot).toMatch(/10月9日|计划泄露/);
+    expect(story.scene_breakdown[0].plot).toMatch(/搜捕|处决|逼近/);
+    expect(story.scene_breakdown[1].plot).toMatch(/新军士兵/);
+    expect(story.scene_breakdown[1].plot).toMatch(/提前发动|决定|选择/);
+    expect(story.scene_breakdown[2].plot).toMatch(/10月10日|枪声|营门/);
+    expect(story.scene_breakdown[3].plot).toMatch(/楚望台军械库/);
+    expect(story.scene_breakdown[3].plot).toMatch(/推开|搬出|弹药|枪械/);
+    expect(story.scene_breakdown[4].plot).toMatch(/湖广总督署|连锁响应/);
+    expect(story.scene_breakdown[5].plot).toMatch(/普通士兵/);
+    expect(story.scene_breakdown[5].plot).toMatch(/多省|十四省|响应|改变/);
+    expect(story.scene_breakdown.every(item => item.source_entries?.includes('用户提供改编素材'))).toBe(true);
+    expect(story.characters.map(item => item.name)).toEqual(expect.arrayContaining(['新军士兵', '起义军', '普通士兵']));
+    expect(story.characters.map(item => item.name)).not.toEqual(expect.arrayContaining(['武昌', '辛亥革命', '终结帝制']));
+    expect(story.full_text).not.toContain('镜头沿人物移动、对峙与关键物件推进');
+  });
+
   it('does not inject case-signing dialogue or unrelated locations into a Mao Zedong awakening story', () => {
     const entry: EntryDetail = {
       name: '毛泽东——从韶山冲走向天安门的农家革命者',
@@ -235,5 +398,113 @@ describe('validateDramaticStory', () => {
     expect(story.scene_breakdown.every(scene => !/案卷|签笔|衙署/.test(scene.visual_prompt))).toBe(true);
     expect(story.characters.map(character => character.name)).toEqual(expect.arrayContaining(['毛泽东']));
     expect(story.characters.map(character => character.name)).not.toContain('少年');
+  });
+
+  it('turns the Liu Hai legend into a visible supernatural trial, human choice, and transmission ending', () => {
+    const entry: EntryDetail = {
+      name: '刘海砍樵——人仙之恋的湖南民间传说',
+      province: '湖南',
+      region: '常德→武陵（传说发源地）；长沙（花鼓戏经典改编地）',
+      type: '民间故事',
+      summary: '武陵樵夫刘海与狐仙胡大姐跨越人仙界限的爱情故事，后来经花鼓戏改编传播。',
+      story: [
+        '刘海是武陵的一名勤劳樵夫，以砍柴为生。狐仙胡大姐化身女子下凡，在砍柴途中与刘海相遇。',
+        '两人相爱后，胡大姐的狐仙身份被揭露，经历一系列考验。最终两人战胜困难。',
+        '该传说流传于常德武陵山区及长沙地区，长沙花鼓戏将其加工为舞台经典。',
+      ].join('\n\n'),
+      culturalSignificance: '传说表现勤劳善良与忠贞选择，并通过湖南花鼓戏经典对唱广泛传播。',
+      relatedLocations: [
+        { name: '常德武陵山林', description: '传说中的砍樵与相遇场景' },
+        { name: '长沙花鼓戏舞台', description: '戏曲改编和传播场景' },
+      ],
+      keywords: ['刘海砍樵', '胡大姐', '狐仙', '花鼓戏', '武陵', '比翼鸟', '人仙之恋'],
+      sources: ['湖南花鼓戏经典剧目《刘海砍樵》', '常德武陵民间口述传说'],
+      credibility: '待核实',
+      unverifiedPoints: ['民间口述版本与花鼓戏改编版本存在差异'],
+    };
+
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '刘海砍樵与人仙相恋的考验',
+      videoType: 'legend_story',
+      presentationStyle: 'ink_style',
+      targetDuration: '1分钟',
+      tone: '温暖传奇',
+    });
+
+    expect(story.scene_breakdown.map(item => item.dramatic_function)).toEqual([
+      '远古传说',
+      '神力显现',
+      '凡人考验',
+      '命运转折',
+      '传说永恒',
+    ]);
+    expect(story.scene_breakdown[0].plot).toMatch(/相传|民间传说/);
+    expect(story.scene_breakdown[0].plot).toMatch(/武陵|山路/);
+    expect(story.scene_breakdown[0].plot).toMatch(/柴担|柴刀|斧头/);
+    expect(story.scene_breakdown[1].plot).toMatch(/胡大姐/);
+    expect(story.scene_breakdown[1].plot).toMatch(/狐影|狐仙|花篮|披帛/);
+    expect(story.scene_breakdown[2].plot).toMatch(/乡邻|村人|旁人/);
+    expect(story.scene_breakdown[2].plot).toMatch(/放下|退后|站到|选择/);
+    expect(story.scene_breakdown[3].plot).toMatch(/回头|并肩|护住|留下/);
+    expect(story.scene_breakdown[3].plot).toMatch(/因此|于是|从此|结果/);
+    expect(story.scene_breakdown[4].plot).toMatch(/花鼓戏|戏台|对唱/);
+    expect(story.scene_breakdown[4].plot).toMatch(/民间传说|戏曲改编|版本/);
+    expect(story.scene_breakdown.every(item => /传说|改编|影视化|虚构/.test(
+      `${item.cultural_note} ${item.factual_basis} ${item.fictionalized_elements?.join(' ') ?? ''}`,
+    ))).toBe(true);
+    expect(story.full_text).not.toMatch(/恐惧、犹豫、勇气、信念|传说不灭，精神永存/);
+  });
+
+  it('keeps a user-provided Liu Hai legend adaptation while making its motif, choice cost, and transmission visible', () => {
+    const entry: EntryDetail = {
+      name: '刘海砍樵——人仙之恋的湖南民间传说',
+      province: '湖南',
+      region: '常德武陵；长沙',
+      type: '民间故事',
+      summary: '武陵樵夫刘海与狐仙胡大姐的民间传说，后经长沙花鼓戏改编传播。',
+      story: '刘海在砍柴途中遇见胡大姐。胡大姐的狐仙身份揭露后，两人经历考验并战胜困难。',
+      culturalSignificance: '传说表现勤劳善良与忠贞选择，并通过湖南花鼓戏广泛传播。',
+      relatedLocations: [{ name: '常德武陵山林', description: '传说场景' }, { name: '长沙花鼓戏舞台', description: '传播场景' }],
+      keywords: ['刘海砍樵', '胡大姐', '狐仙', '花鼓戏', '武陵', '人仙之恋'],
+      sources: ['民间口述传说', '花鼓戏改编'],
+      credibility: '待核实',
+      unverifiedPoints: ['版本差异待核'],
+    };
+    const source = [
+      '刘海在山路砍樵时遇见胡大姐，她用神异力量替他挡开危机，却没有立刻说明身份。',
+      '乡邻的怀疑迫使两人分开；刘海决定相信一路看见的行动，回头寻找胡大姐。',
+      '两人共同通过考验，歌声留在山路上；这是民间传说中的讲法。',
+    ].join('\n\n');
+    const story = generateDramaticContent({
+      entry,
+      centralEvent: '刘海砍樵与人仙相恋的考验',
+      videoType: 'legend_story',
+      presentationStyle: 'ink_style',
+      targetDuration: '3分钟',
+      tone: '温暖传奇',
+      originalUserQuery: source,
+      adaptationAnalysis: {
+        source_mode: 'user_novel',
+        source_length: source.length,
+        source_summary: '刘海与胡大姐在人群压力中共同通过传说考验。',
+        core_characters: ['刘海', '胡大姐', '乡邻'],
+        plot_beats: source.split('\n\n'),
+        must_keep: ['刘海', '胡大姐', '乡邻', '回头寻找', '民间传说'],
+        compressible_parts: [],
+        visual_setpieces: ['山路神异危机', '乡邻逼迫', '回头寻找'],
+        adaptation_risks: ['不得把民间传说写成可考史实'],
+      },
+    });
+
+    expect(story.full_text).toContain('刘海决定相信一路看见的行动，回头寻找胡大姐');
+    expect(story.full_text).toContain('两人共同通过考验，歌声留在山路上');
+    expect(story.scene_breakdown[1].plot).toMatch(/花篮|披帛|狐影/);
+    expect(story.scene_breakdown[2].plot).toMatch(/乡邻/);
+    expect(story.scene_breakdown[2].plot).toMatch(/放下|回头|选择/);
+    expect(story.scene_breakdown[2].plot).toMatch(/风险|代价|排斥|分开/);
+    expect(story.scene_breakdown[4].plot).toMatch(/花鼓戏|戏台|对唱/);
+    expect(story.scene_breakdown[4].plot).toMatch(/流传|重讲|一代代/);
+    expect(story.scene_breakdown.every(item => item.source_entries?.includes('用户提供改编素材'))).toBe(true);
   });
 });

@@ -12,6 +12,47 @@ import {
 import { revalidateStoryDomainRevision } from '../platform/story-domain-revision-safety.js';
 
 describe('china_culture story generation boundary', () => {
+  it('recomputes production material readiness from the generated structured story', async () => {
+    const previousGeneratedRoot = process.env.WEB_GENERATED_ROOT;
+    const previousKbRoot = process.env.KB_ROOT;
+    const generatedRoot = await mkdtemp(resolve(tmpdir(), 'story-agent-post-generation-readiness-'));
+    process.env.WEB_GENERATED_ROOT = generatedRoot;
+    process.env.KB_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
+    try {
+      const generated = await chinaCultureDomainPack.generateStory({
+        entry_name: '张家界武陵源——3.8亿年雕琢的世界自然遗产',
+        video_type: 'explainer_video',
+        presentation_style: 'host_narration',
+        selected_event: '石英砂岩峰林如何形成',
+        output_gears_segments: true,
+      });
+
+      expect(generated.ok, JSON.stringify(generated.error)).toBe(true);
+      const story = generated.data!;
+      expect(story.argument_points?.length).toBeGreaterThan(0);
+      expect(story.production_material_readiness).toMatchObject({
+        status: 'ready',
+        score: 100,
+      });
+      expect(story.production_material_readiness?.available_fields).toContain('argument_points');
+      expect(story.supplement_tasks?.filter(task => task.status === 'open').map(task => task.need_id).join('\n'))
+        .not.toContain('argument_points');
+      expect(story.quality_report?.quality_gates?.production_material_gate).toMatchObject({
+        status: 'passed',
+        passed: true,
+      });
+      expect(story.quality_report?.quality_gates?.asset_gate.status).toBe('not_evaluated');
+      expect(story.quality_report?.quality_gates?.external_provider_gate.status).toBe('not_evaluated');
+      expect(story.quality_report?.quality_gates?.production_ready).toBe(false);
+    } finally {
+      if (previousGeneratedRoot === undefined) delete process.env.WEB_GENERATED_ROOT;
+      else process.env.WEB_GENERATED_ROOT = previousGeneratedRoot;
+      if (previousKbRoot === undefined) delete process.env.KB_ROOT;
+      else process.env.KB_ROOT = previousKbRoot;
+      await rm(generatedRoot, { recursive: true, force: true });
+    }
+  });
+
   it('keeps the legacy import path as a facade and binds Domain Pack generation directly to the domain', async () => {
     const [legacySource, domainPackSource, generationSource, seriesSource, routeSource] = await Promise.all([
       readFile(new URL('../services/story-service.ts', import.meta.url), 'utf8'),

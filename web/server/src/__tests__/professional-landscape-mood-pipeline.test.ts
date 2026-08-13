@@ -117,6 +117,17 @@ describe('landscape mood professional pipeline', () => {
     expect(professionalPackage.quality_report.professional_passed).toBe(false);
   });
 
+  it('treats a complete 30-second poetic arc as final text without forcing dense narration', () => {
+    const candidate = input();
+    candidate.target_duration = '30秒';
+    candidate.story.full_text = '雾中，峰脊醒来。\n\n晨光、雨雾掠过峰谷。\n\n云移开，风声退下，余味留给观看的人。';
+
+    const professionalPackage = buildLandscapeMoodProfessionalTextPackage(candidate);
+
+    expect(gates(professionalPackage)).not.toContain('full_text_not_final');
+    expect(gates(professionalPackage)).not.toContain('narration_too_dense');
+  });
+
   it('detects narration, static-postcard and music-only failure fixtures', () => {
     const registry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'data/professional-benchmarks/landscape-mood-stage5-iteration2-benchmark-specs.json'), 'utf8'));
     for (const fixture of registry.failure_fixtures) {

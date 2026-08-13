@@ -13,6 +13,7 @@ import {
   getGenreStoryProfile,
 } from './genre-story-profiles.js';
 import { getStoryFamilyRepairGuidance } from './story-family-quality-service.js';
+import { isStoryQualityPassed } from './quality-workflow-service.js';
 
 export function shouldAttemptStoryRepair(input: {
   autoRepair?: boolean;
@@ -20,10 +21,11 @@ export function shouldAttemptStoryRepair(input: {
   strictness?: GenreStrictness;
 }): boolean {
   if (!input.autoRepair || !input.qualityReport) return false;
-  const score = input.qualityReport.genre_score ?? (input.qualityReport.passed ? 100 : 0);
+  const storyQualityPassed = isStoryQualityPassed(input.qualityReport);
+  const score = input.qualityReport.genre_score ?? (storyQualityPassed ? 100 : 0);
   if (input.strictness === 'loose') return score < 55;
-  if (input.strictness === 'strict') return !input.qualityReport.passed || score < 85;
-  return !input.qualityReport.passed || score < 70;
+  if (input.strictness === 'strict') return !storyQualityPassed || score < 85;
+  return !storyQualityPassed || score < 70;
 }
 
 function formatList(label: string, values: string[] | undefined, max = 6): string[] {

@@ -73,17 +73,17 @@
     "counts_as_human_review": false
   },
   "m3_runtime_production_guidance": {
-    "production_audit_generated_at": "2026-08-04T04:44:33.940Z",
+    "production_audit_generated_at": "2026-08-05T06:31:20.508Z",
     "audited_entries": 289,
     "audited_video_types_per_entry": 15,
-    "raw_source_production_field_gaps": 168,
-    "source_authored_fields_recovered_from_raw_markdown": 44,
-    "machine_guidance_covered_fields": 168,
+    "raw_source_production_field_gaps": 0,
+    "source_authored_fields_recovered_from_raw_markdown": 231,
+    "machine_guidance_covered_fields": 0,
     "effective_runtime_production_field_gaps": 0,
-    "entries_with_machine_guidance": 111,
+    "entries_with_machine_guidance": 0,
     "guidance_facts_added": false,
     "province_markdown_written": false,
-    "note": "审计已读取源 Markdown 专节并恢复识别 44 项；剩余原始缺口继续保留为逐项源素材治理任务，确定性运行时指导仅组织已有资产、地点、类型和待核边界。"
+    "note": "审计已读取源 Markdown 专节并恢复识别 231 项；B1—B4 原始字段治理已完成，原始缺口、机器兜底和运行时有效缺口均为 0。新增口吻与边界字段均标注为非知识事实，不授予真人审核或生产信用。"
   },
   "m2": {
     "target_formal_entries": 289,
@@ -1004,12 +1004,12 @@
   },
   "verification": {
     "kb_lint": "passed: 34 files, 289 entries, 289 enriched entries",
-    "tests": "passed: 109 files, 555 tests",
-    "production_audit": "passed: 289 entries, 1043 sources, 0 missing verification method, 289 asset splits; M2-3M entries all production-card score 100",
+    "tests": "passed: MCP 110 files/556 tests; Server 204 files/1679 tests, with 1 file/2 tests skipped by existing configuration",
+    "production_audit": "passed: 289 entries, 1043 sources, 0 missing verification method, 289 asset splits, 0 raw production-field gaps, 0 machine-guidance fallbacks and 0 effective runtime gaps",
     "credibility_normalization": "dry-run: 34 files scanned, 0 files changed, 0 entries changed",
     "machine_metadata_enrichment": "dry-run: 34 files scanned, 0 files changed, 0 fields added",
     "asset_split_suggestions": "289 entries scanned, 0 entries without asset split, 0 suggestions",
-    "production_upgrade_plan": "generated: 13 batches, 402 actions; advisory only",
+    "production_upgrade_plan": "generated: 13 batches, 399 actions; advisory only",
     "fixed_retrieval": "M1 cumulative: 23/23; M2 batch 1A: 5/5, batch 1B: 5/5, batch 2A: 5/5, batch 2B: 5/5, batch 2C: 5/5, batch 2D: 5/5, batch 3A: 5/5, batch 3B: 5/5, batch 3C: 5/5, batch 3D: 5/5, batch 3E: 5/5, batch 3F: 5/5, batch 3G: 5/5, batch 3H: 5/5, batch 3I: 5/5, batch 3J: 5/5, batch 3K: 5/5, batch 3L: 6/6 and batch 3M: 6/6 new-entry queries returned the intended entry at top 1",
     "knowledge_contract_audit": "not refreshed for M2-3K, M2-3L or M2-3M after the recorded tsx IPC and approval-infrastructure failure; last report remains the M2-3J 272-entry snapshot",
     "git_diff_check": "passed"

@@ -24,6 +24,7 @@ import {
 } from './reference-generation-bridge-service.js';
 import { storyRepositoryRoot } from '../platform/story-storage-root.js';
 import { getStory } from '../platform/story-read-service.js';
+import { refreshStoryProductionMaterialReadiness } from './production-material-readiness-service.js';
 
 export class StoryDerivedStateValidationError extends Error {
   constructor(
@@ -130,6 +131,11 @@ export async function rebuildDerivedStoryState(
       ),
       ...professionalDispatch.supplement_tasks,
     ],
+  };
+  canonicalStory = {
+    ...canonicalStory,
+    production_material_readiness: refreshStoryProductionMaterialReadiness(canonicalStory)
+      ?? canonicalStory.production_material_readiness,
   };
 
   const structuralQuality = validateStoryFamilyBaseQuality(canonicalStory, {

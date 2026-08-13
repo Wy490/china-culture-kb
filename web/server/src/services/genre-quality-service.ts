@@ -115,8 +115,7 @@ export function validateGenreStoryQuality(input: {
 }
 
 function findAdaptationIssues(story: StoryGenerateResult): string[] {
-  const meta = story as StoryGenerateResult & { _request_meta?: Record<string, unknown> };
-  if (meta._request_meta?.source_material_mode !== 'adapt_user_novel') return [];
+  if (!story.adaptation_analysis) return [];
   const source = story.original_user_query ?? '';
   if (!source.trim()) return ['缺少可对照的用户原作/改编素材。'];
 
@@ -289,6 +288,10 @@ function hasSemanticSignalEvidence(text: string, signal: string): boolean {
     [/动词具体/, [/理顺/, /检查/, /配色/, /劈丝/, /穿针/, /落针/, /压住/, /修正/]],
     [/材料工具清楚/, [/丝线/, /绸面/, /图样/, /底布/, /绣架/, /针尖/, /线轴/]],
     [/匠心来自动作/, [/放慢速度/, /针脚/, /准确落在绸面/, /手背/, /指尖/, /慢针脚/]],
+    [/神异服务选择|神异意象服务选择/, [/(狐影|狐仙|花篮|披帛|异象).{0,60}(选择|放下|停手|站到|护住|回头)/, /(选择|放下|停手|站到|护住|回头).{0,60}(狐影|狐仙|花篮|披帛|异象)/]],
+    [/传说边界清楚|必须标明传说边界/, [/(相传|民间传说|口述|戏曲改编|多版本).{0,40}(不作|不是|边界|影视化|虚构|改编|待核|另核)/, /(影视化|虚构|改编).{0,30}(不作|不是|传说|事实|史实)/]],
+    [/象征意象贯穿|必须有象征意象/, [/(柴担|柴绳|花篮|狐影|披帛).{0,80}(柴担|柴绳|花篮|狐影|披帛)/]],
+    [/结尾有流传理由/, [/(花鼓戏|戏台|对唱|观众|锣鼓).{0,60}(流传|一代代|重讲|应和|传播)/, /(流传|一代代|重讲|传播).{0,60}(花鼓戏|戏台|对唱|观众|锣鼓)/]],
   ];
 
   return checks.some(([pattern, evidence]) =>

@@ -14,12 +14,16 @@ import type {
 import { ErrorCodes, fail, success } from '@shared/types.js';
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 import { getProject } from './project-service.js';
+import { rebuildDerivedStoryState } from './derived-story-state-service.js';
 import {
   exportStoryAgentImageGenerationRequest,
   getStoryAgentImageRun,
   importStoryAgentImageGenerationResult,
 } from './story-agent-image-run-service.js';
 import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
+import { isStoryQualityPassed } from './quality-workflow-service.js';
+
+const STORY_AGENT_MATRIX_CONTRACT_VERSION = 'story-agent-matrix-contract/v21';
 
 export interface StoryAgent15TypeMatrixCase {
   case_id?: string;
@@ -39,6 +43,42 @@ export type StoryAgent15TypeMatrixFallbackStatus =
   | 'explicit_local_only'
   | 'external_model'
   | 'hidden_fallback';
+
+export interface StoryAgentMachineQualityEvidence {
+  schema_version: 'story-agent-machine-quality-evidence/v1';
+  machine_validation_only: true;
+  human_review_complete: false;
+  professional_credit_granted: false;
+  evaluation_recomputed_from_canonical_story: true;
+  quality_report_present: boolean;
+  /** Backward-compatible aggregate from `quality_report.passed`. */
+  quality_passed: boolean;
+  /** Story publication gates plus narrative-pattern and GEARS text-contract thresholds. */
+  story_quality_passed: boolean;
+  story_publishable: boolean;
+  /** Production-material gate only; excludes assets and external providers. */
+  production_material_ready: boolean;
+  production_ready: boolean;
+  factual_cultural_gate_passed: boolean;
+  genre_score?: number;
+  outline_coverage_score?: number;
+  pattern_quality_score?: number;
+  gears_readiness_score?: number;
+  professional_candidate_score?: number;
+  quality_issue_count: number;
+  open_repair_action_count: number;
+  story_blocking_gate_ids: string[];
+  production_blocking_gate_ids: string[];
+  open_repair_targets: string[];
+  weak_pattern_signal_labels: string[];
+  gears_issues: string[];
+  repair_attempt_count: number;
+  repair_applied_count: number;
+  scene_count: number;
+  fact_boundary_scene_count: number;
+  cultural_boundary_scene_count: number;
+  shootable_scene_count: number;
+}
 
 export interface StoryAgent15TypeMatrixItem {
   case_id?: string;
@@ -66,6 +106,7 @@ export interface StoryAgent15TypeMatrixItem {
   expected_image_count: number;
   image_request_provider_invoked: false;
   project_reused: boolean;
+  machine_evaluation: StoryAgentMachineQualityEvidence;
   blockers: string[];
   preproduction_blockers: string[];
 }
@@ -296,6 +337,70 @@ function professionalScriptReady(story: StoryGenerateResult): boolean {
     && professional.scene_breakdown.length === story.scene_breakdown.length;
 }
 
+function nonEmpty(value?: string): boolean {
+  return Boolean(value?.trim());
+}
+
+export function evaluateStoryAgentMachineQuality(
+  story: StoryGenerateResult,
+): StoryAgentMachineQualityEvidence {
+  const quality = story.quality_report;
+  const gates = quality?.quality_gates;
+  const professional = story.professional_text_package?.quality_report;
+  const scenes = story.scene_breakdown;
+  const storyPublishable = gates?.story_publishable === true;
+  const storyQualityPassed = quality ? isStoryQualityPassed(quality) : false;
+  return {
+    schema_version: 'story-agent-machine-quality-evidence/v1',
+    machine_validation_only: true,
+    human_review_complete: false,
+    professional_credit_granted: false,
+    evaluation_recomputed_from_canonical_story: true,
+    quality_report_present: Boolean(quality),
+    quality_passed: quality?.passed === true,
+    story_quality_passed: storyQualityPassed,
+    story_publishable: storyPublishable,
+    production_material_ready: gates?.production_material_gate.passed === true,
+    production_ready: gates?.production_ready === true,
+    factual_cultural_gate_passed: gates?.factual_cultural_gate.passed === true,
+    genre_score: quality?.genre_score,
+    outline_coverage_score: quality?.outline_coverage_report?.coverage_score,
+    pattern_quality_score: quality?.pattern_quality_report?.pattern_score,
+    gears_readiness_score: quality?.gears_readiness_report?.readiness_score,
+    professional_candidate_score: professional?.total_score,
+    quality_issue_count: quality?.issues.length ?? 0,
+    open_repair_action_count: quality?.repair_action_items?.length ?? 0,
+    story_blocking_gate_ids: gates?.story_blocking_gate_ids ?? [],
+    production_blocking_gate_ids: gates?.production_blocking_gate_ids ?? [],
+    open_repair_targets: quality?.repair_action_items?.map(item => item.target_report) ?? [],
+    weak_pattern_signal_labels: quality?.pattern_quality_report?.weak_signals
+      .map(item => item.label) ?? [],
+    gears_issues: [
+      ...(quality?.gears_readiness_report?.asset_gaps ?? []),
+      ...(quality?.gears_readiness_report?.unit_gaps ?? []),
+      ...(quality?.gears_readiness_report?.prompt_gaps ?? []),
+    ],
+    repair_attempt_count: story.repair_trace?.filter(trace => trace.attempted).length ?? 0,
+    repair_applied_count: story.repair_trace?.filter(trace => trace.applied).length ?? 0,
+    scene_count: scenes.length,
+    fact_boundary_scene_count: scenes.filter(scene => (
+      (scene.source_entries?.length ?? 0) > 0
+      && nonEmpty(scene.factual_basis)
+    )).length,
+    cultural_boundary_scene_count: scenes.filter(scene => (
+      nonEmpty(scene.cultural_note)
+      && Array.isArray(scene.fictionalized_elements)
+    )).length,
+    shootable_scene_count: scenes.filter(scene => (
+      scene.duration_sec > 0
+      && nonEmpty(scene.location)
+      && nonEmpty(scene.key_action)
+      && nonEmpty(scene.visual_prompt)
+      && nonEmpty(scene.camera_suggestion)
+    )).length,
+  };
+}
+
 async function resolveStory(input: {
   item: StoryAgent15TypeMatrixCase;
   previous?: StoryAgent15TypeMatrixItem;
@@ -338,7 +443,10 @@ export async function prepareStoryAgentMatrixCase(input: {
 }): Promise<ApiResponse<StoryAgent15TypeMatrixItem>> {
   const generationRequest = storyAgentMatrixGenerationRequest(input.matrix_case);
   const requestFingerprint = createHash('sha256')
-    .update(JSON.stringify(generationRequest))
+    .update(JSON.stringify({
+      contract_version: STORY_AGENT_MATRIX_CONTRACT_VERSION,
+      request: generationRequest,
+    }))
     .digest('hex');
   const storyResult = await resolveStory({
     item: input.matrix_case,
@@ -357,6 +465,19 @@ export async function prepareStoryAgentMatrixCase(input: {
     return fail(
       ErrorCodes.INTERNAL_ERROR,
       `${input.matrix_case.video_type} generation did not persist a project_id`,
+    );
+  }
+  let evaluationStory: StoryGenerateResult;
+  try {
+    evaluationStory = await rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+      professionalTextNow: story.professional_text_package?.updated_at,
+    });
+  } catch (error) {
+    return fail(
+      ErrorCodes.INTERNAL_ERROR,
+      `${input.matrix_case.video_type} machine quality reevaluation failed`,
+      error instanceof Error ? error.message : String(error),
     );
   }
   const imageRunResult = await exportStoryAgentImageGenerationRequest({
@@ -427,6 +548,7 @@ export async function prepareStoryAgentMatrixCase(input: {
     expected_image_count: preproduction.acceptance.expected_image_asset_count,
     image_request_provider_invoked: imageRun.request.provider_invoked,
     project_reused: reused,
+    machine_evaluation: evaluateStoryAgentMachineQuality(evaluationStory),
     blockers,
     preproduction_blockers: preproduction.acceptance.blockers,
   });

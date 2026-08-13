@@ -8,7 +8,7 @@
     "sha256": "f84dad4a52c74374030862a68b85b619d5b16157a17dc6c00eb3a503d0d617ac",
     "production_audit_path": "data/reports/knowledge-base-production-audit.json",
     "production_audit_schema_version": "kb-production-material-audit/v1",
-    "production_audit_generated_at": "2026-08-04T16:41:57.240Z"
+    "production_audit_generated_at": "2026-08-05T06:31:20.508Z"
   },
   "gates": {
     "video_type_coverage": "15/15",
@@ -28,10 +28,10 @@
     "lecture_video_sample_count": 5,
     "education_training_sample_count": 5,
     "production_audited_entry_count": 289,
-    "raw_source_production_field_gap_count": 67,
-    "machine_guidance_field_count": 67,
+    "raw_source_production_field_gap_count": 0,
+    "machine_guidance_field_count": 0,
     "effective_runtime_production_field_gap_count": 0,
-    "entries_with_machine_guidance": 67
+    "entries_with_machine_guidance": 0
   },
   "packs": [
     {

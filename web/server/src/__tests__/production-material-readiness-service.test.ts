@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { MaterialPack, ProductionMaterialPack } from '@shared/types.js';
+import type { MaterialPack, ProductionMaterialPack, StoryGenerateResult } from '@shared/types.js';
 import { VIDEO_TYPE_CONFIG } from '@shared/types.js';
 import {
   getProductionMaterialPack,
@@ -12,6 +12,7 @@ import {
 import {
   buildProductionMaterialReadinessReport,
   getProductionMaterialFieldSpec,
+  refreshStoryProductionMaterialReadiness,
 } from '../services/production-material-readiness-service.js';
 
 function makeMaterialPack(summary: string): MaterialPack {
@@ -180,6 +181,105 @@ function makePackFileStructureConformanceValue(
 }
 
 describe('production-material-readiness-service', () => {
+  it('refreshes generated structured fields without inventing external production evidence', () => {
+    const explainerPack = getProductionMaterialPack('explainer_video');
+    const heritagePack = getProductionMaterialPack('heritage_promo');
+    const baseStory = {
+      storyId: 'post-generation-readiness',
+      title: '峰林如何形成',
+      generation_type: 'character_story',
+      video_type: 'explainer_video',
+      presentation_style: 'host_narration',
+      source_entry: '张家界武陵源',
+      logline: '从岩层、抬升与侵蚀解释峰林形成。',
+      theme: '地貌形成不是一次完成的雕刻',
+      full_text: '核心问题是峰林如何形成。先定义石英砂岩，再看抬升与流水侵蚀，最后用剖面图复盘。',
+      scene_breakdown: [],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/post-generation-readiness/gears-segments',
+      cultural_constraints: ['不能用类比替代事实来源。'],
+      credibility_note: '来源线索来自知识条目，图示为讲解示意。',
+      argument_points: ['岩层提供材料基础', '地壳抬升形成高差', '流水侵蚀切割峰体'],
+      knowledge_outline: ['概念定义', '形成步骤', '剖面例子', '事实边界'],
+      material_pack: makeMaterialPack('受众为入门游客。核心问题、概念定义、知识步骤、具体例子、图示字幕、来源线索、误区边界和总结记忆句均已明确。'),
+    } satisfies StoryGenerateResult;
+
+    const refreshedExplainer = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      production_material_pack: explainerPack,
+    });
+    const refreshedHeritage = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      video_type: 'heritage_promo',
+      production_material_pack: heritagePack,
+      material_pack: makeMaterialPack('非遗工艺使用纸张、颜料和刻刀，包含刻版、刷色、套印和晾晒流程；手部动作、传承关系、授权边界、视觉符号、声音质感、当代连接和生产风险均有记录。'),
+    });
+
+    expect(refreshedExplainer?.available_fields).toContain('argument_points');
+    expect(refreshedExplainer?.missing_fields.map(field => field.field_id)).not.toContain('argument_points');
+    expect(refreshedHeritage?.missing_fields.map(field => field.field_id))
+      .toContain('official_catalog_or_resource_links');
+  });
+
+  it('derives character production fields from the generated character arc and scene evidence', () => {
+    const characterPack = getProductionMaterialPack('character_story');
+    const story = {
+      storyId: 'character-generated-readiness',
+      title: '周敦颐拒签冤案',
+      generation_type: 'character_story',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      source_entry: '周敦颐——理学开山鼻祖',
+      logline: '一名司理参军在上官催逼下拒绝草率画押。',
+      theme: '选择必须承担代价',
+      full_text: '他逐页核对案卷，拒绝画押，最后让案件重新审理。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '案头拒签',
+        duration_sec: 30,
+        location: '南安军衙',
+        time_of_day: '夜',
+        dramatic_function: '人物关键选择',
+        plot: '周敦颐面对知军王逵的催逼，退回死刑文书。',
+        key_action: '逐页核对案卷后停笔',
+        characters: ['周敦颐', '王逵'],
+        visual_prompt: '木案、烛火、案卷与停笔的手部近景',
+        camera_suggestion: '从双人中景推到停笔特写',
+        cultural_note: '官职称谓按条目核对，影视对白不作原话引用。',
+        conflict: '草率执行与重新核查相冲突',
+        dialogue_or_narration: '周敦颐克制地说：案卷仍有疑点，我不能签。',
+        source_entries: ['周敦颐——理学开山鼻祖'],
+        factual_basis: '条目记录拒签并以辞官相争的事件。',
+        fictionalized_elements: ['烛火与停笔节奏为影视化调度。'],
+      }],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/character-generated-readiness/gears-segments',
+      cultural_constraints: ['不得把影视对白写成历史原话。'],
+      credibility_note: '核心事件来自知识条目；对白与镜头调度为创作补位。',
+      characters: [
+        { name: '周敦颐', role: 'protagonist', description: '初任南安军、负责核查案卷的司理参军' },
+        { name: '王逵', role: 'antagonist', description: '催促画押的知军' },
+      ],
+      protagonist_arc: [{
+        starting_state: '在上官催逼下核查案卷',
+        turning_point: '拒绝画押并准备辞官',
+        resolution: '案件重审，人物守住司法判断',
+      }],
+      material_pack: makeMaterialPack('人物与事件素材已确认。'),
+      production_material_pack: characterPack,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toEqual(expect.arrayContaining([
+      'life_stage_window',
+      'relationship_map',
+      'dialogue_voice',
+      'factual_life_boundary',
+      'ending_legacy',
+    ]));
+  });
+
   it('matches the shared production health conformance matrix', () => {
     expect(productionHealthConformance.schema_version)
       .toBe('production-material-pack-health-conformance/v1');
@@ -844,6 +944,392 @@ describe('production-material-readiness-service', () => {
       'audience_takeaway',
       'source_cues',
       'misconception_or_boundary',
+    ]));
+  });
+
+  it('derives training definitions and assessment only from executable teaching scenes', () => {
+    const trainingPack = getProductionMaterialPack('education_training');
+    const baseStory = {
+      storyId: 'training-generated-readiness',
+      title: '认识书院的历史层次',
+      generation_type: 'culture_promo',
+      video_type: 'education_training',
+      presentation_style: 'host_narration',
+      source_entry: '岳麓书院',
+      logline: '用现场对象区分地点、事件与文化解释。',
+      theme: '先辨对象，再核时间层',
+      full_text: '第一层看地点，第二层看事件，第三层辨文化解释。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '分层讲授',
+        duration_sec: 30,
+        location: '岳麓书院',
+        time_of_day: '白天',
+        dramatic_function: '知识讲授',
+        plot: '第一层看岳麓书院，确认地点对象；第二层看朱张会讲，确认历史事件；第三层看匾额在今天的使用，区分文化解释。',
+        key_action: '把三张对象卡按地点、事件、文化解释分类',
+        characters: ['主讲人'],
+        visual_prompt: '三张对象卡与分层字幕同框',
+        camera_suggestion: '主讲人中景切换卡片特写',
+        cultural_note: '现场对象、历史事件和文化解释不得混为同一时代事实。',
+      }, {
+        scene_id: 2,
+        title: '现场检验',
+        duration_sec: 30,
+        location: '岳麓书院',
+        time_of_day: '白天',
+        dramatic_function: '检验反馈',
+        plot: '知识检验：看到书院、朱张会讲和匾额时，学习者分别指出它属于地点、事件还是文化解释，再用一句话说明三者的时间关系。',
+        key_action: '学习者完成分类并口头说明时间关系',
+        characters: ['主讲人', '学习者'],
+        visual_prompt: '三张分类卡、答案栏和反馈标记',
+        camera_suggestion: '卡片俯拍后切换答案反馈',
+        cultural_note: '答案以条目来源与现场说明为准。',
+      }],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/training-generated-readiness/gears-segments',
+      cultural_constraints: ['不得把后世使用写成创建时事实。'],
+      credibility_note: '知识层次来自条目；教学卡片为讲解设计。',
+      material_pack: makeMaterialPack('学习目标、学习者、知识大纲、步骤、案例、练习、课件、复盘、来源和误区边界均已明确。'),
+      production_material_pack: trainingPack,
+    } satisfies StoryGenerateResult;
+
+    const derived = refreshStoryProductionMaterialReadiness(baseStory);
+    const labelsOnly = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      storyId: 'training-labels-only',
+      full_text: '完成知识讲授和检验反馈。',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        plot: scene.dramatic_function,
+        key_action: '主讲人继续讲述',
+        visual_prompt: '主讲人正面画面',
+        camera_suggestion: '固定中景',
+      })),
+    });
+
+    expect(derived?.available_fields).toEqual(expect.arrayContaining([
+      'concept_definitions',
+      'assessment_check',
+    ]));
+    expect(labelsOnly?.available_fields).not.toContain('concept_definitions');
+    expect(labelsOnly?.available_fields).not.toContain('assessment_check');
+  });
+
+  it('derives child examples and review guidance only from observable choices and an explicit recap', () => {
+    const childrenPack = getProductionMaterialPack('children_story');
+    const baseStory = {
+      storyId: 'children-generated-readiness',
+      title: '先看行动，再作判断',
+      generation_type: 'character_story',
+      video_type: 'children_story',
+      presentation_style: 'children_animation',
+      source_entry: '刘海砍樵',
+      logline: '小刘海用观察和核对解开误会。',
+      theme: '善良需要勇敢和判断',
+      full_text: '小刘海先看行动，再核实误会，最后和伙伴把柴担送回家。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '观察善意',
+        duration_sec: 24,
+        location: '山路',
+        time_of_day: '黄昏',
+        dramatic_function: '学习成长',
+        plot: '小刘海看见胡大姐把散落的木柴一根根捆好。他先听她说明，再观察柴绳和柴担，核对她是否真的在帮助自己。',
+        key_action: '先听说明，再看木柴被捆好，最后核实误会',
+        characters: ['小刘海', '胡大姐'],
+        visual_prompt: '柴绳、木柴、柴担与两人的手部动作连续同框',
+        camera_suggestion: '木柴特写切到小刘海观察反应',
+        cultural_note: '传说身份不写成现实事实。',
+      }, {
+        scene_id: 2,
+        title: '一起回家',
+        duration_sec: 24,
+        location: '家门口',
+        time_of_day: '清晨',
+        dramatic_function: '温暖结尾',
+        plot: '误会解开后，两人把柴担送到家门口。这个结尾提醒孩子：认识一个人，要先看他的行动，再作判断。',
+        key_action: '两人共同放下柴担并挥手告别',
+        characters: ['小刘海', '胡大姐'],
+        visual_prompt: '家门口暖灯、柴担归位与挥手告别',
+        camera_suggestion: '跟拍到柴担落地后停在两人笑脸',
+        cultural_note: '复盘只讨论故事中的观察方法。',
+      }],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/children-generated-readiness/gears-segments',
+      cultural_constraints: ['不使用恐怖和暴力细节。'],
+      credibility_note: '核心传说来自知识条目；儿童情节为改写设计。',
+      material_pack: makeMaterialPack('儿童故事的年龄、温和误会、文化道具、情绪安放和事实边界已明确。'),
+      production_material_pack: childrenPack,
+    } satisfies StoryGenerateResult;
+
+    const derived = refreshStoryProductionMaterialReadiness(baseStory);
+    const slogansOnly = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      storyId: 'children-slogans-only',
+      full_text: '善良很重要，故事温暖结束。',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        plot: scene.dramatic_function === '温暖结尾' ? '大家明白善良很重要，故事温暖结束。' : '小刘海学会善良。',
+        key_action: '人物继续讲述',
+        visual_prompt: '人物正面画面',
+        camera_suggestion: '固定中景',
+      })),
+    });
+
+    expect(derived?.available_fields).toEqual(expect.arrayContaining([
+      'concrete_examples',
+      'parent_teacher_note',
+    ]));
+    expect(slogansOnly?.available_fields).not.toContain('concrete_examples');
+    expect(slogansOnly?.available_fields).not.toContain('parent_teacher_note');
+  });
+
+  it('derives comic shot prompt layers only when scene and GEARS delivery layers align', () => {
+    const comicPack = getProductionMaterialPack('ai_comic_drama');
+    const baseStory = {
+      storyId: 'comic-generated-readiness',
+      title: '雷光里的狐影',
+      generation_type: 'character_story',
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      source_entry: '刘海砍樵',
+      logline: '刘海在狐影、村人逼近与亲眼所见之间作出选择。',
+      theme: '行动比身份更能说明真心',
+      full_text: '雷光照出狐影，刘海放下柴刀，护住正在救孩子的胡大姐。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '狐影停刀',
+        duration_sec: 12,
+        location: '山屋门口',
+        time_of_day: '雨夜',
+        dramatic_function: '钩子开场',
+        plot: '雷光照出狐形影子，刘海手里的柴刀停在半空，胡大姐挡在受伤孩子前。',
+        key_action: '刘海看见救人动作后放下柴刀',
+        characters: ['刘海', '胡大姐'],
+        visual_prompt: '雨夜山屋门口，狐形影子在后景，柴刀与护住孩子的手在前景，冷蓝雷光',
+        camera_suggestion: '狐影全景切柴刀手部特写，再对切刘海和胡大姐视线',
+        cultural_note: '狐形影子按传说影视化表达。',
+      }],
+      gears_segments: [{
+        segment_id: 1,
+        source_scene_id: 1,
+        duration_sec: 12,
+        panel_count: 6,
+        script_text: '雷光照出狐影，刘海看见胡大姐护住孩子，放下柴刀。',
+        purpose: '钩子开场',
+        visual_focus: ['狐影后景', '柴刀前景', '护住孩子的手'],
+        cultural_constraints: ['狐形影子属于传说影视化表达。'],
+        video_type: 'ai_comic_drama',
+        presentation_style: 'ai_comic',
+        segment_prompt_hint: '场景：雨夜山屋；主体：刘海、胡大姐；动作：停刀护人；构图：狐影后景、柴刀前景；镜头：全景切手部特写；光线：冷蓝雷光。',
+      }],
+      gears_segments_url: '/api/stories/comic-generated-readiness/gears-segments',
+      cultural_constraints: ['神异身份不得写成现实事实。'],
+      credibility_note: '传说来自知识条目；动作和镜头为漫画化改编。',
+      material_pack: makeMaterialPack('第一格钩子、目标、压力、关系碰撞、角色稳定、对白气泡、表情节拍、参考图需求、单镜头测试、多分镜连续性、转场、结尾钩子和边界均已明确。'),
+      production_material_pack: comicPack,
+    } satisfies StoryGenerateResult;
+
+    const derived = refreshStoryProductionMaterialReadiness(baseStory);
+    const genericPrompts = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      storyId: 'comic-generic-prompts',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        visual_prompt: '高质量漫画画面，人物清晰，电影感。',
+        camera_suggestion: '镜头推进。',
+      })),
+      gears_segments: baseStory.gears_segments.map(segment => ({
+        ...segment,
+        visual_focus: ['人物'],
+        segment_prompt_hint: '高质量漫画，人物清晰。',
+      })),
+    });
+
+    expect(derived?.available_fields).toContain('shot_prompt_layers');
+    expect(genericPrompts?.available_fields).not.toContain('shot_prompt_layers');
+  });
+
+  it('derives historical event-chain evidence only from dated, sourced, bounded action scenes', () => {
+    const historyPack = getProductionMaterialPack('historical_drama');
+    const baseStory = {
+      storyId: 'history-adaptation-readiness',
+      title: '武昌起义的行动链',
+      generation_type: 'character_story',
+      video_type: 'historical_drama',
+      presentation_style: 'cinematic',
+      source_entry: '武昌起义',
+      logline: '泄密与搜捕迫使新军士兵提前发动，并以军械库打开后续推进条件。',
+      theme: '基层行动在风险中形成历史转折',
+      full_text: '10月9日计划泄露，10月10日士兵选择提前发动；军械库被打开后，队伍才得以继续推进。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '泄密倒计时',
+        duration_sec: 24,
+        location: '武昌新军营房',
+        time_of_day: '1911年10月9日深夜',
+        dramatic_function: '时代危机',
+        plot: '起义计划因意外爆炸泄露，搜捕名单和三名革命党人遇害的消息传进营房；士兵知道继续等待会让人员与计划同时暴露。',
+        key_action: '新军士兵关上营门，传递搜捕名单并检查枪械',
+        characters: ['新军士兵'],
+        visual_prompt: '武昌营房深夜，搜捕名单、营门和枪架，冷色低光',
+        camera_suggestion: '名单特写切街外军靴，再推入营房群像',
+        cultural_note: '具体传递动作属于合成再现。',
+        conflict: '继续等待会遭搜捕瓦解，提前发动则准备不足并可能伤亡',
+        factual_basis: '条目记载10月9日意外爆炸导致计划泄露，清军随即搜捕并处死三名革命党人。',
+        fictionalized_elements: ['名单进入营房和具体传递动作是合成再现。'],
+      }, {
+        scene_id: 2,
+        title: '打开军械库',
+        duration_sec: 24,
+        location: '楚望台军械库',
+        time_of_day: '1911年10月10日晚',
+        dramatic_function: '关键行动',
+        plot: '起义军顶住半合库门，接力搬出枪械与弹药箱；因为获得弹药，队伍才有条件继续向湖广总督署推进。',
+        key_action: '起义军推开库门并接力搬出枪械与弹药箱',
+        characters: ['起义军', '普通士兵'],
+        visual_prompt: '半合库门、枪架、弹药箱与接力搬运群像',
+        camera_suggestion: '低机位拍顶门脚步，切弹药箱特写后跟拍武器递出',
+        cultural_note: '具体分工按已知行动有限再现。',
+        conflict: '守军封锁军械库；没有弹药就无法继续推进',
+        factual_basis: '用户素材与知识条目均记载攻占楚望台军械库、获得弹药后攻向湖广总督署。',
+        fictionalized_elements: ['顶门与接力搬箱的分工为影视化组织。'],
+      }],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/history-adaptation-readiness/gears-segments',
+      cultural_constraints: ['不指定唯一第一枪人物，不把帝制终结归因于单一动作。'],
+      credibility_note: '核心事件来自知识条目；具体对白和调度为影视化创作补位。',
+      material_pack: makeMaterialPack('历史地点、时代器物、戏剧补足、后果与历史声称边界已明确。'),
+      production_material_pack: historyPack,
+    } satisfies StoryGenerateResult;
+
+    const derived = refreshStoryProductionMaterialReadiness(baseStory);
+    const genericHistory = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      storyId: 'history-generic-readiness',
+      full_text: '时代风云激荡，人物必须行动，最终留下历史余响。',
+      scene_breakdown: baseStory.scene_breakdown.map((scene, index) => ({
+        ...scene,
+        time_of_day: index === 0 ? '雨夜' : '清晨',
+        plot: index === 0 ? '时代压力把人物推到选择面前。' : '人物采取关键行动，历史由此转折。',
+        key_action: '人物采取行动',
+        characters: ['历史人物'],
+        conflict: '旧秩序与新主张发生冲突',
+        factual_basis: undefined,
+        fictionalized_elements: undefined,
+      })),
+    });
+
+    expect(derived?.available_fields).toEqual(expect.arrayContaining([
+      'historical_event_anchor',
+      'historical_time_window',
+      'historical_stakes',
+      'faction_positions',
+      'causal_chain',
+      'evidence_hierarchy',
+      'documented_actions',
+      'conflict_turning_point',
+    ]));
+    expect(genericHistory?.available_fields).not.toEqual(expect.arrayContaining([
+      'historical_event_anchor',
+      'historical_time_window',
+      'causal_chain',
+      'evidence_hierarchy',
+    ]));
+  });
+
+  it('derives scene-short movement evidence only from an explicit observer route and reveal axis', () => {
+    const scenePack = getProductionMaterialPack('scene_short');
+    const baseStory = {
+      storyId: 'scene-short-generated-readiness',
+      title: '书院门庭到讲堂',
+      generation_type: 'scene_short',
+      video_type: 'scene_short',
+      presentation_style: 'cinematic',
+      source_entry: '岳麓书院',
+      logline: '寻访者循门联和滴水声进入讲堂，再沿原路线返回。',
+      theme: '空间在人的行走中逐层显影',
+      full_text: '寻访者从门庭进入院落，绕过门联后推开讲堂木门，最终沿原路线返回。',
+      scene_breakdown: [{
+        scene_id: 1,
+        title: '门庭入场',
+        duration_sec: 15,
+        location: '岳麓书院门庭',
+        time_of_day: '清晨',
+        dramatic_function: '空间引入',
+        plot: '寻访者从岳麓书院门庭进入书院院落，门联与石阶先后进入视野。',
+        key_action: '寻访者从岳麓书院门庭进入书院院落',
+        characters: ['寻访者'],
+        visual_prompt: '门庭为入口锚点，寻访者由外向内越过石阶，门联在前景、院落在后景',
+        camera_suggestion: '固定门庭内外轴线，跟拍人物由外向内',
+        cultural_note: '人物路线为当代寻访设计。',
+      }, {
+        scene_id: 2,
+        title: '讲堂揭示',
+        duration_sec: 15,
+        location: '朱张会讲相关讲堂',
+        time_of_day: '清晨',
+        dramatic_function: '时空叠印',
+        plot: '寻访者沿院落右侧廊道走到讲堂，推开木门后，讲堂匾额和书案由暗到明显现。',
+        key_action: '寻访者推开讲堂木门，触发匾额和书案揭示',
+        characters: ['寻访者'],
+        visual_prompt: '由院落向讲堂方向，右侧廊柱保持同侧，木门打开后匾额与书案从后景显现',
+        camera_suggestion: '沿同一运动方向跟拍，越过门槛后切讲堂全景',
+        cultural_note: '讲堂功能与历史层按来源说明。',
+      }, {
+        scene_id: 3,
+        title: '原路收束',
+        duration_sec: 15,
+        location: '岳麓书院门庭',
+        time_of_day: '清晨',
+        dramatic_function: '意境收束',
+        plot: '寻访者沿原路线返回门庭，右侧廊柱和门联保持同侧，脚步声渐远。',
+        key_action: '寻访者沿原路线返回岳麓书院门庭',
+        characters: ['寻访者'],
+        visual_prompt: '回程仍以右侧廊柱为方向锚点，门联重新进入前景',
+        camera_suggestion: '不跨轴跟拍回程，最后固定门庭空镜',
+        cultural_note: '回程不新增未经确认的开放区域。',
+      }],
+      gears_segments: [],
+      gears_segments_url: '/api/stories/scene-short-generated-readiness/gears-segments',
+      cultural_constraints: ['不把不同历史时期人物放入同一现实场景。'],
+      credibility_note: '空间节点来自条目；寻访路线为当代拍摄设计。',
+      spatial_identity: '岳麓书院门庭—书院院落—朱张会讲相关讲堂',
+      visual_route: ['门庭入口', '院落右侧廊道', '讲堂木门', '原路返回门庭'],
+      time_layer: '当代寻访与书院历史说明分层。',
+      atmosphere: '清晨滴水、脚步和木门声。',
+      material_pack: makeMaterialPack('空间锚点、目标、分区、动作触发、时段、光线天气、环境声和镜头次序已明确。'),
+      production_material_pack: scenePack,
+    } satisfies StoryGenerateResult;
+
+    const derived = refreshStoryProductionMaterialReadiness(baseStory);
+    const routeLabelsOnly = refreshStoryProductionMaterialReadiness({
+      ...baseStory,
+      storyId: 'scene-short-route-labels-only',
+      full_text: '走进空间，感受氛围。',
+      scene_breakdown: baseStory.scene_breakdown.map(scene => ({
+        ...scene,
+        location: '岳麓书院',
+        plot: '走进空间，感受这里的氛围。',
+        key_action: '空间导览',
+        characters: [],
+        visual_prompt: '空间层次清晰。',
+        camera_suggestion: '镜头推进。',
+      })),
+    });
+
+    expect(derived?.available_fields).toEqual(expect.arrayContaining([
+      'entering_character',
+      'movement_route',
+      'visual_reveal',
+      'spatial_continuity',
+    ]));
+    expect(routeLabelsOnly?.available_fields).not.toEqual(expect.arrayContaining([
+      'entering_character',
+      'movement_route',
+      'visual_reveal',
+      'spatial_continuity',
     ]));
   });
 });

@@ -649,6 +649,10 @@ const DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE: Record<VideoType, number> = {
 export const NARRATIVE_PATTERN_LIBRARY = PATTERNS;
 export const NARRATIVE_PATTERN_VIDEO_TYPE_MAP = VIDEO_TYPE_PATTERN_MAP;
 
+export function getDefaultNarrativePatternCount(videoType: VideoType): number {
+  return DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE[videoType] ?? 1;
+}
+
 export function getNarrativePatternCatalog(): NarrativePatternCatalog {
   return {
     patterns: Object.values(PATTERNS),
@@ -673,7 +677,7 @@ export function resolveActivePatternIds(
   if (selected.length > 0) {
     return unique(selected);
   }
-  const defaultCount = DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE[videoType] ?? 1;
+  const defaultCount = getDefaultNarrativePatternCount(videoType);
   return fallback.slice(0, defaultCount);
 }
 

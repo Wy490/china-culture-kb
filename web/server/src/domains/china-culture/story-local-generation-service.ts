@@ -4,6 +4,7 @@ import type {
   MemoryMosaicStorySeed,
   PresentationStyle,
   ReferenceTrace,
+  StoryAdaptationAnalysis,
   StoryStructureType,
   SupportedDuration,
   VideoType,
@@ -42,6 +43,7 @@ export function generateChinaCultureLocalStoryAssembly(input: {
   tone: string;
   knowledgePack?: KnowledgePack;
   originalUserQuery?: string;
+  adaptationAnalysis?: StoryAdaptationAnalysis;
 }): ChinaCultureLocalStoryGenerationResult {
   if (input.storyStructure === 'memory_mosaic_biography') {
     const memoryMosaicSeed = buildMemoryMosaicSeed(
@@ -90,6 +92,7 @@ export function generateChinaCultureLocalStoryAssembly(input: {
     tone: input.tone,
     knowledgePack: input.knowledgePack,
     originalUserQuery: input.originalUserQuery,
+    adaptationAnalysis: input.adaptationAnalysis,
   });
   return { ok: true, storyResult };
 }

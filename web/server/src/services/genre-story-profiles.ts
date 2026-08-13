@@ -12,7 +12,11 @@ import type {
   TruthMode,
   VideoType,
 } from '@shared/types.js';
-import { NARRATIVE_PATTERN_LIBRARY, NARRATIVE_PATTERN_VIDEO_TYPE_MAP } from './narrative-pattern-library.js';
+import {
+  getDefaultNarrativePatternCount,
+  NARRATIVE_PATTERN_LIBRARY,
+  NARRATIVE_PATTERN_VIDEO_TYPE_MAP,
+} from './narrative-pattern-library.js';
 import { PROFESSIONAL_TEXT_TYPE_CONTRACTS } from './professional-text-contracts.js';
 
 export type GenreOutputField =
@@ -1071,14 +1075,18 @@ export function resolveGenreStoryMatrix(input: {
   const rejectedPatterns = requestedPatterns.filter(patternId =>
     forbiddenPatternSet.has(patternId) || (allowedPatternSet.size > 0 && !allowedPatternSet.has(patternId)),
   );
-  const candidatePatterns = uniquePatternIds([
-    ...requestedPatterns,
-    ...recommendedPatterns,
-  ]);
-  const resolvedPatterns = candidatePatterns
+  const allowedRequestedPatterns = requestedPatterns
+    .filter(patternId => !forbiddenPatternSet.has(patternId))
+    .filter(patternId => allowedPatternSet.size === 0 || allowedPatternSet.has(patternId));
+  const defaultPatterns = recommendedPatterns
     .filter(patternId => !forbiddenPatternSet.has(patternId))
     .filter(patternId => allowedPatternSet.size === 0 || allowedPatternSet.has(patternId))
-    .slice(0, 6);
+    .slice(0, getDefaultNarrativePatternCount(input.videoType));
+  const resolvedPatterns = (
+    allowedRequestedPatterns.length > 0
+      ? allowedRequestedPatterns
+      : defaultPatterns
+  ).slice(0, 6);
   const compatibleUseCase = profile.compatible_use_cases.includes(input.creationUseCase);
   const compatibleTruthMode = profile.compatible_truth_modes.includes(truthMode);
   const warnings = [

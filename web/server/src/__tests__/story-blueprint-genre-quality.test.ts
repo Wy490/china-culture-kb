@@ -512,10 +512,7 @@ describe('story blueprint and genre quality', () => {
       original_user_query: source,
       full_text: '周敦颐在月岩洞前做出选择。',
       adaptation_analysis: buildAdaptationAnalysis(source),
-      _request_meta: {
-        source_material_mode: 'adapt_user_novel',
-      },
-    } as StoryGenerateResult & { _request_meta: Record<string, unknown> };
+    } as StoryGenerateResult;
 
     const report = validateGenreStoryQuality({
       story,

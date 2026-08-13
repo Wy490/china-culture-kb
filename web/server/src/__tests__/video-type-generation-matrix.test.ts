@@ -210,9 +210,13 @@ describe('all video type API generation matrix', () => {
         .toBe(story.project_id);
       expect(projectResult.data?.current_story.professional_text_package?.video_type)
         .toBe(item.videoType);
-      if (!['character_story', 'historical_drama', 'legend_story', 'children_story', 'ai_comic_drama'].includes(item.videoType)) {
+      if (!['character_story', 'historical_drama', 'legend_story', 'children_story', 'ai_comic_drama', 'scene_short'].includes(item.videoType)) {
         expect(story.gears_delivery.character_assets, `${item.videoType} should not turn a place/craft/event into a person`)
           .toEqual([]);
+      }
+      if (item.videoType === 'scene_short') {
+        expect(story.gears_delivery.character_assets.map((asset: { name: string }) => asset.name))
+          .toContain('岳麓书院讲解员/寻访者');
       }
       for (const field of item.requiredFields) {
         const value = valueAtPath(story, field);

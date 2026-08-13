@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryGenerateResult } from '@shared/types.js';
 import { rebuildDerivedStoryState } from '../services/derived-story-state-service.js';
+import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
 import {
   evaluateReferenceGenerationSafety,
 } from '../services/reference-quality-service.js';
@@ -66,6 +67,63 @@ describe('derived-story-state-service', () => {
     expect(rebuilt.gears_segments[0].segment_prompt_hint).toContain('保留人工镜头节奏覆盖层');
     expect(rebuilt.gears_delivery?.units.map(unit => unit.script_text).join('\n')).toContain('摊开案卷指出疑点');
     expect(rebuilt.quality_report?.quality_gates?.schema_version).toBe('quality-gates/v2');
+  });
+
+  it('refreshes generated production-material evidence before recomputing quality gates', async () => {
+    const story = makeStoryWithStaleLegacySegment();
+    story.credibility_note = '事件依据知识条目；对白与镜头调度属于影视化创作补位。';
+    story.scene_breakdown[0].factual_basis = '知识条目记载人物拒签并要求重查。';
+    story.scene_breakdown[0].fictionalized_elements = ['堂前站位与对白节奏为影视化调度。'];
+    story.characters = [
+      { name: '少年', role: 'protagonist', description: '初任军衙的审案官' },
+      { name: '上官', role: 'antagonist', description: '催促签字的长官' },
+    ];
+    story.protagonist_arc = [{
+      starting_state: '初任时面对催签压力',
+      turning_point: '拒绝签字并要求重查',
+      resolution: '案件重审，人物承担选择后果',
+    }];
+    const characterPack = getProductionMaterialPack('character_story');
+    expect(characterPack).toBeTruthy();
+    story.production_material_pack = {
+      ...characterPack!,
+      material_template: {
+        ...characterPack!.material_template,
+        required_fields: [
+          'life_stage_window',
+          'relationship_map',
+          'dialogue_voice',
+          'factual_life_boundary',
+          'ending_legacy',
+        ],
+      },
+    };
+    story.production_material_readiness = {
+      schema_version: 'production-material-readiness/v1',
+      video_type: 'character_story',
+      pack_label: '人物故事',
+      score: 0,
+      status: 'blocked',
+      available_fields: [],
+      missing_fields: [],
+      gate_reports: [],
+      recommended_next_questions: [],
+    };
+
+    const rebuilt = await rebuildDerivedStoryState(story, {
+      revalidateDomainSafety: false,
+    });
+
+    expect(rebuilt.production_material_readiness?.available_fields).toEqual(
+      expect.arrayContaining([
+        'life_stage_window',
+        'relationship_map',
+        'dialogue_voice',
+        'factual_life_boundary',
+        'ending_legacy',
+      ]),
+    );
+    expect(rebuilt.quality_report?.quality_gates?.production_material_gate.passed).toBe(true);
   });
 
   it('revalidates approved-reference safety before rebuilding downstream artifacts', async () => {

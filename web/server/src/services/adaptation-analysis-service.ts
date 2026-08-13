@@ -3,7 +3,15 @@ import type { StoryAdaptationAnalysis } from '@shared/types.js';
 const NAME_BLOCKLIST = new Set([
   '故事', '小说', '原文', '改编', '用户', '人物', '场景', '时候', '他们', '我们', '后来',
   '突然', '已经', '因为', '所以', '但是', '如果', '一个', '一种', '这里', '那里',
+  '别人', '两人', '众人', '有人', '自己', '对方', '签笔', '案卷', '消息', '误会',
 ]);
+
+const COMMON_CHINESE_SURNAMES = new Set(
+  [...'赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳酆鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于时傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵湛汪祁毛禹狄米贝明臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪干解应宗丁宣贲邓郁单杭洪包诸左石崔吉龚程嵇邢滑裴陆荣翁荀羊惠甄麴家封芮羿储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘钭厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺屠蒙池乔阴胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍却璩桑桂濮牛寿通边扈燕冀郏浦尚农温别庄晏柴瞿阎充慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧利师巩聂晁勾敖融冷訾辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公'],
+);
+
+const ACTOR_ACTION_BOUNDARY = /^(.*?)(?=在|从|向|带着|拿着|举着|翻|催|决定|发现|挡|集结|冲向|推|搬|引发|必须|选择|拒绝|答应|寻找|回头|放下|护住|遇见|停下|用|看见|听见|进入|离开|面对|走|跑|站|坐|说|问|喊|劝|失去|回来|相遇|分别|揭开|醒来|意识到)/;
+const GROUP_CHARACTER = /^(?:新军士兵|普通士兵|起义军|清军士兵|村人|乡邻|师友|同伴|朋友|母亲|父亲|老师|师父)$/;
 
 const EVENT_MARKERS = /离开|进入|发现|决定|选择|冲突|误会|追问|寻找|失去|回来|相遇|分别|揭开|面对|拒绝|答应|逃离|守住|改变|醒来|看见|听见|意识到/;
 const VISUAL_MARKERS = /门口|院子|街|巷|河|桥|山|雨|雪|夜|灯|火|船|书|信|屋|房|窗|桌|井|祠|寺|庙|战场|书院|村|城|路|田|集市|码头/;
@@ -64,18 +72,46 @@ function extractPlotBeats(units: string[]): string[] {
 }
 
 function extractLikelyNames(source: string, units: string[]): string[] {
-  const explicit = Array.from(source.matchAll(/(?:主角|主人公|少年|少女|老人|父亲|母亲|师父|老师|同伴|朋友|反派|对手|阿[\u4e00-\u9fa5]|小[\u4e00-\u9fa5])[\u4e00-\u9fa5]{0,3}/g))
-    .map(match => match[0]);
-  const quoted = Array.from(source.matchAll(/「([\u4e00-\u9fa5]{2,4})」|“([\u4e00-\u9fa5]{2,4})”/g))
-    .map(match => match[1] ?? match[2])
-    .filter(Boolean);
-  const frequent = Array.from(source.matchAll(/[\u4e00-\u9fa5]{2,4}/g))
-    .map(match => match[0])
-    .filter(name => !NAME_BLOCKLIST.has(name))
-    .filter(name => units.some(unit => unit.includes(name) && EVENT_MARKERS.test(unit)));
-  return unique([...explicit, ...quoted, ...frequent])
-    .filter(name => name.length >= 2 && !NAME_BLOCKLIST.has(name))
+  const clauses = units.flatMap(unit => unit.split(/[，。！？!?；;：:\n]+/));
+  const actionSubjects = clauses
+    .map(clause => clause.trim().match(ACTOR_ACTION_BOUNDARY)?.[1] ?? '')
+    .map(normalizeCharacterCandidate)
+    .filter(isLikelyCharacterCandidate);
+  const explicitRoles = Array.from(source.matchAll(
+    /(?:主角|主人公|少年|少女|老人|反派|对手)[：为叫名]?([阿小]?[\u4e00-\u9fa5]{1,3})(?=在|从|向|带|拿|翻|决定|发现|选择|拒绝|遇见|走|跑|说|问|，|。|；|\s)/g,
+  )).map(match => normalizeCharacterCandidate(match[1] ?? ''));
+  const nicknames = Array.from(source.matchAll(
+    /([阿小][\u4e00-\u9fa5]{1,2})(?=在|从|向|带|拿|举|翻|决定|发现|选择|拒绝|遇见|走|跑|说|问|，|。|；|\s)/g,
+  )).map(match => normalizeCharacterCandidate(match[1] ?? ''));
+  const titledCharacters = Array.from(source.matchAll(
+    /([\u4e00-\u9fa5](?:大姐|大哥)|[\u4e00-\u9fa5]{1,2}(?:先生|姑娘|师傅))(?=在|从|向|带|拿|举|翻|决定|发现|选择|拒绝|遇见|挡|走|跑|说|问|，|。|；|\s|的)/g,
+  )).map(match => normalizeCharacterCandidate(match[1] ?? ''));
+  const groups = Array.from(source.matchAll(
+    /(新军士兵|普通士兵|起义军|清军士兵|村人|乡邻|师友|同伴|朋友)(?=在|从|向|带|拿|举|翻|决定|发现|选择|拒绝|遇见|挡|(?:连夜)?集结|冲向|走|跑|说|问|，|。|；|\s|的)/g,
+  )).map(match => match[1] ?? '');
+  return unique([...explicitRoles, ...nicknames, ...titledCharacters, ...groups, ...actionSubjects])
+    .filter(isLikelyCharacterCandidate)
     .slice(0, 8);
+}
+
+function normalizeCharacterCandidate(value: string): string {
+  return value
+    .replace(/^(?:雨夜|夜里|清晨|黄昏|此时|随后|后来|最终)/, '')
+    .replace(/^(?:知军|将军|老师|师父|少年|少女|老人)(?=[\u4e00-\u9fa5]{2,4}$)/, '')
+    .replace(/[的地得]$/, '')
+    .trim();
+}
+
+function isLikelyCharacterCandidate(value: string): boolean {
+  if (value.length < 2 || value.length > 6 || NAME_BLOCKLIST.has(value)) return false;
+  if (GROUP_CHARACTER.test(value)) return true;
+  if (/^阿[\u4e00-\u9fa5]{1,2}$/.test(value)) return true;
+  const personalName = value.startsWith('小') || value.startsWith('阿')
+    ? value.slice(1)
+    : value;
+  return personalName.length >= (value.startsWith('阿') ? 1 : 2)
+    && personalName.length <= 3
+    && COMMON_CHINESE_SURNAMES.has(personalName[0]);
 }
 
 function extractVisualSetpieces(units: string[]): string[] {

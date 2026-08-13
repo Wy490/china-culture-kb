@@ -60,7 +60,11 @@ const repairs: Record<string, string> = {
 
 const nonEmpty = (value: string | undefined) => Boolean(value?.trim());
 const ratio = (value: number, total: number) => Math.round(value / Math.max(1, total) * 100);
-const isFinalText = (text: string) => text.trim().length >= 120 && !/^(?:大纲|摘要|资料|景色列表|宣传口号)[:：]/u.test(text.trim());
+const isFinalText = (text: string, targetDuration: string) => {
+  const minimumLength = targetDuration === '30秒' ? 30 : 120;
+  return text.trim().length >= minimumLength
+    && !/^(?:大纲|摘要|资料|景色列表|宣传口号)[:：]/u.test(text.trim());
+};
 
 export function evaluateLandscapeMoodProfessionalText(input: {
   package: ProfessionalTextPackage;
@@ -102,7 +106,10 @@ export function evaluateLandscapeMoodProfessionalText(input: {
     && professionalPackage.truth_and_adaptation_contract.unknown_or_forbidden_claims.length > 0;
   const gateIds = [
     briefCount === 4 ? '' : 'brief_missing',
-    isFinalText(professionalPackage.full_text) ? '' : 'full_text_not_final',
+    isFinalText(
+      professionalPackage.full_text,
+      professionalPackage.creative_brief.target_duration,
+    ) ? '' : 'full_text_not_final',
     nonEmpty(evidence.emotional_premise) ? '' : 'emotional_premise_missing',
     phasesReady ? '' : 'visual_phase_missing',
     timeChangesReady ? '' : 'time_change_missing',

@@ -108,7 +108,7 @@ describe('genre-story-profiles', () => {
     );
   });
 
-  it('resolves AI comic defaults and filters documentary-only patterns', () => {
+  it('keeps explicit AI comic pattern selection focused and filters documentary-only patterns', () => {
     const matrix = resolveGenreStoryMatrix({
       videoType: 'ai_comic_drama',
       creationUseCase: 'original_ai_comic',
@@ -118,7 +118,8 @@ describe('genre-story-profiles', () => {
     expect(matrix.truth_mode).toBe('fictional_original');
     expect(matrix.compatible_use_case).toBe(true);
     expect(matrix.compatible_truth_mode).toBe(true);
-    expect(matrix.resolved_narrative_pattern_ids).toEqual(
+    expect(matrix.resolved_narrative_pattern_ids).toEqual(['platform_short_drama_hook']);
+    expect(matrix.recommended_narrative_patterns).toEqual(
       expect.arrayContaining(['platform_short_drama_hook', 'hero_choice', 'cinematic_setpiece_adaptation']),
     );
     expect(matrix.resolved_narrative_pattern_ids).not.toContain('documentary_investigation');
@@ -142,14 +143,15 @@ describe('genre-story-profiles', () => {
     expect(matrix.warnings.join('\n')).toContain('fictional_original');
   });
 
-  it('prefers training-loop patterns for education and training scripts', () => {
+  it('activates only the default pattern capacity while retaining education recommendations', () => {
     const matrix = resolveGenreStoryMatrix({
       videoType: 'education_training',
       creationUseCase: 'education_training',
       truthMode: 'institutional_verified',
     });
 
-    expect(matrix.resolved_narrative_pattern_ids).toEqual(
+    expect(matrix.resolved_narrative_pattern_ids).toEqual(['training_loop']);
+    expect(matrix.recommended_narrative_patterns).toEqual(
       expect.arrayContaining(['training_loop', 'knowledge_gap_explainer', 'lecture_case_argument']),
     );
     expect(matrix.material_requirements.join('\n')).toContain('学习目标');

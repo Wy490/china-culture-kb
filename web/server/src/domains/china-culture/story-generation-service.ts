@@ -16,7 +16,10 @@ import {
   storyGeneratedRoot as webGeneratedRoot,
 } from '../../platform/story-storage.js';
 import { validateChinaCultureStoryAssemblyBaseQuality } from './story-base-quality-service.js';
-import { buildChinaCultureGeneratedStoryDocument } from './story-document-service.js';
+import {
+  buildChinaCultureGeneratedStoryDocument,
+  refreshChinaCultureGeneratedStorySupplementTasks,
+} from './story-document-service.js';
 import { executeChinaCultureStoryGeneration } from './story-generation-execution-service.js';
 import {
   prepareChinaCultureStoryGeneration,
@@ -156,6 +159,12 @@ export async function generateAndStoreChinaCultureStory(
     }),
   });
   storyResult = postGeneration.storyResult;
+  refreshChinaCultureGeneratedStorySupplementTasks({
+    story: storyData,
+    preparation,
+    storyId,
+    createdAt,
+  });
 
   if (options.transform_story_before_validation_and_persistence) {
     const transformedStory = await options.transform_story_before_validation_and_persistence(storyData);
