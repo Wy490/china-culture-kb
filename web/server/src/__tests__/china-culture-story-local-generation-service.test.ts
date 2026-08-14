@@ -316,6 +316,62 @@ describe('china_culture local story generation dispatch', () => {
     },
   );
 
+  it.each(['30秒', '1分钟', '3分钟'] as const)(
+    'builds a Changsha city-brand route with audience, soundscape, visitor action, and rain fallback for the %s variant',
+    (targetDuration) => {
+      const result = generateChinaCultureLocalStoryAssembly({
+        entry: {
+          name: '岳麓书院——千年学府弦歌不绝',
+          province: '湖南',
+          region: '长沙→岳麓区',
+          type: '名胜古迹',
+          summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+          story: '岳麓书院始建于北宋开宝九年（976年）。\n\n南宋时朱熹与张栻在此会讲。\n\n书院延续至今。',
+          culturalSignificance: '讲学与论辩传统延续到当代教育。',
+          relatedLocations: [
+            { name: '岳麓书院', description: '书院空间与门联' },
+            { name: '爱晚亭', description: '岳麓山文教山水节点' },
+          ],
+          keywords: ['岳麓书院', '朱张会讲', '惟楚有材', '湖湘文脉'],
+          sources: ['岳麓书院官方资料'],
+          credibility: '基本可靠',
+          unverifiedPoints: ['具体活动、游客和场地开放状态须另行核验'],
+        },
+        centralEvent: '长沙岳麓书院文脉与当代生活',
+        videoType: 'city_brand_promo',
+        presentationStyle: 'voiceover_montage',
+        storyStructure: 'object_clue_journey',
+        targetDuration,
+        tone: '明亮克制',
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error(result.message);
+      const scenes = result.storyResult.scene_breakdown;
+      const text = scenes.map(scene => [
+        scene.plot,
+        scene.key_action,
+        scene.dialogue_or_narration,
+        scene.camera_suggestion,
+        scene.cultural_note,
+        scene.factual_basis,
+        ...(scene.fictionalized_elements ?? []),
+      ].filter(Boolean).join('\n')).join('\n');
+
+      expect(scenes).toHaveLength(5);
+      expect(new Set(scenes.map(scene => scene.location)).size).toBeGreaterThanOrEqual(4);
+      expect(text).toContain('城市身份');
+      expect(text).toContain('目标客群');
+      expect(text).toContain('空间路线');
+      expect(text).toContain('城市声音');
+      expect(text).toContain('游客行动');
+      expect(text).toContain('天气备选');
+      expect(text).toContain('场地拍摄许可待真实确认');
+      expect(text).toMatch(/门庭.+讲堂.+校园.+街巷/);
+      expect(text).not.toMatch(/(?:本片采用|官方审定|政府审定)的?官方城市口号|已经取得拍摄许可|许可已取得/);
+    },
+  );
+
   it.each([
     {
       videoType: 'character_story' as const,

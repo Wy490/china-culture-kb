@@ -499,6 +499,7 @@ function generatedStoryProductionMaterialText(story: StoryGenerateResult): strin
     ...generatedTrainingProductionEvidence(story),
     ...generatedChildrenProductionEvidence(story),
     ...generatedComicProductionEvidence(story),
+    ...generatedCityBrandProductionEvidence(story),
     ...generatedCulturePromoProductionEvidence(story),
     ...generatedDocumentaryProductionEvidence(story),
     ...generatedHistoricalProductionEvidence(story),
@@ -626,6 +627,97 @@ function generatedComicProductionEvidence(story: StoryGenerateResult): string[] 
   return layeredSegment
     ? [`镜头提示词分层：场景与 GEARS 已对齐主体动作、空间构图、镜头层和光线层；${layeredSegment.segment_prompt_hint}`]
     : [];
+}
+
+function generatedCityBrandProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'city_brand_promo') return [];
+
+  const scenes = story.scene_breakdown;
+  const opening = scenes[0];
+  const ending = scenes.at(-1);
+  const boundaryText = scenes.map(scene => [
+    scene.cultural_note,
+    scene.factual_basis,
+    ...(scene.fictionalized_elements ?? []),
+  ].filter(Boolean).join('\n')).join('\n');
+  const soundText = scenes.map(scene => [
+    scene.camera_suggestion,
+    scene.cultural_note,
+  ].filter(Boolean).join('\n')).join('\n');
+  const soundTerms = [
+    '鸟鸣',
+    '石阶脚步',
+    '晨读声',
+    '翻页',
+    '木门声',
+    '讨论',
+    '自行车铃声',
+    '卷帘声',
+    '公交提示音',
+    '江风',
+  ];
+  const usedSoundTerms = soundTerms.filter(term => soundText.includes(term));
+  const soundScenes = scenes.filter(scene => {
+    const text = `${scene.camera_suggestion}\n${scene.cultural_note}`;
+    return soundTerms.some(term => text.includes(term));
+  });
+  const distinctLocations = new Set(scenes.map(scene => scene.location.trim()).filter(Boolean));
+  const expectedArc = ['地标引入', '历史底蕴', '人文风貌', '生活气息', '品牌定格'];
+  const hasExpectedArc = expectedArc.every((label, index) => scenes[index]?.dramatic_function === label);
+  const openingText = opening
+    ? `${opening.plot}\n${opening.key_action}\n${opening.cultural_note}`
+    : '';
+  const endingText = ending
+    ? `${ending.plot}\n${ending.key_action}\n${ending.cultural_note}`
+    : '';
+  const hasCityIdentity = Boolean(story.core_message?.trim())
+    && /长沙/.test(`${story.core_message}\n${openingText}`)
+    && /文脉/.test(`${story.core_message}\n${openingText}`)
+    && /提问|学习/.test(`${story.core_message}\n${openingText}`)
+    && /不是.{0,20}(政府审定口径|官方城市口号)|不作为官方城市口号/.test(boundaryText);
+  const hasTargetAudience = /目标客群/.test(openingText)
+    && /文化游客/.test(openingText)
+    && /本地市民/.test(openingText);
+  const hasRoute = hasExpectedArc
+    && distinctLocations.size >= 4
+    && /门庭阅读→讲堂核对→校园观察→街巷慢行→江岸回望/.test(boundaryText)
+    && scenes.every(scene => scene.key_action.trim().length >= 10);
+  const hasSoundscape = soundScenes.length >= 3
+    && usedSoundTerms.length >= 4
+    && /城市声音景观/.test(soundText)
+    && /真实环境声/.test(soundText)
+    && /不合成/.test(soundText);
+  const hasVisitorAction = hasRoute
+    && /游客行动路径/.test(boundaryText)
+    && /到访者/.test(scenes.map(scene => `${scene.plot}\n${scene.key_action}`).join('\n'));
+  const hasWeatherContingency = Boolean(
+    ending
+    && /天气备选方案/.test(endingText)
+    && /晴天/.test(endingText)
+    && /遇雨|降雨/.test(endingText)
+    && /未获许可即取消/.test(endingText),
+  );
+
+  return [
+    hasCityIdentity
+      ? `城市身份主张：${story.core_message}`
+      : '',
+    hasTargetAudience
+      ? '目标客群：首次到访且愿意慢行阅读的文化游客与本地市民。'
+      : '',
+    hasRoute
+      ? `空间路线轴：${scenes.map(scene => `${scene.location}（${scene.key_action}）`).join(' → ')}`
+      : '',
+    hasSoundscape
+      ? `城市声音景观：${usedSoundTerms.join('、')}按分场组织；正式成片只使用真实采集并核验的环境声，不把生成规划冒充已录制声音。`
+      : '',
+    hasVisitorAction
+      ? '游客行动路径：门庭阅读→讲堂核对→校园观察→街巷慢行→江岸回望。'
+      : '',
+    hasWeatherContingency
+      ? `天气备选方案：${ending?.cultural_note}`
+      : '',
+  ];
 }
 
 function generatedCulturePromoProductionEvidence(story: StoryGenerateResult): string[] {

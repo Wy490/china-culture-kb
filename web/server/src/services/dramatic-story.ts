@@ -631,10 +631,22 @@ export function generateDramaticContent(input: DramaticContentInput): {
         perSceneDuration,
       })
     : undefined;
+  const requestedCityBrandArc = !requestedGrowthArc
+    && !requestedAdaptationArc
+    && !requestedLegendArc
+    && !requestedCulturePromoArc
+    ? buildChangshaCityBrandArc({
+        entry,
+        videoType,
+        perSceneDuration,
+        totalSeconds,
+      })
+    : undefined;
   const requestedDocumentaryArc = !requestedGrowthArc
     && !requestedAdaptationArc
     && !requestedLegendArc
     && !requestedCulturePromoArc
+    && !requestedCityBrandArc
     ? buildYueluDocumentaryArc({
         entry,
         videoType,
@@ -657,6 +669,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
     ?? requestedAdaptationArc
     ?? requestedLegendArc
     ?? requestedCulturePromoArc
+    ?? requestedCityBrandArc
     ?? requestedDocumentaryArc
     ?? requestedLandscapeArc
     ?? [];
@@ -667,6 +680,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
     && !requestedAdaptationArc
     && !requestedLegendArc
     && !requestedCulturePromoArc
+    && !requestedCityBrandArc
     && !requestedDocumentaryArc
     && !requestedLandscapeArc
   ) {
@@ -1277,6 +1291,109 @@ function buildYueluCulturePromoArc(input: {
       dialogue_or_narration: '旁白：从一副门联，走进一座仍在学习的书院。下一次到访，请把问题也带进来。',
       factual_basis: '结尾的年代、会讲和空间线索分别回扣前述条目依据。',
       fictionalized_elements: ['笔记回环和到访邀请为传播结构，不替代开放信息、拍摄许可与现场导览说明。'],
+    }, 4),
+  ];
+}
+
+function buildChangshaCityBrandArc(input: {
+  entry: EntryDetail;
+  videoType: VideoType;
+  perSceneDuration: number;
+  totalSeconds: number;
+}): StoryScene[] | undefined {
+  if (input.videoType !== 'city_brand_promo' || !/岳麓书院/.test(input.entry.name)) return undefined;
+  const sourceEntries = [input.entry.name];
+  const sceneDuration = Math.max(1, Math.round(input.totalSeconds / 5));
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: sceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  return [
+    makeScene({
+      title: '从门联读一座城',
+      location: '岳麓书院门庭',
+      time_of_day: '清晨',
+      dramatic_function: '地标引入',
+      plot: '清晨，石阶脚步把镜头带到岳麓书院门庭。门联不是一张孤立的城市名片，而是长沙仍在学习、提问和欢迎不同解释的入口。',
+      key_action: '到访者沿石阶进入门庭，在门联下停步阅读后继续向讲堂前行',
+      characters: [],
+      visual_prompt: '岳麓书院门庭清晨，门联木纹前景、石阶与慢行到访者中景、书院院落后景，晨光沿门槛推进，明亮克制的城市形象片构图',
+      camera_suggestion: '城市声音景观从鸟鸣、石阶脚步和远处晨读声进入，低机位跟随脚步后抬到门联，不用配音覆盖全部现场声',
+      cultural_note: '城市身份主张（创作提案）：长沙是一座把千年文脉继续变成当代提问与学习行动的城市；不是政府审定口径或官方城市口号。目标客群为首次到访、愿意慢行阅读的文化游客与本地市民。场地拍摄许可待真实确认。',
+      conflict: '若只拍地标外观，城市身份仍会停在旅游明信片；必须让空间里的阅读行动出现',
+      dialogue_or_narration: '旁白：从一副门联开始，不只看长沙留下了什么，也看这里今天怎样继续学习。',
+      factual_basis: '岳麓书院门庭、门联及长沙岳麓区地点关系来自知识条目。',
+      fictionalized_elements: ['到访者为合成观察视点，不代表特定真实游客。'],
+    }, 0),
+    makeScene({
+      title: '年代与会讲成为证明',
+      location: '岳麓书院碑刻与讲堂',
+      time_of_day: '上午',
+      dramatic_function: '历史底蕴',
+      plot: '镜头沿门庭进入碑刻与讲堂，以976年的创建时间和朱张会讲两处证据回答：长沙的文教气质不是凭空写成，而是在具体空间里一次次被实践。',
+      key_action: '到访者从门庭走到碑刻，再进入讲堂核对创建时间与朱张会讲线索',
+      characters: [],
+      visual_prompt: '岳麓书院碑刻与讲堂上午，碑刻局部、院落中轴、相对座椅和笔记形成连续空间节点，人物沿同一方向由外向内移动',
+      camera_suggestion: '空间路线轴按门庭→碑刻→讲堂推进，以翻页声、木门声和讲堂静场连接，不复演未经证实对白',
+      cultural_note: '空间路线轴第一段只连接知识条目可支持的书院节点；碑刻文字、开放路线和讲堂机位须现场复核，场地拍摄许可待真实确认。',
+      conflict: '城市品牌主张必须由可核对地点和事实支撑，不能用一串形容词替代证明',
+      dialogue_or_narration: '旁白：一座城的气质，要能在时间、空间和今天仍可观察的行动里找到依据。',
+      factual_basis: '依据条目关于岳麓书院始建于北宋开宝九年（976年）及朱张会讲的记载。',
+      fictionalized_elements: ['人物核对与空间串联为城市形象片的游线组织，不作为历史事件记录。'],
+    }, 1),
+    makeScene({
+      title: '笔记走进今日校园',
+      location: '岳麓书院与湖南大学校园公共学习空间',
+      time_of_day: '午后',
+      dramatic_function: '人文风貌',
+      plot: '同一本笔记从讲堂带到今天的校园公共学习空间。学生查出处、交换看法，游客在开放区域旁听片刻；千年文脉由当下的学习动作接住。',
+      key_action: '学生标出引文来源并交换两种解释，到访者沿开放通道从书院走向校园',
+      characters: [],
+      visual_prompt: '岳麓书院与湖南大学校园午后，笔记页、书页、讨论手势和开放通道形成古今匹配剪辑，窗外书院屋脊作为方向锚点',
+      camera_suggestion: '城市声音景观转为翻页、低声讨论、脚步与自行车铃声；只收真实环境声，不合成学生发言',
+      cultural_note: '目标客群在此获得可执行理解方式：不只合影，也可阅读说明、核对出处和观察当代学习。校园人物、开放区域和肖像须真实确认并取得相应场地拍摄许可。',
+      conflict: '古今连接若没有今天的具体行动，就会退回抽象的“文脉延续”',
+      dialogue_or_narration: '旁白：文脉不是把旧答案背下来，而是让新的问题继续有地方被认真讨论。',
+      factual_basis: '书院与当代大学空间相连有地点依据；具体公共学习场景需实拍核验。',
+      fictionalized_elements: ['学生与讨论内容为合成场景，不指向真实课程、个人或既有活动。'],
+    }, 2),
+    makeScene({
+      title: '文脉落进城市日常',
+      location: '岳麓山下公共街巷至湘江沿岸',
+      time_of_day: '傍晚',
+      dramatic_function: '生活气息',
+      plot: '傍晚，书页合上，街巷卷帘、公交进站、骑行铃声和湘江岸边脚步接续出现。游客与市民共享同一条慢行节奏，书院文脉由此落进长沙的日常。',
+      key_action: '到访者从山下公共街巷步行至湘江沿岸，与下班市民和慢行人群汇入同一方向',
+      characters: [],
+      visual_prompt: '岳麓山下公共街巷至湘江沿岸傍晚，卷帘、公交、骑行者、步行游客与市民构成生活蒙太奇，暖色街灯渐亮，不指向具体商户',
+      camera_suggestion: '城市声音景观按卷帘声→公交提示音→骑行铃声→江风与脚步分层，镜头由中景跟行转为江岸远景',
+      cultural_note: '游客行动路径为门庭阅读→讲堂核对→校园观察→街巷慢行→江岸回望。跨区域动线、交通安全、具体商户和公共空间场地拍摄许可待真实勘景确认。',
+      conflict: '城市不能只作为景区布景，必须让游客行动与市民日常在公共空间自然相遇',
+      dialogue_or_narration: '旁白：离开书院，提问没有结束；它跟着脚步，走进街巷、通勤和江风。',
+      factual_basis: '长沙岳麓区与湘江沿岸的城市空间关系可作路线方向；精确步行距离与可拍节点须实勘。',
+      fictionalized_elements: ['人群、公交与卷帘的组合为城市生活蒙太奇，不声称记录某一真实日期。'],
+    }, 3),
+    makeScene({
+      title: '把问题带回长沙',
+      location: '湘江沿岸远眺岳麓山与城市灯火',
+      time_of_day: '入夜',
+      dramatic_function: '品牌定格',
+      plot: '入夜，江风盖过街声，镜头从岳麓山轮廓回望长沙灯火。门联、讲堂、校园与街巷依次闪回，城市留下的不是终点口号，而是一句邀请：把问题带来，让城市继续回答。',
+      key_action: '到访者翻回开场笔记，写下“把问题带来，让城市继续回答”，随后合上笔记望向灯火',
+      characters: [],
+      visual_prompt: '湘江沿岸入夜，笔记近景、岳麓山轮廓中景、长沙灯火后景，门联讲堂校园街巷四层短闪回后定格江风中的城市远景',
+      camera_suggestion: '城市声音景观由街声渐退到江风，以两秒安静承接记忆句；晴天拍江岸远景，降雨时不强行复刻同一画面',
+      cultural_note: '天气备选方案：晴天完成江岸远景；遇雨转为已获许可的书院檐廊、校园室内公共区域或雨中街巷近景，未获许可即取消对应机位。品牌句是本片创作句，不作为官方城市口号；场地拍摄许可待真实确认。',
+      conflict: '结尾要留下可复述的长沙气质，同时避免极值声称和未经审定的官方口径',
+      dialogue_or_narration: '旁白：长沙，把问题带来，让城市继续回答。',
+      factual_basis: '结尾只回扣前述地点与行动，不新增城市排名、唯一性或官方品牌事实。',
+      fictionalized_elements: ['笔记回环和城市灯火闪回为品牌片结构设计。'],
     }, 4),
   ];
 }

@@ -537,6 +537,66 @@ describe('production-material-readiness-service', () => {
     expect(refreshed?.status).toBe('ready');
   });
 
+  it('derives city-brand production guidance while keeping location permission external', () => {
+    const cityPack = getProductionMaterialPack('city_brand_promo');
+    const cityEntry = {
+      name: '岳麓书院——千年学府弦歌不绝',
+      province: '湖南',
+      region: '长沙→岳麓区',
+      type: '名胜古迹',
+      summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+      story: '岳麓书院始建于北宋开宝九年（976年）。\n\n南宋时朱熹与张栻在此会讲。\n\n书院延续至今。',
+      culturalSignificance: '讲学与论辩传统延续到当代教育。',
+      relatedLocations: [
+        { name: '岳麓书院', description: '书院空间与门联' },
+        { name: '爱晚亭', description: '岳麓山文教山水节点' },
+      ],
+      keywords: ['岳麓书院', '朱张会讲', '惟楚有材', '湖湘文脉'],
+      sources: ['岳麓书院官方资料'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['具体活动、游客和场地开放状态须另行核验'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: cityEntry,
+      centralEvent: '长沙岳麓书院文脉与当代生活',
+      videoType: 'city_brand_promo',
+      presentationStyle: 'voiceover_montage',
+      targetDuration: '3分钟',
+      tone: '明亮克制',
+    });
+    const typeFields = deriveChinaCultureTypeSpecificStoryFields({
+      videoType: 'city_brand_promo',
+      storyResult: generated,
+      entry: cityEntry,
+    });
+    const story = {
+      storyId: 'city-brand-generated-readiness',
+      generation_type: 'culture_promo',
+      video_type: 'city_brand_promo',
+      presentation_style: 'voiceover_montage',
+      source_entry: cityEntry.name,
+      ...generated,
+      ...typeFields,
+      gears_segments_url: '/api/stories/city-brand-generated-readiness/gears-segments',
+      material_pack: makeMaterialPack('长沙岳麓书院的年代、会讲、城市空间和当代教育联系已有知识条目依据。'),
+      production_material_pack: cityPack,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toEqual(expect.arrayContaining([
+      'city_identity',
+      'target_audience',
+      'route_or_spatial_axis',
+      'city_soundscape',
+      'visitor_action',
+      'weather_contingency',
+    ]));
+    expect(refreshed?.missing_fields.map(field => field.field_id)).toEqual(['location_permissions']);
+    expect(refreshed?.available_fields).not.toContain('location_permissions');
+    expect(refreshed?.status).toBe('blocked');
+  });
+
   it('matches the shared production health conformance matrix', () => {
     expect(productionHealthConformance.schema_version)
       .toBe('production-material-pack-health-conformance/v1');

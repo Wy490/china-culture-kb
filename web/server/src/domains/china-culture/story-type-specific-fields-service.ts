@@ -49,7 +49,10 @@ export function deriveChinaCultureTypeSpecificStoryFields(input: {
       ...relatedLocationNames(entry).slice(0, 2),
       ...entry.keywords.filter(keyword => !['人物', '故事', '历史'].includes(keyword)).slice(0, 3),
     ]);
-    const modernScene = storyResult.scene_breakdown.find(scene => scene.dramatic_function === '现代传承');
+    const modernScene = storyResult.scene_breakdown.find(scene => (
+      scene.dramatic_function === '现代传承'
+      || (videoType === 'city_brand_promo' && /人文风貌|生活气息/.test(scene.dramatic_function))
+    ));
     const endingNarration = storyResult.scene_breakdown.at(-1)?.dialogue_or_narration
       ?.replace(/^旁白[：:]/, '')
       .trim();
@@ -63,15 +66,18 @@ export function deriveChinaCultureTypeSpecificStoryFields(input: {
           ? `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`
           : undefined),
       modern_connection: modelOutput?.modern_connection
-        ?? (videoType === 'culture_promo' ? modernScene?.plot : undefined)
+        ?? (videoType === 'culture_promo' || videoType === 'city_brand_promo' ? modernScene?.plot : undefined)
         ?? entry.culturalSignificance?.substring(0, 80)
         ?? `${entry.name}在现代的文化传承与创新`,
       core_message: modelOutput?.core_message
         ?? (videoType === 'culture_promo' && cultureTheme
           ? `让观众从${visualSymbols.slice(0, 2).join('与') || cultureSubject}看见：${cultureTheme}`
+          : videoType === 'city_brand_promo'
+            ? '让文化游客与本地市民沿岳麓书院到城市日常的路线，看见长沙如何把文脉继续变成学习与提问。'
           : storyResult.logline),
       slogan_or_key_sentence: modelOutput?.slogan_or_key_sentence
-        ?? (videoType === 'culture_promo' && endingNarration && endingNarration.length <= 72
+        ?? ((videoType === 'culture_promo' || videoType === 'city_brand_promo')
+          && endingNarration && endingNarration.length <= 72
           ? endingNarration
           : quotes.length > 0 ? quotes[0] : `${entry.type}之光——${cultureSubject}`),
     };

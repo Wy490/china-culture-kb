@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-writing-capability-m4-machine-evaluation-baseline/v1",
-  "generated_at": "2026-08-14T17:07:44.814Z",
+  "generated_at": "2026-08-14T17:20:07.219Z",
   "status": "passed",
   "source": {
     "schema_version": "story-agent-15x3-stability-matrix/v1",
@@ -33,8 +33,8 @@
     "reused_project_count": 45,
     "adaptation_case_count": 5,
     "compact_case_count": 10,
-    "shot_count": 362,
-    "image_task_count": 138,
+    "shot_count": 363,
+    "image_task_count": 150,
     "delivered_image_count": 0
   },
   "machine_evaluation": {

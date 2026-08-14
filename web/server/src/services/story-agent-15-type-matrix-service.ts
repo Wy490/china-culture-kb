@@ -23,7 +23,7 @@ import {
 import { exportStoryAgentSeedancePreproductionPackage } from './story-agent-preproduction-package-service.js';
 import { isStoryQualityPassed } from './quality-workflow-service.js';
 
-const STORY_AGENT_MATRIX_CONTRACT_VERSION = 'story-agent-matrix-contract/v29';
+const STORY_AGENT_MATRIX_CONTRACT_VERSION = 'story-agent-matrix-contract/v30';
 
 export interface StoryAgent15TypeMatrixCase {
   case_id?: string;
