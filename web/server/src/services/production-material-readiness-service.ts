@@ -499,7 +499,10 @@ function generatedStoryProductionMaterialText(story: StoryGenerateResult): strin
     ...generatedTrainingProductionEvidence(story),
     ...generatedChildrenProductionEvidence(story),
     ...generatedComicProductionEvidence(story),
+    ...generatedCulturePromoProductionEvidence(story),
+    ...generatedDocumentaryProductionEvidence(story),
     ...generatedHistoricalProductionEvidence(story),
+    ...generatedLegendProductionEvidence(story),
     ...generatedSceneShortProductionEvidence(story),
   ].filter((item): item is string => Boolean(item)).join('\n');
 }
@@ -625,6 +628,110 @@ function generatedComicProductionEvidence(story: StoryGenerateResult): string[] 
     : [];
 }
 
+function generatedCulturePromoProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'culture_promo') return [];
+
+  const scenes = story.scene_breakdown;
+  const expectedArc = ['符号引入', '文化根基', '技艺展示', '现代传承', '标语收束'];
+  const actualArc = scenes.map(scene => scene.dramatic_function);
+  const narration = scenes
+    .map(scene => scene.dialogue_or_narration?.trim())
+    .filter((item): item is string => Boolean(item));
+  const uniqueNarration = new Set(narration);
+  const sourcedScenes = scenes.filter(scene =>
+    Boolean(scene.factual_basis?.trim())
+    && /依据|条目|记载|来源/.test(scene.factual_basis ?? ''),
+  );
+  const boundedScenes = scenes.filter(scene =>
+    Boolean(scene.fictionalized_elements?.some(item =>
+      /宣传|合成|再现|不代表|不作为|不指向|不替代/.test(item),
+    )),
+  );
+  const boundaryText = scenes.map(scene => [
+    scene.cultural_note,
+    scene.factual_basis,
+    ...(scene.fictionalized_elements ?? []),
+  ].filter(Boolean).join('\n')).join('\n');
+  const openingText = scenes[0]
+    ? `${scenes[0].plot}\n${scenes[0].key_action}\n${scenes[0].dialogue_or_narration ?? ''}`
+    : '';
+  const ending = scenes.at(-1);
+  const endingText = ending
+    ? `${ending.plot}\n${ending.key_action}\n${ending.dialogue_or_narration ?? ''}`
+    : '';
+  const hasCulturalTheme = Boolean(story.core_message?.trim())
+    && /文化|文脉|传统|学习|讲学|论辩/.test(`${story.core_message}\n${story.theme}`)
+    && scenes.some(scene => scene.dramatic_function === '现代传承');
+  const hasAudienceImpression = /观众|青年|初次|第一次到访/.test(openingText)
+    && /记住|看见|走进|带进来|到访/.test(endingText)
+    && /问题|证据|核对|理解/.test(`${openingText}\n${endingText}`);
+  const hasMontageArc = expectedArc.every((label, index) => actualArc[index] === label)
+    && new Set(scenes.map(scene => scene.location)).size >= 4
+    && /门联/.test(openingText)
+    && /门联/.test(endingText)
+    && scenes.every(scene => scene.key_action.trim().length >= 10);
+  const hasVoiceoverRegister = narration.length === scenes.length
+    && uniqueNarration.size === scenes.length
+    && narration.every(line => /旁白/.test(line))
+    && /先别急|不是|重要的不是|下一次|请/.test(narration.join('\n'));
+  const hasRepresentationRisk = sourcedScenes.length >= 3
+    && boundedScenes.length >= 3
+    && /极值|唯一|无来源|空泛|拼贴|不把|不得/.test(boundaryText)
+    && /许可|署名|授权|真实人物|具体人物/.test(boundaryText);
+  const hasCallToAction = Boolean(
+    ending
+    && /到访|带进来|继续核对|走进|请/.test(endingText)
+    && ending.key_action.trim().length >= 10,
+  );
+
+  return [
+    hasCulturalTheme ? `文化主题：${story.core_message}` : '',
+    hasAudienceImpression
+      ? `受众印象：面向第一次到访的青年观众，让其看完后记住从符号进入证据、从赞美转向核对与继续提问。`
+      : '',
+    hasMontageArc
+      ? `蒙太奇段落弧：${scenes.map(scene => `${scene.dramatic_function}（${scene.location}：${scene.key_action}）`).join(' → ')}`
+      : '',
+    hasVoiceoverRegister
+      ? '旁白语体：克制、求证、面向观众提问；旁白只补时间、关系和意义，不复述画面已经展示的物件与动作。'
+      : '',
+    hasCallToAction
+      ? `行动号召：${ending?.dialogue_or_narration ?? ending?.plot}`
+      : '',
+    hasRepresentationRisk
+      ? '文化再现风险：不得以古风符号拼贴替代证据，不把书院压缩成单一精神口号；历史再现、当代人物、场地许可与图像署名分别记录。'
+      : '',
+  ];
+}
+
+function generatedDocumentaryProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'documentary_short') return [];
+
+  const soundTerms = ['鸟鸣', '脚步声', '翻页声', '纸页声', '风过树叶声', '讨论声', '提问声'];
+  const soundScenes = story.scene_breakdown.filter(scene => {
+    const text = `${scene.camera_suggestion}\n${scene.dialogue_or_narration ?? ''}\n${scene.cultural_note}`;
+    return soundTerms.some(term => text.includes(term));
+  });
+  const usedSoundTerms = soundTerms.filter(term => soundScenes.some(scene => (
+    `${scene.camera_suggestion}\n${scene.dialogue_or_narration ?? ''}\n${scene.cultural_note}`.includes(term)
+  )));
+  const boundaryText = story.scene_breakdown.map(scene => [
+    scene.camera_suggestion,
+    scene.cultural_note,
+    ...(scene.fictionalized_elements ?? []),
+  ].join('\n')).join('\n');
+  const hasAuditableSoundPlan = soundScenes.length >= 3
+    && usedSoundTerms.length >= 3
+    && /真实现场采集|现场拍摄和收声|真实环境声位/.test(boundaryText)
+    && /不合成受访者声音|不制造同期声/.test(boundaryText);
+
+  return [
+    hasAuditableSoundPlan
+      ? `环境声设计：${usedSoundTerms.join('、')}按分场规划；正式成片只使用经真实现场采集、核验和授权的声音，不把规划文本冒充已录制同期声。`
+      : '',
+  ];
+}
+
 function generatedHistoricalProductionEvidence(story: StoryGenerateResult): string[] {
   if (story.video_type !== 'historical_drama') return [];
 
@@ -677,6 +784,105 @@ function generatedHistoricalProductionEvidence(story: StoryGenerateResult): stri
     hasEvidenceHierarchy ? '史料证据层级：逐场区分知识条目/用户素材依据与合成再现、影视化补足。' : '',
     `有据行动：${sourcedScenes.map(scene => scene.factual_basis).join('；')}`,
     `冲突转折点：${turningScene.plot}；${turningScene.key_action}`,
+  ];
+}
+
+function generatedLegendProductionEvidence(story: StoryGenerateResult): string[] {
+  if (story.video_type !== 'legend_story') return [];
+
+  const scenes = story.scene_breakdown;
+  const sceneText = scenes.map(scene => [
+    scene.location,
+    scene.plot,
+    scene.key_action,
+    scene.conflict,
+    scene.cultural_note,
+    scene.factual_basis,
+    ...(scene.fictionalized_elements ?? []),
+  ].filter(Boolean).join('\n')).join('\n');
+  const sourceEntries = [...new Set(scenes.flatMap(scene => scene.source_entries ?? []).filter(Boolean))];
+  const hasUserAdaptation = sourceEntries.includes('用户提供改编素材');
+  const hasTraceableLegendSource = sourceEntries.some(entry => entry !== '用户提供改编素材')
+    && /传说/.test(sceneText)
+    && /来源|依据|条目|记载/.test(`${story.credibility_note}\n${sceneText}`);
+  const opening = scenes.at(0);
+  const ending = scenes.at(-1);
+  const openingText = opening ? `${opening.location}\n${opening.plot}\n${opening.visual_prompt}` : '';
+  const endingText = ending
+    ? `${ending.location}\n${ending.plot}\n${ending.visual_prompt}\n${ending.cultural_note}\n${ending.factual_basis ?? ''}`
+    : '';
+  const hasOralToStageLineage = /常德|武陵|山路/.test(openingText)
+    && /长沙|花鼓戏|戏台/.test(endingText)
+    && /流传|重讲|一代代|改编|复演/.test(endingText);
+  const supernaturalScene = scenes.find(scene =>
+    /狐影|狐仙|神异/.test(`${scene.plot}\n${scene.visual_prompt}`)
+    && /显|扶|挡|护|收起/.test(`${scene.plot}\n${scene.key_action}`),
+  );
+  const mortalChoiceScene = scenes.find(scene =>
+    scene.characters.includes('刘海')
+    && /选择|决定|放下|回头|拒绝|相信/.test(`${scene.plot}\n${scene.key_action}`)
+    && /风险|代价|排斥|分开|逼迫|拒斥/.test(`${scene.plot}\n${scene.conflict ?? ''}`),
+  );
+  const sharedConsequenceScene = scenes.find(scene =>
+    scene.characters.includes('刘海')
+    && scene.characters.includes('胡大姐')
+    && /共同|并肩|两人/.test(`${scene.plot}\n${scene.key_action}`)
+    && /因此|结果|停下|让出|改变/.test(`${scene.plot}\n${scene.conflict ?? ''}`),
+  );
+  const hasSupernaturalRule = Boolean(supernaturalScene && mortalChoiceScene && sharedConsequenceScene)
+    && /神异.{0,16}(不能|没有|未)|不能.{0,16}(替代|代替)|没有.{0,16}替/.test(sceneText);
+  const liuHaiSceneCount = scenes.filter(scene => scene.characters.includes('刘海')).length;
+  const hasMortalDesire = liuHaiSceneCount >= Math.min(3, scenes.length)
+    && Boolean(mortalChoiceScene && sharedConsequenceScene);
+  const recurringMotifs = ['柴担', '柴绳', '花篮', '狐影'].filter(motif =>
+    openingText.includes(motif) && endingText.includes(motif),
+  );
+  const hasRegionalVariant = /常德|武陵/.test(sceneText)
+    && /长沙/.test(sceneText)
+    && /花鼓戏|戏曲改编/.test(endingText);
+  const hasCustomLink = hasOralToStageLineage
+    && /锣鼓|对唱|演员|观众|舞台/.test(endingText);
+  const hasVersionChoice = hasTraceableLegendSource
+    && hasOralToStageLineage
+    && /版本|口述|用户提供/.test(`${sceneText}\n${story.credibility_note}`)
+    && /不是可考历史|非史实|传说边界|不作.{0,8}史实/.test(sceneText);
+  const hasWonderEnding = Boolean(
+    ending
+    && /传说永恒|结尾|收束|余韵/.test(ending.dramatic_function)
+    && /花篮|狐影|山路|薄雾|叠化|水袖/.test(endingText)
+    && /流传|重讲|一代代|回到|叠化/.test(endingText),
+  );
+
+  return [
+    hasTraceableLegendSource
+      ? `传说来源版本：${sourceEntries.join('、')}，逐场保留传说依据与影视化边界。`
+      : '',
+    hasOralToStageLineage
+      ? `口传/文本流变：故事从常德武陵山路的民间讲述进入长沙花鼓戏舞台，经复演与观众应和继续流传。`
+      : '',
+    hasSupernaturalRule
+      ? `神异规则：胡大姐的狐影或神异力量只能显露身份、介入眼前危机，不能替代刘海作出凡人选择，也不能免除共同承担的代价。`
+      : '',
+    hasMortalDesire
+      ? `凡人愿望：刘海想守住亲眼确认的善意与两人的情分，并以放下武器、回头和共同承担兑现诉求。`
+      : '',
+    recurringMotifs.length >= 2
+      ? `象征母题：${recurringMotifs.join('、')}在开场与结尾重复出现，把相遇、考验和流传连接成视觉回环。`
+      : '',
+    hasRegionalVariant
+      ? `地域版本：常德武陵民间讲述承担故事主线，长沙花鼓戏改编承担舞台传播层，两者不混写成唯一版本。`
+      : '',
+    hasCustomLink
+      ? `习俗关联：以长沙花鼓戏的锣鼓、对唱、复演和观众应和呈现地方民间演艺习俗，不虚构独立祭仪。`
+      : '',
+    hasVersionChoice
+      ? hasUserAdaptation
+        ? '采用版本：本片以用户提供版本作为剧情主线，以常德武陵传说和长沙花鼓戏资料补足来源与传播边界。'
+        : '采用版本：本片以常德武陵口述传说作为剧情主线，以长沙花鼓戏改编作为传播结尾，不拼接为单一史实。'
+      : '',
+    hasWonderEnding
+      ? `奇观结尾：${ending?.plot}`
+      : '',
   ];
 }
 

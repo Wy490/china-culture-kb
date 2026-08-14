@@ -760,6 +760,60 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
     }
   }
 
+  if (story.video_type === 'documentary_short') {
+    const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
+      observableSignalSceneText(scene, signal).replace(/\s+/g, '')
+    );
+    const realityScene = story.scene_breakdown.find(scene => (
+      /现实引入/.test(`${scene.dramatic_function}${scene.title}`)
+      && /门庭|书院|讲堂|院落|碑刻|石阶|实物/.test(`${scene.location}${sceneText(scene)}`)
+      && /问题|核对|写下|提出/.test(sceneText(scene))
+    ));
+    const sourceScenes = story.scene_breakdown.filter(scene => (
+      Boolean(scene.factual_basis?.trim())
+      && /依据|条目|记载|来源|地点记录/.test(scene.factual_basis ?? '')
+      && /核对|时间线|碑刻|讲义|问题|标出/.test(sceneText(scene))
+    ));
+    const boundaryScenes = story.scene_breakdown.filter(scene => {
+      const text = [
+        scene.cultural_note,
+        scene.factual_basis ?? '',
+        ...(scene.fictionalized_elements ?? []),
+      ].join('');
+      return /依据|条目|记载|来源|地点/.test(text)
+        && /不代表|不是|不得|不能|不声称|不作为|不证明|不新增|须|待|有限再现/.test(text);
+    });
+    const interviewPlanScene = story.scene_breakdown.find(scene => (
+      /史料\/专家解读/.test(scene.dramatic_function)
+      && /采访规划（非现成同期声）/.test(sceneText(scene))
+      && /待真实采访录音后选择/.test(sceneText(scene))
+      && /不写采访原话|不制造同期声/.test(sceneText(scene))
+    ));
+    const contemporaryScene = story.scene_breakdown.find(scene => (
+      /当代意义/.test(scene.dramatic_function)
+      && /今天|当代|课堂/.test(sceneText(scene))
+      && /标出|标出处|交换|核对|翻回|写下|提问/.test(sceneText(scene))
+      && /问题|依据|来源|解释/.test(sceneText(scene))
+    ));
+
+    if (/现实现场明确/.test(signal)) {
+      return realityScene ? [realityScene.scene_id] : [];
+    }
+    if (/来源提示存在/.test(signal)) {
+      return sourceScenes.length >= 3 ? sourceScenes.map(scene => scene.scene_id) : [];
+    }
+    if (/边界清楚/.test(signal)) {
+      return boundaryScenes.length >= Math.ceil(story.scene_breakdown.length * 0.8) && interviewPlanScene
+        ? boundaryScenes.map(scene => scene.scene_id)
+        : [];
+    }
+    if (/当代意义自然/.test(signal)) {
+      return realityScene && contemporaryScene && /问题/.test(sceneText(realityScene))
+        ? [realityScene.scene_id, contemporaryScene.scene_id]
+        : [];
+    }
+  }
+
   if (story.video_type === 'legend_story') {
     const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
       observableSignalSceneText(scene, signal).replace(/\s+/g, '')
@@ -838,6 +892,56 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
     }
     if (/物件意义有变化/.test(signal)) {
       return motifChangesMeaning ? motifScenes.map(scene => scene.scene_id) : [];
+    }
+  }
+
+  if (story.video_type === 'culture_promo') {
+    const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
+      observableSignalSceneText(scene, signal).replace(/\s+/g, '')
+    );
+    const symbolScene = story.scene_breakdown.find(scene =>
+      /符号引入/.test(scene.dramatic_function)
+      && /门联|笔记|碑刻|匾额|纹样|器物/.test(sceneText(scene))
+      && /特写|前景|写下|翻开|走到/.test(sceneText(scene)),
+    );
+    const proofScenes = story.scene_breakdown.filter(scene =>
+      Boolean(scene.factual_basis?.trim())
+      && /依据|条目|记载|来源/.test(scene.factual_basis ?? '')
+      && scene.key_action.trim().length >= 8,
+    );
+    const modernScene = story.scene_breakdown.find(scene =>
+      /现代传承|当代连接/.test(scene.dramatic_function)
+      && /今天|当代|如今|仍在/.test(sceneText(scene))
+      && /带进|交换|讨论|学习|使用|实践/.test(sceneText(scene)),
+    );
+    const memoryEnding = /标语收束|品牌定格/.test(last.dramatic_function)
+      && /写下|定格|停在|回到/.test(lastText)
+      && /到访|请|记住|走进|带进来/.test(lastText)
+      && Boolean(story.slogan_or_key_sentence?.trim());
+    const propositionChain = Boolean(
+      symbolScene
+      && proofScenes.length >= 2
+      && modernScene
+      && symbolScene.scene_id < modernScene.scene_id,
+    );
+
+    if (/符号鲜明/.test(signal)) {
+      return symbolScene && /门联|笔记/.test(lastText)
+        ? [symbolScene.scene_id, last.scene_id]
+        : [];
+    }
+    if (/主张清楚/.test(signal)) {
+      return propositionChain
+        ? [symbolScene!.scene_id, proofScenes[0].scene_id, modernScene!.scene_id]
+        : [];
+    }
+    if (/当代连接自然/.test(signal)) {
+      return symbolScene && modernScene && /笔记|门联/.test(sceneText(modernScene))
+        ? [symbolScene.scene_id, modernScene.scene_id]
+        : [];
+    }
+    if (/结尾有记忆句/.test(signal)) {
+      return memoryEnding ? [last.scene_id] : [];
     }
   }
 

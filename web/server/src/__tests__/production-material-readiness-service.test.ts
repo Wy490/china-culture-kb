@@ -14,6 +14,9 @@ import {
   getProductionMaterialFieldSpec,
   refreshStoryProductionMaterialReadiness,
 } from '../services/production-material-readiness-service.js';
+import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
+import { generateDramaticContent } from '../services/dramatic-story.js';
+import { deriveChinaCultureTypeSpecificStoryFields } from '../domains/china-culture/story-type-specific-fields-service.js';
 
 function makeMaterialPack(summary: string): MaterialPack {
   return {
@@ -278,6 +281,260 @@ describe('production-material-readiness-service', () => {
       'factual_life_boundary',
       'ending_legacy',
     ]));
+  });
+
+  it.each([
+    { label: 'knowledge-only', source: undefined },
+    {
+      label: 'user-adaptation',
+      source: [
+        '刘海在山路砍樵时遇见胡大姐，她用神异力量替他挡开危机，却没有立刻说明身份。',
+        '乡邻的怀疑迫使两人分开；刘海决定相信一路看见的行动，回头寻找胡大姐。',
+        '两人共同通过考验，歌声留在山路上；这是民间传说中的讲法。',
+      ].join('\n\n'),
+    },
+  ])('derives the complete legend production chain from the generated $label story', ({ source }) => {
+    const legendPack = getProductionMaterialPack('legend_story');
+    const legendEntry = {
+      name: '刘海砍樵——人仙之恋的湖南民间传说',
+      province: '湖南',
+      region: '常德→武陵（传说发源地）；长沙（花鼓戏经典改编地）',
+      type: '民间故事',
+      summary: '武陵樵夫刘海与狐仙胡大姐跨越人仙界限的爱情故事，后来经花鼓戏改编传播。',
+      story: [
+        '刘海是武陵的一名勤劳樵夫，以砍柴为生。狐仙胡大姐化身女子下凡，在砍柴途中与刘海相遇。',
+        '两人相爱后，胡大姐的狐仙身份被揭露，经历一系列考验。最终两人战胜困难。',
+        '该传说流传于常德武陵山区及长沙地区，长沙花鼓戏将其加工为舞台经典。',
+      ].join('\n\n'),
+      culturalSignificance: '传说表现勤劳善良与忠贞选择，并通过湖南花鼓戏经典对唱广泛传播。',
+      relatedLocations: [
+        { name: '常德武陵山林', description: '传说中的砍樵与相遇场景' },
+        { name: '长沙花鼓戏舞台', description: '戏曲改编和传播场景' },
+      ],
+      keywords: ['刘海砍樵', '胡大姐', '狐仙', '花鼓戏', '武陵', '人仙之恋'],
+      sources: ['常德武陵民间口述传说', '湖南花鼓戏经典剧目《刘海砍樵》'],
+      credibility: '待核实',
+      unverifiedPoints: ['民间口述版本与花鼓戏改编版本存在差异'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: legendEntry,
+      centralEvent: '刘海砍樵与人仙相恋的考验',
+      videoType: 'legend_story',
+      presentationStyle: 'ink_style',
+      targetDuration: '3分钟',
+      tone: '温暖传奇',
+      ...(source
+        ? {
+            originalUserQuery: source,
+            adaptationAnalysis: buildAdaptationAnalysis(source),
+          }
+        : {}),
+    });
+    const story = {
+      storyId: `legend-generated-readiness-${source ? 'adaptation' : 'knowledge'}`,
+      generation_type: 'character_story',
+      video_type: 'legend_story',
+      presentation_style: 'ink_style',
+      source_entry: legendEntry.name,
+      ...generated,
+      gears_segments_url: '/api/stories/legend-generated-readiness/gears-segments',
+      material_pack: makeMaterialPack('刘海与胡大姐的传说素材已确认。'),
+      production_material_pack: legendPack,
+      ...(source ? { original_user_query: source } : {}),
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toEqual(expect.arrayContaining([
+      'legend_source_versions',
+      'oral_or_text_lineage',
+      'supernatural_rule',
+      'mortal_desire',
+      'taboo_or_test',
+      'transformation_cost',
+      'symbolic_motif',
+      'regional_variant',
+      'ritual_or_custom_link',
+      'version_choice',
+      'legend_truth_boundary',
+      'wonder_ending',
+    ]));
+    expect(refreshed?.missing_fields).toEqual([]);
+    expect(refreshed?.status).toBe('ready');
+  });
+
+  it('derives culture-promo audience, montage, voiceover, and representation guidance without inventing rights', () => {
+    const culturePack = getProductionMaterialPack('culture_promo');
+    const cultureEntry = {
+      name: '岳麓书院——千年学府弦歌不绝',
+      province: '湖南',
+      region: '长沙→岳麓区',
+      type: '名胜古迹',
+      summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+      story: [
+        '岳麓书院始建于北宋开宝九年（976年），由潭州太守朱洞创立。',
+        '南宋时朱熹与张栻在此会讲，形成开放论辩的学术传统。',
+        '书院延续至今，与湖南大学校园和当代学习生活相连。',
+      ].join('\n\n'),
+      culturalSignificance: '岳麓书院是湖湘文化的重要精神地标，讲学与论辩传统延续到当代教育。',
+      relatedLocations: [
+        { name: '岳麓书院门庭', description: '门联与空间入口' },
+        { name: '岳麓书院讲堂', description: '讲学与会讲空间' },
+      ],
+      keywords: ['岳麓书院', '朱张会讲', '惟楚有材', '湖湘文脉'],
+      sources: ['岳麓书院官方资料'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['具体会讲对白不可写成历史原话'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: cultureEntry,
+      centralEvent: '岳麓书院千年文脉',
+      videoType: 'culture_promo',
+      presentationStyle: 'voiceover_montage',
+      targetDuration: '1分钟',
+      tone: '克制明亮',
+    });
+    const typeFields = deriveChinaCultureTypeSpecificStoryFields({
+      videoType: 'culture_promo',
+      storyResult: generated,
+      entry: cultureEntry,
+    });
+    const story = {
+      storyId: 'culture-promo-generated-readiness',
+      generation_type: 'culture_promo',
+      video_type: 'culture_promo',
+      presentation_style: 'voiceover_montage',
+      source_entry: cultureEntry.name,
+      ...generated,
+      ...typeFields,
+      gears_segments_url: '/api/stories/culture-promo-generated-readiness/gears-segments',
+      material_pack: makeMaterialPack('岳麓书院历史与当代教育联系已有知识条目依据。'),
+      production_material_pack: culturePack,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toEqual(expect.arrayContaining([
+      'cultural_theme',
+      'audience_impression',
+      'montage_arc',
+      'voiceover_register',
+      'representation_risk',
+    ]));
+    expect(refreshed?.missing_fields.map(field => field.field_id)).toEqual(['rights_and_attribution']);
+    expect(refreshed?.status).toBe('blocked');
+  });
+
+  it('derives documentary ambient sound while keeping interview clip selection external', () => {
+    const documentaryPack = getProductionMaterialPack('documentary_short');
+    const documentaryEntry = {
+      name: '岳麓书院——千年学府弦歌不绝',
+      province: '湖南',
+      region: '长沙→岳麓区',
+      type: '名胜古迹',
+      summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+      story: [
+        '岳麓书院始建于北宋开宝九年（976年），由潭州太守朱洞创立。',
+        '南宋时朱熹与张栻在此会讲，形成开放论辩的学术传统。',
+        '书院延续至今，与湖南大学校园和当代学习生活相连。',
+      ].join('\n\n'),
+      culturalSignificance: '岳麓书院讲学与论辩传统延续到当代教育。',
+      relatedLocations: [
+        { name: '岳麓书院门庭', description: '门联与空间入口' },
+        { name: '岳麓书院讲堂', description: '讲学与会讲空间' },
+      ],
+      keywords: ['岳麓书院', '朱张会讲', '湖湘文脉'],
+      sources: ['岳麓书院官方资料'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['具体会讲对白不可写成历史原话'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: documentaryEntry,
+      centralEvent: '朱张会讲',
+      videoType: 'documentary_short',
+      presentationStyle: 'documentary',
+      targetDuration: '3分钟',
+      tone: '克制求证',
+    });
+    const typeFields = deriveChinaCultureTypeSpecificStoryFields({
+      videoType: 'documentary_short',
+      storyResult: generated,
+      entry: documentaryEntry,
+    });
+    const story = {
+      storyId: 'documentary-generated-readiness',
+      generation_type: 'culture_promo',
+      video_type: 'documentary_short',
+      presentation_style: 'documentary',
+      source_entry: documentaryEntry.name,
+      ...generated,
+      ...typeFields,
+      gears_segments_url: '/api/stories/documentary-generated-readiness/gears-segments',
+      material_pack: makeMaterialPack('岳麓书院现实地点、历史时间线、朱张会讲来源和有限再现边界已有知识条目依据。'),
+      production_material_pack: documentaryPack,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toContain('ambient_sound');
+    expect(refreshed?.missing_fields.map(field => field.field_id)).toContain('interview_clip_selection');
+    expect(refreshed?.available_fields).not.toContain('interview_clip_selection');
+  });
+
+  it('derives the complete landscape production plan only from layered and bounded scenes', () => {
+    const landscapePack = getProductionMaterialPack('landscape_mood');
+    const landscapeEntry = {
+      name: '张家界武陵源——3.8亿年雕琢的世界自然遗产',
+      province: '湖南',
+      region: '张家界→武陵源',
+      type: '自然景观',
+      summary: '武陵源以石英砂岩峰林地貌、峡谷、溪流和云雾景观闻名。',
+      story: '武陵源的石英砂岩峰林在流水侵蚀、风化与崩塌等长期作用下形成。',
+      culturalSignificance: '自然景观应在准确地名与季节边界下呈现。',
+      relatedLocations: [{ name: '武陵源风景名胜区', description: '石英砂岩峰林集中分布区域' }],
+      keywords: ['武陵源', '峰林', '云雾', '溪流'],
+      sources: ['武陵源官方地质科普资料'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['具体云海、光线和可见度受季节与天气影响'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: landscapeEntry,
+      centralEvent: '武陵源峰林云雾的一日变化',
+      videoType: 'landscape_mood',
+      presentationStyle: 'ink_style',
+      targetDuration: '3分钟',
+      tone: '空灵克制',
+    });
+    const typeFields = deriveChinaCultureTypeSpecificStoryFields({
+      videoType: 'landscape_mood',
+      storyResult: generated,
+      entry: landscapeEntry,
+    });
+    const story = {
+      storyId: 'landscape-generated-readiness',
+      generation_type: 'culture_promo',
+      video_type: 'landscape_mood',
+      presentation_style: 'ink_style',
+      source_entry: landscapeEntry.name,
+      ...generated,
+      ...typeFields,
+      gears_segments_url: '/api/stories/landscape-generated-readiness/gears-segments',
+      material_pack: makeMaterialPack('武陵源现实地点、峰林地貌和天气不确定性已有知识条目依据。'),
+      production_material_pack: landscapePack,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toEqual(expect.arrayContaining([
+      'foreground_midground_background',
+      'color_palette',
+      'camera_rhythm',
+      'soundscape_layers',
+      'human_scale_reference',
+      'landscape_claim_boundary',
+    ]));
+    expect(refreshed?.missing_fields).toEqual([]);
+    expect(refreshed?.status).toBe('ready');
   });
 
   it('matches the shared production health conformance matrix', () => {

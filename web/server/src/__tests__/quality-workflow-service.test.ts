@@ -1643,4 +1643,68 @@ describe('quality-workflow-service', () => {
       '人物不是背景板',
     ]));
   });
+
+  it('recognizes documentary evidence, interview boundaries, and a concrete present-day answer', () => {
+    const generated = generateDramaticContent({
+      entry: {
+        name: '岳麓书院——千年学府弦歌不绝',
+        province: '湖南',
+        region: '长沙→岳麓区',
+        type: '名胜古迹',
+        summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+        story: '岳麓书院始建于北宋开宝九年（976年）。\n\n南宋时朱熹与张栻在此会讲。\n\n书院延续至今。',
+        culturalSignificance: '讲学与论辩传统延续到当代教育。',
+        relatedLocations: [{ name: '岳麓书院讲堂', description: '讲学与会讲空间' }],
+        keywords: ['岳麓书院', '朱张会讲', '湖湘文脉'],
+        sources: ['岳麓书院官方资料'],
+        credibility: '基本可靠',
+        unverifiedPoints: ['具体会讲对白不可写成历史原话'],
+      },
+      centralEvent: '朱张会讲',
+      videoType: 'documentary_short',
+      presentationStyle: 'documentary',
+      targetDuration: '3分钟',
+      tone: '克制求证',
+    });
+    const documentary: StoryGenerateResult = {
+      ...makeStory(),
+      ...generated,
+      storyId: 'documentary-evidence-positive',
+      generation_type: 'culture_promo',
+      video_type: 'documentary_short',
+      presentation_style: 'documentary',
+      source_entry: '岳麓书院——千年学府弦歌不绝',
+      story_structure: 'object_clue_journey',
+    };
+    const generic: StoryGenerateResult = {
+      ...documentary,
+      storyId: 'documentary-evidence-generic',
+      full_text: '书院历史悠久，文化影响深远，今天仍有重要意义。',
+      scene_breakdown: documentary.scene_breakdown.map((scene, index) => ({
+        ...scene,
+        plot: ['书院出现在画面中。', '历史悠久。', '文化影响深远。', '专家进行讲解。', '精神永远流传。'][index],
+        key_action: '展示书院文化',
+        camera_suggestion: '书院空间中景',
+        cultural_note: '内容待核。',
+        factual_basis: '历史素材。',
+        fictionalized_elements: [],
+      })),
+    };
+
+    const positiveReport = enrichStoryQualityReport({ story: documentary, qualityReport: makeBaseReport() });
+    const genericReport = enrichStoryQualityReport({ story: generic, qualityReport: makeBaseReport() });
+    const positiveSatisfied = positiveReport.pattern_quality_report?.satisfied_signals.map(item => item.label) ?? [];
+    const genericSatisfied = genericReport.pattern_quality_report?.satisfied_signals.map(item => item.label) ?? [];
+
+    expect(positiveSatisfied).toEqual(expect.arrayContaining([
+      '现实现场明确',
+      '来源提示存在',
+      '边界清楚',
+      '当代意义自然',
+    ]));
+    expect(genericSatisfied).not.toEqual(expect.arrayContaining([
+      '边界清楚',
+      '当代意义自然',
+    ]));
+  });
 });

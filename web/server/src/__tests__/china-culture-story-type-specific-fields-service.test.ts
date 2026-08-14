@@ -88,7 +88,7 @@ describe('china_culture type-specific story fields', () => {
       videoType: 'documentary_short', storyResult: story, entry,
     })).toMatchObject({
       source_quotes: [],
-      field_notes: ['江宁织造府实地考察记录要点', '需实地考察遗迹保存状态'],
+      field_notes: ['江宁织造府待实地核验清单', '需实地考察遗迹保存状态'],
     });
   });
 

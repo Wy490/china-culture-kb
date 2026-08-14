@@ -140,6 +140,182 @@ describe('china_culture local story generation dispatch', () => {
     });
   });
 
+  it.each(['1分钟', '3分钟'] as const)(
+    'builds a dated and sourced Wuchang causal chain for the %s knowledge-only variant',
+    (targetDuration) => {
+      const result = generateChinaCultureLocalStoryAssembly({
+        entry: {
+          name: '武昌起义——辛亥革命的第一声枪响',
+          province: '湖北',
+          region: '武汉→武昌区',
+          type: '地方掌故',
+          summary: '1911年10月10日，新军在武昌发动起义并攻占湖广总督署。',
+          story: [
+            '1911年10月9日，汉口俄租界炸弹意外爆炸，起义计划泄露，清军开始搜捕革命党人。',
+            '10月10日晚，新军工程营士兵率先行动，全营响应起义。',
+            '起义军攻占楚望台军械库获得弹药后攻入湖广总督署，武昌城局势由此改变。',
+          ].join('\n\n'),
+          culturalSignificance: '普通新军士兵的行动成为辛亥革命的重要开端。',
+          relatedLocations: [
+            { name: '楚望台军械库', description: '起义军获得弹药的转折空间' },
+            { name: '湖广总督署', description: '起义军后续推进的官署空间' },
+          ],
+          keywords: ['武昌起义', '辛亥革命', '新军起义', '楚望台军械库'],
+          sources: ['辛亥革命武昌起义纪念馆官方资料'],
+          credibility: '基本可靠',
+          unverifiedPoints: ['率先开枪的具体经过在不同回忆中有细微差异'],
+          era: '近代',
+        },
+        centralEvent: '武昌起义提前发动并争夺楚望台军械库',
+        videoType: 'historical_drama',
+        presentationStyle: 'cinematic',
+        storyStructure: 'single_event_drama',
+        targetDuration,
+        tone: '紧张克制',
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error(result.message);
+      const scenes = result.storyResult.scene_breakdown;
+      expect(scenes).toHaveLength(6);
+      expect(scenes.filter(scene => /1911年|10月(?:9|10|11)日/.test(`${scene.time_of_day}${scene.plot}`)).length)
+        .toBeGreaterThanOrEqual(2);
+      expect(scenes.filter(scene => /(?:依据|条目记载)/.test(scene.factual_basis ?? '')).length)
+        .toBeGreaterThanOrEqual(2);
+      expect(scenes.filter(scene => scene.fictionalized_elements?.some(item => /再现|影视化|合成/.test(item))).length)
+        .toBeGreaterThanOrEqual(2);
+      expect(new Set(scenes.map(scene => scene.location)).size).toBeGreaterThanOrEqual(4);
+      expect(scenes.map(scene => `${scene.plot}${scene.key_action}`).join('\n'))
+        .toMatch(/因为|导致|迫使|获得.{0,20}后|才有/);
+      expect([...new Set(scenes.flatMap(scene => scene.characters))])
+        .toEqual(expect.arrayContaining(['新军士兵', '起义军', '普通士兵']));
+    },
+  );
+
+  it.each(['1分钟', '3分钟'] as const)(
+    'builds an evidence-led Yuelu documentary without fabricating interview audio for the %s variant',
+    (targetDuration) => {
+      const result = generateChinaCultureLocalStoryAssembly({
+        entry: {
+          name: '岳麓书院——千年学府弦歌不绝',
+          province: '湖南',
+          region: '长沙→岳麓区',
+          type: '名胜古迹',
+          summary: '岳麓书院以讲学、会讲和今日校园延续湖湘文脉。',
+          story: [
+            '岳麓书院始建于北宋开宝九年（976年），由潭州太守朱洞创立。',
+            '南宋时朱熹与张栻在此会讲，形成开放论辩的学术传统。',
+            '书院延续至今，与湖南大学校园和当代学习生活相连。',
+          ].join('\n\n'),
+          culturalSignificance: '岳麓书院是湖湘文化的重要精神地标，讲学与论辩传统延续到当代教育。',
+          relatedLocations: [
+            { name: '岳麓书院门庭', description: '门联与空间入口' },
+            { name: '岳麓书院讲堂', description: '讲学与会讲空间' },
+          ],
+          keywords: ['岳麓书院', '朱张会讲', '惟楚有材', '湖湘文脉'],
+          sources: ['岳麓书院官方资料'],
+          credibility: '基本可靠',
+          unverifiedPoints: ['具体会讲对白不可写成历史原话'],
+        },
+        centralEvent: '朱张会讲',
+        videoType: 'documentary_short',
+        presentationStyle: 'documentary',
+        storyStructure: 'object_clue_journey',
+        targetDuration,
+        tone: '克制求证',
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error(result.message);
+      const scenes = result.storyResult.scene_breakdown;
+      const text = scenes.map(scene => [
+        scene.plot,
+        scene.key_action,
+        scene.dialogue_or_narration,
+        scene.camera_suggestion,
+        scene.cultural_note,
+        scene.factual_basis,
+        ...(scene.fictionalized_elements ?? []),
+      ].filter(Boolean).join('\n')).join('\n');
+
+      expect(scenes).toHaveLength(5);
+      expect(scenes.map(scene => scene.dramatic_function)).toEqual([
+        '现实引入',
+        '历史回望',
+        '关键节点',
+        '史料/专家解读',
+        '当代意义',
+      ]);
+      expect(new Set(scenes.map(scene => scene.location)).size).toBeGreaterThanOrEqual(4);
+      expect(text).toContain('976年');
+      expect(text).toContain('朱张会讲');
+      expect(text).toContain('采访规划（非现成同期声）');
+      expect(text).toContain('待真实采访录音后选择');
+      expect(text).toMatch(/鸟鸣|脚步声/);
+      expect(text).toMatch(/翻页声|纸页声/);
+      expect(text).toMatch(/讨论声|提问声/);
+      expect(text).not.toMatch(/采访原话[：:“”]|馆员说[：：“”]|研究者说[：：“”]/);
+      expect(scenes.filter(scene => scene.factual_basis?.trim())).toHaveLength(5);
+      expect(scenes.filter(scene => (scene.fictionalized_elements?.length ?? 0) > 0).length)
+        .toBeGreaterThanOrEqual(3);
+      expect(scenes.at(-1)?.key_action).toMatch(/翻回|回答|写下/);
+    },
+  );
+
+  it.each(['30秒', '1分钟', '3分钟'] as const)(
+    'builds a layered Wulingyuan landscape sequence with explicit claim boundaries for the %s variant',
+    (targetDuration) => {
+      const result = generateChinaCultureLocalStoryAssembly({
+        entry: {
+          name: '张家界武陵源——3.8亿年雕琢的世界自然遗产',
+          province: '湖南',
+          region: '张家界→武陵源',
+          type: '自然景观',
+          summary: '武陵源以石英砂岩峰林地貌、峡谷、溪流和云雾景观闻名。',
+          story: '武陵源的石英砂岩峰林在流水侵蚀、风化与崩塌等长期作用下形成。\n\n云雾、溪流和峰柱构成层次丰富的山水景观。',
+          culturalSignificance: '武陵源自然景观需要在准确地名与季节边界下呈现。',
+          relatedLocations: [{ name: '武陵源风景名胜区', description: '石英砂岩峰林集中分布区域' }],
+          keywords: ['武陵源', '峰林', '云雾', '溪流'],
+          sources: ['武陵源官方地质科普资料'],
+          credibility: '基本可靠',
+          unverifiedPoints: ['具体云海、光线和可见度受季节与天气影响'],
+        },
+        centralEvent: '武陵源峰林云雾的一日变化',
+        videoType: 'landscape_mood',
+        presentationStyle: 'ink_style',
+        storyStructure: 'object_clue_journey',
+        targetDuration,
+        tone: '空灵克制',
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error(result.message);
+      const scenes = result.storyResult.scene_breakdown;
+      const text = scenes.map(scene => [
+        scene.plot,
+        scene.key_action,
+        scene.visual_prompt,
+        scene.camera_suggestion,
+        scene.cultural_note,
+        scene.factual_basis,
+        ...(scene.fictionalized_elements ?? []),
+      ].filter(Boolean).join('\n')).join('\n');
+
+      expect(scenes).toHaveLength(targetDuration === '30秒' ? 3 : 4);
+      expect(scenes.every(scene => scene.characters.length === 0)).toBe(true);
+      expect(text).toMatch(/前景.+中景.+后景/);
+      expect(text).toContain('色彩方案');
+      expect(text).toContain('人物尺度参照');
+      expect(text).toContain('镜头节奏');
+      expect(text).toContain('景观边界');
+      expect(text).toContain('季节事实');
+      expect(text).toMatch(/清晨.+日光.+暮色/);
+      expect(text).not.toContain('全球唯一');
+      expect(text).not.toMatch(/天子山.+天门山|天门山.+天子山/);
+      expect(scenes.at(-1)?.camera_suggestion).toMatch(/固定|停留五秒|留白/);
+    },
+  );
+
   it.each([
     {
       videoType: 'character_story' as const,

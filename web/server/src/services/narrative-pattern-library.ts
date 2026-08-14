@@ -896,6 +896,37 @@ function requiredSignalTermMap(signal: string): string[] {
 }
 
 function structuralProbe(signal: string): (story: StoryGenerateResult) => boolean {
+  if (/主张清楚|主张可复述/.test(signal)) {
+    return story => {
+      const message = story.core_message?.trim() ?? '';
+      return message.length >= 12
+        && message.length <= 160
+        && story.scene_breakdown.some(scene => Boolean(scene.factual_basis?.trim()) && scene.key_action.trim().length >= 8);
+    };
+  }
+  if (/当代连接自然/.test(signal)) {
+    return story => Boolean(
+      story.modern_connection?.trim()
+      && story.scene_breakdown.some(scene =>
+        /现代传承|当代连接/.test(scene.dramatic_function)
+        && /今天|当代|如今|仍在/.test(`${scene.plot}\n${scene.cultural_note}`)
+        && scene.key_action.trim().length >= 8,
+      ),
+    );
+  }
+  if (/结尾有记忆句|结尾可传播/.test(signal)) {
+    return story => {
+      const slogan = story.slogan_or_key_sentence?.trim() ?? '';
+      const ending = story.scene_breakdown.at(-1);
+      return Boolean(
+        slogan.length >= 8
+        && slogan.length <= 80
+        && ending
+        && /标语收束|金句|品牌定格|结尾/.test(ending.dramatic_function)
+        && /记住|走进|到访|看见|请|一起|从/.test(`${ending.plot}\n${ending.dialogue_or_narration ?? ''}`),
+      );
+    };
+  }
   if (/前3秒有局|3秒钩子/.test(signal)) {
     return story => {
       const first = story.scene_breakdown[0];

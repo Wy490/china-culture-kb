@@ -624,10 +624,52 @@ export function generateDramaticContent(input: DramaticContentInput): {
         perSceneDuration,
       })
     : undefined;
-  const scenes: StoryScene[] = requestedGrowthArc ?? requestedAdaptationArc ?? requestedLegendArc ?? [];
+  const requestedCulturePromoArc = !requestedGrowthArc && !requestedAdaptationArc && !requestedLegendArc
+    ? buildYueluCulturePromoArc({
+        entry,
+        videoType,
+        perSceneDuration,
+      })
+    : undefined;
+  const requestedDocumentaryArc = !requestedGrowthArc
+    && !requestedAdaptationArc
+    && !requestedLegendArc
+    && !requestedCulturePromoArc
+    ? buildYueluDocumentaryArc({
+        entry,
+        videoType,
+        perSceneDuration,
+      })
+    : undefined;
+  const requestedLandscapeArc = !requestedGrowthArc
+    && !requestedAdaptationArc
+    && !requestedLegendArc
+    && !requestedCulturePromoArc
+    && !requestedDocumentaryArc
+    ? buildWulingyuanLandscapeArc({
+        entry,
+        videoType,
+        perSceneDuration,
+        totalSeconds,
+      })
+    : undefined;
+  const scenes: StoryScene[] = requestedGrowthArc
+    ?? requestedAdaptationArc
+    ?? requestedLegendArc
+    ?? requestedCulturePromoArc
+    ?? requestedDocumentaryArc
+    ?? requestedLandscapeArc
+    ?? [];
   const fullTextParts: string[] = scenes.map(scene => scene.plot);
 
-  if (!requestedGrowthArc && !requestedAdaptationArc && !requestedLegendArc) {
+  if (
+    !requestedGrowthArc
+    && !requestedAdaptationArc
+    && !requestedLegendArc
+    && !requestedCulturePromoArc
+    && !requestedDocumentaryArc
+    && !requestedLandscapeArc
+  ) {
     for (let i = 0; i < templates.length; i++) {
       const template = templates[i];
       const scene = generateSceneContent(
@@ -637,6 +679,19 @@ export function generateDramaticContent(input: DramaticContentInput): {
       );
       scenes.push(scene);
       fullTextParts.push(scene.plot);
+    }
+  }
+
+  if (!requestedAdaptationArc && videoType === 'historical_drama') {
+    const historicalArc = enhanceWuchangUprisingAdaptationScenes(scenes, {
+      source: entry.story,
+      entry,
+      perSceneDuration,
+      sourceMode: 'knowledge_only',
+    });
+    if (historicalArc) {
+      scenes.splice(0, scenes.length, ...historicalArc);
+      fullTextParts.splice(0, fullTextParts.length, ...historicalArc.map(scene => scene.plot));
     }
   }
 
@@ -840,12 +895,16 @@ function enhanceWuchangUprisingAdaptationScenes(
     source: string;
     entry: EntryDetail;
     perSceneDuration: number;
+    sourceMode?: 'knowledge_only' | 'user_adaptation';
   },
 ): StoryScene[] | undefined {
   const sourceText = [input.source, input.entry.name, input.entry.story].join('\n');
   if (!/武昌起义/.test(sourceText) || !/楚望台军械库/.test(sourceText) || scenes.length !== 6) return undefined;
 
-  const sourceEntries = [input.entry.name, '用户提供改编素材'];
+  const userAdaptation = input.sourceMode !== 'knowledge_only';
+  const sourceEntries = userAdaptation
+    ? [input.entry.name, '用户提供改编素材']
+    : [input.entry.name];
   const makeScene = (
     scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
     index: number,
@@ -855,7 +914,9 @@ function enhanceWuchangUprisingAdaptationScenes(
     duration_sec: input.perSceneDuration,
     source_entries: sourceEntries,
   });
-  const sharedBoundary = '主线和人物群体来自用户素材；10月9日至10日、搜捕、楚望台军械库与湖广总督署依据知识条目。个体走位和无名士兵反应为有限合成再现。';
+  const sharedBoundary = userAdaptation
+    ? '主线和人物群体来自用户素材；10月9日至10日、搜捕、楚望台军械库与湖广总督署依据知识条目。个体走位和无名士兵反应为有限合成再现。'
+    : '10月9日至10日、搜捕、楚望台军械库与湖广总督署依据知识条目；个体走位、无名士兵反应和镜头调度为有限合成再现。';
 
   return [
     makeScene({
@@ -887,7 +948,9 @@ function enhanceWuchangUprisingAdaptationScenes(
       cultural_note: sharedBoundary,
       conflict: '等待会遭搜捕瓦解 vs 准备不足仍提前发动并承担伤亡风险',
       dialogue_or_narration: '无名士兵低声说：“再等，等来的就是搜捕。”这句对白为影视化补足。',
-      factual_basis: '依据用户素材“决定抢在清军搜捕前发动”及条目所载10月10日晚起义爆发。',
+      factual_basis: userAdaptation
+        ? '依据用户素材“决定抢在清军搜捕前发动”及条目所载10月10日晚起义爆发。'
+        : '条目记载10月9日计划泄露并引发搜捕，10月10日晚新军士兵提前发动起义。',
       fictionalized_elements: ['围图决策、推门动作与无名士兵对白为合成场景，不替代真实组织决策。'],
     }, 1),
     makeScene({
@@ -919,7 +982,9 @@ function enhanceWuchangUprisingAdaptationScenes(
       cultural_note: sharedBoundary,
       conflict: '守军封锁军械库，起义军若拿不到弹药就无法把行动推进到总督署',
       dialogue_or_narration: '旁白：军械库不是背景，它决定这场起义能否从营房走向全城。',
-      factual_basis: '用户素材与知识条目均记载起义军攻占楚望台军械库、获得弹药后攻向湖广总督署。',
+      factual_basis: userAdaptation
+        ? '用户素材与知识条目均记载起义军攻占楚望台军械库、获得弹药后攻向湖广总督署。'
+        : '知识条目记载起义军攻占楚望台军械库、获得弹药后攻向湖广总督署。',
       fictionalized_elements: ['顶门与接力搬箱的具体分工为依据已知行动所作的影视化组织。'],
     }, 3),
     makeScene({
@@ -927,7 +992,7 @@ function enhanceWuchangUprisingAdaptationScenes(
       location: '楚望台至湖广总督署街路',
       time_of_day: '10月10日深夜',
       dramatic_function: '高潮',
-      plot: '从楚望台搬出的枪械被分到各队，普通士兵沿街传令，新的队伍从不同营门汇入。因为军械库被攻占，起义军得以向湖广总督署推进；总督署方向的守军动摇，武昌城内出现第一轮连锁响应。',
+      plot: '从楚望台军械库搬出的枪械被分到各队，普通士兵沿街传令，新的队伍从不同营门汇入。因为军械库被攻占，起义军得以向湖广总督署推进；总督署方向的守军动摇，武昌城内出现第一轮连锁响应。',
       key_action: '普通士兵分发军械、沿街传令，汇合队伍向湖广总督署推进',
       characters: ['普通士兵', '起义军'],
       visual_prompt: '武昌夜街，楚望台弹药箱、分发枪械的普通士兵、奔跑传令者、汇入队伍与远处湖广总督署门楼，多线汇合构图',
@@ -977,12 +1042,13 @@ function enhanceLegendAdaptationScenes(
   supernatural.characters = [...new Set(['刘海', '胡大姐', ...supernatural.characters])];
   supernatural.visual_prompt = `${supernatural.location}，花篮、披帛、狐影与乡邻指认同框，刘海和胡大姐被人群隔开。`;
   supernatural.conflict = '狐影显露神异身份，乡邻的怀疑从传闻变成逼迫两人分开的现实压力。';
+  supernatural.cultural_note = '神异规则：胡大姐的力量只能短暂显出狐影、介入眼前危机，不能替刘海作出选择，也不能消除两人必须承担的现实代价；本场仍按民间传说而非史实表达。';
   supernatural.fictionalized_elements = [
     ...(supernatural.fictionalized_elements ?? []),
     '花篮披帛映出狐影是把用户素材“神异力量”可视化的象征性改编。',
   ];
 
-  trial.plot = `${trial.plot}他从地上拾起两人初遇时的柴绳，拒绝随乡邻离开，转身沿花篮留下的痕迹寻找她；这个选择意味着他要承担被乡邻排斥、再次面对神异危险的代价。`;
+  trial.plot = `${trial.plot}刘海想守住亲眼确认的善意与两人的情分。他从地上拾起两人初遇时的柴绳，拒绝随乡邻离开，转身沿花篮留下的痕迹寻找她；这个选择意味着他要承担被乡邻排斥、再次面对神异危险的代价。`;
   trial.key_action = '刘海拾起柴绳，拒绝随乡邻离开，回头寻找胡大姐';
   trial.characters = [...new Set(['刘海', '乡邻', ...trial.characters])];
   trial.visual_prompt = `${trial.location}，刘海从人群脚边拾起柴绳，转身逆着乡邻离开的方向追向花篮痕迹。`;
@@ -994,12 +1060,12 @@ function enhanceLegendAdaptationScenes(
   consequence.conflict = '分离后的两人必须共同承担，才能把选择变成可见结果。';
 
   ending.location = '长沙花鼓戏舞台';
-  ending.plot = `${ending.plot}多年后的花鼓戏台上，演员带着同样的柴担和花篮复演这次回头与并肩，观众随锣鼓和对唱节奏应和；山路上的歌声因此被一代代重讲。字幕标明：这是用户提供版本、民间传说与戏曲改编的叠合，不是可考历史。`;
+  ending.plot = `${ending.plot}多年后的花鼓戏台上，演员带着同样的柴担和花篮复演这次回头与并肩，观众随锣鼓和对唱节奏应和；花篮披帛在叠化中化作山路薄雾，一瞬狐影退入竹林，山路上的歌声因此被一代代重讲。字幕标明：本片采用用户提供版本作为剧情主线，常德武陵民间传说与长沙花鼓戏只补足来源和传播层，这些版本不能叠合成可考历史。`;
   ending.key_action = '花鼓戏演员用柴担和花篮复演选择，观众应和，字幕标明版本边界';
   ending.characters = ['花鼓戏演员', '观众'];
   ending.visual_prompt = '长沙花鼓戏舞台，锣鼓、柴担、花篮与水袖，演员复演回头与并肩，观众应和，舞台叠化回武陵山路。';
   ending.camera_suggestion = '从柴担与花篮特写切至舞台群像，再叠化回山路完成意象回环';
-  ending.cultural_note = '保留用户原作“歌声留在山路上”的结局，并以知识条目所载花鼓戏传播补足流传理由；具体版本与唱词仍须另核。';
+  ending.cultural_note = '版本选择：保留用户原作“歌声留在山路上”的剧情主线，以常德武陵民间传说和长沙花鼓戏传播补足流传理由；地方口述、戏曲改编和具体唱词仍须分层核验。花鼓戏按地方民间演艺习俗呈现，不虚构独立祭仪。';
   ending.factual_basis = '用户提供改编结局与知识条目所载长沙花鼓戏传播事实分层组合。';
   ending.fictionalized_elements = [
     ...(ending.fictionalized_elements ?? []),
@@ -1057,7 +1123,7 @@ function buildLiuHaiLegendArc(input: {
       characters: ['刘海', '胡大姐'],
       visual_prompt: '武陵山路黄昏，疾风掀起花篮披帛，柴担倾斜，胡大姐伸手扶稳，溪水倒影短暂呈狐影，刘海握住斧柄但没有挥下',
       camera_suggestion: '柴担倾斜的快速近景切到水中狐影，再推近刘海停住的手',
-      cultural_note: '狐仙身份属于民间传说；“狐影扶柴”的显形方式是象征性影视化创作，不作地方事实。',
+      cultural_note: '神异规则：胡大姐的力量只能短暂显出狐影、扶稳眼前柴担，不能替刘海作出选择，也不能免除两人共同承担的代价；狐仙身份属于民间传说，不作地方事实。',
       conflict: '神异身份突然显露，刘海必须在本能戒备与亲眼看见的善意之间判断',
       dialogue_or_narration: '刘海低声问：“你究竟是谁？”胡大姐没有辩解，只先把散落的木柴重新扶稳。',
       factual_basis: '条目记载胡大姐为狐仙化身并在砍柴途中与刘海相遇；显形动作属于传说改编层。',
@@ -1068,7 +1134,7 @@ function buildLiuHaiLegendArc(input: {
       location: '武陵山居柴门前',
       time_of_day: '夜晚',
       dramatic_function: '凡人考验',
-      plot: '乡邻举着火把围到柴门前，指着胡大姐在墙上的狐影，催刘海把她赶走。刘海先看见胡大姐挡在柴担前没有还手，随后放下柴刀，退到她身边；他选择相信一路亲眼见过的行动，也承担被乡邻拒斥的风险。',
+      plot: '乡邻举着火把围到柴门前，指着胡大姐在墙上的狐影，催刘海把她赶走。刘海想守住亲眼确认的善意与两人的情分；他先看见胡大姐挡在柴担前没有还手，随后放下柴刀，退到她身边，以凡人的选择承担被乡邻拒斥的风险。',
       key_action: '刘海在乡邻逼迫下放下柴刀，站到胡大姐身边并承担被排斥的代价',
       characters: ['刘海', '胡大姐', '乡邻'],
       visual_prompt: '武陵山居夜晚，柴门、火把、墙上狐影，乡邻逼近，胡大姐挡在柴担前，刘海把柴刀放到地上后站到她身旁',
@@ -1100,18 +1166,322 @@ function buildLiuHaiLegendArc(input: {
       location: '长沙花鼓戏舞台',
       time_of_day: '夜晚',
       dramatic_function: '传说永恒',
-      plot: '多年后的花鼓戏台上，演员以刘海的柴担和胡大姐的花篮重新走过相逢与选择，锣鼓一响，观众跟着熟悉的对唱节奏应和。山路故事因此被一代代重讲；字幕同时注明：这是多版本民间传说及戏曲改编，不是可考历史。',
+      plot: '多年后的花鼓戏台上，演员以刘海的柴担和胡大姐的花篮重新走过相逢与选择，锣鼓一响，观众跟着熟悉的对唱节奏应和。花篮披帛在舞台叠化中化作山路薄雾，一瞬狐影退入竹林，山路故事因此被一代代重讲；字幕同时注明：本片采用常德武陵口述传说作为剧情主线，以长沙花鼓戏改编作为传播结尾，不把多版本拼接为可考历史。',
       key_action: '花鼓戏演员携柴担与花篮复演故事，观众应和，字幕标清传说和改编边界',
       characters: ['花鼓戏演员', '观众'],
       visual_prompt: '长沙花鼓戏舞台夜晚，戏台幕布、锣鼓、柴担、花篮、水袖，演员复演刘海与胡大姐相逢，观众席应和，画面叠化回武陵山路',
       camera_suggestion: '从锣鼓与道具特写切到舞台对唱，再叠化回清晨山路完成时空闭环',
-      cultural_note: '花鼓戏《刘海砍樵》及广泛传播有条目依据；具体演出版本与唱词须另行核验和授权。',
+      cultural_note: '版本选择：常德武陵民间口述承担剧情主线，长沙花鼓戏承担舞台传播层，两种地域版本不混写成唯一说法。花鼓戏按地方民间演艺习俗呈现，不虚构独立祭仪；具体演出版本与唱词须另行核验和授权。',
       conflict: '不同口述和舞台版本持续变化，创作必须在传播感染力与版本边界之间保持诚实',
       dialogue_or_narration: '旁白：故事留下来，不只因为有狐仙，更因为凡人在压力前作出了选择。',
       factual_basis: '依据条目关于常德武陵传说流传及长沙花鼓戏加工传播的记载。',
       fictionalized_elements: ['舞台与山路叠化为影视化收束；未引用未经授权的经典唱词。'],
     }, 4),
   ];
+}
+
+function buildYueluCulturePromoArc(input: {
+  entry: EntryDetail;
+  videoType: VideoType;
+  perSceneDuration: number;
+}): StoryScene[] | undefined {
+  if (input.videoType !== 'culture_promo' || !/岳麓书院/.test(input.entry.name)) return undefined;
+  const sourceEntries = [input.entry.name];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  return [
+    makeScene({
+      title: '从门联进入书院',
+      location: '岳麓书院门庭',
+      time_of_day: '清晨',
+      dramatic_function: '符号引入',
+      plot: '清晨，镜头不从空泛山水开始，而从门联的木纹、石阶上的脚步和一本翻开的学生笔记进入。面向第一次到访的青年观众，片子先提出一个可见问题：一座书院的“千年”，今天还能在哪里被看见？',
+      key_action: '寻访者沿石阶走到门联下，在笔记本写下“千年如何仍在发生”',
+      characters: [],
+      visual_prompt: '岳麓书院门庭清晨，门联木纹前景、石阶中景、青年寻访者与学生笔记后景，侧光扫过字迹，克制纪实构图',
+      camera_suggestion: '门联木纹特写接石阶脚步，再跟到笔记问题，现场鸟鸣先于旁白',
+      cultural_note: '门联、门庭与书院空间按知识条目呈现；不得用“唯一”“最古老”等无来源极值口号。',
+      conflict: '观众熟悉的是文化符号，但还不知道符号背后的讲学与论辩如何延续',
+      dialogue_or_narration: '旁白：先别急着赞美千年。沿着这副门联，我们去找三处仍可核对的证据。',
+      factual_basis: '门庭、门联与岳麓书院空间来自知识条目及相关地点记录。',
+      fictionalized_elements: ['青年寻访者和笔记问题是宣传片的观众视角设计，不代表特定真实人物。'],
+    }, 0),
+    makeScene({
+      title: '创建年代落在实物上',
+      location: '岳麓书院碑刻与院落',
+      time_of_day: '上午',
+      dramatic_function: '文化根基',
+      plot: '镜头从笔记上的问题切到碑刻、院落轴线与讲堂匾额。画面给出北宋开宝九年（976年）创建的时间锚点，同时提醒：年代不是宣传口号，必须由可核对的条目、碑刻与空间共同承载。',
+      key_action: '寻访者核对创建年代，依次指向碑刻、院落轴线和讲堂匾额',
+      characters: [],
+      visual_prompt: '岳麓书院碑刻与院落上午，笔记页、碑刻字迹、院落中轴和讲堂匾额依次同轴匹配，避免古风符号堆叠',
+      camera_suggestion: '用笔记字迹匹配碑刻局部，再拉远交代院落与讲堂的空间关系',
+      cultural_note: '创建时间依知识条目表达；碑刻具体文字和年代须以现场及官方资料复核。',
+      conflict: '宣传感染力必须建立在可见证据上，不能把年代和声誉写成无人承载的口号',
+      dialogue_or_narration: '旁白：第一处证据是时间。976年只是起点，真正延续千年的，是空间里反复发生的学习。',
+      factual_basis: '依据条目关于岳麓书院始建于北宋开宝九年（976年）的记载。',
+      fictionalized_elements: ['笔记与碑刻的匹配剪辑为蒙太奇组织，不声称笔记内容属于历史文献。'],
+    }, 1),
+    makeScene({
+      title: '两把座椅留下论辩',
+      location: '岳麓书院讲堂',
+      time_of_day: '午后',
+      dramatic_function: '技艺展示',
+      plot: '讲堂内，两把相对座椅、摊开的讲义和听者环坐的位置替代不合对象的“材料、针尖、工具”。朱熹与张栻会讲作为第二处证据，说明这里的文化不是静态符号，而是观点在公开论辩中被检验。',
+      key_action: '讲解者摆正两把相对座椅，学生在两栏笔记中记录不同观点与依据',
+      characters: [],
+      visual_prompt: '岳麓书院讲堂午后，两把相对木椅、讲义、两栏学生笔记和环坐听者构成前中后景，日光移动形成时间感',
+      camera_suggestion: '相对座椅全景切两栏笔记近景，以现场翻页声承接观点对切，不复演未经证实对白',
+      cultural_note: '朱张会讲有条目依据；座椅、学生笔记与课堂调度为克制再现，不引用虚构历史原话。',
+      conflict: '若只拍匾额与门联，开放治学会沦为空话；必须让论辩结构转成可观察行动',
+      dialogue_or_narration: '旁白：第二处证据是论辩。重要的不是替古人编一句金句，而是看见不同观点如何在同一讲堂被认真听见。',
+      factual_basis: '依据条目关于南宋朱熹与张栻在岳麓书院会讲及其学术交流意义的记载。',
+      fictionalized_elements: ['相对座椅和两栏笔记是解释会讲结构的合成再现，不作为历史现场复原。'],
+    }, 2),
+    makeScene({
+      title: '笔记走进今天课堂',
+      location: '岳麓书院与湖南大学校园课堂',
+      time_of_day: '傍晚',
+      dramatic_function: '现代传承',
+      plot: '同一本笔记从讲堂带到今天的校园课堂。学生围绕一个问题查资料、标出处、交换意见；门联不再只是合影背景，而成为第三处证据的入口：书院文脉在当代学习、核对和讨论中继续发生。',
+      key_action: '学生把讲堂笔记带进课堂，标注引文出处并交换两种不同解释',
+      characters: [],
+      visual_prompt: '岳麓书院与湖南大学校园傍晚，摊开的学生笔记与书页在前景，讨论手势居中，窗外书院屋脊在后景，暖色室内灯与冷色暮光交叠',
+      camera_suggestion: '笔记本匹配剪辑连接古建讲堂与今天课堂，让讨论现场声逐渐覆盖旁白',
+      cultural_note: '当代课堂只表达学习方式的延续，不把现代机构成果或学生身份作未经授权的具体宣称。',
+      conflict: '千年文脉必须在今天产生可见行动，否则古今连接仍只是抽象赞美',
+      dialogue_or_narration: '旁白：第三处证据在今天。文脉不是把旧答案背下来，而是继续提问、核对来源，也允许不同解释相遇。',
+      factual_basis: '书院与当代大学空间相连有条目地点依据；具体课堂人物与讨论内容为宣传创作。',
+      fictionalized_elements: ['课堂学生、资料题目和跨场笔记为合成人物与道具线，不指向真实课程或个人。'],
+    }, 3),
+    makeScene({
+      title: '从一副门联继续提问',
+      location: '岳麓书院门庭至讲堂',
+      time_of_day: '入夜',
+      dramatic_function: '标语收束',
+      plot: '入夜前，青年寻访者沿门庭走回讲堂，把笔记停在开场问题下方：年代、会讲与今日课堂形成完整回答。镜头邀请观众到访时不只拍下门联，也沿着碑刻、讲堂和课堂线索继续核对这座书院的文脉。',
+      key_action: '寻访者翻回开场问题，写下“从一副门联，走进一座仍在学习的书院”',
+      characters: [],
+      visual_prompt: '岳麓书院入夜，门联、碑刻、讲堂座椅、当代课堂和学生笔记五层蒙太奇回环，最后停在手写记忆句',
+      camera_suggestion: '按门联→碑刻→座椅→课堂→笔记回放证据链，最后留两秒环境声和手写句',
+      cultural_note: '结尾不把书院压缩成单一“湖湘精神”符号；年代、人物、空间和当代连接均保留各自来源边界。场地、人物肖像和图像署名须在真实制作阶段另行确认。',
+      conflict: '观众需要从观看符号走向核对证据和实际到访，而不是只记住空泛赞美',
+      dialogue_or_narration: '旁白：从一副门联，走进一座仍在学习的书院。下一次到访，请把问题也带进来。',
+      factual_basis: '结尾的年代、会讲和空间线索分别回扣前述条目依据。',
+      fictionalized_elements: ['笔记回环和到访邀请为传播结构，不替代开放信息、拍摄许可与现场导览说明。'],
+    }, 4),
+  ];
+}
+
+function buildYueluDocumentaryArc(input: {
+  entry: EntryDetail;
+  videoType: VideoType;
+  perSceneDuration: number;
+}): StoryScene[] | undefined {
+  if (input.videoType !== 'documentary_short' || !/岳麓书院/.test(input.entry.name)) return undefined;
+  const sourceEntries = [input.entry.name];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  return [
+    makeScene({
+      title: '门庭里留下的问题',
+      location: '岳麓书院门庭',
+      time_of_day: '清晨',
+      dramatic_function: '现实引入',
+      plot: '清晨的门庭里，镜头先记录木门、门联、石阶和进入院落的脚步。一名寻访者在空白笔记页写下问题：一座书院延续千年的证据，今天究竟还能在哪里看见？问题不是旁白口号，而是接下来逐处核对的路线。',
+      key_action: '寻访者从门联走到石阶，在笔记页写下“千年如何仍在发生”',
+      characters: [],
+      visual_prompt: '岳麓书院门庭清晨，木门与门联在前景，石阶和进入院落的寻访者在中景，空白笔记页在近景，冷暖自然光交界，纪实构图',
+      camera_suggestion: '固定镜头先留两秒鸟鸣与石阶脚步声，再从门联木纹跟到笔记问题；声音为拍摄规划，须由真实现场采集核验',
+      cultural_note: '现实地点和门联按知识条目呈现；现场开放状态、门联文字与声音条件须在正式拍摄前复核。',
+      conflict: '“千年学府”的熟悉称呼仍是结论，镜头需要找到能让观众自行判断的现实证据',
+      dialogue_or_narration: '旁白：先不急着给答案。我们从今天能触摸到的门、石阶和声音开始。',
+      factual_basis: '岳麓书院现实地点、门庭与书院空间来自知识条目及地点记录。',
+      fictionalized_elements: ['寻访者与笔记问题是纪录结构中的观察视点，不代表真实受访者或特定游客。'],
+    }, 0),
+    makeScene({
+      title: '把年代落到空间',
+      location: '岳麓书院碑刻与院落中轴',
+      time_of_day: '上午',
+      dramatic_function: '历史回望',
+      plot: '寻访者沿院落中轴核对碑刻、讲堂匾额和创建时间线。北宋开宝九年（976年）成为第一枚时间锚点；镜头不把一块碑当成全部证明，而把条目来源、现存空间与仍需现场复核的文字并列展示。',
+      key_action: '寻访者翻到创建时间线，对照碑刻局部、院落中轴和讲堂匾额逐项做标记',
+      characters: [],
+      visual_prompt: '岳麓书院碑刻与院落中轴上午，时间线笔记前景、碑刻局部中景、讲堂匾额后景，寻访者手指逐项核对，克制自然光',
+      camera_suggestion: '纸页翻页声连接时间线与碑刻特写，再拉远呈现院落中轴；碑文细节与纸页声均以现场拍摄和收声结果为准',
+      cultural_note: '创建年代依知识条目表达；具体碑刻年代和文字不得仅凭生成文本认定，须对照官方目录或现场说明。',
+      conflict: '单一历史称号不足以回答开场问题，年代必须落在可追溯的来源与现实空间上',
+      dialogue_or_narration: '旁白：976年给出起点，但年代本身不会自动说明传统怎样延续。第二步，要看这里曾经发生过什么。',
+      factual_basis: '依据条目关于岳麓书院始建于北宋开宝九年（976年）的记载。',
+      fictionalized_elements: ['寻访者逐项标记的动作是证据组织方式，不把笔记伪装成历史档案。'],
+    }, 1),
+    makeScene({
+      title: '会讲只能有限再现',
+      location: '岳麓书院讲堂',
+      time_of_day: '午后',
+      dramatic_function: '关键节点',
+      plot: '讲堂里，两把相对座椅和摊开的讲义示意朱熹与张栻会讲的结构。镜头只再现“相对而论、听者在场”的关系，不安排演员说出未经证实的历史原话；画面字幕标明这是依据条目制作的有限示意。',
+      key_action: '工作人员摆好两把相对座椅，镜头对照条目中的朱张会讲线索后停在空座之间',
+      characters: [],
+      visual_prompt: '岳麓书院讲堂午后，两把相对木椅、摊开讲义与空置听者席形成前中后景，侧光移动，不出现历史人物拟真表演',
+      camera_suggestion: '从讲义纸页声切到相对座椅全景，再推近空座之间；不配虚构历史对白，以短暂静场保留再现边界',
+      cultural_note: '朱张会讲有条目依据；座椅、讲义和听者位置是有限再现，不是历史现场复原，也不证明具体对白。',
+      conflict: '会讲是关键解释证据，但为了画面完整而补写古人原话会破坏纪录可信度',
+      dialogue_or_narration: '旁白：条目能确认会讲及其学术交流意义，不能替我们还原每一句话。这里呈现的是关系，不是冒充现场。',
+      factual_basis: '依据条目关于南宋朱熹与张栻在岳麓书院会讲的记载。',
+      fictionalized_elements: ['相对座椅、摊开讲义和空席调度为明确标注的有限再现；未引用历史人物原话。'],
+    }, 2),
+    makeScene({
+      title: '把解释留给真实采访',
+      location: '岳麓书院讲堂外廊',
+      time_of_day: '傍晚',
+      dramatic_function: '史料/专家解读',
+      plot: '镜头从讲堂空座移到外廊，列出需要向馆员或相关研究者核实的两个问题：会讲的史料出处如何分层，今天的讲学传统应怎样理解。采访规划（非现成同期声）：待真实采访录音后选择同时说明来源与版本边界的回答；当前版本不写采访原话，也不把角色规划当成已完成访问。',
+      key_action: '寻访者在外廊写下两条采访问题，并把“待录音、待核实、待选段”贴到空白采访位旁',
+      characters: [],
+      visual_prompt: '岳麓书院讲堂外廊傍晚，廊柱与空白采访机位在中景，两条问题卡和未填写的声轨格在前景，暮光自然过渡',
+      camera_suggestion: '从空座横移到外廊空白机位，保留风过树叶声与远处脚步声；不合成受访者声音，不制造同期声',
+      cultural_note: '馆员或研究者只是拟邀采访角色，须真实联系、知情同意、录音并核对表述后才能形成采访选段。',
+      conflict: '影片需要专业解释，但当前素材不能越过访问、授权和选段流程替专家发言',
+      dialogue_or_narration: '旁白：这两个问题先留白。没有完成采访，就不该出现一段看似可信的“专家原话”。',
+      factual_basis: '采访问题依据条目中的朱张会讲与当代延续线索提出；本场不新增事实结论。',
+      fictionalized_elements: ['问题卡和空白机位是前期制作规划，不声称采访已经发生。'],
+    }, 3),
+    makeScene({
+      title: '今天的回答仍是行动',
+      location: '湖南大学校园课堂与岳麓书院门庭',
+      time_of_day: '入夜前',
+      dramatic_function: '当代意义',
+      plot: '今天的课堂里，学生把同一问题分成两栏，分别标出论点与出处，再交换核对。镜头随后回到门庭：寻访者翻回开场那页，写下“传统不是重复答案，而是继续提出问题、标明来源、认真听见不同解释”。当代意义由这一组具体学习动作回答，而不是另加一句空泛口号。',
+      key_action: '学生标出处并交换两种解释，寻访者翻回开场问题写下基于证据链的回答',
+      characters: [],
+      visual_prompt: '湖南大学校园课堂与岳麓书院门庭入夜前，两栏笔记、翻开的书页与讨论手势在前景，窗外书院屋脊和门联在后景，冷暖光交叠',
+      camera_suggestion: '让课堂翻页声、低声讨论声和提问声逐渐替代旁白，再以笔记匹配剪辑回到门庭，最后留两秒真实环境声位',
+      cultural_note: '课堂人物和讨论题目为合成观察场景，不指向真实课程或学生；正式拍摄须取得场地与肖像许可。',
+      conflict: '若当代连接只停在“精神永存”，开场问题仍未被可观察的现实行动回答',
+      dialogue_or_narration: '旁白：我们找到的不是一句最终答案，而是一种仍在发生的做法——提问、找依据、听见不同解释，再继续核对。',
+      factual_basis: '书院与当代大学空间相连有地点依据；具体课堂行动作为当代观察方案，须由真实拍摄核验。',
+      fictionalized_elements: ['跨场笔记、合成课堂人物和讨论动作是当代意义的拍摄方案，不作为现实事件记录。'],
+    }, 4),
+  ];
+}
+
+function buildWulingyuanLandscapeArc(input: {
+  entry: EntryDetail;
+  videoType: VideoType;
+  perSceneDuration: number;
+  totalSeconds: number;
+}): StoryScene[] | undefined {
+  if (input.videoType !== 'landscape_mood' || !/张家界|武陵源/.test(input.entry.name)) return undefined;
+  const sourceEntries = [input.entry.name];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+
+  const scenes = [
+    makeScene({
+      title: '雨后峰林开卷',
+      location: '武陵源风景名胜区峰林观景点',
+      time_of_day: '雨后清晨',
+      dramatic_function: '山水开卷',
+      plot: '雨后清晨，松针滴水，薄雾沿峡谷上升，中段峰柱逐根露出，远峰仍在灰蓝天光里。',
+      key_action: '水滴落下，薄雾上升并依次露出中段峰柱与远处峰脊',
+      characters: [],
+      visual_prompt: '武陵源雨后清晨，前景是带水松针和深色栈道边缘，中景是雾中石英砂岩峰柱，后景是灰蓝峰脊、低云与开放栈道上的微小行者；行者作为人物尺度参照，色彩方案为墨绿、岩灰、雾白，景深清楚',
+      camera_suggestion: '镜头节奏先用八秒固定近景听滴水，再以远景缓推进入峰谷，转场不加速，保留山风与鸟鸣声景',
+      cultural_note: '景观边界：地名只写武陵源风景名胜区，不把其他不同点位拼成同一机位；雨后薄雾是拍摄方案，不作固定季节事实。',
+      conflict: '雾遮住远峰，画面以逐层显露形成动静张力，不用抽象赞美代替自然变化',
+      factual_basis: '武陵源石英砂岩峰林、峡谷与云雾景观来自知识条目；具体天气须以拍摄当日为准。',
+      fictionalized_elements: ['雾线移动、滴水落点和光线顺序是可执行的拍摄预案，不声称已经实拍。'],
+    }, 0),
+    makeScene({
+      title: '同一峰谷的光线流变',
+      location: '武陵源风景名胜区峰谷固定机位',
+      time_of_day: '清晨至暮色',
+      dramatic_function: '意境流变',
+      plot: '同一峰谷里，清晨冷蓝退开，日光擦亮峰壁，雨雾短暂吞没半山，暮色把石柱边缘染成暖金。',
+      key_action: '清晨冷蓝、日光青绿、雨雾灰白和暮色暖金依次改变同一峰谷',
+      characters: [],
+      visual_prompt: '武陵源同一峰谷固定机位，前景湿岩与蕨叶，中景独立峰柱，后景层叠山谷；清晨冷蓝、日光青绿、雨雾灰白、暮色暖金构成连续色彩方案',
+      camera_suggestion: '镜头节奏采用同机位四段定时观察，每段六至八秒，以云层运动自然叠化，不用快速四季混剪',
+      cultural_note: '清晨、日光、雨雾、暮色是一日光线拍摄脚本，不代表同一天必然出现全部状态，更不作当地固定季节事实或气候承诺。',
+      conflict: '需要用同一地点的真实状态变化建立诗意，不能用跨景区拼贴伪造连续时空',
+      factual_basis: '峰林受光、云雾与降水影响呈现不同可见度属于一般自然观察；具体出现次序待现场天气核验。',
+      fictionalized_elements: ['四段光线连续出现是后期组织方案，各镜头须保留真实拍摄时间与天气记录。'],
+    }, 1),
+    makeScene({
+      title: '一名行者给出尺度',
+      location: '武陵源风景名胜区栈道远眺位',
+      time_of_day: '雨歇午后',
+      dramatic_function: '人文轻触',
+      plot: '雨衣行者沿开放栈道走过，只占画面一角；栏杆、行者与远峰给出由近到远的尺度。',
+      key_action: '行者沿开放栈道走过两根栏杆间距，在峰柱前短暂停下后离开画面',
+      characters: [],
+      visual_prompt: '武陵源栈道雨歇午后，前景栏杆和水珠，中景深色雨衣行者，后景高耸峰柱与移动云带；人物尺度参照约占画高二十分之一，青灰色调',
+      camera_suggestion: '镜头节奏用十二秒固定远景，不追拍、不特写人物，让脚步声从近到远并与谷风、水声分层',
+      cultural_note: '人物仅为尺度参照，不指向特定游客；正式拍摄须使用开放路线并取得肖像许可，不进入未开放区域。',
+      conflict: '人物尺度必须帮助观众理解山体空间，不能把自然景观变成人物表演背景',
+      factual_basis: '开放栈道与具体取景位置须由景区现场确认；峰柱尺度不从生成画面反推数值。',
+      fictionalized_elements: ['行者衣着、步速和停留位置为镜头调度，不作为真实游客活动记录。'],
+    }, 2),
+    makeScene({
+      title: '蓝调时刻把声音留下',
+      location: '武陵源风景名胜区峰林远眺点',
+      time_of_day: '暮色至蓝调时刻',
+      dramatic_function: '灵韵定格',
+      plot: '蓝调时刻，云移开最后一根峰柱。脚步、鸟鸣和水声依次退去，只留山风与空镜留白。',
+      key_action: '云带移开最后一根峰柱，脚步、鸟鸣和水声依次退去，只留山风',
+      characters: [],
+      visual_prompt: '武陵源蓝调时刻，前景暗色蕨叶，中景峰柱剪影，后景深蓝天空与最后一线云；色彩方案收束为靛蓝、岩黑、微弱暖金，大面积留白',
+      camera_suggestion: '镜头节奏收慢为固定远景，声音依次渐退后停留五秒，不加诗句字幕，以空镜留白结束',
+      cultural_note: '景观边界继续限定武陵源同一远眺区域；蓝调、云带和声景均是待现场核验的拍摄条件，不把偶发天气写成季节事实。',
+      conflict: '结尾克制信息密度，让声音与光线完成收束，不以极值口号抢走山水余味',
+      factual_basis: '地名与景观主体依据知识条目；暮色能见度、云量和自然声须按实拍记录。',
+      fictionalized_elements: ['声音退场顺序和五秒停留为剪辑设计，不声称自然现场按脚本发生。'],
+    }, 3),
+  ];
+
+  if (input.totalSeconds <= 30) {
+    const compactScenes = [scenes[0], scenes[1], scenes[3]];
+    const compactPlots = [
+      '雨后清晨，薄雾上升，峰柱从滴水声里逐根露出。',
+      '同一峰谷从冷蓝晨光走到暖金暮色，云开云合。',
+      '蓝调时刻，云移开远峰，鸟鸣和水声退去，只留山风与空镜留白。',
+    ];
+    return compactScenes.map((scene, index) => ({
+      ...scene,
+      scene_id: index + 1,
+      duration_sec: Math.round(input.totalSeconds / compactScenes.length),
+      plot: compactPlots[index],
+    }));
+  }
+
+  return scenes.map(scene => ({
+    ...scene,
+    duration_sec: Math.round(input.totalSeconds / scenes.length),
+  }));
 }
 
 function adaptationEndingTheme(videoType: VideoType): string {

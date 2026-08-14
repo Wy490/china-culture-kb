@@ -27,6 +27,14 @@ function relatedLocationNames(entry: EntryDetail): string[] {
     .filter(Boolean);
 }
 
+function uniqueStrings(items: string[]): string[] {
+  return items.filter((item, index) => item.trim() && items.indexOf(item) === index);
+}
+
+function firstSentence(text: string | undefined): string | undefined {
+  return text?.split(/[。！？!?]/).map(item => item.trim()).find(Boolean);
+}
+
 export function deriveChinaCultureTypeSpecificStoryFields(input: {
   videoType: VideoType;
   storyResult: StoryAssembly;
@@ -37,22 +45,35 @@ export function deriveChinaCultureTypeSpecificStoryFields(input: {
   if (videoType === 'culture_promo' || videoType === 'heritage_promo'
     || videoType === 'city_brand_promo' || videoType === 'social_short') {
     const quotes = extractQuotes(entry.story);
+    const visualSymbols = uniqueStrings([
+      ...relatedLocationNames(entry).slice(0, 2),
+      ...entry.keywords.filter(keyword => !['人物', '故事', '历史'].includes(keyword)).slice(0, 3),
+    ]);
+    const modernScene = storyResult.scene_breakdown.find(scene => scene.dramatic_function === '现代传承');
+    const endingNarration = storyResult.scene_breakdown.at(-1)?.dialogue_or_narration
+      ?.replace(/^旁白[：:]/, '')
+      .trim();
+    const cultureSubject = entry.name.split('——')[0]?.trim() || entry.name;
+    const cultureTheme = firstSentence(entry.culturalSignificance);
     return {
-      visual_symbols: modelOutput?.visual_symbols ?? [
-        ...relatedLocationNames(entry).slice(0, 2),
-        ...entry.keywords.filter(keyword => !['人物', '故事', '历史'].includes(keyword)).slice(0, 3),
-      ],
+      visual_symbols: modelOutput?.visual_symbols ?? visualSymbols,
       craft_or_ritual_process: modelOutput?.craft_or_ritual_process
         ?? extractChinaCultureProcessFromStory(entry.story)
         ?? (videoType === 'heritage_promo'
           ? `核心技艺流程：${entry.keywords.slice(0, 3).join('→')}`
           : undefined),
       modern_connection: modelOutput?.modern_connection
+        ?? (videoType === 'culture_promo' ? modernScene?.plot : undefined)
         ?? entry.culturalSignificance?.substring(0, 80)
         ?? `${entry.name}在现代的文化传承与创新`,
-      core_message: modelOutput?.core_message ?? storyResult.logline,
+      core_message: modelOutput?.core_message
+        ?? (videoType === 'culture_promo' && cultureTheme
+          ? `让观众从${visualSymbols.slice(0, 2).join('与') || cultureSubject}看见：${cultureTheme}`
+          : storyResult.logline),
       slogan_or_key_sentence: modelOutput?.slogan_or_key_sentence
-        ?? (quotes.length > 0 ? quotes[0] : `${entry.type}之光——${entry.name.split('——')[0]}`),
+        ?? (videoType === 'culture_promo' && endingNarration && endingNarration.length <= 72
+          ? endingNarration
+          : quotes.length > 0 ? quotes[0] : `${entry.type}之光——${cultureSubject}`),
     };
   }
 
@@ -63,13 +84,16 @@ export function deriveChinaCultureTypeSpecificStoryFields(input: {
       visual_route: modelOutput?.visual_route
         ?? storyResult.scene_breakdown.map(scene => `${scene.title}：${scene.visual_prompt}`),
       time_layer: modelOutput?.time_layer
-        ?? entry.culturalSignificance?.substring(0, 60)
-        ?? `${entry.name}的古今变迁与时空叠加`,
+        ?? (videoType === 'landscape_mood'
+          ? `${storyResult.scene_breakdown.map(scene => scene.time_of_day).join(' → ')}；光线与天气为拍摄方案，须按实拍记录核验。`
+          : entry.culturalSignificance?.substring(0, 60) ?? `${entry.name}的古今变迁与时空叠加`),
       atmosphere: modelOutput?.atmosphere ?? (videoType === 'landscape_mood'
-        ? entry.keywords.filter(keyword => (
-            ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬']
-              .some(word => keyword.includes(word))
-          )).join('、') || `${entry.region}的自然意境`
+        ? (/张家界|武陵源/.test(entry.name)
+          ? '山风、滴水、鸟鸣、脚步与留白组成由近到远的自然声景。'
+          : entry.keywords.filter(keyword => (
+              ['山', '水', '云', '雾', '日', '月', '风', '雨', '春', '夏', '秋', '冬']
+                .some(word => keyword.includes(word))
+            )).join('、') || `${entry.region}的自然意境`)
         : `${entry.region}的场景氛围`),
     };
   }
@@ -105,7 +129,7 @@ export function deriveChinaCultureTypeSpecificStoryFields(input: {
     return {
       source_quotes: modelOutput?.source_quotes ?? extractQuotes(entry.story).slice(0, 3),
       field_notes: modelOutput?.field_notes ?? [
-        ...relatedLocationNames(entry).map(name => `${name}实地考察记录要点`).slice(0, 2),
+        ...relatedLocationNames(entry).map(name => `${name}待实地核验清单`).slice(0, 2),
         ...entry.unverifiedPoints
           .filter(point => point.includes('实地') || point.includes('考察') || point.includes('遗迹'))
           .slice(0, 1),
