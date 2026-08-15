@@ -9,6 +9,7 @@ import {
   type StoryProjectMeta,
   type StoryProjectVersionSnapshot,
 } from '@shared/types.js';
+import { ProjectExternalEvidenceCandidateImportRequestSchema } from '@shared/schemas.js';
 
 import {
   acceptProjectLocalGearsArtifacts,
@@ -33,6 +34,7 @@ import {
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
   getProjectProductionReadiness,
+  importProjectExternalEvidenceCandidate,
   importProjectGearsCallback,
   importProjectGearsExternalCallbacks,
   importProjectGearsCallbacks,
@@ -6338,6 +6340,136 @@ describe('project-service', () => {
       if (item.forbiddenSnippet) expect(draftedFieldValues).not.toContain(item.forbiddenSnippet);
     }
   }, 20_000);
+
+  it('imports an idempotent external evidence candidate without granting readiness credit', async () => {
+    const productionPack = getProductionMaterialPack('documentary_short');
+    expect(productionPack).toBeTruthy();
+
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const materialPack: StoryGenerateResult['material_pack'] = {
+      schema_version: 'material-pack/v1',
+      primary_materials: [],
+      supporting_materials: [],
+      reference_materials: [],
+      visual_assets: [],
+      verified_facts: ['来源线索和现实地点已经整理。'],
+      uncertain_claims: ['外部录音选段尚未完成。'],
+      creative_space: ['可先规划提问，但不得冒充已经取得的素材。'],
+      missing_needs: [],
+      overall_confidence: 0.62,
+    };
+    const initialReadiness = buildProductionMaterialReadinessReport({
+      productionMaterialPack: productionPack!,
+      materialPack,
+      contextText: '',
+    });
+    expect(initialReadiness?.missing_fields.map(field => field.field_id))
+      .toContain('interview_clip_selection');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260609-story-external-evidence-candidate',
+      title: '岳麓书院采访候选',
+      video_type: 'documentary_short',
+      presentation_style: 'documentary',
+      source_entry: '岳麓书院',
+      material_pack: materialPack,
+      production_material_pack: productionPack,
+      production_material_readiness: initialReadiness,
+      supplement_tasks: [{
+        task_id: 'external-interview-task',
+        need_id: 'production_template_interview_clip_selection',
+        label: '采访片段选择',
+        description: '需要导入真实采访片段并核验来源。',
+        stage: 'production_ready',
+        blocking_level: 'risk',
+        affects: ['production_material_readiness'],
+        recommended_fields: ['interview_clip_selection'],
+        recommended_question: '请提供真实采访片段。',
+        status: 'open',
+        source: 'production_material_missing_field',
+        created_at: '2026-06-09T10:00:00.000Z',
+      }],
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-06-09T10:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const invalid = ProjectExternalEvidenceCandidateImportRequestSchema.safeParse({
+      field_id: 'interview_clip_selection',
+      evidence_type: 'location_permission_record',
+      title: '错配证据',
+      summary: '场地许可不能作为采访片段。',
+      source_uri: 'artifact://interviews/yuelu-001.wav',
+      source_label: '岳麓书院采访原始录音',
+      content_sha256: 'a'.repeat(64),
+    });
+    expect(invalid.success).toBe(false);
+
+    const request = ProjectExternalEvidenceCandidateImportRequestSchema.parse({
+      field_id: 'interview_clip_selection',
+      evidence_type: 'interview_clip',
+      title: '馆员采访原始录音 01',
+      summary: '馆员回答朱张会讲资料如何标出处，尚待核验录音与授权范围。',
+      source_uri: 'artifact://interviews/yuelu-001.wav',
+      source_label: '岳麓书院采访原始录音',
+      content_sha256: 'A'.repeat(64),
+      captured_at: '2026-06-08T02:30:00.000Z',
+    });
+    expect(request.content_sha256).toBe('a'.repeat(64));
+
+    const imported = await importProjectExternalEvidenceCandidate(enriched.project_id!, request);
+    expect(imported.ok).toBe(true);
+    expect(imported.data).toMatchObject({
+      schema_version: 'project-external-evidence-candidate-import/v1',
+      duplicate: false,
+      readiness_changed: false,
+      external_evidence_credit_granted: false,
+    });
+    expect(imported.data?.candidate).toMatchObject({
+      field_id: 'interview_clip_selection',
+      evidence_type: 'interview_clip',
+      status: 'pending_verification',
+      content_sha256: 'a'.repeat(64),
+      source_retrieved: false,
+      content_hash_verified: false,
+      scope_verified: false,
+      external_evidence_credit_granted: false,
+    });
+    expect(imported.data?.detail.current_story.external_evidence_ledger?.policy).toEqual({
+      request_supplied_candidate_is_verified: false,
+      candidate_import_changes_readiness: false,
+      candidate_import_resolves_supplement_task: false,
+      candidate_import_can_grant_external_evidence_credit: false,
+    });
+
+    const replay = await importProjectExternalEvidenceCandidate(enriched.project_id!, request);
+    expect(replay.ok).toBe(true);
+    expect(replay.data?.duplicate).toBe(true);
+    expect(replay.data?.detail.current_story.external_evidence_ledger?.items).toHaveLength(1);
+    expect(replay.data?.detail.current_story.production_material_readiness?.missing_fields.map(field => field.field_id))
+      .toContain('interview_clip_selection');
+    expect(replay.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
+      .toBe('open');
+
+    const snapshotPath = resolve(root, 'web', 'generated', 'projects', enriched.project_id!, 'versions', `${enriched.current_version_id}.json`);
+    const snapshot = JSON.parse(await readFile(snapshotPath, 'utf-8')) as StoryProjectVersionSnapshot;
+    expect(snapshot.story.external_evidence_ledger?.items).toHaveLength(1);
+    const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(rawSource.external_evidence_ledger?.items).toHaveLength(1);
+    expect(rawSource.production_material_readiness?.missing_fields.map(field => field.field_id))
+      .toContain('interview_clip_selection');
+  });
 
   it('adds manual project material and refreshes creation contract fields', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));

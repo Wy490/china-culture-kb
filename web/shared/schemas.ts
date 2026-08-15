@@ -2736,6 +2736,58 @@ export const ProjectMaterialPackAddMaterialRequestSchema = z.object({
   remove_missing_need_id: z.string().trim().min(1).max(120).optional(),
 });
 
+const ProjectExternalEvidenceCandidateImportBaseSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  summary: z.string().trim().min(1).max(1600),
+  source_uri: z.string().trim().min(1).max(2048).url().refine(
+    value => value.startsWith('https://') || value.startsWith('artifact://'),
+    'source_uri must use https:// or artifact://',
+  ),
+  source_label: z.string().trim().min(1).max(240),
+  content_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  captured_at: z.string().datetime({ offset: true }).optional(),
+  notes: z.string().trim().min(1).max(1200).optional(),
+});
+
+export const ProjectExternalEvidenceCandidateImportRequestSchema = z.discriminatedUnion('field_id', [
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('official_catalog_or_resource_links'),
+    evidence_type: z.literal('official_resource_link'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('community_or_practitioner_consent'),
+    evidence_type: z.literal('community_consent_record'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('documentation_assets'),
+    evidence_type: z.literal('documentation_asset'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('interview_clip_selection'),
+    evidence_type: z.literal('interview_clip'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('field_notes'),
+    evidence_type: z.literal('field_note'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('reference_images_or_keyframes'),
+    evidence_type: z.literal('reference_image'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('single_shot_test'),
+    evidence_type: z.literal('single_shot_test_result'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('rights_and_attribution'),
+    evidence_type: z.literal('rights_attribution_record'),
+  }).strict(),
+  ProjectExternalEvidenceCandidateImportBaseSchema.extend({
+    field_id: z.literal('location_permissions'),
+    evidence_type: z.literal('location_permission_record'),
+  }).strict(),
+]);
+
 // ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ import {
   GearsJobSubmitRequestSchema,
   GearsWorkbenchProjectImportRequestSchema,
   ProjectMaterialPackAddMaterialRequestSchema,
+  ProjectExternalEvidenceCandidateImportRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   MediaArtifactPreviewParamSchema,
@@ -80,6 +81,7 @@ import {
   generateProjectQualityRepairPrompt,
   listProjectSeedanceGlobalAssetLibrary,
   importProjectSeedanceAssetBatch,
+  importProjectExternalEvidenceCandidate,
   importProjectGearsExternalCallbacks,
   importProjectGearsCallbacks,
   importProjectSeedanceProviderCallback,
@@ -190,6 +192,10 @@ projectsRouter.use((req, res, next) => {
   }
   if (req.path === '/knowledge-candidates/writeback-patch/export') {
     requireScopedMaterialReview(req, res, next);
+    return;
+  }
+  if (req.path.endsWith('/production-readiness/external-evidence-candidates')) {
+    requireMaterialReview(req, res, next);
     return;
   }
   if (req.path.includes('/production-board/media-assets/') && req.path.endsWith('/review')) {
@@ -571,6 +577,21 @@ projectsRouter.get('/:projectId/production-readiness', validateParams(ProjectIdP
     next(err);
   }
 });
+
+projectsRouter.post(
+  '/:projectId/production-readiness/external-evidence-candidates',
+  validateParams(ProjectIdParamSchema),
+  validateBody(ProjectExternalEvidenceCandidateImportRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await importProjectExternalEvidenceCandidate(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post(
   '/:projectId/production-readiness/run-automation',

@@ -8787,6 +8787,63 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-readiness/external-evidence-candidates', () => {
+    it('rejects mismatched evidence types before project mutation', async () => {
+      const res = await request
+        .post('/api/projects/20260609-story-abc1--character_story/production-readiness/external-evidence-candidates')
+        .send({
+          field_id: 'interview_clip_selection',
+          evidence_type: 'location_permission_record',
+          title: '错配证据',
+          summary: '场地许可不能作为采访片段。',
+          source_uri: 'artifact://interviews/yuelu-001.wav',
+          source_label: '测试录音',
+          content_sha256: 'a'.repeat(64),
+        });
+      expect(res.status).toBe(400);
+      expectFailure(res.body, 'VALIDATION_ERROR');
+    });
+
+    it('persists a pending candidate without granting external evidence credit', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260617-story-evidence1',
+        title: 'API 外部证据候选测试',
+        gears_segments_url: '/api/stories/20260617-story-evidence1/gears-segments',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:45:00.000Z');
+
+      const res = await request
+        .post(`/api/projects/${enriched.project_id}/production-readiness/external-evidence-candidates`)
+        .send({
+          field_id: 'rights_and_attribution',
+          evidence_type: 'rights_attribution_record',
+          title: '作品署名与使用范围记录',
+          summary: '上传方提供的权利记录候选，仍待检索原件、核对哈希与授权范围。',
+          source_uri: 'https://rights.example.test/records/001',
+          source_label: '权利记录候选 001',
+          content_sha256: 'B'.repeat(64),
+        });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'project-external-evidence-candidate-import/v1',
+        duplicate: false,
+        readiness_changed: false,
+        external_evidence_credit_granted: false,
+        candidate: {
+          field_id: 'rights_and_attribution',
+          evidence_type: 'rights_attribution_record',
+          content_sha256: 'b'.repeat(64),
+          status: 'pending_verification',
+          external_evidence_credit_granted: false,
+        },
+      });
+      expect(res.body.data.detail.current_story.external_evidence_ledger.items).toHaveLength(1);
+    });
+  });
+
   describe('POST /api/projects/:projectId/repair-quality/prompt', () => {
     it('generates a read-only quality repair prompt package with creation boundaries', async () => {
       const story: StoryGenerateResult = {

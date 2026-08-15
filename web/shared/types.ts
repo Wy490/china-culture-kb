@@ -2675,6 +2675,93 @@ export interface ProjectMaterialPackAddMaterialRequest {
   remove_missing_need_id?: string;
 }
 
+export type ProjectExternalEvidenceFieldId =
+  | 'official_catalog_or_resource_links'
+  | 'community_or_practitioner_consent'
+  | 'documentation_assets'
+  | 'interview_clip_selection'
+  | 'field_notes'
+  | 'reference_images_or_keyframes'
+  | 'single_shot_test'
+  | 'rights_and_attribution'
+  | 'location_permissions';
+
+export type ProjectExternalEvidenceType =
+  | 'official_resource_link'
+  | 'community_consent_record'
+  | 'documentation_asset'
+  | 'interview_clip'
+  | 'field_note'
+  | 'reference_image'
+  | 'single_shot_test_result'
+  | 'rights_attribution_record'
+  | 'location_permission_record';
+
+interface ProjectExternalEvidenceCandidateImportBase {
+  title: string;
+  summary: string;
+  source_uri: string;
+  source_label: string;
+  content_sha256: string;
+  captured_at?: string;
+  notes?: string;
+}
+
+export type ProjectExternalEvidenceCandidateImportRequest = ProjectExternalEvidenceCandidateImportBase & (
+  | { field_id: 'official_catalog_or_resource_links'; evidence_type: 'official_resource_link' }
+  | { field_id: 'community_or_practitioner_consent'; evidence_type: 'community_consent_record' }
+  | { field_id: 'documentation_assets'; evidence_type: 'documentation_asset' }
+  | { field_id: 'interview_clip_selection'; evidence_type: 'interview_clip' }
+  | { field_id: 'field_notes'; evidence_type: 'field_note' }
+  | { field_id: 'reference_images_or_keyframes'; evidence_type: 'reference_image' }
+  | { field_id: 'single_shot_test'; evidence_type: 'single_shot_test_result' }
+  | { field_id: 'rights_and_attribution'; evidence_type: 'rights_attribution_record' }
+  | { field_id: 'location_permissions'; evidence_type: 'location_permission_record' }
+);
+
+export interface ProjectExternalEvidenceCandidate {
+  evidence_id: string;
+  field_id: ProjectExternalEvidenceFieldId;
+  evidence_type: ProjectExternalEvidenceType;
+  title: string;
+  summary: string;
+  source_uri: string;
+  source_label: string;
+  content_sha256: string;
+  captured_at?: string;
+  notes?: string;
+  imported_at: string;
+  status: 'pending_verification';
+  source_retrieved: false;
+  content_hash_verified: false;
+  scope_verified: false;
+  external_evidence_credit_granted: false;
+}
+
+export interface ProjectExternalEvidenceLedger {
+  schema_version: 'project-external-evidence-ledger/v1';
+  updated_at: string;
+  policy: {
+    request_supplied_candidate_is_verified: false;
+    candidate_import_changes_readiness: false;
+    candidate_import_resolves_supplement_task: false;
+    candidate_import_can_grant_external_evidence_credit: false;
+  };
+  items: ProjectExternalEvidenceCandidate[];
+}
+
+export interface ProjectExternalEvidenceCandidateImportResult {
+  schema_version: 'project-external-evidence-candidate-import/v1';
+  project_id: string;
+  story_id: string;
+  evidence_id: string;
+  duplicate: boolean;
+  readiness_changed: false;
+  external_evidence_credit_granted: false;
+  candidate: ProjectExternalEvidenceCandidate;
+  detail: StoryProjectDetail;
+}
+
 export interface StoryProjectDeleteResult {
   project_id: string;
   story_id: string;
@@ -15603,6 +15690,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   material_sufficiency?: MaterialSufficiencyReport;
   production_material_pack?: ProductionMaterialPack;
   production_material_readiness?: ProductionMaterialReadinessReport;
+  external_evidence_ledger?: ProjectExternalEvidenceLedger;
   adaptation_analysis?: StoryAdaptationAnalysis;
   supplement_tasks?: KnowledgeSupplementTask[];
   quality_report?: StoryQualityReport | GenreQualityReport;
