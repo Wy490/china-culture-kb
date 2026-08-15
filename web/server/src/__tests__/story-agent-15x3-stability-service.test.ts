@@ -149,7 +149,11 @@ describe('Story Agent 15x3 stability matrix', () => {
         === item.matrix_item.machine_evaluation.scene_count
     ))).toBe(true);
     expect(first.data?.machine_evaluation.by_variant).toHaveLength(3);
-    expect(first.data?.machine_evaluation.repair_attempted_case_count).toBeGreaterThan(0);
+    expect(first.data?.machine_evaluation.repair_attempted_case_count).toBe(
+      first.data?.items.filter(item => (
+        (item.matrix_item.machine_evaluation.repair_attempt_count ?? 0) > 0
+      )).length,
+    );
     expect(first.data?.machine_evaluation.repair_attempted_case_count).toBeGreaterThanOrEqual(
       (first.data?.machine_evaluation.case_count ?? 0)
         - (first.data?.machine_evaluation.story_quality_passed_count ?? 0),
@@ -190,8 +194,17 @@ describe('Story Agent 15x3 stability matrix', () => {
     expect(first.data?.machine_evaluation.failure_clusters.story_blocking_gate_counts)
       .toEqual({});
     expect(first.data?.machine_evaluation.invariants.every_story_publishable).toBe(true);
+    const expectedOpenRepairTargetCounts = first.data?.items.reduce<Record<string, number>>(
+      (counts, item) => {
+        for (const target of item.matrix_item.machine_evaluation.open_repair_targets) {
+          counts[target] = (counts[target] ?? 0) + 1;
+        }
+        return counts;
+      },
+      {},
+    );
     expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts)
-      .toHaveProperty('combined');
+      .toEqual(expectedOpenRepairTargetCounts);
     expect(Object.keys(
       first.data?.machine_evaluation.failure_clusters.weak_pattern_signal_counts ?? {},
     ).length).toBeGreaterThan(0);

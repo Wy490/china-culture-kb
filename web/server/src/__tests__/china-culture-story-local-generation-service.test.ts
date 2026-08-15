@@ -428,6 +428,45 @@ describe('china_culture local story generation dispatch', () => {
     }
   });
 
+  it('anchors a character adaptation to the sourced life-stage window instead of inventing an age', () => {
+    const source = [
+      '雨夜，周敦颐在南安军衙翻到案卷中互相矛盾的证词，签笔停在文书上方。',
+      '知军王逵催他画押；周敦颐决定拒签，并交还任命文书，愿意承担失去官职的代价。',
+      '案卷被重新打开，囚犯因此免死；周敦颐守住了人命面前不能含糊的良知。',
+    ].join('\n\n');
+    const result = generateChinaCultureLocalStoryAssembly({
+      entry: {
+        ...entry,
+        name: '周敦颐——理学开山鼻祖',
+        province: '湖南',
+        region: '永州→道县；南安军',
+        summary: '北宋人物周敦颐在地方任官期间坚持核查疑案。',
+        story: [
+          '| 年份（约） | 年龄 | 任职 | 关键事件 |',
+          '| 1046 | 30 | 南安军司理参军（今江西大余） | 拒签冤案：囚犯依律不该死，周敦颐力争不可并准备辞官。 |',
+        ].join('\n'),
+        keywords: ['周敦颐', '王逵', '拒签冤案'],
+      },
+      centralEvent: '周敦颐拒签冤案并以辞官相争',
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '克制',
+      originalUserQuery: source,
+      adaptationAnalysis: buildAdaptationAnalysis(source),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    expect(result.storyResult.full_text).toContain('1046年，30岁的周敦颐任南安军司理参军。');
+    expect(result.storyResult.characters.find(character => character.name === '周敦颐')?.description)
+      .toContain('30岁');
+    expect(result.storyResult.scene_breakdown[0].factual_basis)
+      .toContain('人生阶段窗口依据知识条目');
+    expect(result.storyResult.full_text).not.toMatch(/29岁|31岁|青年周敦颐/);
+  });
+
   it('keeps the top-level orchestrator free of direct local engine dispatch', async () => {
     const [source, executionSource] = await Promise.all([
       readFile(new URL('../domains/china-culture/story-generation-service.ts', import.meta.url), 'utf8'),

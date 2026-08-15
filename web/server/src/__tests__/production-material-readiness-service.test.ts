@@ -283,6 +283,59 @@ describe('production-material-readiness-service', () => {
     ]));
   });
 
+  it('derives the sourced life-stage window for the Zhou Dunyi adaptation pressure case', () => {
+    const characterPack = getProductionMaterialPack('character_story');
+    const source = [
+      '雨夜，周敦颐在南安军衙翻到案卷中互相矛盾的证词，签笔停在文书上方。',
+      '知军王逵催他画押；周敦颐决定拒签，并交还任命文书，愿意承担失去官职的代价。',
+      '案卷被重新打开，囚犯因此免死；周敦颐守住了人命面前不能含糊的良知。',
+    ].join('\n\n');
+    const characterEntry = {
+      name: '周敦颐——理学开山鼻祖',
+      province: '湖南',
+      region: '永州→道县；南安军',
+      type: '历史人物',
+      summary: '北宋人物周敦颐在地方任官期间坚持核查疑案。',
+      story: [
+        '| 年份（约） | 年龄 | 任职 | 关键事件 |',
+        '| 1046 | 30 | 南安军司理参军（今江西大余） | 拒签冤案：囚犯依律不该死，周敦颐力争不可并准备辞官。 |',
+      ].join('\n'),
+      culturalSignificance: '人物选择体现人命面前不能含糊的良知。',
+      relatedLocations: [{ name: '南安军', description: '拒签冤案发生地' }],
+      keywords: ['周敦颐', '王逵', '拒签冤案'],
+      sources: ['周敦颐年谱与人物条目'],
+      credibility: '基本可靠',
+      unverifiedPoints: ['具体对白和镜头调度为影视化补足'],
+    } satisfies import('@shared/types.js').EntryDetail;
+    const generated = generateDramaticContent({
+      entry: characterEntry,
+      centralEvent: '周敦颐拒签冤案并以辞官相争',
+      videoType: 'character_story',
+      presentationStyle: 'cinematic',
+      targetDuration: '3分钟',
+      tone: '克制',
+      originalUserQuery: source,
+      adaptationAnalysis: buildAdaptationAnalysis(source),
+    });
+    const story = {
+      storyId: 'character-adaptation-life-stage-readiness',
+      generation_type: 'character_story',
+      video_type: 'character_story',
+      presentation_style: 'cinematic',
+      source_entry: characterEntry.name,
+      ...generated,
+      gears_segments_url: '/api/stories/character-adaptation-life-stage-readiness/gears-segments',
+      material_pack: makeMaterialPack('人物、案件、关系和选择素材已确认。'),
+      production_material_pack: characterPack,
+      original_user_query: source,
+    } satisfies StoryGenerateResult;
+
+    const refreshed = refreshStoryProductionMaterialReadiness(story);
+
+    expect(refreshed?.available_fields).toContain('life_stage_window');
+    expect(refreshed?.missing_fields.map(field => field.field_id)).not.toContain('life_stage_window');
+  });
+
   it.each([
     { label: 'knowledge-only', source: undefined },
     {

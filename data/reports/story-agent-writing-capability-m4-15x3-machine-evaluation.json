@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-writing-capability-m4-machine-evaluation-baseline/v1",
-  "generated_at": "2026-08-14T17:20:07.219Z",
+  "generated_at": "2026-08-15T03:21:24.452Z",
   "status": "passed",
   "source": {
     "schema_version": "story-agent-15x3-stability-matrix/v1",
@@ -45,10 +45,10 @@
     "professional_credit_granted": false,
     "case_count": 45,
     "quality_report_count": 45,
-    "quality_passed_count": 32,
+    "quality_passed_count": 33,
     "story_quality_passed_count": 45,
     "story_publishable_count": 45,
-    "production_material_ready_count": 32,
+    "production_material_ready_count": 33,
     "production_ready_count": 0,
     "factual_cultural_gate_passed_count": 45,
     "fact_boundary_ready_count": 45,
@@ -58,7 +58,7 @@
     "repair_applied_case_count": 0,
     "total_repair_attempt_count": 0,
     "total_repair_applied_count": 0,
-    "total_open_repair_action_count": 25,
+    "total_open_repair_action_count": 23,
     "average_genre_score": 90.09,
     "average_outline_coverage_score": 100,
     "average_pattern_quality_score": 93.44,
@@ -87,12 +87,11 @@
       "production_blocking_gate_counts": {
         "asset_gate": 45,
         "external_provider_gate": 45,
-        "production_material_gate": 13
+        "production_material_gate": 12
       },
       "open_repair_target_counts": {
-        "production_material": 13,
-        "pattern": 11,
-        "combined": 1
+        "production_material": 12,
+        "pattern": 11
       },
       "weak_pattern_signal_counts": {
         "主题保真改编：主题不漂移": 4,
@@ -160,10 +159,10 @@
       {
         "slice_id": "adaptation_or_compact",
         "case_count": 15,
-        "quality_passed_count": 10,
+        "quality_passed_count": 11,
         "story_quality_passed_count": 15,
         "story_publishable_count": 15,
-        "production_material_ready_count": 10,
+        "production_material_ready_count": 11,
         "production_ready_count": 0,
         "factual_cultural_gate_passed_count": 15,
         "fact_boundary_ready_count": 15,
@@ -171,7 +170,7 @@
         "shootability_ready_count": 15,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 11,
+        "total_open_repair_action_count": 9,
         "average_genre_score": 87.07,
         "average_outline_coverage_score": 100,
         "average_pattern_quality_score": 89.4,
@@ -183,10 +182,10 @@
       {
         "slice_id": "character_story",
         "case_count": 3,
-        "quality_passed_count": 2,
+        "quality_passed_count": 3,
         "story_quality_passed_count": 3,
         "story_publishable_count": 3,
-        "production_material_ready_count": 2,
+        "production_material_ready_count": 3,
         "production_ready_count": 0,
         "factual_cultural_gate_passed_count": 3,
         "fact_boundary_ready_count": 3,
@@ -194,7 +193,7 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 3,
+        "total_open_repair_action_count": 1,
         "average_genre_score": 92.67,
         "average_outline_coverage_score": 100,
         "average_pattern_quality_score": 91,
@@ -607,10 +606,10 @@
         "professional_credit_granted": false,
         "evaluation_recomputed_from_canonical_story": true,
         "quality_report_present": true,
-        "quality_passed": false,
+        "quality_passed": true,
         "story_quality_passed": true,
         "story_publishable": true,
-        "production_material_ready": false,
+        "production_material_ready": true,
         "production_ready": false,
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
@@ -618,18 +617,15 @@
         "pattern_quality_score": 73,
         "gears_readiness_score": 100,
         "professional_candidate_score": 97,
-        "quality_issue_count": 6,
-        "open_repair_action_count": 3,
+        "quality_issue_count": 5,
+        "open_repair_action_count": 1,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
-          "production_material_gate",
           "asset_gate",
           "external_provider_gate"
         ],
         "open_repair_targets": [
-          "pattern",
-          "production_material",
-          "combined"
+          "pattern"
         ],
         "weak_pattern_signal_labels": [
           "小说场景压缩：删改理由清楚",

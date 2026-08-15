@@ -746,7 +746,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
       ? buildSceneShortCharacters(entry)
     : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
       ? []
-    : buildCharacters(arcCharacterNames, protagonist, entry, centralEvent);
+    : buildCharacters(arcCharacterNames, protagonist, entry, centralEvent, videoType);
 
   // Build act_structure
   const actStructure = buildActStructure(scenes);
@@ -766,7 +766,7 @@ export function generateDramaticContent(input: DramaticContentInput): {
         }]
     : NON_DRAMATIC_VIDEO_TYPES.includes(videoType)
       ? []
-    : buildProtagonistArc(protagonist, scenes, centralEvent, entry);
+    : buildProtagonistArc(protagonist, scenes, centralEvent, entry, videoType);
 
   // Cultural constraints
   const culturalConstraints = buildCulturalConstraints(entry, knowledgePack);
@@ -826,6 +826,43 @@ function adjustTemplates(templates: SceneTemplate[], targetCount: number): Scene
   return result;
 }
 
+interface CharacterLifeStageWindow {
+  year: string;
+  age: string;
+  role: string;
+  audience_lead: string;
+  evidence_label: string;
+}
+
+function extractCharacterLifeStageWindow(
+  entry: EntryDetail,
+  centralEvent: string,
+  videoType: VideoType,
+): CharacterLifeStageWindow | undefined {
+  if (videoType !== 'character_story' || !isRefusalEvent(centralEvent)) return undefined;
+  const row = entry.story.match(
+    /\|\s*(\d{4})\s*\|\s*(\d{1,3})\s*\|\s*([^|\n]{2,60})\s*\|\s*([^|\n]{0,160}(?:拒签|拒绝(?:签押|签字|落笔))[^|\n]{0,160})\s*\|/,
+  );
+  if (!row) return undefined;
+  const [, year, age, rawRole] = row;
+  if (!year || !age || !rawRole) return undefined;
+  const numericAge = Number(age);
+  if (!Number.isInteger(numericAge) || numericAge < 10 || numericAge > 100) return undefined;
+  const role = rawRole
+    .replace(/（[^）]*）/g, '')
+    .replace(/\([^)]*\)/g, '')
+    .trim();
+  if (!role) return undefined;
+  const protagonist = inferSubject(entry);
+  return {
+    year,
+    age,
+    role,
+    audience_lead: `${year}年，${age}岁的${protagonist}任${role}`,
+    evidence_label: `${year}年、${age}岁、任${role}期间`,
+  };
+}
+
 function buildLocalAdaptationArc(input: {
   source: string;
   analysis: StoryAdaptationAnalysis;
@@ -844,6 +881,11 @@ function buildLocalAdaptationArc(input: {
 
   const names = [...input.analysis.core_characters]
     .sort((left, right) => input.source.indexOf(left) - input.source.indexOf(right));
+  const lifeStageWindow = extractCharacterLifeStageWindow(
+    input.entry,
+    input.centralEvent,
+    input.videoType,
+  );
   const fallbackLocation = narrativePlace(input.entry, input.centralEvent, input.videoType);
   let previousLocation = fallbackLocation;
   const unitLocations = sourceUnits.map(unit => {
@@ -872,6 +914,12 @@ function buildLocalAdaptationArc(input: {
         ? '镜头跟住选择后的行动与可见后果，最后停在尚未消失的情绪余波。'
         : '镜头沿人物移动、对峙与关键物件推进，让阻力和选择在同一空间发生。';
     const thematicLanding = isEndingScene ? endingTheme : '';
+    const stageLead = index === 0 && lifeStageWindow
+      ? `${lifeStageWindow.audience_lead}。`
+      : '';
+    const stageBoundary = index === 0 && lifeStageWindow
+      ? `人生阶段窗口依据知识条目中的${lifeStageWindow.evidence_label}；用户素材只承担本场行动主线。`
+      : '';
     return {
       scene_id: index + 1,
       title: buildSceneTitle(template, input.centralEvent, index),
@@ -879,18 +927,20 @@ function buildLocalAdaptationArc(input: {
       location,
       time_of_day: /雨夜|夜里|夜晚|雷光/.test(unit) ? '雨夜' : determineTimeOfDay(index, input.centralEvent, sourceUnits),
       dramatic_function: template.function_label,
-      plot: `${unit}${visualAction}${thematicLanding}`,
+      plot: `${stageLead}${unit}${visualAction}${thematicLanding}`,
       key_action: `把“${unit.slice(0, 32)}”落实为连续可见行动`,
       characters: activeNames,
       visual_prompt: `${location}，${activeNames.join('、') || '事件主体'}，关键物件与动作前后连续，环境光线明确，${visualAction}`,
       camera_suggestion: sourceIndex === 0 ? '环境近景切人物反应，再跟随关键动作推进' : '中近景跟拍动作，关键物件特写承接前后镜头',
-      cultural_note: boundary,
+      cultural_note: `${boundary}${stageBoundary}`,
       conflict: /逼|催|怀疑|劝|危机|搜捕|考验|失去|误会/.test(unit)
         ? `原作中的现实阻力在本场逼近，人物必须以行动回应：${unit.slice(0, 45)}`
         : `人物正在推进原作主线，并承担上一行动产生的后果。`,
       dialogue_or_narration: `旁白：${unit}`,
       source_entries: [input.entry.name, '用户提供改编素材'],
-      factual_basis: '本场主线来自用户提供改编素材；与知识库事实边界分别记录。',
+      factual_basis: stageBoundary
+        ? `${stageBoundary}本场其余主线来自用户提供改编素材。`
+        : '本场主线来自用户提供改编素材；与知识库事实边界分别记录。',
       fictionalized_elements: ['镜头顺序、景别与场内调度为改编所需的有限影视化组织。'],
     };
   });
@@ -3414,9 +3464,23 @@ function buildGearsScriptText(scene: StoryScene, videoType: VideoType): string {
 // Build supporting structures (characters, act_structure, protagonist_arc)
 // ---------------------------------------------------------------------------
 
-function buildCharacters(characterNames: string[], protagonist: string, entry: EntryDetail, centralEvent: string): StoryCharacter[] {
+function buildCharacters(
+  characterNames: string[],
+  protagonist: string,
+  entry: EntryDetail,
+  centralEvent: string,
+  videoType: VideoType,
+): StoryCharacter[] {
+  const lifeStageWindow = extractCharacterLifeStageWindow(entry, centralEvent, videoType);
   const chars: StoryCharacter[] = [
-    { name: protagonist, role: 'protagonist', description: `主角，${entry.name}——面对${centralEvent}做出关键选择`, arc: '' },
+    {
+      name: protagonist,
+      role: 'protagonist',
+      description: lifeStageWindow
+        ? `${lifeStageWindow.age}岁、任${lifeStageWindow.role}期间的${protagonist}，面对${centralEvent}做出关键选择`
+        : `主角，${entry.name}——面对${centralEvent}做出关键选择`,
+      arc: '',
+    },
   ];
   for (let i = 1; i < characterNames.length; i++) {
     const name = characterNames[i];
@@ -3449,9 +3513,18 @@ function buildActStructure(scenes: StoryScene[]): ActBeat[] {
   return acts;
 }
 
-function buildProtagonistArc(protagonist: string, scenes: StoryScene[], centralEvent: string, entry: EntryDetail): ProtagonistArc[] {
+function buildProtagonistArc(
+  protagonist: string,
+  scenes: StoryScene[],
+  centralEvent: string,
+  entry: EntryDetail,
+  videoType: VideoType,
+): ProtagonistArc[] {
+  const lifeStageWindow = extractCharacterLifeStageWindow(entry, centralEvent, videoType);
   return [{
-    starting_state: `面对${centralEvent}时的压力与困境`,
+    starting_state: lifeStageWindow
+      ? `${lifeStageWindow.age}岁、任${lifeStageWindow.role}期间，面对${centralEvent}的压力与困境`
+      : `面对${centralEvent}时的压力与困境`,
     turning_point: centralEvent,
     resolution: '守住良知，做出正义选择',
   }];
