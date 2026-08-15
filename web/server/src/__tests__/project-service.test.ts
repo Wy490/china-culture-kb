@@ -69,6 +69,7 @@ import {
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
   verifyProjectExternalEvidenceCandidate,
+  uploadProjectExternalEvidenceArtifact,
   uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
 
@@ -6612,6 +6613,101 @@ describe('project-service', () => {
       .toContain('interview_clip_selection');
     expect(revoked.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
       .toBe('open');
+  });
+
+  it('stores uploaded external evidence by server-computed hash and imports only a pending candidate', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260618-story-evidenceupload1',
+      title: '外部证据上传测试',
+      gears_segments_url: '/api/stories/20260618-story-evidenceupload1/gears-segments',
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-18T09:00:00.000Z');
+    const bytes = Buffer.from('项目范围内的场地许可原始文件', 'utf8');
+    const expectedSha256 = createHash('sha256').update(bytes).digest('hex');
+
+    const uploaded = await uploadProjectExternalEvidenceArtifact(enriched.project_id!, {
+      field_id: 'location_permissions',
+      evidence_type: 'location_permission_record',
+      title: '岳麓书院拍摄许可',
+      summary: '项目方上传的场地许可原件，仍需审核适用范围。',
+      source_label: '岳麓书院拍摄许可原件',
+      notes: '仅供当前项目核验。',
+      file: {
+        original_filename: '../../permit.pdf',
+        mime_type: 'application/pdf',
+        buffer: bytes,
+      },
+    });
+
+    expect(uploaded.ok).toBe(true);
+    expect(uploaded.data).toMatchObject({
+      schema_version: 'project-external-evidence-upload/v1',
+      duplicate: false,
+      readiness_changed: false,
+      external_evidence_credit_granted: false,
+      artifact: {
+        source_uri: `artifact://uploads/${expectedSha256}.bin`,
+        original_filename: 'permit.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: bytes.length,
+        content_sha256: expectedSha256,
+      },
+      candidate: {
+        field_id: 'location_permissions',
+        evidence_type: 'location_permission_record',
+        source_uri: `artifact://uploads/${expectedSha256}.bin`,
+        content_sha256: expectedSha256,
+        status: 'pending_verification',
+        external_evidence_credit_granted: false,
+      },
+    });
+    const artifactPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      enriched.project_id!,
+      'external-evidence',
+      'uploads',
+      `${expectedSha256}.bin`,
+    );
+    expect(await readFile(artifactPath)).toEqual(bytes);
+
+    const replay = await uploadProjectExternalEvidenceArtifact(enriched.project_id!, {
+      field_id: 'location_permissions',
+      evidence_type: 'location_permission_record',
+      title: '岳麓书院拍摄许可',
+      summary: '重复上传同一份项目场地许可原件。',
+      source_label: '岳麓书院拍摄许可原件',
+      file: {
+        original_filename: 'renamed-permit.pdf',
+        mime_type: 'application/pdf',
+        buffer: bytes,
+      },
+    });
+    expect(replay.ok).toBe(true);
+    expect(replay.data?.duplicate).toBe(true);
+    expect(replay.data?.detail.current_story.external_evidence_ledger?.items).toHaveLength(1);
+
+    const empty = await uploadProjectExternalEvidenceArtifact(enriched.project_id!, {
+      field_id: 'location_permissions',
+      evidence_type: 'location_permission_record',
+      title: '空文件',
+      summary: '空文件不应被登记为候选。',
+      source_label: '空文件',
+      file: {
+        original_filename: 'empty.pdf',
+        mime_type: 'application/pdf',
+        buffer: Buffer.alloc(0),
+      },
+    });
+    expect(empty.ok).toBe(false);
+    expect(empty.error?.code).toBe('VALIDATION_ERROR');
   });
 
   it('adds manual project material and refreshes creation contract fields', async () => {

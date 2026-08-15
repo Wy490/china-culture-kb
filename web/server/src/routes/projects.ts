@@ -22,6 +22,7 @@ import {
   GearsWorkbenchProjectImportRequestSchema,
   ProjectMaterialPackAddMaterialRequestSchema,
   ProjectExternalEvidenceCandidateImportRequestSchema,
+  ProjectExternalEvidenceUploadMetadataSchema,
   ProjectExternalEvidenceVerificationParamSchema,
   ProjectExternalEvidenceVerificationRequestSchema,
   ProjectBatchDeleteRequestSchema,
@@ -112,6 +113,8 @@ import {
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
   verifyProjectExternalEvidenceCandidate,
+  PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES,
+  uploadProjectExternalEvidenceArtifact,
 } from '../services/project-service.js';
 import { importProjectToGearsWorkbench } from '../services/gears-workbench-connector.js';
 import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
@@ -589,6 +592,50 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await importProjectExternalEvidenceCandidate(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-readiness/external-evidence-candidates/upload',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      let parsed: Awaited<ReturnType<typeof parseMultipartAssetUpload>>;
+      try {
+        parsed = await parseMultipartAssetUpload(req, {
+          max_bytes: PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES,
+          default_filename: 'external-evidence.bin',
+        });
+      } catch (err: any) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, err.message ?? 'Invalid external evidence upload'));
+        return;
+      }
+      if (!parsed.file || parsed.file.field_name !== 'file') {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, 'External evidence upload requires a file field'));
+        return;
+      }
+      const metadata = ProjectExternalEvidenceUploadMetadataSchema.safeParse(parsed.fields);
+      if (!metadata.success) {
+        res.status(400).json(fail(
+          ErrorCodes.VALIDATION_ERROR,
+          'External evidence upload metadata validation failed',
+          metadata.error.flatten(),
+        ));
+        return;
+      }
+      const result = await uploadProjectExternalEvidenceArtifact(projectId, {
+        ...metadata.data,
+        file: {
+          original_filename: parsed.file.filename,
+          mime_type: parsed.file.mime_type,
+          buffer: parsed.file.buffer,
+        },
+      });
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

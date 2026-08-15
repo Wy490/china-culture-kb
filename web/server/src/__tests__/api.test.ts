@@ -8860,6 +8860,52 @@ describe('Projects API', () => {
     });
   });
 
+  describe('POST /api/projects/:projectId/production-readiness/external-evidence-candidates/upload', () => {
+    it('uploads a project-scoped artifact and registers a hash-derived pending candidate', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260618-story-evidenceupload1',
+        title: 'API 外部证据上传测试',
+        gears_segments_url: '/api/stories/20260618-story-evidenceupload1/gears-segments',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-06-18T09:30:00.000Z');
+      const bytes = Buffer.from('API 场地许可原始文件', 'utf8');
+      const expectedSha256 = createHash('sha256').update(bytes).digest('hex');
+
+      const res = await request
+        .post(`/api/projects/${enriched.project_id}/production-readiness/external-evidence-candidates/upload`)
+        .field('field_id', 'location_permissions')
+        .field('evidence_type', 'location_permission_record')
+        .field('title', 'API 场地许可')
+        .field('summary', 'API 上传的场地许可原件，等待人工核验适用范围。')
+        .field('source_label', 'API 场地许可原件')
+        .attach('file', bytes, {
+          filename: '../api-permit.pdf',
+          contentType: 'application/pdf',
+        });
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'project-external-evidence-upload/v1',
+        readiness_changed: false,
+        external_evidence_credit_granted: false,
+        artifact: {
+          source_uri: `artifact://uploads/${expectedSha256}.bin`,
+          original_filename: 'api-permit.pdf',
+          content_sha256: expectedSha256,
+        },
+        candidate: {
+          status: 'pending_verification',
+          source_retrieved: false,
+          content_hash_verified: false,
+          scope_verified: false,
+          external_evidence_credit_granted: false,
+        },
+      });
+    });
+  });
+
   describe('POST /api/projects/:projectId/repair-quality/prompt', () => {
     it('generates a read-only quality repair prompt package with creation boundaries', async () => {
       const story: StoryGenerateResult = {

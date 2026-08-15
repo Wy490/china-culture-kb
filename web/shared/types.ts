@@ -2766,6 +2766,45 @@ export interface ProjectExternalEvidenceCandidateImportResult {
   detail: StoryProjectDetail;
 }
 
+interface ProjectExternalEvidenceUploadMetadataBase {
+  title: string;
+  summary: string;
+  source_label: string;
+  captured_at?: string;
+  notes?: string;
+}
+
+export type ProjectExternalEvidenceUploadMetadata = ProjectExternalEvidenceUploadMetadataBase & (
+  | { field_id: 'official_catalog_or_resource_links'; evidence_type: 'official_resource_link' }
+  | { field_id: 'community_or_practitioner_consent'; evidence_type: 'community_consent_record' }
+  | { field_id: 'documentation_assets'; evidence_type: 'documentation_asset' }
+  | { field_id: 'interview_clip_selection'; evidence_type: 'interview_clip' }
+  | { field_id: 'field_notes'; evidence_type: 'field_note' }
+  | { field_id: 'reference_images_or_keyframes'; evidence_type: 'reference_image' }
+  | { field_id: 'single_shot_test'; evidence_type: 'single_shot_test_result' }
+  | { field_id: 'rights_and_attribution'; evidence_type: 'rights_attribution_record' }
+  | { field_id: 'location_permissions'; evidence_type: 'location_permission_record' }
+);
+
+export interface ProjectExternalEvidenceUploadResult {
+  schema_version: 'project-external-evidence-upload/v1';
+  project_id: string;
+  story_id: string;
+  evidence_id: string;
+  duplicate: boolean;
+  readiness_changed: false;
+  external_evidence_credit_granted: false;
+  artifact: {
+    source_uri: string;
+    original_filename: string;
+    mime_type: string;
+    size_bytes: number;
+    content_sha256: string;
+  };
+  candidate: ProjectExternalEvidenceCandidate;
+  detail: StoryProjectDetail;
+}
+
 export type ProjectExternalEvidenceVerificationDecision = 'accept' | 'reject' | 'revoke';
 
 export interface ProjectExternalEvidenceVerificationRequest {

@@ -2788,6 +2788,53 @@ export const ProjectExternalEvidenceCandidateImportRequestSchema = z.discriminat
   }).strict(),
 ]);
 
+const ProjectExternalEvidenceUploadMetadataBaseSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  summary: z.string().trim().min(1).max(1600),
+  source_label: z.string().trim().min(1).max(240),
+  captured_at: z.string().datetime({ offset: true }).optional(),
+  notes: z.string().trim().min(1).max(1200).optional(),
+});
+
+export const ProjectExternalEvidenceUploadMetadataSchema = z.discriminatedUnion('field_id', [
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('official_catalog_or_resource_links'),
+    evidence_type: z.literal('official_resource_link'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('community_or_practitioner_consent'),
+    evidence_type: z.literal('community_consent_record'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('documentation_assets'),
+    evidence_type: z.literal('documentation_asset'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('interview_clip_selection'),
+    evidence_type: z.literal('interview_clip'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('field_notes'),
+    evidence_type: z.literal('field_note'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('reference_images_or_keyframes'),
+    evidence_type: z.literal('reference_image'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('single_shot_test'),
+    evidence_type: z.literal('single_shot_test_result'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('rights_and_attribution'),
+    evidence_type: z.literal('rights_attribution_record'),
+  }).strict(),
+  ProjectExternalEvidenceUploadMetadataBaseSchema.extend({
+    field_id: z.literal('location_permissions'),
+    evidence_type: z.literal('location_permission_record'),
+  }).strict(),
+]);
+
 export const ProjectExternalEvidenceIdSchema = z.string().regex(
   /^external-evidence-[a-z_]+-[a-f0-9]{16}$/,
   'evidence_id must identify a project external evidence candidate',

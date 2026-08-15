@@ -114,6 +114,8 @@ import type {
   ProjectExternalEvidenceLedger,
   ProjectExternalEvidenceReviewer,
   ProjectExternalEvidenceType,
+  ProjectExternalEvidenceUploadMetadata,
+  ProjectExternalEvidenceUploadResult,
   ProjectExternalEvidenceVerificationRequest,
   ProjectExternalEvidenceVerificationResult,
   QualityRepairAction,
@@ -9228,6 +9230,8 @@ const PROJECT_EXTERNAL_EVIDENCE_TYPE_BY_FIELD: Record<
   location_permissions: 'location_permission_record',
 };
 
+export const PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+
 function isValidProjectExternalEvidenceSourceUri(sourceUri: string): boolean {
   try {
     const parsed = new URL(sourceUri);
@@ -9362,6 +9366,122 @@ export async function importProjectExternalEvidenceCandidate(
     external_evidence_credit_granted: false,
     candidate,
     detail: afterDetail.data,
+  });
+}
+
+export async function uploadProjectExternalEvidenceArtifact(
+  projectId: string,
+  request: ProjectExternalEvidenceUploadMetadata & {
+    file: {
+      original_filename: string;
+      mime_type: string;
+      buffer: Buffer;
+    };
+  },
+): Promise<ApiResponse<ProjectExternalEvidenceUploadResult>> {
+  if (!request.file.buffer.length) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Uploaded external evidence file is empty');
+  }
+  if (request.file.buffer.length > PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      `Uploaded external evidence file exceeds ${PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES} bytes`,
+    );
+  }
+  if (
+    !isExternalProductionMaterialEvidenceField(request.field_id)
+    || PROJECT_EXTERNAL_EVIDENCE_TYPE_BY_FIELD[request.field_id] !== request.evidence_type
+  ) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      'External evidence upload field/evidence type is mismatched',
+      { field_id: request.field_id, evidence_type: request.evidence_type },
+    );
+  }
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+
+  const contentSha256 = createHash('sha256').update(request.file.buffer).digest('hex');
+  const artifactFilename = `${contentSha256}.bin`;
+  const sourceUri = `artifact://uploads/${artifactFilename}`;
+  const artifactRoot = resolve(projectDir(projectId), 'external-evidence', 'uploads');
+  const artifactStore = new FileArtifactStore(artifactRoot);
+  try {
+    if (await artifactStore.exists(artifactFilename)) {
+      const existing = await readFile(resolve(artifactRoot, artifactFilename));
+      const existingSha256 = createHash('sha256').update(existing).digest('hex');
+      if (existingSha256 !== contentSha256) {
+        return fail(
+          ErrorCodes.VALIDATION_ERROR,
+          'Existing content-addressed external evidence artifact failed integrity verification',
+          {
+            source_uri: sourceUri,
+            expected_content_sha256: contentSha256,
+            actual_content_sha256: existingSha256,
+            candidate_imported: false,
+            external_evidence_credit_granted: false,
+          },
+        );
+      }
+    } else {
+      await artifactStore.writeBinary(artifactFilename, request.file.buffer, { overwrite: 'forbid' });
+    }
+  } catch (error) {
+    return fail(
+      ErrorCodes.VALIDATION_ERROR,
+      error instanceof Error ? error.message : 'External evidence artifact upload failed',
+      { candidate_imported: false, external_evidence_credit_granted: false },
+    );
+  }
+
+  const originalFilename = request.file.original_filename.split(/[\\/]/).pop()?.trim().slice(0, 240)
+    || 'external-evidence.bin';
+  const mimeType = request.file.mime_type.trim().toLowerCase().slice(0, 160)
+    || 'application/octet-stream';
+  const imported = await importProjectExternalEvidenceCandidate(projectId, {
+    field_id: request.field_id,
+    evidence_type: request.evidence_type,
+    title: request.title,
+    summary: request.summary,
+    source_uri: sourceUri,
+    source_label: request.source_label,
+    content_sha256: contentSha256,
+    captured_at: request.captured_at,
+    notes: request.notes,
+  } as ProjectExternalEvidenceCandidateImportRequest);
+  if (!imported.ok || !imported.data) {
+    return fail(
+      imported.error?.code === ErrorCodes.STORY_NOT_FOUND
+        ? ErrorCodes.STORY_NOT_FOUND
+        : imported.error?.code === ErrorCodes.VALIDATION_ERROR
+          ? ErrorCodes.VALIDATION_ERROR
+          : ErrorCodes.INTERNAL_ERROR,
+      imported.error?.message ?? 'External evidence artifact was stored but candidate import failed',
+      imported.error?.details,
+    );
+  }
+  return success({
+    schema_version: 'project-external-evidence-upload/v1',
+    project_id: imported.data.project_id,
+    story_id: imported.data.story_id,
+    evidence_id: imported.data.evidence_id,
+    duplicate: imported.data.duplicate,
+    readiness_changed: false,
+    external_evidence_credit_granted: false,
+    artifact: {
+      source_uri: sourceUri,
+      original_filename: originalFilename,
+      mime_type: mimeType,
+      size_bytes: request.file.buffer.length,
+      content_sha256: contentSha256,
+    },
+    candidate: imported.data.candidate,
+    detail: imported.data.detail,
   });
 }
 
