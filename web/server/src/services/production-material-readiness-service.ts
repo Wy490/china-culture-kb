@@ -7,6 +7,7 @@ import type {
   ProductionMaterialPack,
   ProductionMaterialReadinessReport,
   ProductionMaterialReadinessStatus,
+  ProjectExternalEvidenceLedger,
   StoryGenerateResult,
   StoryDomainPackContextV1,
 } from '@shared/types.js';
@@ -242,6 +243,7 @@ export function buildProductionMaterialReadinessReport(input: {
   generatedContextText?: string;
   sourceDomain?: string;
   domainPackContext?: StoryDomainPackContextV1;
+  externalEvidenceLedger?: ProjectExternalEvidenceLedger;
 }): ProductionMaterialReadinessReport | undefined {
   const { productionMaterialPack } = input;
   if (!productionMaterialPack) return undefined;
@@ -250,6 +252,11 @@ export function buildProductionMaterialReadinessReport(input: {
   const generatedContextText = normalizeSearchText(input.generatedContextText ?? '');
   const materialText = [sourceMaterialText, generatedContextText].filter(Boolean).join('\n');
   const fields = productionMaterialPack.material_template.required_fields;
+  const verifiedExternalEvidenceFields = new Set(
+    (input.externalEvidenceLedger?.items ?? [])
+      .filter(item => item.status === 'verified' && item.external_evidence_credit_granted)
+      .map(item => item.field_id),
+  );
   const availableFields = fields.filter(fieldId =>
     hasFieldEvidence(
       fieldId,
@@ -258,6 +265,7 @@ export function buildProductionMaterialReadinessReport(input: {
       input.materialPack,
       input.sourceDomain,
       sourceMaterialText,
+      verifiedExternalEvidenceFields,
     ),
   );
   const missingFields = fields
@@ -296,6 +304,7 @@ export function refreshStoryProductionMaterialReadiness(
     generatedContextText: generatedStoryProductionMaterialText(story),
     sourceDomain: story.sourceDomain,
     domainPackContext: story.production_material_readiness?.domain_pack_context,
+    externalEvidenceLedger: story.external_evidence_ledger,
   });
 }
 
@@ -411,8 +420,10 @@ function hasFieldEvidence(
   materialPack: MaterialPack | undefined,
   sourceDomain?: string,
   sourceMaterialText = materialText,
+  verifiedExternalEvidenceFields: ReadonlySet<string> = new Set(),
 ): boolean {
   if (isExternalProductionMaterialEvidenceField(fieldId)) {
+    if (verifiedExternalEvidenceFields.has(fieldId)) return true;
     const externalSpec = getProductionMaterialFieldSpec(fieldId, sourceDomain);
     return externalSpec?.keywords.some(keyword => sourceMaterialText.includes(keyword.toLowerCase())) ?? false;
   }

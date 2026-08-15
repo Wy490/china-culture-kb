@@ -8841,6 +8841,22 @@ describe('Projects API', () => {
         },
       });
       expect(res.body.data.detail.current_story.external_evidence_ledger.items).toHaveLength(1);
+
+      const verifyRes = await request
+        .post(`/api/projects/${enriched.project_id}/production-readiness/external-evidence-candidates/${res.body.data.evidence_id}/verify`)
+        .send({
+          evidence_id: res.body.data.evidence_id,
+          expected_content_sha256: 'b'.repeat(64),
+          decision: 'accept',
+          scope_attestation: {
+            source_matches_candidate: true,
+            evidence_supports_field: true,
+            usage_scope_confirmed: true,
+          },
+          review_note: '本地旁路不能授予外部证据信用。',
+        });
+      expect(verifyRes.status).toBe(403);
+      expectFailure(verifyRes.body, 'ACCESS_FORBIDDEN');
     });
   });
 

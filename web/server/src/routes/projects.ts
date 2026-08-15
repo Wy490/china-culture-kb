@@ -22,6 +22,8 @@ import {
   GearsWorkbenchProjectImportRequestSchema,
   ProjectMaterialPackAddMaterialRequestSchema,
   ProjectExternalEvidenceCandidateImportRequestSchema,
+  ProjectExternalEvidenceVerificationParamSchema,
+  ProjectExternalEvidenceVerificationRequestSchema,
   ProjectBatchDeleteRequestSchema,
   ProjectIdParamSchema,
   MediaArtifactPreviewParamSchema,
@@ -109,6 +111,7 @@ import {
   updateProjectSeedanceShotStatus,
   updateProjectSeedanceShotStatuses,
   updateProjectSupplementTask,
+  verifyProjectExternalEvidenceCandidate,
 } from '../services/project-service.js';
 import { importProjectToGearsWorkbench } from '../services/gears-workbench-connector.js';
 import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
@@ -194,7 +197,7 @@ projectsRouter.use((req, res, next) => {
     requireScopedMaterialReview(req, res, next);
     return;
   }
-  if (req.path.endsWith('/production-readiness/external-evidence-candidates')) {
+  if (req.path.includes('/production-readiness/external-evidence-candidates')) {
     requireMaterialReview(req, res, next);
     return;
   }
@@ -586,6 +589,36 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await importProjectExternalEvidenceCandidate(projectId, req.body);
+      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+projectsRouter.post(
+  '/:projectId/production-readiness/external-evidence-candidates/:evidenceId/verify',
+  validateParams(ProjectExternalEvidenceVerificationParamSchema),
+  validateBody(ProjectExternalEvidenceVerificationRequestSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId, evidenceId } = req.params as { projectId: string; evidenceId: string };
+      if (evidenceId !== req.body.evidence_id) {
+        res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, 'Path evidenceId must match body evidence_id'));
+        return;
+      }
+      const access = getProductAccessContext(req);
+      if (!access.actor || access.authentication_method === 'local_bypass') {
+        res.status(403).json(fail(
+          ErrorCodes.ACCESS_FORBIDDEN,
+          'A verified material reviewer session is required to grant or revoke external evidence credit',
+        ));
+        return;
+      }
+      const result = await verifyProjectExternalEvidenceCandidate(projectId, req.body, {
+        actor_id: access.actor.actor_id,
+        authentication_method: access.authentication_method,
+      });
       res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
     } catch (err) {
       next(err);

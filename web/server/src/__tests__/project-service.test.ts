@@ -9,7 +9,10 @@ import {
   type StoryProjectMeta,
   type StoryProjectVersionSnapshot,
 } from '@shared/types.js';
-import { ProjectExternalEvidenceCandidateImportRequestSchema } from '@shared/schemas.js';
+import {
+  ProjectExternalEvidenceCandidateImportRequestSchema,
+  ProjectExternalEvidenceVerificationRequestSchema,
+} from '@shared/schemas.js';
 
 import {
   acceptProjectLocalGearsArtifacts,
@@ -65,6 +68,7 @@ import {
   updateProjectSeedanceShotStatuses,
   updateProjectCurrentGearsWebhookStatus,
   updateProjectSupplementTask,
+  verifyProjectExternalEvidenceCandidate,
   uploadProjectSeedanceAssetFile,
 } from '../services/project-service.js';
 
@@ -6416,6 +6420,8 @@ describe('project-service', () => {
     });
     expect(invalid.success).toBe(false);
 
+    const evidenceBytes = Buffer.from('岳麓书院馆员采访原始录音测试字节', 'utf8');
+    const evidenceSha256 = createHash('sha256').update(evidenceBytes).digest('hex');
     const request = ProjectExternalEvidenceCandidateImportRequestSchema.parse({
       field_id: 'interview_clip_selection',
       evidence_type: 'interview_clip',
@@ -6423,10 +6429,10 @@ describe('project-service', () => {
       summary: '馆员回答朱张会讲资料如何标出处，尚待核验录音与授权范围。',
       source_uri: 'artifact://interviews/yuelu-001.wav',
       source_label: '岳麓书院采访原始录音',
-      content_sha256: 'A'.repeat(64),
+      content_sha256: evidenceSha256.toUpperCase(),
       captured_at: '2026-06-08T02:30:00.000Z',
     });
-    expect(request.content_sha256).toBe('a'.repeat(64));
+    expect(request.content_sha256).toBe(evidenceSha256);
 
     const imported = await importProjectExternalEvidenceCandidate(enriched.project_id!, request);
     expect(imported.ok).toBe(true);
@@ -6440,7 +6446,7 @@ describe('project-service', () => {
       field_id: 'interview_clip_selection',
       evidence_type: 'interview_clip',
       status: 'pending_verification',
-      content_sha256: 'a'.repeat(64),
+      content_sha256: evidenceSha256,
       source_retrieved: false,
       content_hash_verified: false,
       scope_verified: false,
@@ -6469,6 +6475,143 @@ describe('project-service', () => {
     expect(rawSource.external_evidence_ledger?.items).toHaveLength(1);
     expect(rawSource.production_material_readiness?.missing_fields.map(field => field.field_id))
       .toContain('interview_clip_selection');
+
+    const verificationRequest = ProjectExternalEvidenceVerificationRequestSchema.parse({
+      evidence_id: imported.data!.evidence_id,
+      expected_content_sha256: evidenceSha256,
+      decision: 'accept',
+      scope_attestation: {
+        source_matches_candidate: true,
+        evidence_supports_field: true,
+        usage_scope_confirmed: true,
+      },
+      review_note: '已核对原始录音、字段用途与当前项目使用范围。',
+    });
+    const artifactPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      enriched.project_id!,
+      'external-evidence',
+      'interviews',
+      'yuelu-001.wav',
+    );
+    await mkdir(resolve(artifactPath, '..'), { recursive: true });
+    await writeFile(artifactPath, Buffer.from('错误字节', 'utf8'));
+
+    const hashMismatch = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      verificationRequest,
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(hashMismatch.ok).toBe(false);
+    expect(hashMismatch.error?.details).toMatchObject({
+      source_retrieved: true,
+      content_hash_verified: false,
+      external_evidence_credit_granted: false,
+    });
+
+    await writeFile(artifactPath, evidenceBytes);
+    const verified = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      verificationRequest,
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(verified.ok).toBe(true);
+    expect(verified.data).toMatchObject({
+      schema_version: 'project-external-evidence-verification/v1',
+      decision: 'accept',
+      readiness_changed: true,
+      external_evidence_credit_granted: true,
+      candidate: {
+        status: 'verified',
+        source_retrieved: true,
+        content_hash_verified: true,
+        scope_verified: true,
+        external_evidence_credit_granted: true,
+        reviewed_by: 'material-reviewer-1',
+        reviewer_authentication_method: 'signed_session',
+      },
+    });
+    expect(verified.data?.detail.current_story.production_material_readiness?.available_fields)
+      .toContain('interview_clip_selection');
+    expect(verified.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
+      .toBe('resolved');
+
+    const httpsCandidate = await importProjectExternalEvidenceCandidate(enriched.project_id!, {
+      field_id: 'rights_and_attribution',
+      evidence_type: 'rights_attribution_record',
+      title: 'HTTPS 权利记录候选',
+      summary: '尚未由服务端实际抓取的 HTTPS 记录。',
+      source_uri: 'https://rights.example.test/records/002',
+      source_label: '外部权利记录 002',
+      content_sha256: 'b'.repeat(64),
+    });
+    expect(httpsCandidate.ok).toBe(true);
+    const httpsBlocked = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        evidence_id: httpsCandidate.data!.evidence_id,
+        expected_content_sha256: 'b'.repeat(64),
+        decision: 'accept',
+        scope_attestation: {
+          source_matches_candidate: true,
+          evidence_supports_field: true,
+          usage_scope_confirmed: true,
+        },
+        review_note: '请求验收 HTTPS 候选。',
+      },
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(httpsBlocked.ok).toBe(false);
+    expect(httpsBlocked.error?.details).toMatchObject({
+      source_retrieved: false,
+      external_evidence_credit_granted: false,
+    });
+    const rejected = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        evidence_id: httpsCandidate.data!.evidence_id,
+        expected_content_sha256: 'b'.repeat(64),
+        decision: 'reject',
+        review_note: '外部来源尚未取回，拒绝当前权利记录候选。',
+      },
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(rejected.ok).toBe(true);
+    expect(rejected.data).toMatchObject({
+      decision: 'reject',
+      external_evidence_credit_granted: false,
+      candidate: {
+        status: 'rejected',
+        source_retrieved: false,
+        content_hash_verified: false,
+        scope_verified: false,
+      },
+    });
+
+    const revoked = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        evidence_id: imported.data!.evidence_id,
+        expected_content_sha256: evidenceSha256,
+        decision: 'revoke',
+        review_note: '撤销当前项目的采访使用范围。',
+      },
+      { actor_id: 'material-reviewer-1', authentication_method: 'static_registry_token' },
+    );
+    expect(revoked.ok).toBe(true);
+    expect(revoked.data).toMatchObject({
+      decision: 'revoke',
+      readiness_changed: true,
+      external_evidence_credit_granted: false,
+      candidate: { status: 'revoked' },
+    });
+    expect(revoked.data?.detail.current_story.production_material_readiness?.missing_fields.map(field => field.field_id))
+      .toContain('interview_clip_selection');
+    expect(revoked.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
+      .toBe('open');
   });
 
   it('adds manual project material and refreshes creation contract fields', async () => {

@@ -1,5 +1,5 @@
-import { dirname, resolve } from 'node:path';
-import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
+import { mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import {
@@ -112,7 +112,10 @@ import type {
   ProjectExternalEvidenceCandidateImportResult,
   ProjectExternalEvidenceFieldId,
   ProjectExternalEvidenceLedger,
+  ProjectExternalEvidenceReviewer,
   ProjectExternalEvidenceType,
+  ProjectExternalEvidenceVerificationRequest,
+  ProjectExternalEvidenceVerificationResult,
   QualityRepairAction,
   CreationContract,
   MaterialPack,
@@ -9362,6 +9365,235 @@ export async function importProjectExternalEvidenceCandidate(
   });
 }
 
+function pathIsInside(rootPath: string, targetPath: string): boolean {
+  const relation = relative(rootPath, targetPath);
+  return relation === '' || (relation !== '..' && !relation.startsWith('../'));
+}
+
+async function readProjectExternalEvidenceArtifact(
+  projectId: string,
+  sourceUri: string,
+): Promise<
+  | { ok: true; bytes: Buffer }
+  | { ok: false; message: string; source_retrieved: false }
+> {
+  let parsed: URL;
+  try {
+    parsed = new URL(sourceUri);
+  } catch {
+    return { ok: false, message: 'External evidence source URI is invalid', source_retrieved: false };
+  }
+  if (parsed.protocol !== 'artifact:') {
+    return {
+      ok: false,
+      message: 'HTTPS evidence cannot be accepted until an external retrieval adapter has fetched and hashed it',
+      source_retrieved: false,
+    };
+  }
+  let pathSegments: string[];
+  try {
+    pathSegments = [parsed.hostname, ...parsed.pathname.split('/')]
+      .map(segment => decodeURIComponent(segment).trim())
+      .filter(Boolean);
+  } catch {
+    return { ok: false, message: 'Artifact URI contains invalid path encoding', source_retrieved: false };
+  }
+  if (
+    pathSegments.length < 2
+    || pathSegments.some(segment => segment === '.' || segment === '..' || segment.includes('\0'))
+  ) {
+    return { ok: false, message: 'Artifact URI must identify a project-scoped evidence file', source_retrieved: false };
+  }
+  const artifactRoot = resolve(projectDir(projectId), 'external-evidence');
+  const artifactPath = resolve(artifactRoot, ...pathSegments);
+  if (!pathIsInside(artifactRoot, artifactPath)) {
+    return { ok: false, message: 'Artifact URI escapes the project external-evidence directory', source_retrieved: false };
+  }
+  try {
+    const [realRoot, realArtifact] = await Promise.all([
+      realpath(artifactRoot),
+      realpath(artifactPath),
+    ]);
+    if (!pathIsInside(realRoot, realArtifact)) {
+      return { ok: false, message: 'Artifact symlink escapes the project external-evidence directory', source_retrieved: false };
+    }
+    const artifactStat = await stat(realArtifact);
+    if (!artifactStat.isFile()) {
+      return { ok: false, message: 'External evidence artifact is not a regular file', source_retrieved: false };
+    }
+    return { ok: true, bytes: await readFile(realArtifact) };
+  } catch {
+    return { ok: false, message: 'External evidence artifact is unavailable', source_retrieved: false };
+  }
+}
+
+function externalEvidenceReadinessChanged(
+  before: StoryGenerateResult['production_material_readiness'],
+  after: StoryGenerateResult['production_material_readiness'],
+): boolean {
+  if (before?.status !== after?.status || before?.score !== after?.score) return true;
+  return JSON.stringify(before?.available_fields ?? []) !== JSON.stringify(after?.available_fields ?? []);
+}
+
+export async function verifyProjectExternalEvidenceCandidate(
+  projectId: string,
+  request: ProjectExternalEvidenceVerificationRequest,
+  reviewer: ProjectExternalEvidenceReviewer,
+): Promise<ApiResponse<ProjectExternalEvidenceVerificationResult>> {
+  const detailResult = await getProject(projectId);
+  if (!detailResult.ok || !detailResult.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detailResult.error?.message ?? `Project "${projectId}" not found`,
+    );
+  }
+  const { project, current_story: story } = detailResult.data;
+  const ledger = story.external_evidence_ledger;
+  const candidateIndex = ledger?.items.findIndex(item => item.evidence_id === request.evidence_id) ?? -1;
+  if (!ledger || candidateIndex < 0) {
+    return fail(ErrorCodes.VALIDATION_ERROR, `External evidence candidate "${request.evidence_id}" was not found`);
+  }
+  const candidate = ledger.items[candidateIndex];
+  const expectedSha256 = request.expected_content_sha256.trim().toLowerCase();
+  if (candidate.content_sha256 !== expectedSha256) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Expected candidate SHA-256 does not match the persisted candidate', {
+      expected_content_sha256: expectedSha256,
+      candidate_content_sha256: candidate.content_sha256,
+      external_evidence_credit_granted: false,
+    });
+  }
+  if (!reviewer.actor_id.trim()) {
+    return fail(ErrorCodes.ACCESS_FORBIDDEN, 'A verified material reviewer identity is required');
+  }
+  if (request.decision === 'revoke' && candidate.status !== 'verified') {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Only verified external evidence can be revoked');
+  }
+  if (request.decision === 'accept' && !(
+    request.scope_attestation?.source_matches_candidate
+    && request.scope_attestation.evidence_supports_field
+    && request.scope_attestation.usage_scope_confirmed
+  )) {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'All scope attestations are required to accept external evidence');
+  }
+
+  if (request.decision === 'accept') {
+    const artifact = await readProjectExternalEvidenceArtifact(projectId, candidate.source_uri);
+    if (!artifact.ok) {
+      return fail(ErrorCodes.VALIDATION_ERROR, artifact.message, {
+        source_retrieved: false,
+        content_hash_verified: false,
+        scope_verified: false,
+        external_evidence_credit_granted: false,
+      });
+    }
+    const actualSha256 = createHash('sha256').update(artifact.bytes).digest('hex');
+    if (actualSha256 !== candidate.content_sha256) {
+      return fail(ErrorCodes.VALIDATION_ERROR, 'External evidence artifact SHA-256 does not match the candidate', {
+        source_retrieved: true,
+        content_hash_verified: false,
+        expected_content_sha256: candidate.content_sha256,
+        actual_content_sha256: actualSha256,
+        scope_verified: false,
+        external_evidence_credit_granted: false,
+      });
+    }
+  }
+
+  const reviewedAt = nextProjectUpdatedAt(project);
+  const accepted = request.decision === 'accept';
+  const updatedCandidate: ProjectExternalEvidenceCandidate = {
+    ...candidate,
+    status: accepted ? 'verified' : request.decision === 'reject' ? 'rejected' : 'revoked',
+    source_retrieved: accepted,
+    content_hash_verified: accepted,
+    scope_verified: accepted,
+    external_evidence_credit_granted: accepted,
+    reviewed_at: reviewedAt,
+    reviewed_by: reviewer.actor_id,
+    reviewer_authentication_method: reviewer.authentication_method,
+    review_note: request.review_note.trim(),
+  };
+  const nextLedger: ProjectExternalEvidenceLedger = {
+    ...ledger,
+    updated_at: reviewedAt,
+    items: ledger.items.map((item, index) => index === candidateIndex ? updatedCandidate : item),
+  };
+  const fieldStillVerified = nextLedger.items.some(item => (
+    item.field_id === candidate.field_id
+    && item.status === 'verified'
+    && item.external_evidence_credit_granted
+  ));
+  const nextTasks = (story.supplement_tasks ?? []).map(task => {
+    const matchesField = task.source === 'production_material_missing_field'
+      && task.recommended_fields?.includes(candidate.field_id);
+    if (!matchesField) return task;
+    if (fieldStillVerified) {
+      return {
+        ...task,
+        status: 'resolved' as const,
+        supplement_note: `外部证据 ${candidate.evidence_id} 已通过项目级来源、hash 与适用范围验证。`,
+        updated_at: reviewedAt,
+      };
+    }
+    return {
+      ...task,
+      status: 'open' as const,
+      supplement_note: undefined,
+      updated_at: reviewedAt,
+    };
+  });
+  const updatedStory = await rebuildDerivedStoryState({
+    ...story,
+    external_evidence_ledger: nextLedger,
+    supplement_tasks: nextTasks,
+  }, { revalidateDomainSafety: false });
+  const readinessChanged = externalEvidenceReadinessChanged(
+    story.production_material_readiness,
+    updatedStory.production_material_readiness,
+  );
+  const updatedMeta: StoryProjectMeta = {
+    ...project,
+    updated_at: reviewedAt,
+    open_supplement_task_count: countOpenSupplementTasks(updatedStory),
+    ...qualitySummary(updatedStory),
+  };
+  const snapshot = await projectRepository().readVersion(projectId, project.current_version_id);
+  if (!snapshot) {
+    return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" current version is unavailable`);
+  }
+  await projectRepository().writeCurrentState(updatedMeta, {
+    ...snapshot,
+    quality_report: updatedStory.quality_report ?? snapshot.quality_report,
+    story: updatedStory,
+  }, projectMetaExpectation(project));
+  await updateSourceStory(updatedStory, raw => ({
+    ...raw,
+    external_evidence_ledger: nextLedger,
+    supplement_tasks: updatedStory.supplement_tasks,
+    production_material_readiness: updatedStory.production_material_readiness,
+    gears_segments: updatedStory.gears_segments,
+    gears_delivery: updatedStory.gears_delivery,
+    quality_report: updatedStory.quality_report,
+    project_id: updatedStory.project_id,
+    current_version_id: updatedStory.current_version_id,
+  }));
+  const afterDetail = await getProject(projectId);
+  if (!afterDetail.ok || !afterDetail.data) {
+    return fail(ErrorCodes.INTERNAL_ERROR, 'Verified external evidence but failed to reload project detail');
+  }
+  return success({
+    schema_version: 'project-external-evidence-verification/v1',
+    project_id: projectId,
+    story_id: story.storyId,
+    evidence_id: candidate.evidence_id,
+    decision: request.decision,
+    readiness_changed: readinessChanged,
+    external_evidence_credit_granted: accepted,
+    candidate: updatedCandidate,
+    detail: afterDetail.data,
+  });
+}
+
 function applySupplementTaskMaterialUpdate(
   story: StoryGenerateResult,
   task: NonNullable<StoryGenerateResult['supplement_tasks']>[number],
@@ -9420,6 +9652,7 @@ function refreshStoryMaterialContract(
     materialPack,
     contextText: productionMaterialContextText(story),
     sourceDomain: resolveStorySourceDomain(story),
+    externalEvidenceLedger: story.external_evidence_ledger,
   }) ?? story.production_material_readiness;
   const storyForQuality: StoryGenerateResult = {
     ...story,

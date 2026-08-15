@@ -2788,6 +2788,31 @@ export const ProjectExternalEvidenceCandidateImportRequestSchema = z.discriminat
   }).strict(),
 ]);
 
+export const ProjectExternalEvidenceIdSchema = z.string().regex(
+  /^external-evidence-[a-z_]+-[a-f0-9]{16}$/,
+  'evidence_id must identify a project external evidence candidate',
+);
+
+export const ProjectExternalEvidenceVerificationRequestSchema = z.object({
+  evidence_id: ProjectExternalEvidenceIdSchema,
+  expected_content_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  decision: z.enum(['accept', 'reject', 'revoke']),
+  scope_attestation: z.object({
+    source_matches_candidate: z.literal(true),
+    evidence_supports_field: z.literal(true),
+    usage_scope_confirmed: z.literal(true),
+  }).strict().optional(),
+  review_note: z.string().trim().min(8).max(1200),
+}).strict().superRefine((request, context) => {
+  if (request.decision === 'accept' && !request.scope_attestation) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['scope_attestation'],
+      message: 'scope_attestation is required to accept external evidence',
+    });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Duration & panel count
 // ---------------------------------------------------------------------------
@@ -3706,6 +3731,10 @@ export const AiComicSeriesProjectIdValueSchema = z.string().regex(
 
 export const ProjectIdParamSchema = z.object({
   projectId: ProjectIdValueSchema,
+});
+
+export const ProjectExternalEvidenceVerificationParamSchema = ProjectIdParamSchema.extend({
+  evidenceId: ProjectExternalEvidenceIdSchema,
 });
 
 export const MediaArtifactPreviewParamSchema = z.object({

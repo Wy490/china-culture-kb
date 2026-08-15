@@ -2731,11 +2731,15 @@ export interface ProjectExternalEvidenceCandidate {
   captured_at?: string;
   notes?: string;
   imported_at: string;
-  status: 'pending_verification';
-  source_retrieved: false;
-  content_hash_verified: false;
-  scope_verified: false;
-  external_evidence_credit_granted: false;
+  status: 'pending_verification' | 'verified' | 'rejected' | 'revoked';
+  source_retrieved: boolean;
+  content_hash_verified: boolean;
+  scope_verified: boolean;
+  external_evidence_credit_granted: boolean;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  reviewer_authentication_method?: 'static_registry_token' | 'signed_session';
+  review_note?: string;
 }
 
 export interface ProjectExternalEvidenceLedger {
@@ -2758,6 +2762,37 @@ export interface ProjectExternalEvidenceCandidateImportResult {
   duplicate: boolean;
   readiness_changed: false;
   external_evidence_credit_granted: false;
+  candidate: ProjectExternalEvidenceCandidate;
+  detail: StoryProjectDetail;
+}
+
+export type ProjectExternalEvidenceVerificationDecision = 'accept' | 'reject' | 'revoke';
+
+export interface ProjectExternalEvidenceVerificationRequest {
+  evidence_id: string;
+  expected_content_sha256: string;
+  decision: ProjectExternalEvidenceVerificationDecision;
+  scope_attestation?: {
+    source_matches_candidate: true;
+    evidence_supports_field: true;
+    usage_scope_confirmed: true;
+  };
+  review_note: string;
+}
+
+export interface ProjectExternalEvidenceReviewer {
+  actor_id: string;
+  authentication_method: 'static_registry_token' | 'signed_session';
+}
+
+export interface ProjectExternalEvidenceVerificationResult {
+  schema_version: 'project-external-evidence-verification/v1';
+  project_id: string;
+  story_id: string;
+  evidence_id: string;
+  decision: ProjectExternalEvidenceVerificationDecision;
+  readiness_changed: boolean;
+  external_evidence_credit_granted: boolean;
   candidate: ProjectExternalEvidenceCandidate;
   detail: StoryProjectDetail;
 }
