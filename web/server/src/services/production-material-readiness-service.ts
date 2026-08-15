@@ -412,7 +412,7 @@ function hasFieldEvidence(
   sourceDomain?: string,
   sourceMaterialText = materialText,
 ): boolean {
-  if (EXTERNAL_EVIDENCE_FIELD_IDS.has(fieldId)) {
+  if (isExternalProductionMaterialEvidenceField(fieldId)) {
     const externalSpec = getProductionMaterialFieldSpec(fieldId, sourceDomain);
     return externalSpec?.keywords.some(keyword => sourceMaterialText.includes(keyword.toLowerCase())) ?? false;
   }
@@ -440,6 +440,10 @@ const EXTERNAL_EVIDENCE_FIELD_IDS = new Set([
   'rights_and_attribution',
   'location_permissions',
 ]);
+
+export function isExternalProductionMaterialEvidenceField(fieldId: string): boolean {
+  return EXTERNAL_EVIDENCE_FIELD_IDS.has(fieldId);
+}
 
 function generatedStoryProductionMaterialText(story: StoryGenerateResult): string {
   return [

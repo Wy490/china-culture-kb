@@ -159,7 +159,10 @@ import {
   rebuildDerivedStoryState,
   StoryDerivedStateValidationError,
 } from './derived-story-state-service.js';
-import { buildProductionMaterialReadinessReport } from './production-material-readiness-service.js';
+import {
+  buildProductionMaterialReadinessReport,
+  isExternalProductionMaterialEvidenceField,
+} from './production-material-readiness-service.js';
 import { repairStoryWithQualityWorkflow } from './quality-repair-service.js';
 import { validateGenreStoryQuality } from './genre-quality-service.js';
 import { getStoryFamilyRepairGuidance, validateStoryFamilyBaseQuality } from './story-family-quality-service.js';
@@ -8173,9 +8176,7 @@ export async function draftProjectProductionMaterialFields(
 }
 
 const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
-  'reference_images_or_keyframes',
   'identity_motion_consistency_plan',
-  'single_shot_test',
   'multi_shot_continuity',
   'transition_plan',
   'shot_prompt_layers',
@@ -8188,7 +8189,6 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'tools',
   'process_steps',
   'hand_actions',
-  'documentation_assets',
   'visual_symbols',
   'sound_or_texture_details',
   'modern_connection',
@@ -8198,8 +8198,6 @@ const PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS = new Set([
   'source_quotes_or_source_cues',
   'timeline',
   'witness_or_expert_roles',
-  'interview_clip_selection',
-  'field_notes',
   'b_roll_plan',
   'reconstruction_boundary',
   'present_day_trace',
@@ -8248,6 +8246,7 @@ function projectProductionMaterialDraftableTasks(
     if (task.status !== 'open') return false;
     if (task.source !== 'production_material_missing_field') return false;
     const fields = task.recommended_fields ?? [];
+    if (fields.some(isExternalProductionMaterialEvidenceField)) return false;
     return fields.some(fieldId => PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId));
   });
 }
@@ -8259,6 +8258,7 @@ async function productionMaterialDraftFieldValues(
 ): Promise<Record<string, string>> {
   const values: Record<string, string> = {};
   for (const fieldId of task.recommended_fields ?? []) {
+    if (isExternalProductionMaterialEvidenceField(fieldId)) continue;
     if (!PRODUCTION_MATERIAL_AUTO_DRAFT_FIELDS.has(fieldId)) continue;
     const value = draftProductionMaterialFieldValue(story, fieldId, guidance);
     if (value) values[fieldId] = value;
@@ -8271,9 +8271,7 @@ function draftProductionMaterialFieldValue(
   fieldId: string,
   guidance: DomainProductionMaterialGuidance,
 ): string {
-  if (fieldId === 'reference_images_or_keyframes') return draftReferenceImagesOrKeyframes(story);
   if (fieldId === 'identity_motion_consistency_plan') return draftIdentityMotionConsistencyPlan(story);
-  if (fieldId === 'single_shot_test') return draftSingleShotTest(story, guidance);
   if (fieldId === 'multi_shot_continuity') return draftMultiShotContinuity(story);
   if (fieldId === 'transition_plan') return draftTransitionPlan(story);
   if (fieldId === 'shot_prompt_layers') return draftShotPromptLayers(story, guidance);
@@ -8286,7 +8284,6 @@ function draftProductionMaterialFieldValue(
   if (fieldId === 'tools') return draftHeritageTools(story);
   if (fieldId === 'process_steps') return draftProcessSteps(story);
   if (fieldId === 'hand_actions') return draftHandActions(story);
-  if (fieldId === 'documentation_assets') return draftDocumentationAssets(story, guidance);
   if (fieldId === 'visual_symbols') return draftVisualSymbols(story);
   if (fieldId === 'sound_or_texture_details') return draftSoundOrTextureDetails(story);
   if (fieldId === 'modern_connection') return draftModernConnection(story);
@@ -8296,8 +8293,6 @@ function draftProductionMaterialFieldValue(
   if (fieldId === 'source_quotes_or_source_cues') return draftSourceQuotesOrSourceCues(story, guidance);
   if (fieldId === 'timeline') return draftTimeline(story);
   if (fieldId === 'witness_or_expert_roles') return draftWitnessOrExpertRoles(story, guidance);
-  if (fieldId === 'interview_clip_selection') return draftInterviewClipSelection(story);
-  if (fieldId === 'field_notes') return draftFieldNotes(story);
   if (fieldId === 'b_roll_plan') return draftBRollPlan(story);
   if (fieldId === 'reconstruction_boundary') return draftReconstructionBoundary(story);
   if (fieldId === 'present_day_trace') return draftPresentDayTrace(story);
@@ -8340,17 +8335,6 @@ function draftProductionMaterialFieldValue(
   return '';
 }
 
-function draftReferenceImagesOrKeyframes(story: StoryGenerateResult): string {
-  const sceneLines = story.scene_breakdown.slice(0, 4).map(scene => (
-    `关键帧 S${scene.scene_id}「${scene.title}」：${scene.location}；画面内容=${shortText(scene.visual_prompt || scene.plot, 160)}；动作=${shortText(scene.key_action, 90)}`
-  ));
-  return compactDraftLines([
-    `参考图或关键帧：以项目「${story.title}」现有分镜作为临时参考图说明，正式出图前仍需人工确认角色设定图。`,
-    ...sceneLines,
-    `参考图统一基准：漫画短剧风格、角色轮廓和服饰色块保持一致，关键道具与场景锚点沿用 source_entry=${story.source_entry}。`,
-  ]);
-}
-
 function draftIdentityMotionConsistencyPlan(story: StoryGenerateResult): string {
   const characters = storyPrimaryCharacters(story);
   const propHints = story.scene_breakdown
@@ -8363,20 +8347,6 @@ function draftIdentityMotionConsistencyPlan(story: StoryGenerateResult): string 
     `视线与站位：开场建立主角正面或三分之二侧脸，后续镜头只改变表情强度，不改变身份特征。`,
     ...propHints,
     `道具位置：关键道具在同一场景内保持左右手和画面方位一致；跨场景转移时用动作或对白交代。`,
-  ]);
-}
-
-function draftSingleShotTest(
-  story: StoryGenerateResult,
-  guidance: DomainProductionMaterialGuidance,
-): string {
-  const scene = story.scene_breakdown[0];
-  const segment = story.gears_segments.find(item => item.source_scene_id === scene?.scene_id) ?? story.gears_segments[0];
-  return compactDraftLines([
-    `单镜头测试：优先用 S${scene?.scene_id ?? 1}「${scene?.title ?? story.title}」做 3-5 秒单镜头测试。`,
-    `单镜头测试画面：${shortText(scene?.visual_prompt || segment?.segment_prompt_hint || segment?.visual_focus.join('，') || story.logline, 220)}`,
-    `单镜头测试运镜：${shortText(scene?.camera_suggestion || '轻微推进，人物表情和关键道具清晰可见。', 120)}`,
-    `验收标准：角色脸型、服饰、动作方向、字幕安全区和${guidance.single_shot_acceptance_boundary}后，再批量生成多分镜。`,
   ]);
 }
 
@@ -8500,18 +8470,6 @@ function draftHandActions(story: StoryGenerateResult): string {
   ]);
 }
 
-function draftDocumentationAssets(
-  story: StoryGenerateResult,
-  guidance: DomainProductionMaterialGuidance,
-): string {
-  const facts = story.material_pack?.verified_facts.slice(0, 4) ?? [];
-  return compactDraftLines([
-    guidance.documentation_assets_intro,
-    ...(facts.length ? facts.map(item => `已有关联线索：${shortText(item, 110)}`) : [`来源入口：${story.source_entry}，${guidance.documentation_assets_missing_source_note}`]),
-    `资产边界：${guidance.documentation_assets_rights_note}`,
-  ]);
-}
-
 function draftVisualSymbols(story: StoryGenerateResult): string {
   const symbols = productionVisualAnchors(story).slice(0, 8);
   return compactDraftLines([
@@ -8597,27 +8555,6 @@ function draftWitnessOrExpertRoles(
   return compactDraftLines([
     `讲述人角色：可考虑${guidance.witness_or_expert_roles}，但具体身份必须人工确认。`,
     `角色分工：${guidance.witness_or_expert_role_note}`,
-  ]);
-}
-
-function draftInterviewClipSelection(story: StoryGenerateResult): string {
-  const clips = story.scene_breakdown.slice(0, 5).map(scene => (
-    `采访/旁白片段 S${scene.scene_id}：${shortText(scene.dialogue_or_narration || scene.plot || scene.key_action, 130)}`
-  ));
-  return compactDraftLines([
-    `采访片段选择：从现有旁白/对白中抽取需要真人讲述或主持串联的段落。`,
-    ...clips,
-  ]);
-}
-
-function draftFieldNotes(story: StoryGenerateResult): string {
-  const existing = story.field_notes?.slice(0, 5) ?? [];
-  const notes = existing.length
-    ? existing.map(item => `已有田野/现场笔记：${shortText(item, 130)}`)
-    : story.scene_breakdown.slice(0, 5).map(scene => `现场观察 S${scene.scene_id}：${scene.location}；${shortText(scene.visual_prompt || scene.key_action || scene.plot, 120)}`);
-  return compactDraftLines([
-    `现场笔记：草拟为拍摄/采风前的问题清单，不替代真实田野记录。`,
-    ...notes,
   ]);
 }
 

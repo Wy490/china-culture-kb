@@ -5738,7 +5738,7 @@ describe('project-service', () => {
     expect(queued.error?.message).toContain('domain_does_not_support_formal_knowledge_writeback');
   });
 
-  it('drafts AI comic production material fields from scenes through readiness automation', async () => {
+  it('drafts AI comic planning fields without resolving external evidence through readiness automation', async () => {
     const productionPack = getProductionMaterialPack('ai_comic_drama');
     expect(productionPack).toBeTruthy();
 
@@ -5771,13 +5771,16 @@ describe('project-service', () => {
       materialPack,
       contextText: 'AI漫剧，第一格钩子，世界观，主角目标，场景锚点，对白气泡，情绪节拍，结尾钩子，禁用边界。',
     });
-    const targetFields = [
+    const externalEvidenceFields = [
       'reference_images_or_keyframes',
-      'identity_motion_consistency_plan',
       'single_shot_test',
+    ];
+    const autoDraftFields = [
+      'identity_motion_consistency_plan',
       'multi_shot_continuity',
       'transition_plan',
     ];
+    const targetFields = [...externalEvidenceFields, ...autoDraftFields];
     expect(initialReadiness?.missing_fields.map(field => field.field_id)).toEqual(expect.arrayContaining(targetFields));
 
     const fieldLabels: Record<string, string> = {
@@ -5892,18 +5895,29 @@ describe('project-service', () => {
 
     const afterDetail = await getProject(enriched.project_id!);
     expect(afterDetail.ok).toBe(true);
-    expect(afterDetail.data?.current_story.production_material_readiness?.status).toBe('ready');
-    expect(afterDetail.data?.current_story.production_material_readiness?.missing_fields).toHaveLength(0);
-    expect(afterDetail.data?.current_story.supplement_tasks?.every(task => task.status === 'resolved')).toBe(true);
-    expect(afterDetail.data?.current_story.supplement_tasks?.[0].supplement_field_values?.reference_images_or_keyframes)
-      .toContain('参考图或关键帧');
+    expect(afterDetail.data?.current_story.production_material_readiness?.status).toBe('needs_input');
+    expect(afterDetail.data?.current_story.production_material_readiness?.missing_fields.map(field => field.field_id))
+      .toEqual(expect.arrayContaining(externalEvidenceFields));
+    expect(afterDetail.data?.current_story.production_material_readiness?.available_fields)
+      .toEqual(expect.arrayContaining(autoDraftFields));
+    expect(afterDetail.data?.current_story.supplement_tasks?.map(task => task.status))
+      .toEqual(['open', 'open', 'resolved', 'resolved', 'resolved']);
+    expect(afterDetail.data?.current_story.supplement_tasks?.[0].supplement_field_values)
+      .toBeUndefined();
+    expect(afterDetail.data?.current_story.supplement_tasks?.[2].supplement_field_values?.identity_motion_consistency_plan)
+      .toContain('身份动作一致性计划');
     expect(afterDetail.data?.current_story.material_pack?.supporting_materials.some(material => (
-      material.tags?.includes('single_shot_test') && material.summary.includes('单镜头测试')
+      material.tags?.includes('multi_shot_continuity') && material.summary.includes('多分镜连续性')
     ))).toBe(true);
+    const externalOnlyReadiness = await getProjectProductionReadiness(enriched.project_id!);
+    expect(externalOnlyReadiness.ok).toBe(true);
+    expect(externalOnlyReadiness.data?.next_actions.map(action => action.action_key))
+      .not.toContain('draft_production_material_fields');
 
     const rawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
-    expect(rawSource.production_material_readiness?.status).toBe('ready');
-    expect(rawSource.supplement_tasks?.map(task => task.status)).toEqual(targetFields.map(() => 'resolved'));
+    expect(rawSource.production_material_readiness?.status).toBe('needs_input');
+    expect(rawSource.supplement_tasks?.map(task => task.status))
+      .toEqual(['open', 'open', 'resolved', 'resolved', 'resolved']);
   });
 
   it('drafts core, explainer, and second-wave production material fields from scenes and delivery hints', async () => {
@@ -5937,7 +5951,6 @@ describe('project-service', () => {
           'tools',
           'process_steps',
           'hand_actions',
-          'documentation_assets',
           'visual_symbols',
           'sound_or_texture_details',
           'modern_connection',
@@ -5956,8 +5969,6 @@ describe('project-service', () => {
           'source_quotes_or_source_cues',
           'timeline',
           'witness_or_expert_roles',
-          'interview_clip_selection',
-          'field_notes',
           'b_roll_plan',
           'reconstruction_boundary',
           'present_day_trace',
@@ -6029,15 +6040,6 @@ describe('project-service', () => {
         communicationGoal: '让观众跟随原创人物的目标、阻力和选择理解故事结构。',
         fieldIds: ['audience_level'],
         expectedSnippet: '故事与影视叙事初学观众',
-        sourceDomain: 'original_fiction',
-      },
-      {
-        videoType: 'heritage_promo',
-        style: 'documentary',
-        communicationGoal: '整理原创项目已有设定稿、角色小传与合法授权参考。',
-        fieldIds: ['documentation_assets'],
-        expectedSnippet: '用户素材、参考图、音乐、真实品牌/场地/作品引用',
-        forbiddenSnippet: '馆方说明',
         sourceDomain: 'original_fiction',
       },
       {
@@ -6127,15 +6129,6 @@ describe('project-service', () => {
         fieldIds: ['parent_teacher_note'],
         expectedSnippet: '故事线索',
         forbiddenSnippet: '文化符号',
-        sourceDomain: 'original_fiction',
-      },
-      {
-        videoType: 'ai_comic_drama',
-        style: 'ai_comic',
-        communicationGoal: '先用单镜头验证原创角色、动作与项目权利边界。',
-        fieldIds: ['single_shot_test'],
-        expectedSnippet: '原创设定与权利边界稳定',
-        forbiddenSnippet: '文化边界稳定',
         sourceDomain: 'original_fiction',
       },
       {
