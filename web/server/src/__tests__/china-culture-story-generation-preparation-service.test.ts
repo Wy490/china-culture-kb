@@ -37,6 +37,45 @@ describe('china_culture story generation preparation service', () => {
     expect(result.preliminaryStoryBlueprint.source_entry).toBe(result.primaryEntryName);
   });
 
+  it('composes cultural source traditions with selectable original narrative mechanisms', async () => {
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      story_structure: 'three_act_drama',
+      cultural_source_kinds: ['myth', 'historical_event', 'folk_legend'],
+      narrative_pattern_ids: [
+        'archaeological_mystery_expedition',
+        'fair_play_detective',
+        'mythic_voyage_homecoming',
+      ],
+      creation_use_case: 'original_ai_comic',
+      truth_mode: 'inspired_by_material',
+      original_user_query: '从地方传说与古代航路史迹出发，创作一部围绕失落铜鼓、归乡誓言和可回看线索展开的原创探险推理漫剧。',
+    });
+
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(result.genreComposition).toMatchObject({
+      schema_version: 'story-genre-composition/v1',
+      source_kinds: ['myth', 'historical_event', 'folk_legend'],
+      narrative_pattern_ids: [
+        'archaeological_mystery_expedition',
+        'fair_play_detective',
+        'mythic_voyage_homecoming',
+      ],
+      originality_boundary: {
+        mechanism_reference_only: true,
+        protected_expression_copying_allowed: false,
+        named_character_reuse_allowed: false,
+        signature_worldbuilding_reuse_allowed: false,
+      },
+    });
+    expect(result.genreComposition.source_requirements.join('\n')).toContain('神话');
+    expect(result.genreComposition.evidence_boundary_rules.join('\n')).toContain('历史');
+    expect(result.preliminaryStoryBlueprint.genre_composition).toEqual(result.genreComposition);
+    expect(result.preliminaryStoryBlueprint.type_specific_requirements.join('\n')).toContain('原创机制边界');
+  });
+
   it('keeps user-novel adaptation analysis inside preparation without treating it as verified source evidence', async () => {
     const request: StoryGenerateRequest = {
       video_type: 'ai_comic_drama',

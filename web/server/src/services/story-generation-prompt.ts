@@ -49,6 +49,7 @@ import {
   formatNarrativePatternsForPrompt,
   getNarrativePatternRequirementLines,
 } from './narrative-pattern-library.js';
+import { getCulturalStorySourceLabel } from './story-genre-composition-service.js';
 
 // ---------------------------------------------------------------------------
 // Prompt package type — what gets sent to the external model via stdin
@@ -588,6 +589,24 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
       lines.push(`- ${boundary.label}：${boundary.note}`);
     }
     lines.push('生成规则：full_text、scene_breakdown 和 GEARS 分段必须服从上述类型节拍。');
+    if (pkg.story_blueprint.genre_composition) {
+      const composition = pkg.story_blueprint.genre_composition;
+      lines.push('', '=== 题材源 × 原创叙事类型 ===');
+      lines.push(`文化题材源：${composition.source_kinds.map(getCulturalStorySourceLabel).join('、')}`);
+      lines.push(`原创叙事机制：${composition.narrative_pattern_ids
+        .map(patternId => getNarrativePatternRequirementLines(pkg.context.video_type, [patternId])[0]?.split('：')[0] ?? patternId)
+        .join('、')}`);
+      lines.push('题材源要求：');
+      for (const item of composition.source_requirements) lines.push(`- ${item}`);
+      lines.push('事实与改编边界：');
+      for (const item of composition.evidence_boundary_rules) lines.push(`- ${item}`);
+      lines.push('原创组合规则：');
+      for (const item of composition.creative_rules) lines.push(`- ${item}`);
+      if (composition.compatibility_warnings.length) {
+        lines.push('组合警告：');
+        for (const item of composition.compatibility_warnings) lines.push(`- ${item}`);
+      }
+    }
   }
 
   lines.push('', '=== 样片化类型规则 ===');

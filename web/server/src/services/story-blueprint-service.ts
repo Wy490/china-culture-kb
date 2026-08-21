@@ -12,6 +12,7 @@ import type {
   StoryCharacterArcPlan,
   StoryDomainPackContextV1,
   StoryGenreBeat,
+  StoryGenreComposition,
   StoryScene,
   StoryStructureType,
   SupportedDuration,
@@ -60,6 +61,7 @@ export function buildStoryBlueprint(input: {
   genreMatrix?: GenreStoryMatrixResolution;
   writingCapabilityContext?: WritingCapabilityRuntimeContextV1;
   domainPackContext?: StoryDomainPackContextV1;
+  genreComposition?: StoryGenreComposition;
 }): StoryBlueprint {
   const profile = getGenreStoryProfile(input.videoType);
   const protagonist = inferProtagonist(input.entry, input.videoType);
@@ -105,6 +107,14 @@ export function buildStoryBlueprint(input: {
       ...getNarrativePatternQualitySignals(input.videoType, input.narrativePatternIds ?? []).map(signal => `流派质量信号：${signal}`),
       ...writingCapabilityGenerationRequirementLines(input.writingCapabilityContext),
       ...storyDomainPackRequirementLines(domainPackContext),
+      ...(input.genreComposition
+        ? [
+            ...input.genreComposition.source_requirements,
+            ...input.genreComposition.evidence_boundary_rules,
+            ...input.genreComposition.creative_rules,
+            ...input.genreComposition.compatibility_warnings.map(item => `组合兼容警告：${item}`),
+          ]
+        : []),
       ...(input.creationContract
         ? [
             `创作场景：${input.creationContract.creation_use_case}`,
@@ -118,6 +128,7 @@ export function buildStoryBlueprint(input: {
       ? { writing_capability_context: input.writingCapabilityContext }
       : {}),
     ...(domainPackContext ? { domain_pack_context: domainPackContext } : {}),
+    ...(input.genreComposition ? { genre_composition: input.genreComposition } : {}),
     creation_contract: input.creationContract,
     material_sufficiency: input.materialSufficiency,
   };

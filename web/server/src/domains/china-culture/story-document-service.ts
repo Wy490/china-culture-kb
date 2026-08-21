@@ -60,6 +60,7 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
     creationUseCase,
     truthMode,
     genreMatrix,
+    genreComposition,
     materialSufficiency,
     creationContract,
     adaptationAnalysis,
@@ -119,6 +120,7 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
     credibility_note: input.storyResult.credibility_note,
     story_structure: storyStructure,
     story_blueprint: input.finalStoryBlueprint,
+    genre_composition: genreComposition,
     ...(input.finalStoryBlueprint.writing_capability_context
       ? { writing_capability_runtime: input.finalStoryBlueprint.writing_capability_context }
       : {}),
@@ -170,6 +172,8 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       auto_repair: input.request.auto_repair ?? false,
       story_priority: input.request.story_priority ?? 'balanced',
       narrative_pattern_ids: narrativePatternIds,
+      cultural_source_kinds: genreComposition.source_kinds,
+      genre_composition: genreComposition,
       creation_use_case: creationUseCase,
       truth_mode: truthMode,
       material_sufficiency: materialSufficiency,

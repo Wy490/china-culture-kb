@@ -4,6 +4,7 @@ import {
   getNarrativePatternCatalog,
   getNarrativePatternDiagnostics,
   getNarrativePatternQualitySignals,
+  getNarrativePatternRepairActions,
   getNarrativePatternRequirementLines,
   getNarrativePatternsForVideoType,
   NARRATIVE_PATTERN_VIDEO_TYPE_MAP,
@@ -101,6 +102,55 @@ describe('narrative-pattern-library', () => {
     expect(wuxiaPatterns.every(pattern => pattern.user_facing_summary)).toBe(true);
     expect(wuxiaPatterns.every(pattern => pattern.style_axes && pattern.style_axes.length > 0)).toBe(true);
     expect(aiComicPatternIds).toEqual(expect.arrayContaining(['wuxia_chivalric_epic', 'wuxia_lone_blade_mystery']));
+  });
+
+  it('covers broad original mystery, adventure, epic, family, war, romance and comedy mechanisms', () => {
+    const catalog = getNarrativePatternCatalog();
+    const expectedPatternIds = [
+      'archaeological_mystery_expedition',
+      'clan_legacy_conspiracy',
+      'fair_play_detective',
+      'mythic_voyage_homecoming',
+      'historical_faction_epic',
+      'mythic_hero_quest',
+      'folk_supernatural_investigation',
+      'survival_expedition',
+      'conspiracy_puzzle_thriller',
+      'courtroom_case_procedural',
+      'team_heist_operation',
+      'tragic_romance_choice',
+      'family_saga_generations',
+      'road_companion_quest',
+      'war_strategy_campaign',
+      'folk_satirical_comedy',
+    ];
+
+    expect(catalog.patterns.map(pattern => pattern.pattern_id)).toEqual(
+      expect.arrayContaining(expectedPatternIds),
+    );
+    for (const patternId of expectedPatternIds) {
+      const pattern = catalog.patterns.find(item => item.pattern_id === patternId);
+      expect(pattern?.subject_family).toBeTruthy();
+      expect(pattern?.subgenre_tags?.length).toBeGreaterThan(0);
+      expect(pattern?.user_facing_summary).toBeTruthy();
+      expect(pattern?.style_axes?.length).toBeGreaterThan(0);
+      expect(pattern?.avoid.join('')).toContain('复刻');
+    }
+    expect(catalog.video_type_map.ai_comic_drama).toEqual(expect.arrayContaining(expectedPatternIds));
+    expect(catalog.video_type_map.legend_story).toEqual(expect.arrayContaining([
+      'mythic_hero_quest',
+      'folk_supernatural_investigation',
+      'mythic_voyage_homecoming',
+    ]));
+    expect(catalog.video_type_map.historical_drama).toEqual(expect.arrayContaining([
+      'historical_faction_epic',
+      'war_strategy_campaign',
+      'fair_play_detective',
+    ]));
+    expect(getNarrativePatternQualitySignals('ai_comic_drama', ['fair_play_detective']))
+      .toEqual(expect.arrayContaining(['关键线索前置', '推理步骤可复核']));
+    expect(getNarrativePatternRepairActions('ai_comic_drama', ['archaeological_mystery_expedition']).join('\n'))
+      .toContain('补强「遗迹探秘冒险」质量信号');
   });
 
   it('exports prompt requirement lines and quality signals', () => {

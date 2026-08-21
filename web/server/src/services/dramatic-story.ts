@@ -1642,6 +1642,11 @@ function buildWulingyuanLandscapeArc(input: {
       scene_id: index + 1,
       duration_sec: Math.round(input.totalSeconds / compactScenes.length),
       plot: compactPlots[index],
+      dialogue_or_narration: index === 0
+        ? '旁白：山先从雾里醒来。'
+        : index === compactScenes.length - 1
+          ? '旁白：余味留给观看的人。'
+          : undefined,
     }));
   }
 

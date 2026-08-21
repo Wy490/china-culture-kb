@@ -149,6 +149,41 @@ const AI_COMIC_NARRATIVE_SUBJECT_RULES: NarrativePatternSubjectRule[] = [
     confidence: 0.86,
   },
   {
+    family: 'archaeological-adventure',
+    patterns: ['archaeological_mystery_expedition', 'survival_expedition', 'conspiracy_puzzle_thriller'],
+    signals: ['遗迹', '古墓', '墓葬', '地宫', '考古', '探险', '古道', '失落', '文物', '机关'],
+    reason: '素材含遗迹、文物或极境探索信号，优先使用文化线索、空间路线、团队分工和保护伦理。',
+    confidence: 0.93,
+  },
+  {
+    family: 'detective-case',
+    patterns: ['fair_play_detective', 'courtroom_case_procedural', 'conspiracy_puzzle_thriller'],
+    signals: ['推理', '侦探', '案件', '证词', '物证', '公堂', '案卷', '嫌疑人', '谜案', '调查'],
+    reason: '素材含案件和证据链信号，优先让关键线索前置、推理可复核并保留制度边界。',
+    confidence: 0.92,
+  },
+  {
+    family: 'mythic-quest',
+    patterns: ['mythic_hero_quest', 'mythic_voyage_homecoming', 'folk_supernatural_investigation'],
+    signals: ['神话', '传说', '神祇', '异闻', '禁忌', '远航', '归乡', '神器', '神异'],
+    reason: '素材含神话、远航或志异信号，优先建立稳定神异规则、人物试炼和传说事实边界。',
+    confidence: 0.91,
+  },
+  {
+    family: 'historical-epic',
+    patterns: ['historical_faction_epic', 'war_strategy_campaign', 'family_saga_generations'],
+    signals: ['群雄', '阵营', '联盟', '战争', '战役', '守城', '天下', '家族', '世家', '时代变迁'],
+    reason: '素材含阵营、战役或代际历史信号，优先建立多方目标、资源约束和时代后果。',
+    confidence: 0.9,
+  },
+  {
+    family: 'operation-and-companions',
+    patterns: ['team_heist_operation', 'road_companion_quest', 'clan_legacy_conspiracy'],
+    signals: ['潜入', '营救', '智取', '护送', '同行', '伙伴', '秘约', '旧账', '家族秘密'],
+    reason: '素材含团队任务、伙伴旅程或代际秘约信号，优先强化分工兑现、关系变化和旧账对当下的影响。',
+    confidence: 0.87,
+  },
+  {
     family: 'serial-hook',
     patterns: ['platform_short_drama_hook', 'serial_hook_adaptation', 'cinematic_setpiece_adaptation'],
     signals: ['短剧', '竖屏', '连载', '反转', '钩子', '爽点', '追更', '爆款'],
@@ -749,6 +784,25 @@ const DRAMATIC_PATTERNS: NarrativePatternId[] = [
   'character_arc_adaptation',
   'theme_preserving_adaptation',
   'worldbuilding_grounding',
+  'archaeological_mystery_expedition',
+  'clan_legacy_conspiracy',
+  'fair_play_detective',
+  'historical_faction_epic',
+  'survival_expedition',
+  'conspiracy_puzzle_thriller',
+  'courtroom_case_procedural',
+  'team_heist_operation',
+  'tragic_romance_choice',
+  'family_saga_generations',
+  'road_companion_quest',
+  'war_strategy_campaign',
+  'folk_satirical_comedy',
+];
+
+const MYTHIC_STORY_PATTERNS: NarrativePatternId[] = [
+  'mythic_voyage_homecoming',
+  'mythic_hero_quest',
+  'folk_supernatural_investigation',
 ];
 
 const ADAPTATION_PATTERNS: NarrativePatternId[] = [
@@ -810,6 +864,8 @@ const AI_COMIC_PATTERNS: NarrativePatternId[] = [
   'wuxia_revenge_journey',
   'wuxia_court_jianghu',
   'wuxia_romance_honor',
+  ...DRAMATIC_PATTERNS,
+  ...MYTHIC_STORY_PATTERNS,
 ];
 
 const SPACE_PATTERNS: NarrativePatternId[] = [
@@ -872,7 +928,7 @@ const GENRE_MATRIX_DEFAULTS: Record<VideoType, GenreStoryMatrixFields> = {
     compatible_truth_modes: ['fictional_original', 'inspired_by_material', 'source_adaptation'],
     default_truth_mode: 'inspired_by_material',
     recommended_narrative_patterns: ['folk_legend_trial', 'object_clue_journey', 'children_fable'],
-    allowed_narrative_patterns: ['folk_legend_trial', 'object_clue_journey', 'children_fable', 'mystery_reveal', 'poetic_landscape', 'theme_preserving_adaptation', 'worldbuilding_grounding'],
+    allowed_narrative_patterns: uniquePatternIds(['folk_legend_trial', 'object_clue_journey', 'children_fable', 'mystery_reveal', 'poetic_landscape', 'theme_preserving_adaptation', 'worldbuilding_grounding', ...MYTHIC_STORY_PATTERNS, 'road_companion_quest', 'tragic_romance_choice', 'folk_satirical_comedy']),
     forbidden_narrative_patterns: ['documentary_investigation', 'source_fidelity_adaptation'],
     material_requirements: ['传说版本或民间说法来源', '核心神异意象', '现实地名、习俗或物件承接'],
     truth_rules: ['传说、神异和民间说法不得写成确定史实，需要用“相传/民间说法”等边界表达。'],

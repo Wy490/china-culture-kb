@@ -26,6 +26,7 @@ import { validateReferenceBaselineCompatibility } from '../../services/reference
 import { resolveReferenceGenerationRecipeContract } from '../../services/reference-generation-recipe-service.js';
 import { resolveReferenceGenerationContext } from '../../services/reference-generation-bridge-service.js';
 import { buildStoryBlueprint } from '../../services/story-blueprint-service.js';
+import { buildStoryGenreComposition } from '../../services/story-genre-composition-service.js';
 import { buildStoryDomainPackContext } from '../../services/story-domain-pack-trace-service.js';
 import { buildWritingCapabilityShadowPreparationPlan } from '../../services/writing-capability-rollout-service.js';
 import { buildWritingCapabilityRuntimeResolution } from '../../services/writing-capability-runtime-service.js';
@@ -163,6 +164,13 @@ export async function prepareChinaCultureStoryGeneration(
     narrativePatternIds: requestedNarrativePatternIds,
   });
   const narrativePatternIds = genreMatrix.resolved_narrative_pattern_ids;
+  const genreComposition = buildStoryGenreComposition({
+    entry,
+    videoType,
+    truthMode,
+    requestedSourceKinds: request.cultural_source_kinds,
+    narrativePatternIds,
+  });
   const materialSufficiency = buildMaterialSufficiencyReport({
     materialPack: materialPackToUse,
     creationUseCase,
@@ -317,6 +325,7 @@ export async function prepareChinaCultureStoryGeneration(
     writingCapabilityContext: writingCapabilityRuntimeResolution?.status === 'active'
       ? writingCapabilityRuntimeResolution.context
       : undefined,
+    genreComposition,
   });
 
   return {
@@ -343,6 +352,7 @@ export async function prepareChinaCultureStoryGeneration(
     creationUseCase,
     truthMode,
     genreMatrix,
+    genreComposition,
     materialSufficiency,
     creationContract,
     adaptationAnalysis,

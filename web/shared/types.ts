@@ -490,7 +490,23 @@ export type NarrativePatternId =
   | 'wuxia_sect_growth'
   | 'wuxia_revenge_journey'
   | 'wuxia_court_jianghu'
-  | 'wuxia_romance_honor';
+  | 'wuxia_romance_honor'
+  | 'archaeological_mystery_expedition'
+  | 'clan_legacy_conspiracy'
+  | 'fair_play_detective'
+  | 'mythic_voyage_homecoming'
+  | 'historical_faction_epic'
+  | 'mythic_hero_quest'
+  | 'folk_supernatural_investigation'
+  | 'survival_expedition'
+  | 'conspiracy_puzzle_thriller'
+  | 'courtroom_case_procedural'
+  | 'team_heist_operation'
+  | 'tragic_romance_choice'
+  | 'family_saga_generations'
+  | 'road_companion_quest'
+  | 'war_strategy_campaign'
+  | 'folk_satirical_comedy';
 
 export type NarrativeSubjectFamily =
   | 'general'
@@ -502,7 +518,17 @@ export type NarrativeSubjectFamily =
   | 'education'
   | 'documentary'
   | 'space'
-  | 'children';
+  | 'children'
+  | 'adventure'
+  | 'detective'
+  | 'mystery'
+  | 'epic'
+  | 'myth'
+  | 'family'
+  | 'thriller'
+  | 'romance'
+  | 'war'
+  | 'comedy';
 
 export type NarrativeStyleAxisId =
   | 'world_scale'
@@ -514,7 +540,14 @@ export type NarrativeStyleAxisId =
   | 'ensemble_degree'
   | 'blank_space'
   | 'historical_weight'
-  | 'fidelity';
+  | 'fidelity'
+  | 'clue_density'
+  | 'supernatural_intensity'
+  | 'adventure_scale'
+  | 'strategy_density'
+  | 'horror_intensity'
+  | 'comedy_intensity'
+  | 'family_span';
 
 export type NarrativeStyleAxisValue = 'low' | 'medium' | 'high';
 
@@ -545,6 +578,32 @@ export interface NarrativePattern {
 export interface NarrativePatternCatalog {
   patterns: NarrativePattern[];
   video_type_map: Record<VideoType, NarrativePatternId[]>;
+}
+
+export type CulturalStorySourceKind =
+  | 'myth'
+  | 'folk_legend'
+  | 'historical_event'
+  | 'historical_figure'
+  | 'local_anecdote'
+  | 'classic_literature'
+  | 'heritage_memory'
+  | 'user_original';
+
+export interface StoryGenreComposition {
+  schema_version: 'story-genre-composition/v1';
+  source_kinds: CulturalStorySourceKind[];
+  narrative_pattern_ids: NarrativePatternId[];
+  source_requirements: string[];
+  evidence_boundary_rules: string[];
+  creative_rules: string[];
+  compatibility_warnings: string[];
+  originality_boundary: {
+    mechanism_reference_only: true;
+    protected_expression_copying_allowed: false;
+    named_character_reuse_allowed: false;
+    signature_worldbuilding_reuse_allowed: false;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1972,6 +2031,7 @@ export interface StoryGenerateRequest {
   reference_baseline_story_id?: string;
   reference_generation_recipe?: ReferenceGenerationRecipeContract;
   narrative_pattern_ids?: NarrativePatternId[];
+  cultural_source_kinds?: CulturalStorySourceKind[];
   reference_strength?: ReferenceStrength;
   genre_strictness?: GenreStrictness;
   auto_repair?: boolean;
@@ -15192,6 +15252,7 @@ export interface StoryBlueprint {
   character_arcs: StoryCharacterArcPlan[];
   evidence_boundaries: EvidenceBoundary[];
   type_specific_requirements: string[];
+  genre_composition?: StoryGenreComposition;
   domain_pack_context?: StoryDomainPackContextV1;
   writing_capability_context?: WritingCapabilityRuntimeContextV1;
   creation_contract?: CreationContract;
@@ -15839,6 +15900,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   // New fields for story structure and creative reference (Phase 5)
   story_structure?: StoryStructureType;
   story_blueprint?: StoryBlueprint;
+  genre_composition?: StoryGenreComposition;
   writing_capability_runtime?: WritingCapabilityRuntimeContextV1;
   reference_trace?: ReferenceTrace[];
   reference_generation_recipe?: ReferenceGenerationRecipeContract;

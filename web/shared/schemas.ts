@@ -747,6 +747,33 @@ export const NarrativePatternIdSchema = z.enum([
   'wuxia_revenge_journey',
   'wuxia_court_jianghu',
   'wuxia_romance_honor',
+  'archaeological_mystery_expedition',
+  'clan_legacy_conspiracy',
+  'fair_play_detective',
+  'mythic_voyage_homecoming',
+  'historical_faction_epic',
+  'mythic_hero_quest',
+  'folk_supernatural_investigation',
+  'survival_expedition',
+  'conspiracy_puzzle_thriller',
+  'courtroom_case_procedural',
+  'team_heist_operation',
+  'tragic_romance_choice',
+  'family_saga_generations',
+  'road_companion_quest',
+  'war_strategy_campaign',
+  'folk_satirical_comedy',
+]);
+
+export const CulturalStorySourceKindSchema = z.enum([
+  'myth',
+  'folk_legend',
+  'historical_event',
+  'historical_figure',
+  'local_anecdote',
+  'classic_literature',
+  'heritage_memory',
+  'user_original',
 ]);
 
 const RecommendedNarrativePatternSchema = z.object({
@@ -2975,6 +3002,11 @@ export const StoryGenerateRequestSchema = z.object({
     payload_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   }).strict().optional(),
   narrative_pattern_ids: z.array(NarrativePatternIdSchema).max(6).optional(),
+  cultural_source_kinds: z.array(CulturalStorySourceKindSchema)
+    .min(1)
+    .max(4)
+    .refine(uniqueReferenceIds, 'cultural_source_kinds must be unique')
+    .optional(),
   reference_strength: ReferenceStrengthSchema.optional(),
   genre_strictness: GenreStrictnessSchema.optional().default('balanced'),
   auto_repair: z.boolean().optional().default(false),

@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
 import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
 import { buildStoryBlueprint } from '../services/story-blueprint-service.js';
+import { buildStoryGenreComposition } from '../services/story-genre-composition-service.js';
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
 import { buildProductionMaterialReadinessReport } from '../services/production-material-readiness-service.js';
@@ -465,6 +466,47 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('无限流任务生存（用户强化');
     expect(pkg.user_prompt).toContain('凡人流成长（用户强化');
     expect(pkg.output_contract.should_respect.join('\n')).toContain('无限流任务生存');
+  });
+
+  it('injects cultural source and originality boundaries for composed genres', () => {
+    const entry = makeEntry();
+    const genreComposition = buildStoryGenreComposition({
+      entry,
+      videoType: 'historical_drama',
+      truthMode: 'inspired_by_material',
+      requestedSourceKinds: ['historical_figure', 'folk_legend'],
+      narrativePatternIds: ['fair_play_detective', 'historical_faction_epic'],
+    });
+    const storyBlueprint = buildStoryBlueprint({
+      entry,
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      storyStructure: 'three_act_drama',
+      targetDuration: '3分钟',
+      narrativePatternIds: genreComposition.narrative_pattern_ids,
+      genreComposition,
+    });
+    const pkg = buildStoryGenerationPromptPackage({
+      entry,
+      request: {
+        entry_name: entry.name,
+        video_type: 'historical_drama',
+        cultural_source_kinds: ['historical_figure', 'folk_legend'],
+        narrative_pattern_ids: ['fair_play_detective', 'historical_faction_epic'],
+      },
+      videoType: 'historical_drama',
+      presentationStyle: 'cinematic',
+      storyStructure: 'three_act_drama',
+      targetDuration: '3分钟',
+      tone: '',
+      storyBlueprint,
+    });
+
+    expect(pkg.user_prompt).toContain('=== 题材源 × 原创叙事类型 ===');
+    expect(pkg.user_prompt).toContain('历史人物');
+    expect(pkg.user_prompt).toContain('民间传说');
+    expect(pkg.user_prompt).toContain('公平线索推理');
+    expect(pkg.user_prompt).toContain('不得复用受保护作品的专有角色、标志性世界设定、独特情节序列、代表性台词或可识别文风');
   });
 
   it('auto-selects production material packs by video type only', () => {
