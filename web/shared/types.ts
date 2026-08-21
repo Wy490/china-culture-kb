@@ -2869,6 +2869,27 @@ export interface ProjectExternalEvidenceSourceStorySyncReceipt {
   source_story_sync_grants_external_evidence_credit: false;
 }
 
+export interface ProjectExternalEvidenceSourceStorySyncHealthReport {
+  schema_version: 'project-external-evidence-source-story-sync-health/v1';
+  project_id: string;
+  story_id: string;
+  status: 'consistent' | 'recovery_required' | 'source_story_absent' | 'blocked';
+  machine_read_only: true;
+  recovery_required: boolean;
+  automatic_recovery_safe: boolean;
+  source_story_update_required: boolean;
+  source_story_overwritten: false;
+  external_evidence_credit_granted: false;
+  project_candidate_count: number;
+  source_candidate_count: number;
+  project_verification_event_count: number;
+  source_verification_event_count: number;
+  project_verification_head_sha256: string | null;
+  source_verification_head_sha256: string | null;
+  reason?: string;
+  recommended_action: 'none' | 'replay_last_external_evidence_operation' | 'restore_source_story_or_keep_project_only' | 'investigate_ledger_divergence';
+}
+
 export interface ProjectExternalEvidenceCandidateImportResult {
   schema_version: 'project-external-evidence-candidate-import/v1';
   project_id: string;

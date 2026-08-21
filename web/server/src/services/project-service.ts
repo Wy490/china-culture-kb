@@ -114,6 +114,7 @@ import type {
   ProjectExternalEvidenceLedger,
   ProjectExternalEvidenceReviewer,
   ProjectExternalEvidenceSourceStorySyncReceipt,
+  ProjectExternalEvidenceSourceStorySyncHealthReport,
   ProjectExternalEvidenceType,
   ProjectExternalEvidenceUploadMetadata,
   ProjectExternalEvidenceUploadResult,
@@ -338,6 +339,7 @@ import {
   type ExternalEvidenceHttpsRetrievalResult,
 } from './external-evidence-https-retrieval-service.js';
 import {
+  inspectProjectExternalEvidenceSourceStorySync,
   ProjectExternalEvidenceSourceStorySyncError,
   synchronizeProjectExternalEvidenceSourceStory,
 } from './project-source-story-sync-service.js';
@@ -2194,6 +2196,23 @@ export async function getProject(projectId: string): Promise<ApiResponse<StoryPr
     current_story: currentStory,
     versions: versions.map(toVersionSummary),
   });
+}
+
+export async function getProjectExternalEvidenceSourceStorySyncHealth(
+  projectId: string,
+): Promise<ApiResponse<ProjectExternalEvidenceSourceStorySyncHealthReport>> {
+  const detail = await getProject(projectId);
+  if (!detail.ok || !detail.data) {
+    return fail(
+      ErrorCodes.STORY_NOT_FOUND,
+      detail.error?.message ?? `Project "${projectId}" not found`,
+      detail.error?.details,
+    );
+  }
+  return success(await inspectProjectExternalEvidenceSourceStorySync({
+    projectId,
+    projectStory: detail.data.current_story,
+  }));
 }
 
 export async function updateProjectSeedanceAssetLibrary(

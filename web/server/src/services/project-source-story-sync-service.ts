@@ -4,6 +4,7 @@ import type {
   ProjectExternalEvidenceCandidate,
   ProjectExternalEvidenceLedger,
   ProjectExternalEvidenceSourceStorySyncReceipt,
+  ProjectExternalEvidenceSourceStorySyncHealthReport,
   ProjectExternalEvidenceVerificationEvent,
   StoryGenerateResult,
 } from '@shared/types.js';
@@ -212,6 +213,138 @@ function syncError(input: {
       reason: input.reason,
     },
   );
+}
+
+function syncHealthReport(input: {
+  projectId: string;
+  storyId: string;
+  status: ProjectExternalEvidenceSourceStorySyncHealthReport['status'];
+  projectLedger?: ProjectExternalEvidenceLedger;
+  sourceLedger?: ProjectExternalEvidenceLedger;
+  reason?: string;
+}): ProjectExternalEvidenceSourceStorySyncHealthReport {
+  const recoveryRequired = input.status === 'recovery_required';
+  const recommendedAction: ProjectExternalEvidenceSourceStorySyncHealthReport['recommended_action'] =
+    input.status === 'recovery_required'
+      ? 'replay_last_external_evidence_operation'
+      : input.status === 'source_story_absent'
+        ? 'restore_source_story_or_keep_project_only'
+        : input.status === 'blocked'
+          ? 'investigate_ledger_divergence'
+          : 'none';
+  return {
+    schema_version: 'project-external-evidence-source-story-sync-health/v1',
+    project_id: input.projectId,
+    story_id: input.storyId,
+    status: input.status,
+    machine_read_only: true,
+    recovery_required: recoveryRequired,
+    automatic_recovery_safe: recoveryRequired,
+    source_story_update_required: recoveryRequired,
+    source_story_overwritten: false,
+    external_evidence_credit_granted: false,
+    project_candidate_count: input.projectLedger?.items.length ?? 0,
+    source_candidate_count: input.sourceLedger?.items.length ?? 0,
+    project_verification_event_count: input.projectLedger?.verification_events.length ?? 0,
+    source_verification_event_count: input.sourceLedger?.verification_events.length ?? 0,
+    project_verification_head_sha256: input.projectLedger?.verification_head_sha256 ?? null,
+    source_verification_head_sha256: input.sourceLedger?.verification_head_sha256 ?? null,
+    reason: input.reason,
+    recommended_action: recommendedAction,
+  };
+}
+
+export async function inspectProjectExternalEvidenceSourceStorySync(input: {
+  projectId: string;
+  projectStory: StoryGenerateResult;
+}): Promise<ProjectExternalEvidenceSourceStorySyncHealthReport> {
+  const { projectId, projectStory } = input;
+  const base = {
+    projectId,
+    storyId: projectStory.storyId,
+    projectLedger: projectStory.external_evidence_ledger,
+  };
+  const repository = new FileStoryRepository(resolve(storyGeneratedRoot(), 'stories'), {
+    video_types: [projectStory.video_type],
+  });
+  let sourceDocument;
+  try {
+    sourceDocument = await repository.read(projectStory.storyId, [projectStory.video_type]);
+  } catch {
+    return syncHealthReport({ ...base, status: 'blocked', reason: 'source_story_unreadable' });
+  }
+  if (!sourceDocument) {
+    return syncHealthReport({ ...base, status: 'source_story_absent' });
+  }
+
+  const sourceStory = sourceDocument.story as StoredStoryFile;
+  const sourceLedger = sourceStory.external_evidence_ledger;
+  try {
+    if (projectStory.external_evidence_ledger) {
+      const events = verifiedEvents(projectStory.external_evidence_ledger);
+      if (!ledgerMatchesStoryContext({
+        ledger: projectStory.external_evidence_ledger,
+        events,
+        projectId,
+        storyId: projectStory.storyId,
+      })) {
+        throw new ExternalEvidenceVerificationAuditIntegrityError(
+          'Project external evidence ledger is not coherent with the project story',
+        );
+      }
+    }
+    if (sourceLedger) {
+      const events = verifiedEvents(sourceLedger);
+      if (!ledgerMatchesStoryContext({
+        ledger: sourceLedger,
+        events,
+        projectId,
+        storyId: projectStory.storyId,
+      })) {
+        throw new ExternalEvidenceVerificationAuditIntegrityError(
+          'Source story external evidence ledger is not coherent with the project story',
+        );
+      }
+    }
+  } catch (error) {
+    return syncHealthReport({
+      ...base,
+      sourceLedger,
+      status: 'blocked',
+      reason: error instanceof ExternalEvidenceVerificationAuditIntegrityError
+        ? 'verification_audit_invalid'
+        : 'verification_audit_unreadable',
+    });
+  }
+
+  if (
+    canonicalJson(externalEvidenceProjection(projectStory))
+      === canonicalJson(externalEvidenceProjection(sourceStory))
+    || (!projectStory.external_evidence_ledger && !sourceLedger)
+  ) {
+    return syncHealthReport({ ...base, sourceLedger, status: 'consistent' });
+  }
+  try {
+    if (!projectExplainsSource({
+      projectLedger: projectStory.external_evidence_ledger,
+      sourceLedger,
+    })) {
+      return syncHealthReport({
+        ...base,
+        sourceLedger,
+        status: 'blocked',
+        reason: 'source_story_is_ahead_or_forked',
+      });
+    }
+  } catch {
+    return syncHealthReport({
+      ...base,
+      sourceLedger,
+      status: 'blocked',
+      reason: 'verification_audit_invalid',
+    });
+  }
+  return syncHealthReport({ ...base, sourceLedger, status: 'recovery_required' });
 }
 
 export async function synchronizeProjectExternalEvidenceSourceStory(input: {

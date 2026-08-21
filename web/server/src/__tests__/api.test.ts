@@ -9235,6 +9235,35 @@ describe('Projects API', () => {
   });
 
   describe('GET /api/projects/:projectId/production-readiness', () => {
+    it('exposes read-only project/source external evidence sync health', async () => {
+      const story: StoryGenerateResult = {
+        ...makeApiStory(),
+        storyId: '20260821-story-evidencehealthapi',
+        title: 'API 外部证据同步健康测试',
+      };
+      const enriched = await createProjectFromGeneratedStory(story, '2026-08-21T14:50:00.000Z');
+
+      const res = await request.get(
+        `/api/projects/${enriched.project_id}/production-readiness/external-evidence-sync-health`,
+      );
+
+      expect(res.status).toBe(200);
+      expectSuccess(res.body);
+      expect(res.body.data).toMatchObject({
+        schema_version: 'project-external-evidence-source-story-sync-health/v1',
+        project_id: enriched.project_id,
+        story_id: story.storyId,
+        status: 'source_story_absent',
+        machine_read_only: true,
+        recovery_required: false,
+        automatic_recovery_safe: false,
+        source_story_update_required: false,
+        source_story_overwritten: false,
+        external_evidence_credit_granted: false,
+        recommended_action: 'restore_source_story_or_keep_project_only',
+      });
+    });
+
     it('returns the single-story production readiness command report through the route', async () => {
       const story = makeApiProductionRepairStory();
       const enriched = await createProjectFromGeneratedStory(story, '2026-06-17T10:30:00.000Z');

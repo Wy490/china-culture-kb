@@ -77,6 +77,7 @@ import {
   getProject,
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
+  getProjectExternalEvidenceSourceStorySyncHealth,
   getProjectProductionReadiness,
   getProjectProductionBoard,
   acceptProjectLocalGearsArtifacts,
@@ -583,6 +584,20 @@ projectsRouter.get('/:projectId/production-readiness', validateParams(ProjectIdP
     next(err);
   }
 });
+
+projectsRouter.get(
+  '/:projectId/production-readiness/external-evidence-sync-health',
+  validateParams(ProjectIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { projectId } = req.params as { projectId: string };
+      const result = await getProjectExternalEvidenceSourceStorySyncHealth(projectId);
+      res.status(result.ok ? 200 : 404).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 projectsRouter.post(
   '/:projectId/production-readiness/external-evidence-candidates',

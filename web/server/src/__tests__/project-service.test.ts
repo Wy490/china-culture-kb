@@ -33,6 +33,7 @@ import {
   exportProjectProductionBoard,
   exportProjectSeedanceRetryPackage,
   getProject,
+  getProjectExternalEvidenceSourceStorySyncHealth,
   getProjectSeedanceProviderQueueOverview,
   getProjectSeedanceProviderRetryPlan,
   getProjectProductionBoard,
@@ -6752,6 +6753,20 @@ describe('project-service', () => {
     expect(afterImportCrash.data?.current_story.external_evidence_ledger?.items).toHaveLength(1);
     const sourceAfterImportCrash = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(sourceAfterImportCrash.external_evidence_ledger).toBeUndefined();
+    const importCrashHealth = await getProjectExternalEvidenceSourceStorySyncHealth(enriched.project_id!);
+    expect(importCrashHealth.data).toMatchObject({
+      schema_version: 'project-external-evidence-source-story-sync-health/v1',
+      status: 'recovery_required',
+      machine_read_only: true,
+      recovery_required: true,
+      automatic_recovery_safe: true,
+      source_story_update_required: true,
+      source_story_overwritten: false,
+      external_evidence_credit_granted: false,
+      project_candidate_count: 1,
+      source_candidate_count: 0,
+      recommended_action: 'replay_last_external_evidence_operation',
+    });
 
     const recoveredImport = await importProjectExternalEvidenceCandidate(enriched.project_id!, importRequest);
     expect(recoveredImport.ok).toBe(true);
@@ -6769,6 +6784,14 @@ describe('project-service', () => {
     const sourceAfterImportRecovery = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(sourceAfterImportRecovery.external_evidence_ledger)
       .toEqual(recoveredImport.data?.detail.current_story.external_evidence_ledger);
+    expect((await getProjectExternalEvidenceSourceStorySyncHealth(enriched.project_id!)).data)
+      .toMatchObject({
+        status: 'consistent',
+        recovery_required: false,
+        automatic_recovery_safe: false,
+        source_story_update_required: false,
+        recommended_action: 'none',
+      });
 
     const artifactPath = resolve(
       root,
@@ -6855,6 +6878,17 @@ describe('project-service', () => {
     const sourceAfterForkRejection = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
     expect(sourceAfterForkRejection.external_evidence_ledger?.items)
       .toContainEqual(expect.objectContaining({ evidence_id: 'source-only-fork' }));
+    expect((await getProjectExternalEvidenceSourceStorySyncHealth(enriched.project_id!)).data)
+      .toMatchObject({
+        status: 'blocked',
+        recovery_required: false,
+        automatic_recovery_safe: false,
+        source_story_update_required: false,
+        source_story_overwritten: false,
+        external_evidence_credit_granted: false,
+        reason: 'verification_audit_invalid',
+        recommended_action: 'investigate_ledger_divergence',
+      });
   });
 
   it('stores uploaded external evidence by server-computed hash and imports only a pending candidate', async () => {
