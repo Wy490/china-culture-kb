@@ -1145,9 +1145,10 @@ function buildLiuHaiLegendArc(input: {
   videoType: VideoType;
   perSceneDuration: number;
 }): StoryScene[] | undefined {
-  if (input.videoType !== 'legend_story') return undefined;
   const sourceText = [input.entry.name, input.entry.summary, input.entry.story, input.entry.keywords.join(' ')].join('\n');
   if (!/刘海砍樵/.test(sourceText) || !/胡大姐|狐仙/.test(sourceText)) return undefined;
+  if (input.videoType === 'ai_comic_drama') return buildLiuHaiAiComicArc(input);
+  if (input.videoType !== 'legend_story') return undefined;
 
   const sourceEntries = [input.entry.name];
   const makeScene = (
@@ -1240,6 +1241,106 @@ function buildLiuHaiLegendArc(input: {
       dialogue_or_narration: '旁白：故事留下来，不只因为有狐仙，更因为凡人在压力前作出了选择。',
       factual_basis: '依据条目关于常德武陵传说流传及长沙花鼓戏加工传播的记载。',
       fictionalized_elements: ['舞台与山路叠化为影视化收束；未引用未经授权的经典唱词。'],
+    }, 4),
+  ];
+}
+
+function buildLiuHaiAiComicArc(input: {
+  entry: EntryDetail;
+  perSceneDuration: number;
+}): StoryScene[] {
+  const sourceEntries = [input.entry.name];
+  const makeScene = (
+    scene: Omit<StoryScene, 'scene_id' | 'duration_sec' | 'source_entries'>,
+    index: number,
+  ): StoryScene => ({
+    ...scene,
+    scene_id: index + 1,
+    duration_sec: input.perSceneDuration,
+    source_entries: sourceEntries,
+  });
+  const sharedBoundary = '刘海与胡大姐、狐仙身份和经历考验来自民间传说；乡邻追赶、受伤孩子、柴刀和脚步声是用于漫剧关系冲突的明确虚构。';
+
+  return [
+    makeScene({
+      title: '雷光里的狐影',
+      location: '武陵山居柴门前',
+      time_of_day: '雨夜',
+      dramatic_function: '钩子开场',
+      plot: '雷光劈亮柴门，胡大姐的影子在墙上短暂变成狐形。刘海刚抬起柴刀，胡大姐却转身护住台阶下受伤的孩子；刀锋停在两人之间，乡邻的火把已经逼近。',
+      key_action: '刘海抬起柴刀又停住，胡大姐俯身护住受伤孩子',
+      characters: ['刘海', '胡大姐', '受伤孩子'],
+      visual_prompt: '竖屏漫画分镜，雨夜柴门；前景是停在半空的柴刀，中景是护住孩子的胡大姐，后景是雷光狐影与逼近火把，形成三层纵深',
+      camera_suggestion: '狐影特写切柴刀停顿，再急推胡大姐护住孩子的动作和刘海震动的眼神',
+      cultural_note: sharedBoundary,
+      conflict: '狐仙身份引发本能戒备，但胡大姐保护孩子的行动与乡邻指控正面冲突',
+      dialogue_or_narration: '刘海：“影子可以骗人，眼前这双手呢？”',
+      factual_basis: '依据条目关于胡大姐狐仙身份显露、刘海与她经历考验的民间传说梗概。',
+      fictionalized_elements: ['雷光显影、受伤孩子和柴刀停顿为漫剧钩子设计。'],
+    }, 0),
+    makeScene({
+      title: '她先扶起孩子',
+      location: '武陵山居檐下',
+      time_of_day: '雨夜',
+      dramatic_function: '人物登场',
+      plot: '胡大姐没有为自己辩解，先撕下一截衣带替孩子包住手臂，再把孩子扶起。刘海蹲下按住被风吹散的布条，两人第一次在狐影之后并肩完成同一个动作。',
+      key_action: '胡大姐包扎伤口并扶起孩子，刘海蹲下按住布条配合她',
+      characters: ['刘海', '胡大姐', '受伤孩子'],
+      visual_prompt: '檐下雨线、包扎衣带、两双同时伸向孩子的手，狐影退到背景，刘海与胡大姐近景对切',
+      camera_suggestion: '手部动作三连格：撕衣带、按住布条、扶起孩子，再切两人短暂对视',
+      cultural_note: sharedBoundary,
+      conflict: '刘海仍怀疑胡大姐的身份，却必须判断她刚刚付诸行动的善意是否可信',
+      dialogue_or_narration: '胡大姐低声说：“先让孩子站起来。我的事，等雨停再问。”',
+      factual_basis: '人物关系来自民间传说；救助动作属于为外化信任而新增的虚构场面。',
+      fictionalized_elements: ['受伤与包扎动作均为有限虚构，不对应真实地方事件。'],
+    }, 1),
+    makeScene({
+      title: '火把逼到门前',
+      location: '武陵山居柴门前',
+      time_of_day: '雨夜',
+      dramatic_function: '冲突爆发',
+      plot: '乡邻堵住柴门，逼刘海交出胡大姐。领头人指着墙上狐影质问，胡大姐把孩子推到刘海身后，自己退到火把前；刘海若沉默，两人的信任会在这一刻被人群改写。',
+      key_action: '乡邻举火把封住柴门，胡大姐护送孩子退到刘海身后',
+      characters: ['刘海', '胡大姐', '乡邻', '受伤孩子'],
+      visual_prompt: '竖屏窄门构图，前景火把与乡邻，中景独自迎上的胡大姐，后景护住孩子的刘海，墙面残留狐影',
+      camera_suggestion: '火把逐格压近，切胡大姐前移、孩子后退、刘海握刀的关系站位变化',
+      cultural_note: sharedBoundary,
+      conflict: '乡邻以狐影逼迫交人 vs 刘海亲眼看见胡大姐保护孩子并必须公开表态',
+      dialogue_or_narration: '乡邻：“你信一只狐影，还是信我们？”刘海没有回答，手却慢慢离开刀柄。',
+      factual_basis: '“经历考验”来自传说概述；围门逼迫和对白均为漫剧化虚构。',
+      fictionalized_elements: ['乡邻群体、领头人质问与关系站位为冲突外化。'],
+    }, 2),
+    makeScene({
+      title: '柴刀入鞘',
+      location: '武陵山居柴门前',
+      time_of_day: '雨夜将尽',
+      dramatic_function: '反转/觉醒',
+      plot: '刘海选择收起柴刀，推开挡在胡大姐面前的火把，站到她身边。他没有替神异身份作证，只把刚才共同救下孩子的行动说给众人听；胡大姐从独自迎敌变成与他并肩。',
+      key_action: '刘海选择收起柴刀、推开火把，站到胡大姐身边护住她与孩子',
+      characters: ['刘海', '胡大姐', '乡邻', '受伤孩子'],
+      visual_prompt: '柴刀入鞘特写，刘海手背推开火把后横移到胡大姐身旁，两人和孩子同框，乡邻表情错愕',
+      camera_suggestion: '柴刀入鞘慢格接推开火把的快速动作，以并肩站位完成关系反转',
+      cultural_note: sharedBoundary,
+      conflict: '顺从人群即可避险 vs 依据亲眼所见保护胡大姐并承担被排斥的后果',
+      dialogue_or_narration: '刘海：“我不替传说作证。我只为我亲眼看见的选择负责。”',
+      factual_basis: '刘海与胡大姐共同经历考验来自条目；具体选择动作是影视化补足。',
+      fictionalized_elements: ['收刀、推火把与台词为表现关系选择的漫剧原创。'],
+    }, 3),
+    makeScene({
+      title: '门外还有谁',
+      location: '武陵山居柴门内外',
+      time_of_day: '拂晓',
+      dramatic_function: '高燃收束',
+      plot: '孩子被家人接走，乡邻的火把停在门外，刘海与胡大姐暂时守住彼此。两人刚把柴门合到一半，门外又响起一串不属于乡邻的脚步声；狐影从门缝掠过，新的考验已经找到他们。',
+      key_action: '刘海与胡大姐共同合上柴门，听见陌生脚步后同时回头',
+      characters: ['刘海', '胡大姐'],
+      visual_prompt: '拂晓门缝、两人共同推门的手、门外停住的火把与掠过的狐影，最后一格两人同时回头看向画外',
+      camera_suggestion: '合门动作完成阶段结果，以门外脚步声打断；最后定格两人同向回头的表情',
+      cultural_note: sharedBoundary,
+      conflict: '本集关系选择已经兑现，但陌生脚步把神异身份的更大风险带到下一集',
+      dialogue_or_narration: '胡大姐：“这脚步，不是他们的。”',
+      factual_basis: '共同经历考验来自民间传说；陌生脚步是可承接的虚构集末钩子。',
+      fictionalized_elements: ['阶段性解围、陌生来者与集末狐影为系列化改编。'],
     }, 4),
   ];
 }

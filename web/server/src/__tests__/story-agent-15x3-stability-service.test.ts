@@ -177,6 +177,7 @@ describe('Story Agent 15x3 stability matrix', () => {
         item => item.matrix_item.machine_evaluation.production_material_ready,
       ).length,
     );
+    expect(first.data?.machine_evaluation.production_material_ready_count).toBe(33);
     expect(first.data?.machine_evaluation.story_quality_passed_count)
       .toBeGreaterThan(first.data?.machine_evaluation.quality_passed_count ?? 0);
     expect(first.data?.machine_evaluation.production_material_ready_count)
@@ -187,7 +188,10 @@ describe('Story Agent 15x3 stability matrix', () => {
       && slice.production_material_ready_count
         >= slice.production_ready_count
     ))).toBe(true);
-    expect(first.data?.machine_evaluation.status).toBe('passed');
+    expect(
+      first.data?.machine_evaluation.status,
+      JSON.stringify(first.data?.machine_evaluation, null, 2),
+    ).toBe('passed');
     expect(first.data?.machine_evaluation.story_quality_passed_count).toBe(45);
     expect(first.data?.machine_evaluation.invariants.every_story_quality_passed).toBe(true);
     expect(first.data?.machine_evaluation.failed_invariants).toEqual([]);
@@ -205,9 +209,8 @@ describe('Story Agent 15x3 stability matrix', () => {
     );
     expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts)
       .toEqual(expectedOpenRepairTargetCounts);
-    expect(Object.keys(
-      first.data?.machine_evaluation.failure_clusters.weak_pattern_signal_counts ?? {},
-    ).length).toBeGreaterThan(0);
+    expect(first.data?.machine_evaluation.failure_clusters.weak_pattern_signal_counts)
+      .toEqual({});
     const adaptationItems = first.data?.items.filter(item => (
       item.variant_id === 'adaptation_or_compact'
       && item.input_profile.adaptation_input
@@ -218,7 +221,9 @@ describe('Story Agent 15x3 stability matrix', () => {
       weak: item.matrix_item.machine_evaluation.weak_pattern_signal_labels,
     })).filter(item => item.weak.length > 0)).toEqual([]);
     expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts.pattern ?? 0)
-      .toBeLessThanOrEqual(6);
+      .toBe(0);
+    expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts.production_material)
+      .toBe(12);
     expect(first.data?.machine_evaluation.failure_clusters.gears_issue_counts)
       .toEqual(expect.any(Object));
     expect(first.data?.items.every(item => (

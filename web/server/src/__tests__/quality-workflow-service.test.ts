@@ -3,6 +3,8 @@ import type { ProductionMaterialReadinessReport, StoryGenerateResult, StoryQuali
 import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 import { buildGearsDeliveryPackage } from '../services/gears-delivery-service.js';
 import { generateDramaticContent } from '../services/dramatic-story.js';
+import { getProductionMaterialPack } from '../services/production-material-pack-service.js';
+import { refreshStoryProductionMaterialReadiness } from '../services/production-material-readiness-service.js';
 import { enrichStoryQualityReport } from '../services/quality-workflow-service.js';
 
 function makeBaseReport(): StoryQualityReport {
@@ -1530,6 +1532,65 @@ describe('quality-workflow-service', () => {
       '章节切片改编：单集闭环',
       '角色弧线改编：弧线不是口号',
     ]));
+  });
+
+  it('requires a concrete relationship collision and visible choice for Liu Hai AI comic drama', () => {
+    const generated = generateDramaticContent({
+      entry: {
+        name: '刘海砍樵——人仙之恋的湖南民间传说',
+        province: '湖南',
+        region: '常德',
+        type: '民间故事',
+        summary: '刘海与狐仙胡大姐相识相恋并共同经历考验。',
+        story: '相传刘海在武陵山路砍樵时遇见胡大姐。胡大姐狐仙身份显露后，两人经历乡邻阻拦等考验。故事经花鼓戏改编流传。',
+        culturalSignificance: '民间故事借人仙关系表达信任、选择与共同承担。',
+        relatedLocations: [{ name: '武陵山路', description: '传说叙事空间，具体地点待核。' }],
+        keywords: ['刘海砍樵', '刘海', '胡大姐', '狐仙', '花鼓戏'],
+        sources: ['地方文化资料'],
+        credibility: '传说类材料',
+        unverifiedPoints: ['具体神异情节不可写成可考史实'],
+      },
+      centralEvent: '刘海识破胡大姐神异身份',
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      targetDuration: '1分钟',
+      tone: '紧张克制',
+    });
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      ...generated,
+      storyId: 'liu-hai-ai-comic-observable-choice',
+      generation_type: 'character_story',
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      source_entry: '刘海砍樵——人仙之恋的湖南民间传说',
+      story_structure: 'single_event_drama',
+      production_material_pack: getProductionMaterialPack('ai_comic_drama'),
+    };
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+      narrativePatternIds: ['platform_short_drama_hook', 'hero_choice'],
+    });
+    const weakLabels = report.pattern_quality_report?.weak_signals.map(signal => signal.label) ?? [];
+    const satisfied = report.pattern_quality_report?.satisfied_signals ?? [];
+    const productionReadiness = refreshStoryProductionMaterialReadiness(story);
+
+    expect(weakLabels).not.toEqual(expect.arrayContaining([
+      '平台短剧钩子：关系冲突强',
+      '人物高光选择：行动具体',
+    ]));
+    expect(story.scene_breakdown.some(scene => (
+      scene.characters?.includes('刘海')
+      && scene.characters.includes('胡大姐')
+      && Boolean(scene.conflict)
+    ))).toBe(true);
+    for (const label of ['平台短剧钩子：关系冲突强', '人物高光选择：行动具体']) {
+      const signal = satisfied.find(item => item.label === label);
+      expect(signal?.evidence_scene_ids.length).toBeGreaterThan(0);
+      expect(signal?.confidence).toBeGreaterThanOrEqual(0.82);
+    }
+    expect(productionReadiness?.available_fields).toContain('shot_prompt_layers');
   });
 
   it('recognizes a legend contract only when supernatural imagery drives a costly human choice and transmission ending', () => {

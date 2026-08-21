@@ -804,7 +804,7 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
       && causalActionScene.scene_id < consequenceScene.scene_id,
     );
 
-    if (/时代压力可见|必须有时代压力/.test(signal)) {
+    if (/时代压力可见|制度压力可见|必须有时代压力/.test(signal)) {
       return pressureScene && choiceScene ? [pressureScene.scene_id, choiceScene.scene_id] : [];
     }
     if (/事件因果清楚|必须有事件因果|因果链清楚/.test(signal)) {
@@ -954,6 +954,13 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
     }
     if (/物件意义有变化/.test(signal)) {
       return motifChangesMeaning ? motifScenes.map(scene => scene.scene_id) : [];
+    }
+    if (/古今连接自然/.test(signal)) {
+      return repeatedMotif
+        && transmissionEnding
+        && sceneText(last).includes(repeatedMotif)
+        ? uniqueNumbers([...motifScenes.map(scene => scene.scene_id), last.scene_id])
+        : [];
     }
   }
 
