@@ -1,6 +1,6 @@
 {
   "schema_version": "story-agent-writing-capability-m4-machine-evaluation-baseline/v1",
-  "generated_at": "2026-08-15T03:21:24.452Z",
+  "generated_at": "2026-08-21T14:22:03.488Z",
   "status": "passed",
   "source": {
     "schema_version": "story-agent-15x3-stability-matrix/v1",
@@ -58,10 +58,10 @@
     "repair_applied_case_count": 0,
     "total_repair_attempt_count": 0,
     "total_repair_applied_count": 0,
-    "total_open_repair_action_count": 23,
+    "total_open_repair_action_count": 18,
     "average_genre_score": 90.09,
     "average_outline_coverage_score": 100,
-    "average_pattern_quality_score": 93.44,
+    "average_pattern_quality_score": 95.07,
     "average_gears_readiness_score": 100,
     "average_professional_candidate_score": 96.73,
     "metric_contract": {
@@ -91,25 +91,13 @@
       },
       "open_repair_target_counts": {
         "production_material": 12,
-        "pattern": 11
+        "pattern": 6
       },
       "weak_pattern_signal_counts": {
-        "主题保真改编：主题不漂移": 4,
-        "主题保真改编：删改不伤主旨": 4,
-        "主题保真改编：情绪底色一致": 4,
-        "小说场景压缩：不新增抢戏支线": 3,
-        "小说场景压缩：删改理由清楚": 3,
-        "角色弧线改编：弧线不是口号": 3,
         "人物高光选择：行动具体": 2,
         "历史因果讲述：制度压力可见": 2,
         "平台短剧钩子：关系冲突强": 2,
-        "物件线索旅程：古今连接自然": 2,
-        "人物目标清楚": 1,
-        "原作保真改编：人物不丢失": 1,
-        "原作保真改编：关系不改写": 1,
-        "因果清楚": 1,
-        "必须有主角目标": 1,
-        "章节切片改编：单集闭环": 1
+        "物件线索旅程：古今连接自然": 2
       },
       "gears_issue_counts": {}
     },
@@ -170,10 +158,10 @@
         "shootability_ready_count": 15,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 9,
+        "total_open_repair_action_count": 4,
         "average_genre_score": 87.07,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 89.4,
+        "average_pattern_quality_score": 94.27,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 96.73
       }
@@ -193,10 +181,10 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 1,
+        "total_open_repair_action_count": 0,
         "average_genre_score": 92.67,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 91,
+        "average_pattern_quality_score": 96.67,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 97
       },
@@ -214,10 +202,10 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 3,
+        "total_open_repair_action_count": 2,
         "average_genre_score": 86.67,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 86.33,
+        "average_pattern_quality_score": 92,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 98
       },
@@ -235,10 +223,10 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 3,
+        "total_open_repair_action_count": 2,
         "average_genre_score": 86.67,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 87.33,
+        "average_pattern_quality_score": 92,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 97
       },
@@ -256,10 +244,10 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 1,
+        "total_open_repair_action_count": 0,
         "average_genre_score": 84.67,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 87.67,
+        "average_pattern_quality_score": 93.33,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 97
       },
@@ -277,10 +265,10 @@
         "shootability_ready_count": 3,
         "repair_attempted_case_count": 0,
         "repair_applied_case_count": 0,
-        "total_open_repair_action_count": 3,
+        "total_open_repair_action_count": 2,
         "average_genre_score": 84.67,
         "average_outline_coverage_score": 100,
-        "average_pattern_quality_score": 85.33,
+        "average_pattern_quality_score": 88,
         "average_gears_readiness_score": 100,
         "average_professional_candidate_score": 97
       },
@@ -614,29 +602,18 @@
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
         "outline_coverage_score": 100,
-        "pattern_quality_score": 73,
+        "pattern_quality_score": 90,
         "gears_readiness_score": 100,
         "professional_candidate_score": 97,
         "quality_issue_count": 5,
-        "open_repair_action_count": 1,
+        "open_repair_action_count": 0,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
           "asset_gate",
           "external_provider_gate"
         ],
-        "open_repair_targets": [
-          "pattern"
-        ],
-        "weak_pattern_signal_labels": [
-          "小说场景压缩：删改理由清楚",
-          "小说场景压缩：不新增抢戏支线",
-          "主题保真改编：主题不漂移",
-          "主题保真改编：删改不伤主旨",
-          "主题保真改编：情绪底色一致",
-          "角色弧线改编：弧线不是口号",
-          "人物目标清楚",
-          "必须有主角目标"
-        ],
+        "open_repair_targets": [],
+        "weak_pattern_signal_labels": [],
         "gears_issues": [],
         "repair_attempt_count": 0,
         "repair_applied_count": 0,
@@ -771,29 +748,18 @@
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
         "outline_coverage_score": 100,
-        "pattern_quality_score": 73,
+        "pattern_quality_score": 90,
         "gears_readiness_score": 100,
         "professional_candidate_score": 98,
         "quality_issue_count": 5,
-        "open_repair_action_count": 1,
+        "open_repair_action_count": 0,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
           "asset_gate",
           "external_provider_gate"
         ],
-        "open_repair_targets": [
-          "pattern"
-        ],
-        "weak_pattern_signal_labels": [
-          "原作保真改编：人物不丢失",
-          "原作保真改编：关系不改写",
-          "小说场景压缩：删改理由清楚",
-          "小说场景压缩：不新增抢戏支线",
-          "主题保真改编：主题不漂移",
-          "主题保真改编：删改不伤主旨",
-          "主题保真改编：情绪底色一致",
-          "角色弧线改编：弧线不是口号"
-        ],
+        "open_repair_targets": [],
+        "weak_pattern_signal_labels": [],
         "gears_issues": [],
         "repair_attempt_count": 0,
         "repair_applied_count": 0,
@@ -928,24 +894,18 @@
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
         "outline_coverage_score": 100,
-        "pattern_quality_score": 76,
+        "pattern_quality_score": 90,
         "gears_readiness_score": 100,
         "professional_candidate_score": 97,
         "quality_issue_count": 5,
-        "open_repair_action_count": 1,
+        "open_repair_action_count": 0,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
           "asset_gate",
           "external_provider_gate"
         ],
-        "open_repair_targets": [
-          "pattern"
-        ],
-        "weak_pattern_signal_labels": [
-          "主题保真改编：主题不漂移",
-          "主题保真改编：删改不伤主旨",
-          "主题保真改编：情绪底色一致"
-        ],
+        "open_repair_targets": [],
+        "weak_pattern_signal_labels": [],
         "gears_issues": [],
         "repair_attempt_count": 0,
         "repair_applied_count": 0,
@@ -1072,25 +1032,18 @@
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
         "outline_coverage_score": 100,
-        "pattern_quality_score": 73,
+        "pattern_quality_score": 90,
         "gears_readiness_score": 100,
         "professional_candidate_score": 97,
         "quality_issue_count": 5,
-        "open_repair_action_count": 1,
+        "open_repair_action_count": 0,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
           "asset_gate",
           "external_provider_gate"
         ],
-        "open_repair_targets": [
-          "pattern"
-        ],
-        "weak_pattern_signal_labels": [
-          "主题保真改编：主题不漂移",
-          "主题保真改编：删改不伤主旨",
-          "主题保真改编：情绪底色一致",
-          "因果清楚"
-        ],
+        "open_repair_targets": [],
+        "weak_pattern_signal_labels": [],
         "gears_issues": [],
         "repair_attempt_count": 0,
         "repair_applied_count": 0,
@@ -1227,25 +1180,18 @@
         "factual_cultural_gate_passed": true,
         "genre_score": 78,
         "outline_coverage_score": 100,
-        "pattern_quality_score": 82,
+        "pattern_quality_score": 90,
         "gears_readiness_score": 100,
         "professional_candidate_score": 97,
         "quality_issue_count": 5,
-        "open_repair_action_count": 1,
+        "open_repair_action_count": 0,
         "story_blocking_gate_ids": [],
         "production_blocking_gate_ids": [
           "asset_gate",
           "external_provider_gate"
         ],
-        "open_repair_targets": [
-          "pattern"
-        ],
-        "weak_pattern_signal_labels": [
-          "小说场景压缩：删改理由清楚",
-          "小说场景压缩：不新增抢戏支线",
-          "章节切片改编：单集闭环",
-          "角色弧线改编：弧线不是口号"
-        ],
+        "open_repair_targets": [],
+        "weak_pattern_signal_labels": [],
         "gears_issues": [],
         "repair_attempt_count": 0,
         "repair_applied_count": 0,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductionMaterialReadinessReport, StoryGenerateResult, StoryQualityReport } from '@shared/types.js';
+import { buildAdaptationAnalysis } from '../services/adaptation-analysis-service.js';
 import { buildGearsDeliveryPackage } from '../services/gears-delivery-service.js';
 import { generateDramaticContent } from '../services/dramatic-story.js';
 import { enrichStoryQualityReport } from '../services/quality-workflow-service.js';
@@ -1423,6 +1424,112 @@ describe('quality-workflow-service', () => {
       scope: 'scene',
       scene_ids: expect.any(Array),
     });
+  });
+
+  it('recognizes adaptation fidelity from source-bound characters, choices, consequences, and episode closure', () => {
+    const source = [
+      '雨夜，刘海发现胡大姐的影子在雷光里短暂变成狐形，手中的柴刀停在半空。',
+      '追来的村人逼他交人；胡大姐挡在受伤孩子前，刘海必须在怀疑与亲眼所见之间选择。',
+      '刘海放下柴刀护住胡大姐，门外却响起新的脚步声，神异身份引出下一场危机。',
+    ].join('\n\n');
+    const adaptationAnalysis = buildAdaptationAnalysis(source)!;
+    const generated = generateDramaticContent({
+      entry: {
+        name: '刘海砍樵——人仙之恋的湖南民间传说',
+        province: '湖南',
+        region: '常德',
+        type: '民间故事',
+        summary: '刘海与胡大姐的民间传说有多个流传版本。',
+        story: '刘海砍樵故事经民间讲述与花鼓戏改编流传，人物关系与具体情节存在不同版本。',
+        culturalSignificance: '传说以选择、信任与担当组织人仙关系。',
+        relatedLocations: [{ name: '武陵山路', description: '传说叙事空间，具体地点待核。' }],
+        keywords: ['刘海', '胡大姐', '刘海砍樵', '花鼓戏'],
+        sources: ['地方文化资料'],
+        credibility: '传说类材料',
+        unverifiedPoints: ['具体神异情节不可写成可考史实'],
+      },
+      centralEvent: '刘海识破胡大姐神异身份',
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      targetDuration: '3分钟',
+      tone: '紧张克制',
+      originalUserQuery: source,
+      adaptationAnalysis,
+    });
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      ...generated,
+      storyId: 'adaptation-observable-evidence',
+      generation_type: 'character_story',
+      video_type: 'ai_comic_drama',
+      presentation_style: 'ai_comic',
+      source_entry: '刘海砍樵——人仙之恋的湖南民间传说',
+      original_user_query: source,
+      adaptation_analysis: adaptationAnalysis,
+      story_structure: 'single_event_drama',
+    };
+
+    const report = enrichStoryQualityReport({
+      story,
+      qualityReport: makeBaseReport(),
+      narrativePatternIds: [
+        'novel_scene_compression',
+        'chapter_slice_adaptation',
+        'character_arc_adaptation',
+      ],
+    });
+    const weakLabels = report.pattern_quality_report?.weak_signals.map(signal => signal.label) ?? [];
+    const satisfied = report.pattern_quality_report?.satisfied_signals ?? [];
+
+    expect(weakLabels).not.toEqual(expect.arrayContaining([
+      '小说场景压缩：删改理由清楚',
+      '小说场景压缩：不新增抢戏支线',
+      '章节切片改编：单集闭环',
+      '角色弧线改编：弧线不是口号',
+    ]));
+    for (const label of [
+      '小说场景压缩：删改理由清楚',
+      '小说场景压缩：不新增抢戏支线',
+      '章节切片改编：单集闭环',
+      '角色弧线改编：弧线不是口号',
+    ]) {
+      const signal = satisfied.find(item => item.label === label);
+      expect(signal?.evidence_scene_ids.length).toBeGreaterThan(0);
+      expect(signal?.observable_evidence.join('\n')).not.toContain('质量标签');
+      expect(signal?.confidence).toBeGreaterThanOrEqual(0.82);
+    }
+
+    const metadataOnly: StoryGenerateResult = {
+      ...story,
+      scene_breakdown: story.scene_breakdown.map((scene, index) => ({
+        ...scene,
+        plot: `人物出现在一般场景 ${index + 1}，旁白概括背景。`,
+        key_action: '介绍背景',
+        conflict: undefined,
+        characters: [],
+        source_entries: [],
+        factual_basis: '',
+        cultural_note: '一般改编说明。',
+      })),
+      protagonist_arc: [],
+    };
+    const metadataOnlyReport = enrichStoryQualityReport({
+      story: metadataOnly,
+      qualityReport: makeBaseReport(),
+      narrativePatternIds: [
+        'novel_scene_compression',
+        'chapter_slice_adaptation',
+        'character_arc_adaptation',
+      ],
+    });
+    const metadataOnlySatisfied = metadataOnlyReport.pattern_quality_report?.satisfied_signals
+      .map(signal => signal.label) ?? [];
+    expect(metadataOnlySatisfied).not.toEqual(expect.arrayContaining([
+      '小说场景压缩：删改理由清楚',
+      '小说场景压缩：不新增抢戏支线',
+      '章节切片改编：单集闭环',
+      '角色弧线改编：弧线不是口号',
+    ]));
   });
 
   it('recognizes a legend contract only when supernatural imagery drives a costly human choice and transmission ending', () => {

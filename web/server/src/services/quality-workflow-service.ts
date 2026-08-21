@@ -686,6 +686,68 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
   const firstText = observableSignalSceneText(first, signal).replace(/\s+/g, '');
   const lastText = observableSignalSceneText(last, signal).replace(/\s+/g, '');
 
+  const adaptationEvidence = inspectAdaptationEvidence(story);
+  if (adaptationEvidence) {
+    if (/人物不丢失/.test(signal)) {
+      return adaptationEvidence.allCoreCharactersCovered
+        ? adaptationEvidence.coreCharacterSceneIds
+        : [];
+    }
+    if (/关系不改写/.test(signal)) {
+      return adaptationEvidence.allCoreCharactersCovered
+        && adaptationEvidence.noUntracedCharacterBranch
+        && adaptationEvidence.orderedSourceCoverage
+        ? adaptationEvidence.coreCharacterSceneIds
+        : [];
+    }
+    if (/保留原作主线|主线不换题/.test(signal)) {
+      return adaptationEvidence.orderedSourceCoverage
+        ? adaptationEvidence.sourceCoverageSceneIds
+        : [];
+    }
+    if (/删改理由清楚/.test(signal)) {
+      return adaptationEvidence.compressionAccounted
+        ? adaptationEvidence.sourceCoverageSceneIds
+        : [];
+    }
+    if (/不新增抢戏支线|新增内容不抢戏/.test(signal)) {
+      return adaptationEvidence.noUntracedCharacterBranch
+        && adaptationEvidence.orderedSourceCoverage
+        ? adaptationEvidence.sourceCoverageSceneIds
+        : [];
+    }
+    if (/主题不漂移|删改不伤主旨/.test(signal)) {
+      return adaptationEvidence.themeAnchorPreserved
+        ? adaptationEvidence.themeSceneIds
+        : [];
+    }
+    if (/情绪底色一致/.test(signal)) {
+      return adaptationEvidence.emotionalTonePreserved
+        ? adaptationEvidence.themeSceneIds
+        : [];
+    }
+    if (/弧线不是口号/.test(signal)) {
+      return adaptationEvidence.observableCharacterArc
+        ? adaptationEvidence.choiceConsequenceSceneIds
+        : [];
+    }
+    if (/单集闭环|阶段结果/.test(signal)) {
+      return adaptationEvidence.episodeClosure
+        ? adaptationEvidence.choiceConsequenceSceneIds
+        : [];
+    }
+    if (/人物目标清楚|必须有主角目标|目标明确/.test(signal)) {
+      return adaptationEvidence.protagonistGoalVisible
+        ? adaptationEvidence.goalChoiceSceneIds
+        : [];
+    }
+    if (/因果清楚|因果链清楚|事件因果清楚/.test(signal)) {
+      return adaptationEvidence.choiceConsequenceSceneIds.length >= 2
+        ? adaptationEvidence.choiceConsequenceSceneIds
+        : [];
+    }
+  }
+
   if (story.video_type === 'historical_drama') {
     const sceneText = (scene: StoryGenerateResult['scene_breakdown'][number]) => (
       observableSignalSceneText(scene, signal).replace(/\s+/g, '')
@@ -1211,6 +1273,202 @@ function structuralSignalSceneIds(story: StoryGenerateResult, signal: string): n
   }
 
   return [];
+}
+
+interface AdaptationStructuralEvidence {
+  allCoreCharactersCovered: boolean;
+  coreCharacterSceneIds: number[];
+  orderedSourceCoverage: boolean;
+  sourceCoverageSceneIds: number[];
+  compressionAccounted: boolean;
+  noUntracedCharacterBranch: boolean;
+  themeAnchorPreserved: boolean;
+  emotionalTonePreserved: boolean;
+  themeSceneIds: number[];
+  observableCharacterArc: boolean;
+  episodeClosure: boolean;
+  protagonistGoalVisible: boolean;
+  choiceConsequenceSceneIds: number[];
+  goalChoiceSceneIds: number[];
+}
+
+function inspectAdaptationEvidence(
+  story: StoryGenerateResult,
+): AdaptationStructuralEvidence | undefined {
+  const analysis = story.adaptation_analysis;
+  const source = story.original_user_query?.trim();
+  if (!analysis || analysis.source_mode !== 'user_novel' || !source) return undefined;
+
+  const scenes = story.scene_breakdown;
+  const sourceUnits = source
+    .split(/\n{2,}|(?<=[。！？!?；;])\s*/)
+    .map(item => item.trim())
+    .filter(item => item.length >= 8);
+  if (sourceUnits.length < 2) return undefined;
+
+  const sceneSearchText = (scene: StoryGenerateResult['scene_breakdown'][number]) => [
+    scene.plot,
+    scene.key_action,
+    scene.conflict ?? '',
+    scene.dialogue_or_narration ?? '',
+    ...(scene.characters ?? []),
+  ].join('');
+  const sourceBoundScenes = scenes.filter(scene => (
+    (scene.source_entries ?? []).includes('用户提供改编素材')
+    && /用户提供改编素材|用户素材|原作主线/.test(
+      `${scene.factual_basis ?? ''}${scene.cultural_note}`,
+    )
+  ));
+  const traceableScenes = scenes.filter(scene => (
+    (scene.source_entries?.length ?? 0) > 0
+    && Boolean(scene.factual_basis?.trim())
+    && Boolean(scene.cultural_note.trim())
+  ));
+  let previousSourceSceneId = 0;
+  const orderedUnitSceneIds = sourceUnits.map(unit => {
+    const exact = scenes.filter(scene => sceneSearchText(scene).includes(unit));
+    const candidates = (exact.length > 0
+      ? exact.map(scene => ({ scene, score: 1 }))
+      : scenes.map(scene => ({
+          scene,
+          score: adaptationTextOverlap(unit, sceneSearchText(scene)),
+        })).filter(item => item.score >= 0.16))
+      .filter(item => item.scene.scene_id >= previousSourceSceneId)
+      .sort((left, right) => right.score - left.score || left.scene.scene_id - right.scene.scene_id);
+    const selected = candidates[0]?.scene.scene_id;
+    if (selected !== undefined) previousSourceSceneId = selected;
+    return selected;
+  });
+  const sourceCoverageSceneIds = uniqueNumbers(
+    orderedUnitSceneIds.filter((sceneId): sceneId is number => sceneId !== undefined),
+  );
+  const orderedSourceCoverage = orderedUnitSceneIds.every(sceneId => sceneId !== undefined)
+    && sourceBoundScenes.length >= 2
+    && traceableScenes.length >= Math.ceil(scenes.length * 0.8);
+
+  const coreCharacterMatches = analysis.core_characters.map(name => ({
+    name,
+    sceneIds: scenes
+      .filter(scene => sceneSearchText(scene).includes(name))
+      .map(scene => scene.scene_id),
+  }));
+  const allCoreCharactersCovered = coreCharacterMatches.length > 0
+    && coreCharacterMatches.every(item => item.sceneIds.length > 0);
+  const coreCharacterSceneIds = uniqueNumbers(coreCharacterMatches.flatMap(item => item.sceneIds));
+  const untracedCharacters = uniqueStrings(scenes.flatMap(scene => scene.characters ?? []))
+    .filter(name => !source.includes(name));
+  const untracedBranchScenes = scenes.filter(scene => (
+    (scene.characters ?? []).some(name => untracedCharacters.includes(name))
+    && !/来源|传播|版本|边界|余响|结尾/.test(`${scene.dramatic_function}${scene.title}${scene.cultural_note}`)
+  ));
+  const noUntracedCharacterBranch = untracedBranchScenes.length === 0;
+
+  const choiceScenes = scenes.filter(scene => {
+    const text = sceneSearchText(scene);
+    return Boolean(scene.conflict?.trim())
+      && /决定|选择|拒绝|回头|放下|护住|推开|发动|交还|承担/.test(text)
+      && /逼|催|搜捕|怀疑|误会|风险|代价|失去|伤亡|冲突|必须/.test(text);
+  });
+  const consequenceScenes = scenes.filter(scene => {
+    const text = sceneSearchText(scene);
+    return /因此|于是|结果|免死|解开|改变|停下|让出|响应|留下|完成|共同|护住/.test(text)
+      && /行动|选择|决定|拒绝|回头|放下|推开|发动|交还|承担|抬起|送到/.test(text);
+  });
+  const choiceScene = choiceScenes[0];
+  const consequenceScene = choiceScene
+    ? consequenceScenes.find(scene => scene.scene_id >= choiceScene.scene_id)
+    : undefined;
+  const choiceConsequenceSceneIds = choiceScene && consequenceScene
+    ? uniqueNumbers([choiceScene.scene_id, consequenceScene.scene_id])
+    : [];
+
+  const themeSource = sourceUnits[sourceUnits.length - 1];
+  const tailScenes = scenes.slice(-2);
+  const tailText = tailScenes.map(sceneSearchText).join('');
+  const themeAnchorPreserved = adaptationTextOverlap(themeSource, tailText) >= 0.16
+    && choiceConsequenceSceneIds.length > 0;
+  const sourceEmotionTerms = ADAPTATION_EMOTION_TERMS.filter(term => source.includes(term));
+  const emotionalTonePreserved = sourceEmotionTerms.length > 0
+    && sourceEmotionTerms.some(term => tailText.includes(term));
+  const themeSceneIds = themeAnchorPreserved || emotionalTonePreserved
+    ? tailScenes.map(scene => scene.scene_id)
+    : [];
+
+  const arc = story.protagonist_arc?.[0];
+  const observableCharacterArc = Boolean(
+    arc?.starting_state.trim()
+    && arc.turning_point.trim()
+    && arc.resolution.trim()
+    && choiceScene
+    && consequenceScene
+    && choiceScene.key_action.trim().length >= 8
+    && consequenceScene.key_action.trim().length >= 8,
+  );
+  const firstHalf = scenes.slice(0, Math.max(1, Math.ceil(scenes.length / 2)));
+  const protagonist = analysis.core_characters.find(name => sourceUnits[0].includes(name))
+    ?? analysis.core_characters[0];
+  const goalScene = protagonist
+    ? firstHalf.find(scene => (
+        sceneSearchText(scene).includes(protagonist)
+        && scene.key_action.trim().length >= 8
+        && (Boolean(scene.conflict?.trim()) || /发现|寻找|核实|保护|查|等|发动/.test(sceneSearchText(scene)))
+      ))
+    : undefined;
+  const protagonistGoalVisible = Boolean(goalScene && choiceScene && goalScene.scene_id <= choiceScene.scene_id);
+  const goalChoiceSceneIds = goalScene && choiceScene
+    ? uniqueNumbers([goalScene.scene_id, choiceScene.scene_id])
+    : [];
+  const episodeClosure = Boolean(
+    choiceScene
+    && consequenceScene
+    && consequenceScene.scene_id >= choiceScene.scene_id
+    && /结尾|收束|高燃|历史余响|温暖结尾|命运转折/.test(
+      `${consequenceScene.dramatic_function}${scenes.at(-1)?.dramatic_function ?? ''}`,
+    )
+    && scenes.at(-1)?.key_action.trim(),
+  );
+  const compressionAccounted = orderedSourceCoverage
+    && (analysis.compressible_parts.length === 0 || analysis.compressible_parts.every(part => (
+      scenes.some(scene => adaptationTextOverlap(part, sceneSearchText(scene)) >= 0.16)
+    )));
+
+  return {
+    allCoreCharactersCovered,
+    coreCharacterSceneIds,
+    orderedSourceCoverage,
+    sourceCoverageSceneIds,
+    compressionAccounted,
+    noUntracedCharacterBranch,
+    themeAnchorPreserved,
+    emotionalTonePreserved,
+    themeSceneIds,
+    observableCharacterArc,
+    episodeClosure,
+    protagonistGoalVisible,
+    choiceConsequenceSceneIds,
+    goalChoiceSceneIds,
+  };
+}
+
+const ADAPTATION_EMOTION_TERMS = [
+  '良知', '人命', '免死', '代价', '勇敢', '善良', '判断', '相信', '真心', '考验', '歌声',
+  '搜捕', '伤亡', '失败', '起义', '连锁响应', '改变', '危机', '怀疑', '保护', '共同',
+];
+
+function adaptationTextOverlap(source: string, target: string): number {
+  const sourcePairs = chineseCharacterPairs(source);
+  if (sourcePairs.length === 0) return 0;
+  const targetPairs = new Set(chineseCharacterPairs(target));
+  return sourcePairs.filter(pair => targetPairs.has(pair)).length / sourcePairs.length;
+}
+
+function chineseCharacterPairs(value: string): string[] {
+  const text = value.replace(/[^\p{Script=Han}A-Za-z0-9]/gu, '');
+  const pairs: string[] = [];
+  for (let index = 0; index < text.length - 1; index += 1) {
+    pairs.push(text.slice(index, index + 2));
+  }
+  return uniqueStrings(pairs);
 }
 
 function observableSceneEvidence(story: StoryGenerateResult, sceneId: number, signal = ''): string[] {

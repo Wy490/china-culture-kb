@@ -208,6 +208,17 @@ describe('Story Agent 15x3 stability matrix', () => {
     expect(Object.keys(
       first.data?.machine_evaluation.failure_clusters.weak_pattern_signal_counts ?? {},
     ).length).toBeGreaterThan(0);
+    const adaptationItems = first.data?.items.filter(item => (
+      item.variant_id === 'adaptation_or_compact'
+      && item.input_profile.adaptation_input
+    )) ?? [];
+    expect(adaptationItems).toHaveLength(5);
+    expect(adaptationItems.map(item => ({
+      case_id: item.case_id,
+      weak: item.matrix_item.machine_evaluation.weak_pattern_signal_labels,
+    })).filter(item => item.weak.length > 0)).toEqual([]);
+    expect(first.data?.machine_evaluation.failure_clusters.open_repair_target_counts.pattern ?? 0)
+      .toBeLessThanOrEqual(6);
     expect(first.data?.machine_evaluation.failure_clusters.gears_issue_counts)
       .toEqual(expect.any(Object));
     expect(first.data?.items.every(item => (
