@@ -6799,6 +6799,93 @@ describe('project-service', () => {
     expect(empty.error?.code).toBe('VALIDATION_ERROR');
   });
 
+  it('retrieves HTTPS evidence through the constrained adapter and caches verified bytes in the project', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260618-story-https-evidence1',
+      title: 'HTTPS 外部证据取回测试',
+      gears_segments_url: '/api/stories/20260618-story-https-evidence1/gears-segments',
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-06-18T10:00:00.000Z');
+    const bytes = Buffer.from('远端权利与署名原始记录', 'utf8');
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const candidate = await importProjectExternalEvidenceCandidate(enriched.project_id!, {
+      field_id: 'rights_and_attribution',
+      evidence_type: 'rights_attribution_record',
+      title: '远端权利与署名记录',
+      summary: '由受约束 HTTPS 适配器取回并在项目内固化的原始记录。',
+      source_uri: 'https://rights.example.org/records/001',
+      source_label: '权利记录 001',
+      content_sha256: sha256,
+    });
+    expect(candidate.ok).toBe(true);
+
+    const verified = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        evidence_id: candidate.data!.evidence_id,
+        expected_content_sha256: sha256,
+        expected_candidate_status: 'pending_verification',
+        idempotency_key: 'verify-https-retrieved-001',
+        decision: 'accept',
+        scope_attestation: {
+          source_matches_candidate: true,
+          evidence_supports_field: true,
+          usage_scope_confirmed: true,
+        },
+        review_note: '已核对远端来源、固化字节、字段用途和当前项目范围。',
+      },
+      { actor_id: 'material-reviewer-2', authentication_method: 'signed_session' },
+      {
+        httpsRetriever: async () => ({
+          bytes,
+          final_url: 'https://cdn.example.org/records/001.pdf',
+          redirect_count: 1,
+          content_type: 'application/pdf',
+          resolution_trace: [
+            { hostname: 'rights.example.org', address: '93.184.216.34', family: 4 },
+            { hostname: 'cdn.example.org', address: '142.250.72.196', family: 4 },
+          ],
+        }),
+      },
+    );
+
+    expect(verified.ok).toBe(true);
+    expect(verified.data).toMatchObject({
+      external_evidence_credit_granted: true,
+      candidate: {
+        status: 'verified',
+        retrieved_artifact_uri: `artifact://https/${sha256}.bin`,
+        retrieval_final_uri: 'https://cdn.example.org/records/001.pdf',
+        retrieval_content_type: 'application/pdf',
+        retrieval_redirect_count: 1,
+      },
+      event: {
+        retrieval: {
+          artifact_uri: `artifact://https/${sha256}.bin`,
+          final_uri: 'https://cdn.example.org/records/001.pdf',
+          content_type: 'application/pdf',
+          redirect_count: 1,
+        },
+      },
+    });
+    const cachedPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      enriched.project_id!,
+      'external-evidence',
+      'https',
+      `${sha256}.bin`,
+    );
+    expect(await readFile(cachedPath)).toEqual(bytes);
+  });
+
   it('adds manual project material and refreshes creation contract fields', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

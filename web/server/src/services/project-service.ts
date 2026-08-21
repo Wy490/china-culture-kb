@@ -331,6 +331,11 @@ import {
   findProjectExternalEvidenceVerificationReplay,
   projectExternalEvidenceVerificationRequestSha256,
 } from './external-evidence-verification-audit-service.js';
+import {
+  ExternalEvidenceHttpsRetrievalError,
+  retrieveExternalEvidenceHttps,
+  type ExternalEvidenceHttpsRetrievalResult,
+} from './external-evidence-https-retrieval-service.js';
 
 export { buildProjectId };
 
@@ -9503,8 +9508,9 @@ function pathIsInside(rootPath: string, targetPath: string): boolean {
 async function readProjectExternalEvidenceArtifact(
   projectId: string,
   sourceUri: string,
+  httpsRetriever: (sourceUrl: string) => Promise<ExternalEvidenceHttpsRetrievalResult>,
 ): Promise<
-  | { ok: true; bytes: Buffer }
+  | { ok: true; bytes: Buffer; https?: ExternalEvidenceHttpsRetrievalResult }
   | { ok: false; message: string; source_retrieved: false }
 > {
   let parsed: URL;
@@ -9513,12 +9519,22 @@ async function readProjectExternalEvidenceArtifact(
   } catch {
     return { ok: false, message: 'External evidence source URI is invalid', source_retrieved: false };
   }
+  if (parsed.protocol === 'https:') {
+    try {
+      const https = await httpsRetriever(sourceUri);
+      return { ok: true, bytes: https.bytes, https };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof ExternalEvidenceHttpsRetrievalError
+          ? error.message
+          : `External evidence HTTPS retrieval failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        source_retrieved: false,
+      };
+    }
+  }
   if (parsed.protocol !== 'artifact:') {
-    return {
-      ok: false,
-      message: 'HTTPS evidence cannot be accepted until an external retrieval adapter has fetched and hashed it',
-      source_retrieved: false,
-    };
+    return { ok: false, message: 'External evidence source protocol is not supported', source_retrieved: false };
   }
   let pathSegments: string[];
   try {
@@ -9557,6 +9573,37 @@ async function readProjectExternalEvidenceArtifact(
   }
 }
 
+async function cacheProjectExternalEvidenceHttpsArtifact(input: {
+  projectId: string;
+  contentSha256: string;
+  bytes: Buffer;
+}): Promise<
+  | { ok: true; artifact_uri: string }
+  | { ok: false; message: string }
+> {
+  const filename = `${input.contentSha256}.bin`;
+  const artifactUri = `artifact://https/${filename}`;
+  const artifactRoot = resolve(projectDir(input.projectId), 'external-evidence', 'https');
+  const artifactStore = new FileArtifactStore(artifactRoot);
+  try {
+    if (await artifactStore.exists(filename)) {
+      const existing = await readFile(resolve(artifactRoot, filename));
+      const existingSha256 = createHash('sha256').update(existing).digest('hex');
+      if (existingSha256 !== input.contentSha256) {
+        return { ok: false, message: 'Cached HTTPS evidence artifact failed integrity verification' };
+      }
+    } else {
+      await artifactStore.writeBinary(filename, input.bytes, { overwrite: 'forbid' });
+    }
+    return { ok: true, artifact_uri: artifactUri };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'HTTPS evidence artifact cache failed',
+    };
+  }
+}
+
 function externalEvidenceReadinessChanged(
   before: StoryGenerateResult['production_material_readiness'],
   after: StoryGenerateResult['production_material_readiness'],
@@ -9569,6 +9616,9 @@ export async function verifyProjectExternalEvidenceCandidate(
   projectId: string,
   request: ProjectExternalEvidenceVerificationRequest,
   reviewer: ProjectExternalEvidenceReviewer,
+  options: {
+    httpsRetriever?: (sourceUrl: string) => Promise<ExternalEvidenceHttpsRetrievalResult>;
+  } = {},
 ): Promise<ApiResponse<ProjectExternalEvidenceVerificationResult>> {
   const detailResult = await getProject(projectId);
   if (!detailResult.ok || !detailResult.data) {
@@ -9659,8 +9709,14 @@ export async function verifyProjectExternalEvidenceCandidate(
   }
 
   let actualContentSha256: string | undefined;
+  let httpsRetrieval: ExternalEvidenceHttpsRetrievalResult | undefined;
+  let retrievedArtifactUri: string | undefined;
   if (request.decision === 'accept') {
-    const artifact = await readProjectExternalEvidenceArtifact(projectId, candidate.source_uri);
+    const artifact = await readProjectExternalEvidenceArtifact(
+      projectId,
+      candidate.source_uri,
+      options.httpsRetriever ?? retrieveExternalEvidenceHttps,
+    );
     if (!artifact.ok) {
       return fail(ErrorCodes.VALIDATION_ERROR, artifact.message, {
         source_retrieved: false,
@@ -9680,6 +9736,23 @@ export async function verifyProjectExternalEvidenceCandidate(
         external_evidence_credit_granted: false,
       });
     }
+    httpsRetrieval = artifact.https;
+    if (httpsRetrieval) {
+      const cached = await cacheProjectExternalEvidenceHttpsArtifact({
+        projectId,
+        contentSha256: actualContentSha256,
+        bytes: artifact.bytes,
+      });
+      if (!cached.ok) {
+        return fail(ErrorCodes.VALIDATION_ERROR, cached.message, {
+          source_retrieved: true,
+          content_hash_verified: true,
+          scope_verified: false,
+          external_evidence_credit_granted: false,
+        });
+      }
+      retrievedArtifactUri = cached.artifact_uri;
+    }
   }
 
   const reviewedAt = nextProjectUpdatedAt(project);
@@ -9695,6 +9768,14 @@ export async function verifyProjectExternalEvidenceCandidate(
     reviewed_by: reviewer.actor_id,
     reviewer_authentication_method: reviewer.authentication_method,
     review_note: request.review_note.trim(),
+    ...(httpsRetrieval && retrievedArtifactUri ? {
+      retrieved_at: reviewedAt,
+      retrieved_artifact_uri: retrievedArtifactUri,
+      retrieval_final_uri: httpsRetrieval.final_url,
+      retrieval_content_type: httpsRetrieval.content_type,
+      retrieval_redirect_count: httpsRetrieval.redirect_count,
+      retrieval_resolution_trace: httpsRetrieval.resolution_trace,
+    } : {}),
   };
   const verificationEvent = buildProjectExternalEvidenceVerificationEvent({
     projectId,

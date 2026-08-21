@@ -2746,6 +2746,16 @@ export interface ProjectExternalEvidenceCandidate {
   reviewed_by?: string;
   reviewer_authentication_method?: 'static_registry_token' | 'signed_session';
   review_note?: string;
+  retrieved_at?: string;
+  retrieved_artifact_uri?: string;
+  retrieval_final_uri?: string;
+  retrieval_content_type?: string;
+  retrieval_redirect_count?: number;
+  retrieval_resolution_trace?: Array<{
+    hostname: string;
+    address: string;
+    family: 4 | 6;
+  }>;
 }
 
 export interface ProjectExternalEvidenceLedger {
@@ -2856,6 +2866,18 @@ export interface ProjectExternalEvidenceVerificationEvent {
   reviewer: ProjectExternalEvidenceReviewer;
   scope_attestation?: ProjectExternalEvidenceVerificationRequest['scope_attestation'];
   review_note: string;
+  retrieval?: {
+    retrieved_at: string;
+    artifact_uri: string;
+    final_uri: string;
+    content_type: string;
+    redirect_count: number;
+    resolution_trace: Array<{
+      hostname: string;
+      address: string;
+      family: 4 | 6;
+    }>;
+  };
 }
 
 export interface ProjectExternalEvidenceReviewer {

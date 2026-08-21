@@ -82,6 +82,25 @@ function validTransition(event: ProjectExternalEvidenceVerificationEvent): boole
     && !event.external_evidence_credit_granted;
 }
 
+function validRetrieval(event: ProjectExternalEvidenceVerificationEvent): boolean {
+  if (!event.retrieval) return true;
+  return event.decision === 'accept'
+    && Number.isFinite(Date.parse(event.retrieval.retrieved_at))
+    && event.retrieval.artifact_uri === `artifact://https/${event.expected_content_sha256}.bin`
+    && event.retrieval.final_uri.startsWith('https://')
+    && Boolean(event.retrieval.content_type)
+    && Number.isSafeInteger(event.retrieval.redirect_count)
+    && event.retrieval.redirect_count >= 0
+    && event.retrieval.redirect_count <= 3
+    && Array.isArray(event.retrieval.resolution_trace)
+    && event.retrieval.resolution_trace.length >= 1
+    && event.retrieval.resolution_trace.every(item => (
+      typeof item.hostname === 'string'
+      && typeof item.address === 'string'
+      && (item.family === 4 || item.family === 6)
+    ));
+}
+
 function validEvent(value: unknown): value is ProjectExternalEvidenceVerificationEvent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const event = value as Partial<ProjectExternalEvidenceVerificationEvent>;
@@ -121,7 +140,8 @@ function validEvent(value: unknown): value is ProjectExternalEvidenceVerificatio
     && (event.reviewer.authentication_method === 'static_registry_token'
       || event.reviewer.authentication_method === 'signed_session')
     && typeof event.review_note === 'string'
-    && validTransition(event as ProjectExternalEvidenceVerificationEvent);
+    && validTransition(event as ProjectExternalEvidenceVerificationEvent)
+    && validRetrieval(event as ProjectExternalEvidenceVerificationEvent);
 }
 
 export function projectExternalEvidenceVerificationRequestSha256(
@@ -234,6 +254,24 @@ export function buildProjectExternalEvidenceVerificationEvent(input: {
     reviewer: input.reviewer,
     ...(input.request.scope_attestation ? { scope_attestation: input.request.scope_attestation } : {}),
     review_note: input.request.review_note.trim(),
+    ...(input.request.decision === 'accept'
+      && input.updatedCandidate.retrieved_at
+      && input.updatedCandidate.retrieved_artifact_uri
+      && input.updatedCandidate.retrieval_final_uri
+      && input.updatedCandidate.retrieval_content_type
+      && input.updatedCandidate.retrieval_redirect_count !== undefined
+      && input.updatedCandidate.retrieval_resolution_trace
+      ? {
+          retrieval: {
+            retrieved_at: input.updatedCandidate.retrieved_at,
+            artifact_uri: input.updatedCandidate.retrieved_artifact_uri,
+            final_uri: input.updatedCandidate.retrieval_final_uri,
+            content_type: input.updatedCandidate.retrieval_content_type,
+            redirect_count: input.updatedCandidate.retrieval_redirect_count,
+            resolution_trace: input.updatedCandidate.retrieval_resolution_trace,
+          },
+        }
+      : {}),
   };
   return {
     ...unsigned,
