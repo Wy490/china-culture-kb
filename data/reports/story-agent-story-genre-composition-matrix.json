@@ -1,25 +1,37 @@
 {
-  "schema_version": "story-genre-composition-matrix/v1",
+  "schema_version": "story-genre-composition-matrix/v2",
   "generated_at": "2026-08-21T00:00:00.000+08:00",
   "status": "passed",
   "summary": {
-    "case_count": 16,
-    "passed_case_count": 16,
+    "case_count": 28,
+    "passed_case_count": 28,
+    "mechanism_coverage_case_count": 16,
+    "compatibility_duration_case_count": 12,
     "source_kind_coverage": "8/8",
     "primary_pattern_coverage": "16/16",
     "secondary_pattern_coverage": "16/16",
     "mixed_source_case_count": 8,
     "semantic_tension_rule_count": 4,
+    "compatible_video_type_coverage": "4/4",
+    "duration_coverage": "3/3",
+    "video_type_duration_cell_coverage": "12/12",
+    "capacity_conflict_skeleton_coverage": "12/12",
     "capacity_conflict_fail_closed": true
   },
   "cases": [
     {
       "case_id": "composition-01-archaeological_mystery_expedition",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "myth"
       ],
       "primary_pattern_id": "archaeological_mystery_expedition",
       "secondary_pattern_id": "team_heist_operation",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -36,17 +48,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-02-clan_legacy_conspiracy",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "folk_legend"
       ],
       "primary_pattern_id": "clan_legacy_conspiracy",
       "secondary_pattern_id": "family_saga_generations",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -61,17 +82,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-03-fair_play_detective",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "historical_event"
       ],
       "primary_pattern_id": "fair_play_detective",
       "secondary_pattern_id": "folk_supernatural_investigation",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -88,17 +118,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-04-mythic_voyage_homecoming",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "historical_figure"
       ],
       "primary_pattern_id": "mythic_voyage_homecoming",
       "secondary_pattern_id": "road_companion_quest",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -113,17 +152,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-05-historical_faction_epic",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "local_anecdote"
       ],
       "primary_pattern_id": "historical_faction_epic",
       "secondary_pattern_id": "war_strategy_campaign",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -140,17 +188,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-06-mythic_hero_quest",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "classic_literature"
       ],
       "primary_pattern_id": "mythic_hero_quest",
       "secondary_pattern_id": "survival_expedition",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -165,17 +222,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-07-folk_supernatural_investigation",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "heritage_memory"
       ],
       "primary_pattern_id": "folk_supernatural_investigation",
       "secondary_pattern_id": "fair_play_detective",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -192,17 +258,26 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-08-survival_expedition",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "user_original"
       ],
       "primary_pattern_id": "survival_expedition",
       "secondary_pattern_id": "mythic_hero_quest",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -217,18 +292,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-09-conspiracy_puzzle_thriller",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "myth",
         "folk_legend"
       ],
       "primary_pattern_id": "conspiracy_puzzle_thriller",
       "secondary_pattern_id": "courtroom_case_procedural",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -243,18 +327,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-10-courtroom_case_procedural",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "historical_event",
         "historical_figure"
       ],
       "primary_pattern_id": "courtroom_case_procedural",
       "secondary_pattern_id": "conspiracy_puzzle_thriller",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -269,18 +362,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-11-team_heist_operation",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "local_anecdote",
         "heritage_memory"
       ],
       "primary_pattern_id": "team_heist_operation",
       "secondary_pattern_id": "archaeological_mystery_expedition",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -297,18 +399,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-12-tragic_romance_choice",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "classic_literature",
         "user_original"
       ],
       "primary_pattern_id": "tragic_romance_choice",
       "secondary_pattern_id": "folk_satirical_comedy",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -325,18 +436,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-13-family_saga_generations",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "myth",
         "historical_event"
       ],
       "primary_pattern_id": "family_saga_generations",
       "secondary_pattern_id": "clan_legacy_conspiracy",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -351,18 +471,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-14-road_companion_quest",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "folk_legend",
         "local_anecdote"
       ],
       "primary_pattern_id": "road_companion_quest",
       "secondary_pattern_id": "mythic_voyage_homecoming",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "fusion_ready",
       "warning_ids": [],
@@ -377,18 +506,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-15-war_strategy_campaign",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "historical_figure",
         "classic_literature"
       ],
       "primary_pattern_id": "war_strategy_campaign",
       "secondary_pattern_id": "historical_faction_epic",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -405,18 +543,27 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     },
     {
       "case_id": "composition-16-folk_satirical_comedy",
+      "suite": "mechanism_coverage",
       "source_kinds": [
         "heritage_memory",
         "user_original"
       ],
       "primary_pattern_id": "folk_satirical_comedy",
       "secondary_pattern_id": "tragic_romance_choice",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
       "status": "passed",
       "fusion_status": "ready_with_warnings",
       "warning_ids": [
@@ -433,7 +580,442 @@
         "full_text_synchronized": true,
         "gears_synchronized": true,
         "fact_boundary_complete": true,
-        "fiction_boundary_complete": true
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-ai_comic_drama-1-30秒",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "user_original"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "30秒",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "artifact-custody-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-ai_comic_drama-2-1分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "user_original"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "1分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "artifact-custody-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-ai_comic_drama-3-3分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "user_original"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "video_type": "ai_comic_drama",
+      "presentation_style": "ai_comic",
+      "target_duration": "3分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "artifact-custody-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-character_story-1-30秒",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_figure"
+      ],
+      "creation_use_case": "institutional_promo",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "video_type": "character_story",
+      "presentation_style": "cinematic",
+      "target_duration": "30秒",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "tone-payoff-tension"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-character_story-2-1分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_figure"
+      ],
+      "creation_use_case": "institutional_promo",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "video_type": "character_story",
+      "presentation_style": "cinematic",
+      "target_duration": "1分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "tone-payoff-tension"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-character_story-3-3分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_figure"
+      ],
+      "creation_use_case": "institutional_promo",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "video_type": "character_story",
+      "presentation_style": "cinematic",
+      "target_duration": "3分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "tone-payoff-tension"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-historical_drama-1-30秒",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_event",
+        "historical_figure"
+      ],
+      "creation_use_case": "documentary_short",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "video_type": "historical_drama",
+      "presentation_style": "cinematic",
+      "target_duration": "30秒",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "strategy-scope-overlap"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-historical_drama-2-1分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_event",
+        "historical_figure"
+      ],
+      "creation_use_case": "documentary_short",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "video_type": "historical_drama",
+      "presentation_style": "cinematic",
+      "target_duration": "1分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "strategy-scope-overlap"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-historical_drama-3-3分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "historical_event",
+        "historical_figure"
+      ],
+      "creation_use_case": "documentary_short",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "video_type": "historical_drama",
+      "presentation_style": "cinematic",
+      "target_duration": "3分钟",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "strategy-scope-overlap"
+      ],
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-legend_story-1-30秒",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "myth",
+        "folk_legend"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "video_type": "legend_story",
+      "presentation_style": "animation_2d",
+      "target_duration": "30秒",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-legend_story-2-1分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "myth",
+        "folk_legend"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "video_type": "legend_story",
+      "presentation_style": "animation_2d",
+      "target_duration": "1分钟",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "compatibility-legend_story-3-3分钟",
+      "suite": "compatibility_duration",
+      "source_kinds": [
+        "myth",
+        "folk_legend"
+      ],
+      "creation_use_case": "original_ai_comic",
+      "truth_mode": "inspired_by_material",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "video_type": "legend_story",
+      "presentation_style": "animation_2d",
+      "target_duration": "3分钟",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true,
+        "genre_matrix_compatible": true,
+        "secondary_uses_middle_scene": true,
+        "duration_aligned": true
       },
       "issues": []
     }
