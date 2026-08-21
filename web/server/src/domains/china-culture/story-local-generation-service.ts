@@ -5,6 +5,7 @@ import type {
   PresentationStyle,
   ReferenceTrace,
   StoryAdaptationAnalysis,
+  StoryGenreComposition,
   StoryStructureType,
   SupportedDuration,
   VideoType,
@@ -15,6 +16,7 @@ import {
   buildMemoryMosaicSeed,
   generateMemoryMosaicContent,
 } from '../../services/memory-mosaic-service.js';
+import { applyLocalStoryGenreComposition } from '../../services/local-story-genre-composition-service.js';
 
 export interface ChinaCultureLocalStoryGenerationSuccess {
   ok: true;
@@ -44,6 +46,7 @@ export function generateChinaCultureLocalStoryAssembly(input: {
   knowledgePack?: KnowledgePack;
   originalUserQuery?: string;
   adaptationAnalysis?: StoryAdaptationAnalysis;
+  genreComposition?: StoryGenreComposition;
 }): ChinaCultureLocalStoryGenerationResult {
   if (input.storyStructure === 'memory_mosaic_biography') {
     const memoryMosaicSeed = buildMemoryMosaicSeed(
@@ -69,18 +72,32 @@ export function generateChinaCultureLocalStoryAssembly(input: {
       knowledgePack: input.knowledgePack,
       originalUserQuery: input.originalUserQuery,
     });
+    const genreApplication = applyLocalStoryGenreComposition({
+      storyResult,
+      entry: input.entry,
+      centralEvent: input.centralEvent,
+      videoType: input.videoType,
+      presentationStyle: input.presentationStyle,
+      genreComposition: input.genreComposition,
+    });
     const appliedRules = [
       '用物件开场',
       '用见证人回忆推进',
       '结尾呼应物件',
       `${input.storyStructure}结构规则`,
+      ...genreApplication.appliedRules,
     ];
     const referenceTrace = [{
       applied_rules: appliedRules,
       source_story_structure: input.storyStructure,
     }];
 
-    return { ok: true, storyResult, memoryMosaicSeed, referenceTrace };
+    return {
+      ok: true,
+      storyResult: genreApplication.storyResult,
+      memoryMosaicSeed,
+      referenceTrace,
+    };
   }
 
   const storyResult = generateDramaticContent({
@@ -94,5 +111,23 @@ export function generateChinaCultureLocalStoryAssembly(input: {
     originalUserQuery: input.originalUserQuery,
     adaptationAnalysis: input.adaptationAnalysis,
   });
-  return { ok: true, storyResult };
+  const genreApplication = applyLocalStoryGenreComposition({
+    storyResult,
+    entry: input.entry,
+    centralEvent: input.centralEvent,
+    videoType: input.videoType,
+    presentationStyle: input.presentationStyle,
+    genreComposition: input.genreComposition,
+  });
+  const referenceTrace = genreApplication.appliedRules.length > 0
+    ? [{
+        applied_rules: genreApplication.appliedRules,
+        source_story_structure: input.storyStructure,
+      }]
+    : undefined;
+  return {
+    ok: true,
+    storyResult: genreApplication.storyResult,
+    referenceTrace,
+  };
 }

@@ -22,6 +22,7 @@ export async function executeChinaCultureStoryGeneration(input: {
     knowledgePack: preparation.knowledgePackToUse,
     originalUserQuery: request.original_user_query ?? request.outline,
     adaptationAnalysis: preparation.adaptationAnalysis,
+    genreComposition: preparation.genreComposition,
   });
   if (!localGeneration.ok) {
     return {
