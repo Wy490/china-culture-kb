@@ -323,6 +323,14 @@ import {
   projectGearsSyncItems,
   updateGearsLedgerItemFromCallback,
 } from './project-gears-ledger-application-service.js';
+import {
+  assertProjectExternalEvidenceVerificationChain,
+  buildProjectExternalEvidenceVerificationEvent,
+  ExternalEvidenceVerificationAuditConflictError,
+  ExternalEvidenceVerificationAuditIntegrityError,
+  findProjectExternalEvidenceVerificationReplay,
+  projectExternalEvidenceVerificationRequestSha256,
+} from './external-evidence-verification-audit-service.js';
 
 export { buildProjectId };
 
@@ -9324,6 +9332,8 @@ export async function importProjectExternalEvidenceCandidate(
       candidate_import_can_grant_external_evidence_credit: false,
     },
     items: [...(story.external_evidence_ledger?.items ?? []), candidate],
+    verification_events: story.external_evidence_ledger?.verification_events ?? [],
+    verification_head_sha256: story.external_evidence_ledger?.verification_head_sha256 ?? null,
   };
   const updatedStory: StoryGenerateResult = {
     ...story,
@@ -9574,6 +9584,46 @@ export async function verifyProjectExternalEvidenceCandidate(
     return fail(ErrorCodes.VALIDATION_ERROR, `External evidence candidate "${request.evidence_id}" was not found`);
   }
   const candidate = ledger.items[candidateIndex];
+  if (!reviewer.actor_id.trim()) {
+    return fail(ErrorCodes.ACCESS_FORBIDDEN, 'A verified material reviewer identity is required');
+  }
+  let verificationEvents;
+  let replayEvent;
+  try {
+    verificationEvents = assertProjectExternalEvidenceVerificationChain(ledger);
+    replayEvent = findProjectExternalEvidenceVerificationReplay({
+      events: verificationEvents,
+      idempotencyKey: request.idempotency_key,
+      requestSha256: projectExternalEvidenceVerificationRequestSha256(request, reviewer),
+    });
+  } catch (error) {
+    if (
+      error instanceof ExternalEvidenceVerificationAuditIntegrityError
+      || error instanceof ExternalEvidenceVerificationAuditConflictError
+    ) {
+      return fail(error.code, error.message, {
+        evidence_id: candidate.evidence_id,
+        verification_history_unchanged: true,
+        external_evidence_credit_granted: candidate.external_evidence_credit_granted,
+      });
+    }
+    throw error;
+  }
+  if (replayEvent) {
+    return success({
+      schema_version: 'project-external-evidence-verification/v1',
+      project_id: projectId,
+      story_id: story.storyId,
+      evidence_id: candidate.evidence_id,
+      decision: request.decision,
+      idempotent_replay: true,
+      readiness_changed: false,
+      external_evidence_credit_granted: candidate.external_evidence_credit_granted,
+      event: replayEvent,
+      candidate,
+      detail: detailResult.data,
+    });
+  }
   const expectedSha256 = request.expected_content_sha256.trim().toLowerCase();
   if (candidate.content_sha256 !== expectedSha256) {
     return fail(ErrorCodes.VALIDATION_ERROR, 'Expected candidate SHA-256 does not match the persisted candidate', {
@@ -9582,8 +9632,20 @@ export async function verifyProjectExternalEvidenceCandidate(
       external_evidence_credit_granted: false,
     });
   }
-  if (!reviewer.actor_id.trim()) {
-    return fail(ErrorCodes.ACCESS_FORBIDDEN, 'A verified material reviewer identity is required');
+  if (candidate.status !== request.expected_candidate_status) {
+    return fail(ErrorCodes.PROJECT_WRITE_CONFLICT, 'External evidence candidate status changed before review', {
+      evidence_id: candidate.evidence_id,
+      expected_candidate_status: request.expected_candidate_status,
+      actual_candidate_status: candidate.status,
+      verification_history_unchanged: true,
+      external_evidence_credit_granted: candidate.external_evidence_credit_granted,
+    });
+  }
+  if (request.decision === 'accept' && candidate.status === 'verified') {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Verified external evidence must be revoked before a new acceptance');
+  }
+  if (request.decision === 'reject' && candidate.status !== 'pending_verification') {
+    return fail(ErrorCodes.VALIDATION_ERROR, 'Only pending external evidence can be rejected');
   }
   if (request.decision === 'revoke' && candidate.status !== 'verified') {
     return fail(ErrorCodes.VALIDATION_ERROR, 'Only verified external evidence can be revoked');
@@ -9596,6 +9658,7 @@ export async function verifyProjectExternalEvidenceCandidate(
     return fail(ErrorCodes.VALIDATION_ERROR, 'All scope attestations are required to accept external evidence');
   }
 
+  let actualContentSha256: string | undefined;
   if (request.decision === 'accept') {
     const artifact = await readProjectExternalEvidenceArtifact(projectId, candidate.source_uri);
     if (!artifact.ok) {
@@ -9606,13 +9669,13 @@ export async function verifyProjectExternalEvidenceCandidate(
         external_evidence_credit_granted: false,
       });
     }
-    const actualSha256 = createHash('sha256').update(artifact.bytes).digest('hex');
-    if (actualSha256 !== candidate.content_sha256) {
+    actualContentSha256 = createHash('sha256').update(artifact.bytes).digest('hex');
+    if (actualContentSha256 !== candidate.content_sha256) {
       return fail(ErrorCodes.VALIDATION_ERROR, 'External evidence artifact SHA-256 does not match the candidate', {
         source_retrieved: true,
         content_hash_verified: false,
         expected_content_sha256: candidate.content_sha256,
-        actual_content_sha256: actualSha256,
+        actual_content_sha256: actualContentSha256,
         scope_verified: false,
         external_evidence_credit_granted: false,
       });
@@ -9633,10 +9696,23 @@ export async function verifyProjectExternalEvidenceCandidate(
     reviewer_authentication_method: reviewer.authentication_method,
     review_note: request.review_note.trim(),
   };
+  const verificationEvent = buildProjectExternalEvidenceVerificationEvent({
+    projectId,
+    storyId: story.storyId,
+    candidate,
+    updatedCandidate,
+    request,
+    reviewer,
+    recordedAt: reviewedAt,
+    actualContentSha256,
+    events: verificationEvents,
+  });
   const nextLedger: ProjectExternalEvidenceLedger = {
     ...ledger,
     updated_at: reviewedAt,
     items: ledger.items.map((item, index) => index === candidateIndex ? updatedCandidate : item),
+    verification_events: [...verificationEvents, verificationEvent],
+    verification_head_sha256: verificationEvent.event_sha256,
   };
   const fieldStillVerified = nextLedger.items.some(item => (
     item.field_id === candidate.field_id
@@ -9707,8 +9783,10 @@ export async function verifyProjectExternalEvidenceCandidate(
     story_id: story.storyId,
     evidence_id: candidate.evidence_id,
     decision: request.decision,
+    idempotent_replay: false,
     readiness_changed: readinessChanged,
     external_evidence_credit_granted: accepted,
+    event: verificationEvent,
     candidate: updatedCandidate,
     detail: afterDetail.data,
   });

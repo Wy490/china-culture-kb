@@ -2719,6 +2719,12 @@ export type ProjectExternalEvidenceCandidateImportRequest = ProjectExternalEvide
   | { field_id: 'location_permissions'; evidence_type: 'location_permission_record' }
 );
 
+export type ProjectExternalEvidenceCandidateStatus =
+  | 'pending_verification'
+  | 'verified'
+  | 'rejected'
+  | 'revoked';
+
 export interface ProjectExternalEvidenceCandidate {
   evidence_id: string;
   field_id: ProjectExternalEvidenceFieldId;
@@ -2731,7 +2737,7 @@ export interface ProjectExternalEvidenceCandidate {
   captured_at?: string;
   notes?: string;
   imported_at: string;
-  status: 'pending_verification' | 'verified' | 'rejected' | 'revoked';
+  status: ProjectExternalEvidenceCandidateStatus;
   source_retrieved: boolean;
   content_hash_verified: boolean;
   scope_verified: boolean;
@@ -2752,6 +2758,8 @@ export interface ProjectExternalEvidenceLedger {
     candidate_import_can_grant_external_evidence_credit: false;
   };
   items: ProjectExternalEvidenceCandidate[];
+  verification_events: ProjectExternalEvidenceVerificationEvent[];
+  verification_head_sha256: string | null;
 }
 
 export interface ProjectExternalEvidenceCandidateImportResult {
@@ -2810,12 +2818,43 @@ export type ProjectExternalEvidenceVerificationDecision = 'accept' | 'reject' | 
 export interface ProjectExternalEvidenceVerificationRequest {
   evidence_id: string;
   expected_content_sha256: string;
+  expected_candidate_status: ProjectExternalEvidenceCandidateStatus;
+  idempotency_key: string;
   decision: ProjectExternalEvidenceVerificationDecision;
   scope_attestation?: {
     source_matches_candidate: true;
     evidence_supports_field: true;
     usage_scope_confirmed: true;
   };
+  review_note: string;
+}
+
+export interface ProjectExternalEvidenceVerificationEvent {
+  schema_version: 'project-external-evidence-verification-event/v1';
+  event_id: string;
+  sequence: number;
+  previous_event_sha256: string | null;
+  event_sha256: string;
+  request_sha256: string;
+  idempotency_key: string;
+  recorded_at: string;
+  project_id: string;
+  story_id: string;
+  evidence_id: string;
+  field_id: ProjectExternalEvidenceFieldId;
+  evidence_type: ProjectExternalEvidenceType;
+  source_uri: string;
+  expected_content_sha256: string;
+  actual_content_sha256?: string;
+  decision: ProjectExternalEvidenceVerificationDecision;
+  before_status: ProjectExternalEvidenceCandidateStatus;
+  after_status: ProjectExternalEvidenceCandidateStatus;
+  source_retrieved: boolean;
+  content_hash_verified: boolean;
+  scope_verified: boolean;
+  external_evidence_credit_granted: boolean;
+  reviewer: ProjectExternalEvidenceReviewer;
+  scope_attestation?: ProjectExternalEvidenceVerificationRequest['scope_attestation'];
   review_note: string;
 }
 
@@ -2830,8 +2869,10 @@ export interface ProjectExternalEvidenceVerificationResult {
   story_id: string;
   evidence_id: string;
   decision: ProjectExternalEvidenceVerificationDecision;
+  idempotent_replay: boolean;
   readiness_changed: boolean;
   external_evidence_credit_granted: boolean;
+  event: ProjectExternalEvidenceVerificationEvent;
   candidate: ProjectExternalEvidenceCandidate;
   detail: StoryProjectDetail;
 }

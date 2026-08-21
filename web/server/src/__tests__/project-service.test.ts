@@ -6480,6 +6480,8 @@ describe('project-service', () => {
     const verificationRequest = ProjectExternalEvidenceVerificationRequestSchema.parse({
       evidence_id: imported.data!.evidence_id,
       expected_content_sha256: evidenceSha256,
+      expected_candidate_status: 'pending_verification',
+      idempotency_key: 'verify-interview-accept-001',
       decision: 'accept',
       scope_attestation: {
         source_matches_candidate: true,
@@ -6523,8 +6525,17 @@ describe('project-service', () => {
     expect(verified.data).toMatchObject({
       schema_version: 'project-external-evidence-verification/v1',
       decision: 'accept',
+      idempotent_replay: false,
       readiness_changed: true,
       external_evidence_credit_granted: true,
+      event: {
+        schema_version: 'project-external-evidence-verification-event/v1',
+        sequence: 1,
+        previous_event_sha256: null,
+        idempotency_key: 'verify-interview-accept-001',
+        before_status: 'pending_verification',
+        after_status: 'verified',
+      },
       candidate: {
         status: 'verified',
         source_retrieved: true,
@@ -6539,6 +6550,49 @@ describe('project-service', () => {
       .toContain('interview_clip_selection');
     expect(verified.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
       .toBe('resolved');
+    expect(verified.data?.event.event_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(verified.data?.detail.current_story.external_evidence_ledger?.verification_head_sha256)
+      .toBe(verified.data?.event.event_sha256);
+    expect(verified.data?.detail.current_story.external_evidence_ledger?.verification_events).toHaveLength(1);
+
+    const verificationReplay = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      verificationRequest,
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(verificationReplay.ok).toBe(true);
+    expect(verificationReplay.data).toMatchObject({
+      idempotent_replay: true,
+      readiness_changed: false,
+      event: { event_sha256: verified.data?.event.event_sha256 },
+    });
+    expect(verificationReplay.data?.detail.current_story.external_evidence_ledger?.verification_events).toHaveLength(1);
+
+    const conflictingReplay = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        ...verificationRequest,
+        review_note: '复用同一幂等键但改变审核内容必须冲突。',
+      },
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(conflictingReplay.ok).toBe(false);
+    expect(conflictingReplay.error?.code).toBe('PROJECT_WRITE_CONFLICT');
+
+    const staleDecision = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      {
+        evidence_id: imported.data!.evidence_id,
+        expected_content_sha256: evidenceSha256,
+        expected_candidate_status: 'pending_verification',
+        idempotency_key: 'verify-interview-stale-revoke-001',
+        decision: 'revoke',
+        review_note: '陈旧审核请求不得覆盖已通过的验收决定。',
+      },
+      { actor_id: 'material-reviewer-1', authentication_method: 'signed_session' },
+    );
+    expect(staleDecision.ok).toBe(false);
+    expect(staleDecision.error?.code).toBe('PROJECT_WRITE_CONFLICT');
 
     const httpsCandidate = await importProjectExternalEvidenceCandidate(enriched.project_id!, {
       field_id: 'rights_and_attribution',
@@ -6555,6 +6609,8 @@ describe('project-service', () => {
       {
         evidence_id: httpsCandidate.data!.evidence_id,
         expected_content_sha256: 'b'.repeat(64),
+        expected_candidate_status: 'pending_verification',
+        idempotency_key: 'verify-https-accept-001',
         decision: 'accept',
         scope_attestation: {
           source_matches_candidate: true,
@@ -6575,6 +6631,8 @@ describe('project-service', () => {
       {
         evidence_id: httpsCandidate.data!.evidence_id,
         expected_content_sha256: 'b'.repeat(64),
+        expected_candidate_status: 'pending_verification',
+        idempotency_key: 'verify-https-reject-001',
         decision: 'reject',
         review_note: '外部来源尚未取回，拒绝当前权利记录候选。',
       },
@@ -6592,27 +6650,58 @@ describe('project-service', () => {
       },
     });
 
+    const goodSnapshotText = await readFile(snapshotPath, 'utf-8');
+    const tamperedSnapshot = JSON.parse(goodSnapshotText) as StoryProjectVersionSnapshot;
+    tamperedSnapshot.story.external_evidence_ledger!.verification_events![0].review_note = '篡改后的审核备注';
+    await writeFile(snapshotPath, JSON.stringify(tamperedSnapshot, null, 2), 'utf-8');
+    const revokeRequest = {
+      evidence_id: imported.data!.evidence_id,
+      expected_content_sha256: evidenceSha256,
+      expected_candidate_status: 'verified' as const,
+      idempotency_key: 'verify-interview-revoke-001',
+      decision: 'revoke' as const,
+      review_note: '撤销当前项目的采访使用范围。',
+    };
+    const tamperedLedgerBlocked = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      revokeRequest,
+      { actor_id: 'material-reviewer-1', authentication_method: 'static_registry_token' },
+    );
+    expect(tamperedLedgerBlocked.ok).toBe(false);
+    expect(tamperedLedgerBlocked.error?.code).toBe('REVIEW_STORAGE_UNAVAILABLE');
+    await writeFile(snapshotPath, goodSnapshotText, 'utf-8');
+
     const revoked = await verifyProjectExternalEvidenceCandidate(
       enriched.project_id!,
-      {
-        evidence_id: imported.data!.evidence_id,
-        expected_content_sha256: evidenceSha256,
-        decision: 'revoke',
-        review_note: '撤销当前项目的采访使用范围。',
-      },
+      revokeRequest,
       { actor_id: 'material-reviewer-1', authentication_method: 'static_registry_token' },
     );
     expect(revoked.ok).toBe(true);
     expect(revoked.data).toMatchObject({
       decision: 'revoke',
+      idempotent_replay: false,
       readiness_changed: true,
       external_evidence_credit_granted: false,
+      event: {
+        sequence: 3,
+        idempotency_key: 'verify-interview-revoke-001',
+        before_status: 'verified',
+        after_status: 'revoked',
+      },
       candidate: { status: 'revoked' },
     });
     expect(revoked.data?.detail.current_story.production_material_readiness?.missing_fields.map(field => field.field_id))
       .toContain('interview_clip_selection');
     expect(revoked.data?.detail.current_story.supplement_tasks?.find(task => task.task_id === 'external-interview-task')?.status)
       .toBe('open');
+    const verificationEvents = revoked.data?.detail.current_story.external_evidence_ledger?.verification_events ?? [];
+    expect(verificationEvents).toHaveLength(3);
+    expect(verificationEvents[1].previous_event_sha256).toBe(verificationEvents[0].event_sha256);
+    expect(verificationEvents[2].previous_event_sha256).toBe(verificationEvents[1].event_sha256);
+    expect(revoked.data?.detail.current_story.external_evidence_ledger?.verification_head_sha256)
+      .toBe(verificationEvents[2].event_sha256);
+    const updatedRawSource = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(updatedRawSource.external_evidence_ledger?.verification_events).toEqual(verificationEvents);
   });
 
   it('stores uploaded external evidence by server-computed hash and imports only a pending candidate', async () => {

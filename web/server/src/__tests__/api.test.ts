@@ -8847,6 +8847,8 @@ describe('Projects API', () => {
         .send({
           evidence_id: res.body.data.evidence_id,
           expected_content_sha256: 'b'.repeat(64),
+          expected_candidate_status: 'pending_verification',
+          idempotency_key: 'api-local-bypass-accept-001',
           decision: 'accept',
           scope_attestation: {
             source_matches_candidate: true,

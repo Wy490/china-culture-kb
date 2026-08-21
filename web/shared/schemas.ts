@@ -2843,6 +2843,8 @@ export const ProjectExternalEvidenceIdSchema = z.string().regex(
 export const ProjectExternalEvidenceVerificationRequestSchema = z.object({
   evidence_id: ProjectExternalEvidenceIdSchema,
   expected_content_sha256: z.string().trim().toLowerCase().regex(/^[a-f0-9]{64}$/),
+  expected_candidate_status: z.enum(['pending_verification', 'verified', 'rejected', 'revoked']),
+  idempotency_key: z.string().trim().min(8).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
   decision: z.enum(['accept', 'reject', 'revoke']),
   scope_attestation: z.object({
     source_matches_candidate: z.literal(true),

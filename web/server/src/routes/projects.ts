@@ -666,7 +666,17 @@ projectsRouter.post(
         actor_id: access.actor.actor_id,
         authentication_method: access.authentication_method,
       });
-      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+            ? 404
+            : result.error?.code === ErrorCodes.PROJECT_WRITE_CONFLICT
+              ? 409
+              : result.error?.code === ErrorCodes.REVIEW_STORAGE_UNAVAILABLE
+                ? 500
+                : 400,
+      ).json(result);
     } catch (err) {
       next(err);
     }
