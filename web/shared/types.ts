@@ -590,6 +590,31 @@ export type CulturalStorySourceKind =
   | 'heritage_memory'
   | 'user_original';
 
+export interface StoryGenreFusionAssignment {
+  pattern_id: NarrativePatternId;
+  role: 'primary_engine' | 'secondary_mechanism';
+  scene_scope: 'whole_story' | 'middle_scene';
+  realization_requirement: string;
+}
+
+export interface StoryGenreFusionConflict {
+  conflict_id: string;
+  severity: 'warning' | 'blocking';
+  pattern_ids: NarrativePatternId[];
+  reason: string;
+  resolution_rule: string;
+}
+
+export interface StoryGenreFusionPlan {
+  schema_version: 'story-genre-fusion-plan/v1';
+  status: 'not_applicable' | 'single_pattern' | 'fusion_ready' | 'ready_with_warnings';
+  primary_pattern_id?: NarrativePatternId;
+  secondary_pattern_ids: NarrativePatternId[];
+  assignments: StoryGenreFusionAssignment[];
+  conflicts: StoryGenreFusionConflict[];
+  distinct_middle_scene_required_per_secondary: true;
+}
+
 export interface StoryGenreComposition {
   schema_version: 'story-genre-composition/v1';
   source_kinds: CulturalStorySourceKind[];
@@ -598,6 +623,7 @@ export interface StoryGenreComposition {
   evidence_boundary_rules: string[];
   creative_rules: string[];
   compatibility_warnings: string[];
+  fusion_plan: StoryGenreFusionPlan;
   originality_boundary: {
     mechanism_reference_only: true;
     protected_expression_copying_allowed: false;

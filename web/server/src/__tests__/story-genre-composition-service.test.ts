@@ -58,4 +58,49 @@ describe('story genre composition service', () => {
       cultural_source_kinds: ['myth', 'myth'],
     }).success).toBe(false);
   });
+
+  it('assigns explicit primary and secondary mechanism roles and records semantic tensions', () => {
+    const composition = buildStoryGenreComposition({
+      entry: entry(),
+      videoType: 'ai_comic_drama',
+      truthMode: 'inspired_by_material',
+      requestedSourceKinds: ['folk_legend', 'historical_event'],
+      narrativePatternIds: [
+        'archaeological_mystery_expedition',
+        'fair_play_detective',
+        'folk_supernatural_investigation',
+      ],
+    });
+
+    expect(composition.fusion_plan).toMatchObject({
+      schema_version: 'story-genre-fusion-plan/v1',
+      status: 'ready_with_warnings',
+      primary_pattern_id: 'archaeological_mystery_expedition',
+      secondary_pattern_ids: ['fair_play_detective', 'folk_supernatural_investigation'],
+    });
+    expect(composition.fusion_plan.assignments).toEqual([
+      expect.objectContaining({
+        pattern_id: 'archaeological_mystery_expedition',
+        role: 'primary_engine',
+        scene_scope: 'whole_story',
+      }),
+      expect.objectContaining({
+        pattern_id: 'fair_play_detective',
+        role: 'secondary_mechanism',
+        scene_scope: 'middle_scene',
+      }),
+      expect.objectContaining({
+        pattern_id: 'folk_supernatural_investigation',
+        role: 'secondary_mechanism',
+        scene_scope: 'middle_scene',
+      }),
+    ]);
+    expect(composition.fusion_plan.conflicts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        conflict_id: 'epistemic-resolution-tension',
+        severity: 'warning',
+        pattern_ids: ['fair_play_detective', 'folk_supernatural_investigation'],
+      }),
+    ]));
+  });
 });

@@ -506,6 +506,8 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('历史人物');
     expect(pkg.user_prompt).toContain('民间传说');
     expect(pkg.user_prompt).toContain('公平线索推理');
+    expect(pkg.user_prompt).toContain('主机制：公平线索推理');
+    expect(pkg.user_prompt).toContain('副机制：历史阵营群像史诗');
     expect(pkg.user_prompt).toContain('不得复用受保护作品的专有角色、标志性世界设定、独特情节序列、代表性台词或可识别文风');
   });
 

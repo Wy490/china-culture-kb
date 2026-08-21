@@ -227,4 +227,76 @@ describe('local story genre composition', () => {
     if (!baseline.ok || !oldPatternOnly.ok) return;
     expect(oldPatternOnly.storyResult).toEqual(baseline.storyResult);
   });
+
+  it('keeps the primary arc while materializing a secondary mechanism in a middle scene', () => {
+    const sourceEntry = CASES[0].entry;
+    const result = generateChinaCultureLocalStoryAssembly({
+      entry: sourceEntry,
+      centralEvent: '保护残片并查清路线误判',
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '行动具体、证据公平',
+      genreComposition: buildStoryGenreComposition({
+        entry: sourceEntry,
+        videoType: 'ai_comic_drama',
+        truthMode: 'inspired_by_material',
+        narrativePatternIds: [
+          'archaeological_mystery_expedition',
+          'fair_play_detective',
+        ],
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyResult.scene_breakdown[0].dramatic_function).toBe('异常器物');
+    expect(result.storyResult.scene_breakdown.at(-1)?.dramatic_function).toBe('带着代价返回');
+    const secondaryScenes = result.storyResult.scene_breakdown.filter(scene => (
+      /证词|物证|时间线|反证/u.test(`${scene.plot} ${scene.key_action}`)
+    ));
+    expect(secondaryScenes).toHaveLength(1);
+    expect(result.storyResult.full_text).toMatch(/证词|物证|时间线|反证/u);
+    expect(result.storyResult.gears_segments.some(segment => (
+      /证词|物证|时间线|反证/u.test(segment.script_text)
+    ))).toBe(true);
+    expect(result.referenceTrace?.flatMap(trace => trace.applied_rules)).toEqual(expect.arrayContaining([
+      'local-genre-composition:archaeological_mystery_expedition',
+      'local-genre-composition-secondary:fair_play_detective',
+    ]));
+  });
+
+  it('fails closed when distinct secondary mechanisms exceed interior scene capacity', () => {
+    const sourceEntry = CASES[0].entry;
+    const result = generateChinaCultureLocalStoryAssembly({
+      entry: sourceEntry,
+      centralEvent: '围绕文化线索完成多机制行动',
+      videoType: 'ai_comic_drama',
+      presentationStyle: 'ai_comic',
+      storyStructure: 'single_event_drama',
+      targetDuration: '3分钟',
+      tone: '行动具体、因果清楚',
+      genreComposition: buildStoryGenreComposition({
+        entry: sourceEntry,
+        videoType: 'ai_comic_drama',
+        truthMode: 'inspired_by_material',
+        narrativePatternIds: [
+          'archaeological_mystery_expedition',
+          'fair_play_detective',
+          'team_heist_operation',
+          'road_companion_quest',
+          'family_saga_generations',
+          'folk_satirical_comedy',
+        ],
+      }),
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: 'genre_fusion_conflict',
+    });
+    if (result.ok) return;
+    expect(result.message).toContain('中段场景容量');
+  });
 });

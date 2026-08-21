@@ -27,7 +27,7 @@ export interface ChinaCultureLocalStoryGenerationSuccess {
 
 export interface ChinaCultureLocalStoryGenerationFailure {
   ok: false;
-  reason: 'memory_mosaic_witnesses_missing';
+  reason: 'memory_mosaic_witnesses_missing' | 'genre_fusion_conflict';
   message: string;
 }
 
@@ -80,6 +80,13 @@ export function generateChinaCultureLocalStoryAssembly(input: {
       presentationStyle: input.presentationStyle,
       genreComposition: input.genreComposition,
     });
+    if (genreApplication.blockingConflict) {
+      return {
+        ok: false,
+        reason: 'genre_fusion_conflict',
+        message: genreApplication.blockingConflict.message,
+      };
+    }
     const appliedRules = [
       '用物件开场',
       '用见证人回忆推进',
@@ -119,6 +126,13 @@ export function generateChinaCultureLocalStoryAssembly(input: {
     presentationStyle: input.presentationStyle,
     genreComposition: input.genreComposition,
   });
+  if (genreApplication.blockingConflict) {
+    return {
+      ok: false,
+      reason: 'genre_fusion_conflict',
+      message: genreApplication.blockingConflict.message,
+    };
+  }
   const referenceTrace = genreApplication.appliedRules.length > 0
     ? [{
         applied_rules: genreApplication.appliedRules,

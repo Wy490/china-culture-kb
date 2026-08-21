@@ -49,7 +49,10 @@ import {
   formatNarrativePatternsForPrompt,
   getNarrativePatternRequirementLines,
 } from './narrative-pattern-library.js';
-import { getCulturalStorySourceLabel } from './story-genre-composition-service.js';
+import {
+  getCulturalStorySourceLabel,
+  getNarrativePatternLabel,
+} from './story-genre-composition-service.js';
 
 // ---------------------------------------------------------------------------
 // Prompt package type — what gets sent to the external model via stdin
@@ -596,6 +599,15 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
       lines.push(`原创叙事机制：${composition.narrative_pattern_ids
         .map(patternId => getNarrativePatternRequirementLines(pkg.context.video_type, [patternId])[0]?.split('：')[0] ?? patternId)
         .join('、')}`);
+      if (composition.fusion_plan.primary_pattern_id) {
+        lines.push(`主机制：${getNarrativePatternLabel(composition.fusion_plan.primary_pattern_id)}`);
+      }
+      for (const patternId of composition.fusion_plan.secondary_pattern_ids) {
+        lines.push(`副机制：${getNarrativePatternLabel(patternId)}（只在独立中段场景兑现）`);
+      }
+      for (const conflict of composition.fusion_plan.conflicts) {
+        lines.push(`融合张力：${conflict.reason} 处理规则：${conflict.resolution_rule}`);
+      }
       lines.push('题材源要求：');
       for (const item of composition.source_requirements) lines.push(`- ${item}`);
       lines.push('事实与改编边界：');

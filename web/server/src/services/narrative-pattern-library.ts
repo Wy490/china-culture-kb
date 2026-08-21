@@ -888,6 +888,24 @@ const DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE: Record<VideoType, number> = {
 
 export const NARRATIVE_PATTERN_LIBRARY = PATTERNS;
 export const NARRATIVE_PATTERN_VIDEO_TYPE_MAP = VIDEO_TYPE_PATTERN_MAP;
+export const EXPANDED_NARRATIVE_PATTERN_IDS = [
+  'archaeological_mystery_expedition',
+  'clan_legacy_conspiracy',
+  'fair_play_detective',
+  'mythic_voyage_homecoming',
+  'historical_faction_epic',
+  'mythic_hero_quest',
+  'folk_supernatural_investigation',
+  'survival_expedition',
+  'conspiracy_puzzle_thriller',
+  'courtroom_case_procedural',
+  'team_heist_operation',
+  'tragic_romance_choice',
+  'family_saga_generations',
+  'road_companion_quest',
+  'war_strategy_campaign',
+  'folk_satirical_comedy',
+] as const satisfies readonly NarrativePatternId[];
 
 export function getDefaultNarrativePatternCount(videoType: VideoType): number {
   return DEFAULT_PATTERN_COUNT_BY_VIDEO_TYPE[videoType] ?? 1;

@@ -3,10 +3,15 @@ import type {
   EntryDetail,
   NarrativePatternId,
   StoryGenreComposition,
+  StoryGenreFusionConflict,
+  StoryGenreFusionPlan,
   TruthMode,
   VideoType,
 } from '@shared/types.js';
-import { NARRATIVE_PATTERN_LIBRARY } from './narrative-pattern-library.js';
+import {
+  EXPANDED_NARRATIVE_PATTERN_IDS,
+  NARRATIVE_PATTERN_LIBRARY,
+} from './narrative-pattern-library.js';
 
 interface CulturalSourceRule {
   label: string;
@@ -73,12 +78,97 @@ const MYTHIC_PATTERNS = new Set<NarrativePatternId>([
   'folk_supernatural_investigation',
 ]);
 
+const EXPANDED_PATTERN_SET = new Set<NarrativePatternId>(EXPANDED_NARRATIVE_PATTERN_IDS);
+
+const FUSION_TENSION_RULES: Array<{
+  conflict_id: string;
+  pattern_ids: [NarrativePatternId, NarrativePatternId];
+  reason: string;
+  resolution_rule: string;
+}> = [
+  {
+    conflict_id: 'epistemic-resolution-tension',
+    pattern_ids: ['fair_play_detective', 'folk_supernatural_investigation'],
+    reason: '公平推理要求关键案件得到可复核解释，民俗异闻调查允许保留边界明确的未知。',
+    resolution_rule: '主机制决定结局的认知口径；副机制只提供竞争假设，不得推翻已展示证据，也不得把未知冒充事实。',
+  },
+  {
+    conflict_id: 'tone-payoff-tension',
+    pattern_ids: ['tragic_romance_choice', 'folk_satirical_comedy'],
+    reason: '悲剧抉择要求不可撤回的情感损失，讽喻喜剧要求规则反噬形成笑后余味。',
+    resolution_rule: '主机制决定结尾情绪；副机制只兑现一场规则错位，不得用笑料取消人物损失或消费弱者。',
+  },
+  {
+    conflict_id: 'artifact-custody-tension',
+    pattern_ids: ['archaeological_mystery_expedition', 'team_heist_operation'],
+    reason: '遗迹探秘强调原址保护与证据留存，团队行动容易把文化器物误写成可夺取战利品。',
+    resolution_rule: '团队行动只能用于保护、归还或阻止破坏；未知器物必须编号、封存和待核，不得据为己有。',
+  },
+  {
+    conflict_id: 'strategy-scope-overlap',
+    pattern_ids: ['historical_faction_epic', 'war_strategy_campaign'],
+    reason: '阵营群像与战役谋略都可能争夺全片因果主轴，造成重复摆盘和人物失焦。',
+    resolution_rule: '主机制负责全片阵营因果，副机制只在一场兑现地形、情报、后勤或命令反馈闭环。',
+  },
+];
+
 function unique<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
 
 export function getCulturalStorySourceLabel(sourceKind: CulturalStorySourceKind): string {
   return SOURCE_RULES[sourceKind].label;
+}
+
+export function getNarrativePatternLabel(patternId: NarrativePatternId): string {
+  return NARRATIVE_PATTERN_LIBRARY[patternId]?.label ?? patternId;
+}
+
+function buildGenreFusionPlan(patterns: NarrativePatternId[]): StoryGenreFusionPlan {
+  const expandedPatterns = patterns.filter(patternId => EXPANDED_PATTERN_SET.has(patternId));
+  const primaryPatternId = expandedPatterns[0];
+  const secondaryPatternIds = expandedPatterns.slice(1);
+  const conflicts: StoryGenreFusionConflict[] = FUSION_TENSION_RULES
+    .filter(rule => rule.pattern_ids.every(patternId => expandedPatterns.includes(patternId)))
+    .map(rule => ({
+      conflict_id: rule.conflict_id,
+      severity: 'warning',
+      pattern_ids: [...rule.pattern_ids],
+      reason: rule.reason,
+      resolution_rule: rule.resolution_rule,
+    }));
+  const assignments = [
+    ...(primaryPatternId
+      ? [{
+          pattern_id: primaryPatternId,
+          role: 'primary_engine' as const,
+          scene_scope: 'whole_story' as const,
+          realization_requirement: `以“${getNarrativePatternLabel(primaryPatternId)}”控制开场、升级、高潮与结尾的完整因果弧。`,
+        }]
+      : []),
+    ...secondaryPatternIds.map(patternId => ({
+      pattern_id: patternId,
+      role: 'secondary_mechanism' as const,
+      scene_scope: 'middle_scene' as const,
+      realization_requirement: `在一个独立中段场景中以动作和后果兑现“${getNarrativePatternLabel(patternId)}”，不得替换主机制的开场与结尾。`,
+    })),
+  ];
+
+  return {
+    schema_version: 'story-genre-fusion-plan/v1',
+    status: !primaryPatternId
+      ? 'not_applicable'
+      : secondaryPatternIds.length === 0
+        ? 'single_pattern'
+        : conflicts.length > 0
+          ? 'ready_with_warnings'
+          : 'fusion_ready',
+    ...(primaryPatternId ? { primary_pattern_id: primaryPatternId } : {}),
+    secondary_pattern_ids: secondaryPatternIds,
+    assignments,
+    conflicts,
+    distinct_middle_scene_required_per_secondary: true,
+  };
 }
 
 export function inferCulturalStorySourceKinds(entry: EntryDetail): CulturalStorySourceKind[] {
@@ -110,6 +200,7 @@ export function buildStoryGenreComposition(input: {
   const patternLabels = patterns
     .map(patternId => NARRATIVE_PATTERN_LIBRARY[patternId]?.label)
     .filter((label): label is string => Boolean(label));
+  const fusionPlan = buildGenreFusionPlan(patterns);
   const compatibilityWarnings = [
     sourceKinds.length > 1
       ? '混合题材必须在逐场 source_entries / factual_basis 中说明每个事实、传说与虚构元素来自哪一层。'
@@ -137,8 +228,11 @@ export function buildStoryGenreComposition(input: {
       ...unique(sourceRules.map(rule => rule.creative_rule)),
       `原创机制边界：当前只组合${patternLabels.length ? patternLabels.join('、') : '通用叙事'}的目标、冲突、线索、节奏和场景机制。`,
       '不得复用受保护作品的专有角色、标志性世界设定、独特情节序列、代表性台词或可识别文风。',
+      ...fusionPlan.assignments.map(item => item.realization_requirement),
+      ...fusionPlan.conflicts.map(item => item.resolution_rule),
     ],
     compatibility_warnings: compatibilityWarnings,
+    fusion_plan: fusionPlan,
     originality_boundary: {
       mechanism_reference_only: true,
       protected_expression_copying_allowed: false,

@@ -48,7 +48,8 @@
     "audit:production-material-m3": "node scripts/production-material-pack-m3-audit.mjs",
     "audit:domain-pack-m3": "node scripts/domain-pack-m3-audit.mjs",
     "audit:domain-pack-m3-comparison": "tsx scripts/domain-pack-15-type-comparison-audit.mts",
-    "audit:story-agent-m4-machine-evaluation": "node scripts/story-agent-m4-machine-evaluation-audit.mjs"
+    "audit:story-agent-m4-machine-evaluation": "node scripts/story-agent-m4-machine-evaluation-audit.mjs",
+    "audit:story-genre-composition-matrix": "tsx scripts/story-genre-composition-matrix-audit.mts"
   },
   "dependencies": {
     "cors": "^2.8.5",

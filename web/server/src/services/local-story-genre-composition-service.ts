@@ -8,30 +8,14 @@ import type {
 } from '@shared/types.js';
 import type { StoryAssembly } from '../platform/story-model-output-merge.js';
 import { buildPlatformGearsSegmentsFromScenes } from '../platform/story-gears-segment.js';
-import { NARRATIVE_PATTERN_LIBRARY } from './narrative-pattern-library.js';
+import {
+  EXPANDED_NARRATIVE_PATTERN_IDS,
+  NARRATIVE_PATTERN_LIBRARY,
+} from './narrative-pattern-library.js';
 
-const EXPANDED_PATTERN_IDS = [
-  'archaeological_mystery_expedition',
-  'clan_legacy_conspiracy',
-  'fair_play_detective',
-  'mythic_voyage_homecoming',
-  'historical_faction_epic',
-  'mythic_hero_quest',
-  'folk_supernatural_investigation',
-  'survival_expedition',
-  'conspiracy_puzzle_thriller',
-  'courtroom_case_procedural',
-  'team_heist_operation',
-  'tragic_romance_choice',
-  'family_saga_generations',
-  'road_companion_quest',
-  'war_strategy_campaign',
-  'folk_satirical_comedy',
-] as const satisfies readonly NarrativePatternId[];
+type ExpandedPatternId = typeof EXPANDED_NARRATIVE_PATTERN_IDS[number];
 
-type ExpandedPatternId = typeof EXPANDED_PATTERN_IDS[number];
-
-const EXPANDED_PATTERN_SET = new Set<NarrativePatternId>(EXPANDED_PATTERN_IDS);
+const EXPANDED_PATTERN_SET = new Set<NarrativePatternId>(EXPANDED_NARRATIVE_PATTERN_IDS);
 
 /** Audience-facing action beats. They express reusable mechanisms, not protected plots. */
 const ACTION_BEATS: Record<ExpandedPatternId, readonly string[]> = {
@@ -187,6 +171,7 @@ function buildScene(input: {
   entry: EntryDetail;
   centralEvent: string;
   genreComposition: StoryGenreComposition;
+  secondaryPatternId?: ExpandedPatternId;
 }): StoryScene {
   const pattern = NARRATIVE_PATTERN_LIBRARY[input.patternId];
   const beatIndex = resolveBeatIndex(
@@ -196,15 +181,25 @@ function buildScene(input: {
   );
   const dramaticFunction = pattern.pacing_pattern[beatIndex];
   const actionBeat = ACTION_BEATS[input.patternId][beatIndex];
-  const plot = input.sceneIndex === 0
+  const primaryPlot = input.sceneIndex === 0
     ? `${actionBeat} 故事由“${input.centralEvent}”进入行动。`
     : actionBeat;
+  const secondaryPattern = input.secondaryPatternId
+    ? NARRATIVE_PATTERN_LIBRARY[input.secondaryPatternId]
+    : undefined;
+  const secondaryBeat = input.secondaryPatternId
+    ? ACTION_BEATS[input.secondaryPatternId][beatIndex]
+    : undefined;
+  const plot = secondaryBeat ? `${primaryPlot} ${secondaryBeat}` : primaryPlot;
   const factualBasis = input.scene.factual_basis
     || shorten(input.entry.story || input.entry.summary, 180)
     || `${input.entry.name}条目中的可核验信息。`;
   const fictionalizedElements = unique([
     ...(input.scene.fictionalized_elements ?? []),
     `为实现“${pattern.label}”机制而设计的场景行动、对白与因果连接，属于戏剧化补足。`,
+    ...(secondaryPattern
+      ? [`本场同时兑现“${secondaryPattern.label}”副机制，其动作与因果连接属于戏剧化补足。`]
+      : []),
   ]);
   const evidenceBoundary = input.genreComposition.evidence_boundary_rules[0]
     || '事实、传说与虚构补足必须分层表达。';
@@ -215,9 +210,9 @@ function buildScene(input: {
     dramatic_function: dramaticFunction,
     plot,
     key_action: plot,
-    conflict: `${pattern.conflict_engine} 本场必须通过人物行动呈现，不能只由旁白宣布。`,
+    conflict: `${pattern.conflict_engine}${secondaryPattern ? `；本场同时承接：${secondaryPattern.conflict_engine}` : ''} 本场必须通过人物行动呈现，不能只由旁白宣布。`,
     dialogue_or_narration: `旁白：${actionBeat}`,
-    visual_prompt: `${input.scene.visual_prompt}；突出${pattern.subgenre_tags?.slice(0, 2).join('、') || pattern.label}的可见线索与行动`,
+    visual_prompt: `${input.scene.visual_prompt}；突出${pattern.subgenre_tags?.slice(0, 2).join('、') || pattern.label}${secondaryPattern ? `以及${secondaryPattern.subgenre_tags?.slice(0, 2).join('、') || secondaryPattern.label}` : ''}的可见线索与行动`,
     cultural_note: unique([input.scene.cultural_note, evidenceBoundary]).join('；'),
     source_entries: unique([...(input.scene.source_entries ?? []), input.entry.name]),
     factual_basis: factualBasis,
@@ -228,7 +223,30 @@ function buildScene(input: {
 export interface LocalStoryGenreCompositionApplication {
   storyResult: StoryAssembly;
   appliedPatternId?: ExpandedPatternId;
+  appliedSecondaryPatternIds?: ExpandedPatternId[];
   appliedRules: string[];
+  blockingConflict?: {
+    conflict_id: 'insufficient-secondary-scene-capacity';
+    message: string;
+    secondary_pattern_ids: ExpandedPatternId[];
+    available_middle_scene_count: number;
+  };
+}
+
+function assignSecondaryPatternsToScenes(input: {
+  sceneCount: number;
+  secondaryPatternIds: ExpandedPatternId[];
+}): Map<number, ExpandedPatternId> | undefined {
+  const availableMiddleSceneCount = Math.max(0, input.sceneCount - 2);
+  if (input.secondaryPatternIds.length > availableMiddleSceneCount) return undefined;
+  const assignments = new Map<number, ExpandedPatternId>();
+  for (const [index, patternId] of input.secondaryPatternIds.entries()) {
+    const sceneIndex = 1 + Math.floor(
+      ((index + 1) * availableMiddleSceneCount) / (input.secondaryPatternIds.length + 1),
+    );
+    assignments.set(sceneIndex, patternId);
+  }
+  return assignments;
 }
 
 /**
@@ -243,14 +261,33 @@ export function applyLocalStoryGenreComposition(input: {
   presentationStyle: PresentationStyle;
   genreComposition?: StoryGenreComposition;
 }): LocalStoryGenreCompositionApplication {
-  const patternId = input.genreComposition?.narrative_pattern_ids.find(
+  const expandedPatternIds = input.genreComposition?.narrative_pattern_ids.filter(
     (candidate): candidate is ExpandedPatternId => EXPANDED_PATTERN_SET.has(candidate),
-  );
+  ) ?? [];
+  const patternId = expandedPatternIds[0];
   if (!patternId || !input.genreComposition) {
     return { storyResult: input.storyResult, appliedRules: [] };
   }
 
   const pattern = NARRATIVE_PATTERN_LIBRARY[patternId];
+  const secondaryPatternIds = expandedPatternIds.slice(1);
+  const secondaryAssignments = assignSecondaryPatternsToScenes({
+    sceneCount: input.storyResult.scene_breakdown.length,
+    secondaryPatternIds,
+  });
+  if (!secondaryAssignments) {
+    const availableMiddleSceneCount = Math.max(0, input.storyResult.scene_breakdown.length - 2);
+    return {
+      storyResult: input.storyResult,
+      appliedRules: [],
+      blockingConflict: {
+        conflict_id: 'insufficient-secondary-scene-capacity',
+        message: `请求了 ${secondaryPatternIds.length} 个副机制，但当前故事只有 ${availableMiddleSceneCount} 个可独立兑现副机制的中段场景；中段场景容量不足。`,
+        secondary_pattern_ids: secondaryPatternIds,
+        available_middle_scene_count: availableMiddleSceneCount,
+      },
+    };
+  }
   const sceneBreakdown = input.storyResult.scene_breakdown.map((scene, sceneIndex, scenes) => (
     buildScene({
       scene,
@@ -260,6 +297,7 @@ export function applyLocalStoryGenreComposition(input: {
       entry: input.entry,
       centralEvent: input.centralEvent,
       genreComposition: input.genreComposition!,
+      secondaryPatternId: secondaryAssignments.get(sceneIndex),
     })
   ));
   const gearsSegments = buildPlatformGearsSegmentsFromScenes(
@@ -286,9 +324,14 @@ export function applyLocalStoryGenreComposition(input: {
 
   return {
     appliedPatternId: patternId,
+    appliedSecondaryPatternIds: secondaryPatternIds,
     appliedRules: [
       `local-genre-composition:${patternId}`,
+      ...secondaryPatternIds.map(candidate => `local-genre-composition-secondary:${candidate}`),
       `本地兜底已应用“${pattern.label}”节奏与行动机制`,
+      ...secondaryPatternIds.map(candidate => (
+        `本地兜底已在独立中段场景兑现“${NARRATIVE_PATTERN_LIBRARY[candidate].label}”副机制`
+      )),
       'scene_breakdown/full_text/gears_segments已同步重组',
     ],
     storyResult: {

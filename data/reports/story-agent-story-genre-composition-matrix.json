@@ -1,0 +1,448 @@
+{
+  "schema_version": "story-genre-composition-matrix/v1",
+  "generated_at": "2026-08-21T00:00:00.000+08:00",
+  "status": "passed",
+  "summary": {
+    "case_count": 16,
+    "passed_case_count": 16,
+    "source_kind_coverage": "8/8",
+    "primary_pattern_coverage": "16/16",
+    "secondary_pattern_coverage": "16/16",
+    "mixed_source_case_count": 8,
+    "semantic_tension_rule_count": 4,
+    "capacity_conflict_fail_closed": true
+  },
+  "cases": [
+    {
+      "case_id": "composition-01-archaeological_mystery_expedition",
+      "source_kinds": [
+        "myth"
+      ],
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "artifact-custody-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-02-clan_legacy_conspiracy",
+      "source_kinds": [
+        "folk_legend"
+      ],
+      "primary_pattern_id": "clan_legacy_conspiracy",
+      "secondary_pattern_id": "family_saga_generations",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-03-fair_play_detective",
+      "source_kinds": [
+        "historical_event"
+      ],
+      "primary_pattern_id": "fair_play_detective",
+      "secondary_pattern_id": "folk_supernatural_investigation",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "epistemic-resolution-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-04-mythic_voyage_homecoming",
+      "source_kinds": [
+        "historical_figure"
+      ],
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-05-historical_faction_epic",
+      "source_kinds": [
+        "local_anecdote"
+      ],
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "strategy-scope-overlap"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-06-mythic_hero_quest",
+      "source_kinds": [
+        "classic_literature"
+      ],
+      "primary_pattern_id": "mythic_hero_quest",
+      "secondary_pattern_id": "survival_expedition",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-07-folk_supernatural_investigation",
+      "source_kinds": [
+        "heritage_memory"
+      ],
+      "primary_pattern_id": "folk_supernatural_investigation",
+      "secondary_pattern_id": "fair_play_detective",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "epistemic-resolution-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-08-survival_expedition",
+      "source_kinds": [
+        "user_original"
+      ],
+      "primary_pattern_id": "survival_expedition",
+      "secondary_pattern_id": "mythic_hero_quest",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-09-conspiracy_puzzle_thriller",
+      "source_kinds": [
+        "myth",
+        "folk_legend"
+      ],
+      "primary_pattern_id": "conspiracy_puzzle_thriller",
+      "secondary_pattern_id": "courtroom_case_procedural",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-10-courtroom_case_procedural",
+      "source_kinds": [
+        "historical_event",
+        "historical_figure"
+      ],
+      "primary_pattern_id": "courtroom_case_procedural",
+      "secondary_pattern_id": "conspiracy_puzzle_thriller",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-11-team_heist_operation",
+      "source_kinds": [
+        "local_anecdote",
+        "heritage_memory"
+      ],
+      "primary_pattern_id": "team_heist_operation",
+      "secondary_pattern_id": "archaeological_mystery_expedition",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "artifact-custody-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-12-tragic_romance_choice",
+      "source_kinds": [
+        "classic_literature",
+        "user_original"
+      ],
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "tone-payoff-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-13-family_saga_generations",
+      "source_kinds": [
+        "myth",
+        "historical_event"
+      ],
+      "primary_pattern_id": "family_saga_generations",
+      "secondary_pattern_id": "clan_legacy_conspiracy",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-14-road_companion_quest",
+      "source_kinds": [
+        "folk_legend",
+        "local_anecdote"
+      ],
+      "primary_pattern_id": "road_companion_quest",
+      "secondary_pattern_id": "mythic_voyage_homecoming",
+      "status": "passed",
+      "fusion_status": "fusion_ready",
+      "warning_ids": [],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-15-war_strategy_campaign",
+      "source_kinds": [
+        "historical_figure",
+        "classic_literature"
+      ],
+      "primary_pattern_id": "war_strategy_campaign",
+      "secondary_pattern_id": "historical_faction_epic",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "strategy-scope-overlap"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "composition-16-folk_satirical_comedy",
+      "source_kinds": [
+        "heritage_memory",
+        "user_original"
+      ],
+      "primary_pattern_id": "folk_satirical_comedy",
+      "secondary_pattern_id": "tragic_romance_choice",
+      "status": "passed",
+      "fusion_status": "ready_with_warnings",
+      "warning_ids": [
+        "tone-payoff-tension"
+      ],
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true,
+        "fact_boundary_complete": true,
+        "fiction_boundary_complete": true
+      },
+      "issues": []
+    }
+  ],
+  "boundaries": {
+    "external_model_invoked": false,
+    "human_review_complete": false,
+    "professional_credit_granted": false,
+    "real_production_credit_granted": false,
+    "province_markdown_written": false
+  }
+}
