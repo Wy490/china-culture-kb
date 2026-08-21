@@ -113,6 +113,7 @@ import type {
   ProjectExternalEvidenceFieldId,
   ProjectExternalEvidenceLedger,
   ProjectExternalEvidenceReviewer,
+  ProjectExternalEvidenceSourceStorySyncReceipt,
   ProjectExternalEvidenceType,
   ProjectExternalEvidenceUploadMetadata,
   ProjectExternalEvidenceUploadResult,
@@ -336,6 +337,10 @@ import {
   retrieveExternalEvidenceHttps,
   type ExternalEvidenceHttpsRetrievalResult,
 } from './external-evidence-https-retrieval-service.js';
+import {
+  ProjectExternalEvidenceSourceStorySyncError,
+  synchronizeProjectExternalEvidenceSourceStory,
+} from './project-source-story-sync-service.js';
 
 export { buildProjectId };
 
@@ -9245,6 +9250,20 @@ const PROJECT_EXTERNAL_EVIDENCE_TYPE_BY_FIELD: Record<
 
 export const PROJECT_EXTERNAL_EVIDENCE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 
+export type ProjectExternalEvidenceCrossStoreFaultPoint = 'after_project_commit_before_source_sync';
+
+interface ProjectExternalEvidenceCrossStoreOptions {
+  crossStoreFaultInjector?: (
+    point: ProjectExternalEvidenceCrossStoreFaultPoint,
+  ) => void | Promise<void>;
+}
+
+function externalEvidenceSourceStorySyncFailure<T>(
+  error: ProjectExternalEvidenceSourceStorySyncError,
+): ApiResponse<T> {
+  return fail(error.code, error.message, error.details);
+}
+
 function isValidProjectExternalEvidenceSourceUri(sourceUri: string): boolean {
   try {
     const parsed = new URL(sourceUri);
@@ -9260,6 +9279,7 @@ function isValidProjectExternalEvidenceSourceUri(sourceUri: string): boolean {
 export async function importProjectExternalEvidenceCandidate(
   projectId: string,
   request: ProjectExternalEvidenceCandidateImportRequest,
+  options: ProjectExternalEvidenceCrossStoreOptions = {},
 ): Promise<ApiResponse<ProjectExternalEvidenceCandidateImportResult>> {
   const detailResult = await getProject(projectId);
   if (!detailResult.ok || !detailResult.data) {
@@ -9292,6 +9312,19 @@ export async function importProjectExternalEvidenceCandidate(
   }
 
   const { project, current_story: story } = detailResult.data;
+  let sourceStorySync: ProjectExternalEvidenceSourceStorySyncReceipt;
+  try {
+    sourceStorySync = await synchronizeProjectExternalEvidenceSourceStory({
+      projectId,
+      projectStory: story,
+      phase: 'reconcile',
+    });
+  } catch (error) {
+    if (error instanceof ProjectExternalEvidenceSourceStorySyncError) {
+      return externalEvidenceSourceStorySyncFailure(error);
+    }
+    throw error;
+  }
   const evidenceId = `external-evidence-${request.field_id}-${contentSha256.slice(0, 16)}`;
   const existing = story.external_evidence_ledger?.items.find(item => item.evidence_id === evidenceId);
   if (existing) {
@@ -9303,6 +9336,7 @@ export async function importProjectExternalEvidenceCandidate(
       duplicate: true,
       readiness_changed: false,
       external_evidence_credit_granted: false,
+      source_story_sync: sourceStorySync,
       candidate: existing,
       detail: detailResult.data,
     });
@@ -9356,13 +9390,12 @@ export async function importProjectExternalEvidenceCandidate(
     ...snapshot,
     story: updatedStory,
   }, projectMetaExpectation(project));
-
-  await updateSourceStory(updatedStory, raw => ({
-    ...raw,
-    external_evidence_ledger: ledger,
-    project_id: updatedStory.project_id,
-    current_version_id: updatedStory.current_version_id,
-  }));
+  await options.crossStoreFaultInjector?.('after_project_commit_before_source_sync');
+  sourceStorySync = await synchronizeProjectExternalEvidenceSourceStory({
+    projectId,
+    projectStory: updatedStory,
+    phase: 'commit',
+  });
 
   const afterDetail = await getProject(projectId);
   if (!afterDetail.ok || !afterDetail.data) {
@@ -9379,6 +9412,7 @@ export async function importProjectExternalEvidenceCandidate(
     duplicate: false,
     readiness_changed: false,
     external_evidence_credit_granted: false,
+    source_story_sync: sourceStorySync,
     candidate,
     detail: afterDetail.data,
   });
@@ -9475,6 +9509,8 @@ export async function uploadProjectExternalEvidenceArtifact(
         ? ErrorCodes.STORY_NOT_FOUND
         : imported.error?.code === ErrorCodes.VALIDATION_ERROR
           ? ErrorCodes.VALIDATION_ERROR
+          : imported.error?.code === ErrorCodes.REVIEW_STORAGE_UNAVAILABLE
+            ? ErrorCodes.REVIEW_STORAGE_UNAVAILABLE
           : ErrorCodes.INTERNAL_ERROR,
       imported.error?.message ?? 'External evidence artifact was stored but candidate import failed',
       imported.error?.details,
@@ -9488,6 +9524,7 @@ export async function uploadProjectExternalEvidenceArtifact(
     duplicate: imported.data.duplicate,
     readiness_changed: false,
     external_evidence_credit_granted: false,
+    source_story_sync: imported.data.source_story_sync,
     artifact: {
       source_uri: sourceUri,
       original_filename: originalFilename,
@@ -9618,7 +9655,7 @@ export async function verifyProjectExternalEvidenceCandidate(
   reviewer: ProjectExternalEvidenceReviewer,
   options: {
     httpsRetriever?: (sourceUrl: string) => Promise<ExternalEvidenceHttpsRetrievalResult>;
-  } = {},
+  } & ProjectExternalEvidenceCrossStoreOptions = {},
 ): Promise<ApiResponse<ProjectExternalEvidenceVerificationResult>> {
   const detailResult = await getProject(projectId);
   if (!detailResult.ok || !detailResult.data) {
@@ -9628,6 +9665,19 @@ export async function verifyProjectExternalEvidenceCandidate(
     );
   }
   const { project, current_story: story } = detailResult.data;
+  let sourceStorySync: ProjectExternalEvidenceSourceStorySyncReceipt;
+  try {
+    sourceStorySync = await synchronizeProjectExternalEvidenceSourceStory({
+      projectId,
+      projectStory: story,
+      phase: 'reconcile',
+    });
+  } catch (error) {
+    if (error instanceof ProjectExternalEvidenceSourceStorySyncError) {
+      return externalEvidenceSourceStorySyncFailure(error);
+    }
+    throw error;
+  }
   const ledger = story.external_evidence_ledger;
   const candidateIndex = ledger?.items.findIndex(item => item.evidence_id === request.evidence_id) ?? -1;
   if (!ledger || candidateIndex < 0) {
@@ -9669,6 +9719,7 @@ export async function verifyProjectExternalEvidenceCandidate(
       idempotent_replay: true,
       readiness_changed: false,
       external_evidence_credit_granted: candidate.external_evidence_credit_granted,
+      source_story_sync: sourceStorySync,
       event: replayEvent,
       candidate,
       detail: detailResult.data,
@@ -9843,17 +9894,12 @@ export async function verifyProjectExternalEvidenceCandidate(
     quality_report: updatedStory.quality_report ?? snapshot.quality_report,
     story: updatedStory,
   }, projectMetaExpectation(project));
-  await updateSourceStory(updatedStory, raw => ({
-    ...raw,
-    external_evidence_ledger: nextLedger,
-    supplement_tasks: updatedStory.supplement_tasks,
-    production_material_readiness: updatedStory.production_material_readiness,
-    gears_segments: updatedStory.gears_segments,
-    gears_delivery: updatedStory.gears_delivery,
-    quality_report: updatedStory.quality_report,
-    project_id: updatedStory.project_id,
-    current_version_id: updatedStory.current_version_id,
-  }));
+  await options.crossStoreFaultInjector?.('after_project_commit_before_source_sync');
+  sourceStorySync = await synchronizeProjectExternalEvidenceSourceStory({
+    projectId,
+    projectStory: updatedStory,
+    phase: 'commit',
+  });
   const afterDetail = await getProject(projectId);
   if (!afterDetail.ok || !afterDetail.data) {
     return fail(ErrorCodes.INTERNAL_ERROR, 'Verified external evidence but failed to reload project detail');
@@ -9867,6 +9913,7 @@ export async function verifyProjectExternalEvidenceCandidate(
     idempotent_replay: false,
     readiness_changed: readinessChanged,
     external_evidence_credit_granted: accepted,
+    source_story_sync: sourceStorySync,
     event: verificationEvent,
     candidate: updatedCandidate,
     detail: afterDetail.data,

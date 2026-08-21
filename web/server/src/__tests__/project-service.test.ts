@@ -6704,6 +6704,159 @@ describe('project-service', () => {
     expect(updatedRawSource.external_evidence_ledger?.verification_events).toEqual(verificationEvents);
   });
 
+  it('recovers project-source external evidence writes after commit crashes and rejects forks', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const story: StoryGenerateResult = {
+      ...makeStory(),
+      storyId: '20260821-story-evidence-recovery',
+      title: '外部证据跨存储恢复测试',
+    };
+    const enriched = await createProjectFromGeneratedStory(story, '2026-08-21T08:00:00.000Z');
+    const storyDir = resolve(root, 'web', 'generated', 'stories', story.video_type);
+    const storyPath = resolve(storyDir, `${story.storyId}.json`);
+    await mkdir(storyDir, { recursive: true });
+    await writeFile(storyPath, JSON.stringify({
+      ...story,
+      project_id: enriched.project_id,
+      current_version_id: enriched.current_version_id,
+      _request_meta: { created_at: '2026-08-21T08:00:00.000Z' },
+    }, null, 2), 'utf-8');
+
+    const evidenceBytes = Buffer.from('跨存储恢复测试外部证据', 'utf8');
+    const contentSha256 = createHash('sha256').update(evidenceBytes).digest('hex');
+    const importRequest = ProjectExternalEvidenceCandidateImportRequestSchema.parse({
+      field_id: 'rights_and_attribution',
+      evidence_type: 'rights_attribution_record',
+      title: '授权与署名记录',
+      summary: '用于验证项目存储提交后、源故事同步前的恢复。',
+      source_uri: 'artifact://recovery/rights.bin',
+      source_label: '恢复测试授权记录',
+      content_sha256: contentSha256,
+    });
+    const crash = new Error('simulated crash after project commit');
+
+    await expect(importProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      importRequest,
+      {
+        crossStoreFaultInjector: point => {
+          if (point === 'after_project_commit_before_source_sync') throw crash;
+        },
+      },
+    )).rejects.toBe(crash);
+
+    const afterImportCrash = await getProject(enriched.project_id!);
+    expect(afterImportCrash.data?.current_story.external_evidence_ledger?.items).toHaveLength(1);
+    const sourceAfterImportCrash = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(sourceAfterImportCrash.external_evidence_ledger).toBeUndefined();
+
+    const recoveredImport = await importProjectExternalEvidenceCandidate(enriched.project_id!, importRequest);
+    expect(recoveredImport.ok).toBe(true);
+    expect(recoveredImport.data).toMatchObject({
+      duplicate: true,
+      source_story_sync: {
+        schema_version: 'project-external-evidence-source-story-sync/v1',
+        status: 'recovered',
+        recovery_performed: true,
+        source_story_updated: true,
+        project_story_authoritative: true,
+        source_story_sync_grants_external_evidence_credit: false,
+      },
+    });
+    const sourceAfterImportRecovery = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(sourceAfterImportRecovery.external_evidence_ledger)
+      .toEqual(recoveredImport.data?.detail.current_story.external_evidence_ledger);
+
+    const artifactPath = resolve(
+      root,
+      'web',
+      'generated',
+      'projects',
+      enriched.project_id!,
+      'external-evidence',
+      'recovery',
+      'rights.bin',
+    );
+    await mkdir(resolve(artifactPath, '..'), { recursive: true });
+    await writeFile(artifactPath, evidenceBytes);
+    const verificationRequest = ProjectExternalEvidenceVerificationRequestSchema.parse({
+      evidence_id: recoveredImport.data!.evidence_id,
+      expected_content_sha256: contentSha256,
+      expected_candidate_status: 'pending_verification',
+      idempotency_key: 'verify-cross-store-recovery-001',
+      decision: 'accept',
+      scope_attestation: {
+        source_matches_candidate: true,
+        evidence_supports_field: true,
+        usage_scope_confirmed: true,
+      },
+      review_note: '核验跨存储恢复测试证据。',
+    });
+
+    await expect(verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      verificationRequest,
+      { actor_id: 'recovery-reviewer', authentication_method: 'signed_session' },
+      {
+        crossStoreFaultInjector: point => {
+          if (point === 'after_project_commit_before_source_sync') throw crash;
+        },
+      },
+    )).rejects.toBe(crash);
+
+    const afterVerificationCrash = await getProject(enriched.project_id!);
+    expect(afterVerificationCrash.data?.current_story.external_evidence_ledger?.verification_events).toHaveLength(1);
+    expect(afterVerificationCrash.data?.current_story.external_evidence_ledger?.items[0].status).toBe('verified');
+    const sourceAfterVerificationCrash = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(sourceAfterVerificationCrash.external_evidence_ledger?.verification_events).toHaveLength(0);
+    expect(sourceAfterVerificationCrash.external_evidence_ledger?.items[0].status).toBe('pending_verification');
+
+    const recoveredVerification = await verifyProjectExternalEvidenceCandidate(
+      enriched.project_id!,
+      verificationRequest,
+      { actor_id: 'recovery-reviewer', authentication_method: 'signed_session' },
+    );
+    expect(recoveredVerification.ok).toBe(true);
+    expect(recoveredVerification.data).toMatchObject({
+      idempotent_replay: true,
+      source_story_sync: {
+        status: 'recovered',
+        recovery_performed: true,
+        source_story_updated: true,
+        source_story_sync_grants_external_evidence_credit: false,
+      },
+    });
+    const sourceAfterVerificationRecovery = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(sourceAfterVerificationRecovery.external_evidence_ledger)
+      .toEqual(recoveredVerification.data?.detail.current_story.external_evidence_ledger);
+    expect(sourceAfterVerificationRecovery.production_material_readiness)
+      .toEqual(recoveredVerification.data?.detail.current_story.production_material_readiness);
+    expect(sourceAfterVerificationRecovery.supplement_tasks)
+      .toEqual(recoveredVerification.data?.detail.current_story.supplement_tasks);
+
+    sourceAfterVerificationRecovery.external_evidence_ledger!.items.push({
+      ...sourceAfterVerificationRecovery.external_evidence_ledger!.items[0],
+      evidence_id: 'source-only-fork',
+      content_sha256: 'f'.repeat(64),
+    });
+    await writeFile(storyPath, JSON.stringify(sourceAfterVerificationRecovery, null, 2), 'utf-8');
+    const forkedReplay = await importProjectExternalEvidenceCandidate(enriched.project_id!, importRequest);
+    expect(forkedReplay.ok).toBe(false);
+    expect(forkedReplay.error).toMatchObject({
+      code: 'REVIEW_STORAGE_UNAVAILABLE',
+      details: {
+        source_story_overwritten: false,
+        external_evidence_credit_granted: false,
+      },
+    });
+    const sourceAfterForkRejection = JSON.parse(await readFile(storyPath, 'utf-8')) as StoryGenerateResult;
+    expect(sourceAfterForkRejection.external_evidence_ledger?.items)
+      .toContainEqual(expect.objectContaining({ evidence_id: 'source-only-fork' }));
+  });
+
   it('stores uploaded external evidence by server-computed hash and imports only a pending candidate', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-'));
     TEMP_DIRS.push(root);

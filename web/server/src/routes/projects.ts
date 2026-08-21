@@ -592,7 +592,15 @@ projectsRouter.post(
     try {
       const { projectId } = req.params as { projectId: string };
       const result = await importProjectExternalEvidenceCandidate(projectId, req.body);
-      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+            ? 404
+            : result.error?.code === ErrorCodes.REVIEW_STORAGE_UNAVAILABLE
+              ? 500
+              : 400,
+      ).json(result);
     } catch (err) {
       next(err);
     }
@@ -636,7 +644,15 @@ projectsRouter.post(
           buffer: parsed.file.buffer,
         },
       });
-      res.status(result.ok ? 200 : result.error?.code === ErrorCodes.STORY_NOT_FOUND ? 404 : 400).json(result);
+      res.status(
+        result.ok
+          ? 200
+          : result.error?.code === ErrorCodes.STORY_NOT_FOUND
+            ? 404
+            : result.error?.code === ErrorCodes.REVIEW_STORAGE_UNAVAILABLE
+              ? 500
+              : 400,
+      ).json(result);
     } catch (err) {
       next(err);
     }

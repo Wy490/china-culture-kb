@@ -2858,6 +2858,17 @@ export interface ProjectExternalEvidenceLedger {
   verification_head_sha256: string | null;
 }
 
+export interface ProjectExternalEvidenceSourceStorySyncReceipt {
+  schema_version: 'project-external-evidence-source-story-sync/v1';
+  project_id: string;
+  story_id: string;
+  status: 'consistent' | 'synchronized' | 'recovered' | 'source_story_absent';
+  recovery_performed: boolean;
+  source_story_updated: boolean;
+  project_story_authoritative: true;
+  source_story_sync_grants_external_evidence_credit: false;
+}
+
 export interface ProjectExternalEvidenceCandidateImportResult {
   schema_version: 'project-external-evidence-candidate-import/v1';
   project_id: string;
@@ -2866,6 +2877,7 @@ export interface ProjectExternalEvidenceCandidateImportResult {
   duplicate: boolean;
   readiness_changed: false;
   external_evidence_credit_granted: false;
+  source_story_sync: ProjectExternalEvidenceSourceStorySyncReceipt;
   candidate: ProjectExternalEvidenceCandidate;
   detail: StoryProjectDetail;
 }
@@ -2898,6 +2910,7 @@ export interface ProjectExternalEvidenceUploadResult {
   duplicate: boolean;
   readiness_changed: false;
   external_evidence_credit_granted: false;
+  source_story_sync: ProjectExternalEvidenceSourceStorySyncReceipt;
   artifact: {
     source_uri: string;
     original_filename: string;
@@ -2980,6 +2993,7 @@ export interface ProjectExternalEvidenceVerificationResult {
   idempotent_replay: boolean;
   readiness_changed: boolean;
   external_evidence_credit_granted: boolean;
+  source_story_sync: ProjectExternalEvidenceSourceStorySyncReceipt;
   event: ProjectExternalEvidenceVerificationEvent;
   candidate: ProjectExternalEvidenceCandidate;
   detail: StoryProjectDetail;
