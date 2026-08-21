@@ -105,10 +105,11 @@ npm run dev            # vite dev server，默认代理 /api → localhost:3000
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `STORY_GEN_PROVIDER` | `command_json` | 适配器类型 |
+| `STORY_GEN_PROVIDER` | `command_json` | 适配器类型：`command_json` 或离线 `record_replay_json` |
 | `STORY_GEN_COMMAND` | 空（local_only） | 外部命令路径，未配置则走本地 fallback |
 | `STORY_GEN_COMMAND_ARGS` | `[]` | 命令参数（JSON 数组或空格分隔） |
 | `STORY_GEN_COMMAND_TIMEOUT_MS` | `330000` | 适配器超时（毫秒） |
+| `STORY_GEN_RECORD_REPLAY_FIXTURE_PATH` | 空 | `record_replay_json` 录制包绝对路径；必须通过模型身份、prompt/output/整包 SHA-256 校验 |
 | `STORY_GEN_AGENT` | `claude` | 桥接 agent：`claude` 或 `codex` |
 | `STORY_GEN_AGENT_MODEL` | 空 | 模型名称（如 `sonnet`, `opus`, `gpt-5.5`） |
 | `STORY_GEN_AGENT_CLAUDE_PATH` | `claude` | Claude CLI 路径 |

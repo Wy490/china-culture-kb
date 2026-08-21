@@ -1,8 +1,9 @@
-import { copyFile, mkdir, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import type {
   ApiResponse,
   MaterialPack,
+  StoryGenerateRequest,
   VideoType,
 } from '@shared/types.js';
 import { FileArtifactStore } from '../src/repositories/artifact-store.js';
@@ -12,6 +13,13 @@ import type { StoryAssembly } from '../src/platform/story-model-output-merge.js'
 import { getProject } from '../src/services/project-service.js';
 import { generateChinaCultureLocalStoryAssembly } from '../src/domains/china-culture/story-local-generation-service.js';
 import { prepareChinaCultureStoryGeneration } from '../src/domains/china-culture/story-generation-preparation-service.js';
+import {
+  buildStoryGenerationRecordReplayFixture,
+} from '../src/services/story-generation-model.js';
+import {
+  buildStoryGenerationPromptPackage,
+  type StoryGenerationModelOutput,
+} from '../src/services/story-generation-prompt.js';
 import {
   importStoryAgentCompositeBoardExecutions,
   prepareStoryAgentMatrixCase,
@@ -112,6 +120,8 @@ const originalEnv = {
   STORY_GEN_COMMAND_ARGS: process.env.STORY_GEN_COMMAND_ARGS,
   STORY_GEN_COMMAND_TIMEOUT_MS: process.env.STORY_GEN_COMMAND_TIMEOUT_MS,
   STORY_GEN_EXECUTION_EVIDENCE: process.env.STORY_GEN_EXECUTION_EVIDENCE,
+  STORY_GEN_RECORD_REPLAY_FIXTURE_PATH:
+    process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH,
 };
 
 function restoreEnv(): void {
@@ -162,15 +172,62 @@ function recordReplayOutput(story: StoryAssembly) {
   };
 }
 
-function configureReplay(output: ReturnType<typeof recordReplayOutput>): void {
-  process.env.STORY_GEN_PROVIDER = 'command_json';
-  process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
-  process.env.STORY_GEN_COMMAND = process.execPath;
-  process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
-    '-e',
-    'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
-    JSON.stringify(output),
-  ]);
+type SuccessfulPreparation = Extract<
+  Awaited<ReturnType<typeof prepareChinaCultureStoryGeneration>>,
+  { ok: true }
+>;
+
+async function configureReplay(input: {
+  fixturePath: string;
+  request: StoryGenerateRequest;
+  preparation: SuccessfulPreparation;
+  output: StoryGenerationModelOutput;
+  memoryMosaicSeed?: Extract<
+    ReturnType<typeof generateChinaCultureLocalStoryAssembly>,
+    { ok: true }
+  >['memoryMosaicSeed'];
+}): Promise<void> {
+  const prompt = buildStoryGenerationPromptPackage({
+    entry: input.preparation.entry,
+    request: {
+      ...input.request,
+      narrative_pattern_ids: input.preparation.narrativePatternIds,
+    },
+    videoType: input.preparation.videoType,
+    presentationStyle: input.preparation.presentationStyle,
+    storyStructure: input.preparation.storyStructure,
+    targetDuration: input.preparation.targetDuration,
+    tone: input.preparation.toneWithPriority,
+    selectedEvent: input.preparation.centralEvent,
+    knowledgePack: input.preparation.knowledgePackToUse,
+    materialPack: input.preparation.materialPackToUse,
+    materialSufficiency: input.preparation.materialSufficiency,
+    productionMaterialPack: input.preparation.productionMaterialPack,
+    productionMaterialReadiness: input.preparation.productionMaterialReadiness,
+    creationContract: input.preparation.creationContract,
+    genreMatrix: input.preparation.genreMatrix,
+    memoryMosaicSeed: input.memoryMosaicSeed,
+    storyBlueprint: input.preparation.preliminaryStoryBlueprint,
+    adaptationAnalysis: input.preparation.adaptationAnalysis,
+    referenceGenerationRecipe: input.preparation.referenceGenerationRecipe,
+    referenceGenerationContext: input.preparation.referenceGenerationContext,
+  });
+  const fixture = buildStoryGenerationRecordReplayFixture({
+    pkg: prompt,
+    modelProfileId: input.preparation.selectedModelProfile.id,
+    output: input.output,
+    recordedAt: new Date().toISOString(),
+    provenance: {
+      source: 'offline_fixture',
+      external_model_call_recorded: false,
+    },
+  });
+  await mkdir(dirname(input.fixturePath), { recursive: true });
+  await writeFile(input.fixturePath, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+  process.env.STORY_GEN_PROVIDER = 'record_replay_json';
+  process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH = input.fixturePath;
+  delete process.env.STORY_GEN_COMMAND;
+  delete process.env.STORY_GEN_COMMAND_ARGS;
   delete process.env.STORY_GEN_COMMAND_TIMEOUT_MS;
 }
 
@@ -260,6 +317,7 @@ async function strictFailureCases(): Promise<ReliabilityFailureCase[]> {
   delete process.env.STORY_GEN_COMMAND_ARGS;
   delete process.env.STORY_GEN_COMMAND_TIMEOUT_MS;
   delete process.env.STORY_GEN_EXECUTION_EVIDENCE;
+  delete process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH;
   const missing = await domain.generateStory({
     entry_name: '周敦颐——理学开山鼻祖',
     video_type: 'culture_promo',
@@ -278,7 +336,6 @@ async function strictFailureCases(): Promise<ReliabilityFailureCase[]> {
   });
 
   process.env.STORY_GEN_PROVIDER = 'command_json';
-  process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
   process.env.STORY_GEN_COMMAND = process.execPath;
   process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
     '-e',
@@ -384,13 +441,25 @@ try {
       tone: preparation.localTone,
       knowledgePack: preparation.knowledgePackToUse,
       originalUserQuery: request.original_user_query ?? request.outline,
+      adaptationAnalysis: preparation.adaptationAnalysis,
+      genreComposition: preparation.genreComposition,
     });
     if (!local.ok) {
       throw new Error(
         `Record replay local skeleton failed for "${base.video_type}": ${local.message}`,
       );
     }
-    configureReplay(recordReplayOutput(local.storyResult));
+    await configureReplay({
+      fixturePath: resolve(
+        reportDirectory,
+        'record-replay-fixtures',
+        `${matrixCase.case_id}.json`,
+      ),
+      request,
+      preparation,
+      output: recordReplayOutput(local.storyResult),
+      memoryMosaicSeed: local.memoryMosaicSeed,
+    });
     const prepared = await prepareStoryAgentMatrixCase({
       matrix_case: matrixCase,
       previous: previousByCaseId.get(matrixCase.case_id!),
@@ -560,9 +629,7 @@ try {
       record_replay_fixture_used: true,
       record_replay_counts_as_real_external_success: false,
       real_external_provider_invoked: false,
-      command_adapter_invocation_count: initialItems.filter(
-        item => !item.matrix_item.project_reused,
-      ).length + 2,
+      command_adapter_invocation_count: 2,
       server_image_provider_invoked: false,
       video_generation_in_scope: false,
       human_test_required: false,

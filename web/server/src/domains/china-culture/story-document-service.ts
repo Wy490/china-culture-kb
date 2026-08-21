@@ -95,6 +95,7 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       ?? (input.generationMode === 'external_model'
         ? 'live_external_command'
         : 'local_only'),
+    model_record_replay_receipt: input.adapterResult.record_replay_receipt,
     generation_reason: input.adapterResult.reason,
     generation_source: input.adapterResult.execution_evidence === 'record_replay_fixture'
       ? `Record replay fixture (${selectedModelProfile.label} contract)`
@@ -164,6 +165,8 @@ export function buildChinaCultureGeneratedStoryDocument(input: {
       model_provider: input.adapterResult.provider,
       model_used_fallback: input.adapterResult.used_fallback,
       model_fallback_reason: input.adapterResult.reason,
+      model_record_replay_receipt:
+        input.adapterResult.record_replay_receipt ?? null,
       generation_fallback_policy: input.request.generation_fallback_policy
         ?? 'allow_local_fallback',
       material_readiness_policy: input.request.material_readiness_policy

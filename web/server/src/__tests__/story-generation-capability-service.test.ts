@@ -4,6 +4,8 @@ import { getStoryGenerationCapabilities } from '../services/story-generation-cap
 
 const originalCommand = process.env.STORY_GEN_COMMAND;
 const originalProvider = process.env.STORY_GEN_PROVIDER;
+const originalReplayFixturePath =
+  process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH;
 const originalSceneCommand = process.env.SCENE_REGEN_COMMAND;
 const originalSceneProvider = process.env.SCENE_REGEN_PROVIDER;
 
@@ -12,6 +14,11 @@ afterEach(() => {
   else process.env.STORY_GEN_COMMAND = originalCommand;
   if (originalProvider === undefined) delete process.env.STORY_GEN_PROVIDER;
   else process.env.STORY_GEN_PROVIDER = originalProvider;
+  if (originalReplayFixturePath === undefined) {
+    delete process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH;
+  } else {
+    process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH = originalReplayFixturePath;
+  }
   if (originalSceneCommand === undefined) delete process.env.SCENE_REGEN_COMMAND;
   else process.env.SCENE_REGEN_COMMAND = originalSceneCommand;
   if (originalSceneProvider === undefined) delete process.env.SCENE_REGEN_PROVIDER;
@@ -106,6 +113,34 @@ describe('story generation capabilities', () => {
       external_call_possible: true,
     });
     expect(capabilities.real_external_generation_performed).toBe(false);
+  });
+
+  it('advertises a configured replay adapter as offline evidence rather than an external call', () => {
+    delete process.env.STORY_GEN_COMMAND;
+    process.env.STORY_GEN_PROVIDER = 'record_replay_json';
+    process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH = '/tmp/story-recording.json';
+
+    const capabilities = getStoryGenerationCapabilities();
+
+    expect(capabilities).toMatchObject({
+      default_model_profile_id: 'claude_sonnet',
+      effective_default_engine: 'external_model',
+      external_adapter: {
+        provider: 'record_replay_json',
+        provider_supported: true,
+        command_configured: false,
+        record_replay_fixture_configured: true,
+        ready: true,
+        execution_mode: 'record_replay_fixture',
+        external_data_transfer_possible: false,
+      },
+    });
+    expect(capabilities.model_profiles.find(item => item.id === 'claude_sonnet')).toMatchObject({
+      available: true,
+      effective_engine: 'external_model',
+      external_call_possible: false,
+    });
+    expect(capabilities.external_adapter.authorization_boundary).toContain('不调用外部模型');
   });
 
   it('strictly rejects unknown model profile ids at the shared request boundary', () => {

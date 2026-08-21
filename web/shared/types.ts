@@ -15883,6 +15883,18 @@ export interface ReferenceGenerationSafetyReport {
 // Story generate result (full output)
 // ---------------------------------------------------------------------------
 
+export interface StoryGenerationRecordReplayReceipt {
+  schema_version: 'story-generation-record-replay-receipt/v1';
+  fixture_id: string;
+  prompt_sha256: string;
+  output_sha256: string;
+  fixture_sha256: string;
+  recording_source: 'offline_fixture' | 'captured_external_response';
+  source_recording_external_call_claimed: boolean;
+  replay_invokes_external_model: false;
+  real_external_model_credit_granted: false;
+}
+
 export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment> {
   storyId: string;
   /** Domain Pack that produced this story. Optional only for legacy snapshots. */
@@ -15894,6 +15906,7 @@ export interface StoryGenerateResult extends BaseStory<StoryScene, GearsSegment>
   effective_engine?: 'local_story_engine' | 'external_model' | 'local_fallback';
   external_model_call_performed?: boolean;
   model_execution_evidence?: 'local_only' | 'live_external_command' | 'record_replay_fixture';
+  model_record_replay_receipt?: StoryGenerationRecordReplayReceipt;
   recipe_effect_comparison?: StoryRecipeEffectComparison;
   generation_reason?: string;
   generation_source?: string;
@@ -16141,7 +16154,9 @@ export interface StoryGenerationCapabilities {
     provider: string;
     provider_supported: boolean;
     command_configured: boolean;
+    record_replay_fixture_configured: boolean;
     ready: boolean;
+    execution_mode: 'live_external_command' | 'record_replay_fixture' | 'unavailable';
     external_data_transfer_possible: boolean;
     actual_cost_known_before_execution: false;
     cost_boundary: 'not_reported_by_story_generation_adapter';

@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { StoryGenerateRequestSchema } from '@shared/schemas.js';
 import type {
@@ -8,6 +10,13 @@ import type {
 import { executeChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-execution-service.js';
 import { generateChinaCultureLocalStoryAssembly } from '../domains/china-culture/story-local-generation-service.js';
 import { prepareChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-preparation-service.js';
+import { validateChinaCultureStoryAssemblyBaseQuality } from '../domains/china-culture/story-base-quality-service.js';
+import { buildChinaCultureGeneratedStoryDocument } from '../domains/china-culture/story-document-service.js';
+import {
+  buildStoryGenerationRecordReplayFixture,
+} from '../services/story-generation-model.js';
+import { buildStoryGenerationPromptPackage } from '../services/story-generation-prompt.js';
+import { attachBlueprintScenes } from '../services/story-blueprint-service.js';
 
 const originalEnv = {
   STORY_GEN_COMMAND: process.env.STORY_GEN_COMMAND,
@@ -15,8 +24,12 @@ const originalEnv = {
   STORY_GEN_COMMAND_TIMEOUT_MS: process.env.STORY_GEN_COMMAND_TIMEOUT_MS,
   STORY_GEN_PROVIDER: process.env.STORY_GEN_PROVIDER,
   STORY_GEN_EXECUTION_EVIDENCE: process.env.STORY_GEN_EXECUTION_EVIDENCE,
+  STORY_GEN_RECORD_REPLAY_FIXTURE_PATH:
+    process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH,
   KB_ROOT: process.env.KB_ROOT,
 };
+
+const tempDirectories: string[] = [];
 
 type StrictStoryGenerateRequest = StoryGenerateRequest & {
   generation_fallback_policy?: 'allow_local_fallback' | 'forbid_local_fallback';
@@ -34,11 +47,14 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+afterEach(async () => {
   for (const [key, value] of Object.entries(originalEnv)) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
+  await Promise.all(tempDirectories.splice(0).map(path => (
+    rm(path, { recursive: true, force: true })
+  )));
 });
 
 function materialPack(input: {
@@ -109,6 +125,7 @@ function recordReplayOutput(
     targetDuration: preparation.targetDuration,
     tone: preparation.localTone,
     knowledgePack: preparation.knowledgePackToUse,
+    genreComposition: preparation.genreComposition,
   });
   if (!local.ok) throw new Error(local.message);
   return {
@@ -131,6 +148,76 @@ function recordReplayOutput(
     cultural_constraints: local.storyResult.cultural_constraints,
     credibility_note: local.storyResult.credibility_note,
   };
+}
+
+function recordReplayPromptPackage(
+  request: StrictStoryGenerateRequest,
+  preparation: Awaited<ReturnType<typeof prepareExternalRequest>>,
+) {
+  const local = generateChinaCultureLocalStoryAssembly({
+    entry: preparation.entry,
+    centralEvent: preparation.centralEvent,
+    videoType: preparation.videoType,
+    presentationStyle: preparation.presentationStyle,
+    storyStructure: preparation.storyStructure,
+    targetDuration: preparation.targetDuration,
+    tone: preparation.localTone,
+    knowledgePack: preparation.knowledgePackToUse,
+    originalUserQuery: request.original_user_query ?? request.outline,
+    adaptationAnalysis: preparation.adaptationAnalysis,
+    genreComposition: preparation.genreComposition,
+  });
+  if (!local.ok) throw new Error(local.message);
+  return buildStoryGenerationPromptPackage({
+    entry: preparation.entry,
+    request: {
+      ...request,
+      narrative_pattern_ids: preparation.narrativePatternIds,
+    },
+    videoType: preparation.videoType,
+    presentationStyle: preparation.presentationStyle,
+    storyStructure: preparation.storyStructure,
+    targetDuration: preparation.targetDuration,
+    tone: preparation.toneWithPriority,
+    selectedEvent: preparation.centralEvent,
+    knowledgePack: preparation.knowledgePackToUse,
+    materialPack: preparation.materialPackToUse,
+    materialSufficiency: preparation.materialSufficiency,
+    productionMaterialPack: preparation.productionMaterialPack,
+    productionMaterialReadiness: preparation.productionMaterialReadiness,
+    creationContract: preparation.creationContract,
+    genreMatrix: preparation.genreMatrix,
+    memoryMosaicSeed: local.memoryMosaicSeed,
+    storyBlueprint: preparation.preliminaryStoryBlueprint,
+    adaptationAnalysis: preparation.adaptationAnalysis,
+    referenceGenerationRecipe: preparation.referenceGenerationRecipe,
+    referenceGenerationContext: preparation.referenceGenerationContext,
+  });
+}
+
+async function installRecordReplayFixture(input: {
+  request: StrictStoryGenerateRequest;
+  preparation: Awaited<ReturnType<typeof prepareExternalRequest>>;
+  mutate?: (fixture: Record<string, unknown>) => void;
+}) {
+  const fixture = buildStoryGenerationRecordReplayFixture({
+    pkg: recordReplayPromptPackage(input.request, input.preparation),
+    modelProfileId: input.preparation.selectedModelProfile.id,
+    output: recordReplayOutput(input.preparation),
+    recordedAt: '2026-08-21T00:00:00.000Z',
+    provenance: {
+      source: 'offline_fixture',
+      external_model_call_recorded: false,
+    },
+  });
+  input.mutate?.(fixture as unknown as Record<string, unknown>);
+  const directory = await mkdtemp(join(tmpdir(), 'story-record-replay-'));
+  tempDirectories.push(directory);
+  const path = join(directory, 'fixture.json');
+  await writeFile(path, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+  process.env.STORY_GEN_PROVIDER = 'record_replay_json';
+  process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH = path;
+  return fixture;
 }
 
 describe('strict Story Agent generation policies', () => {
@@ -256,15 +343,7 @@ describe('strict Story Agent generation policies', () => {
   it('accepts a compatible external record replay without granting real-provider credit', async () => {
     const request = strictExternalRequest();
     const preparation = await prepareExternalRequest(request);
-    const replay = recordReplayOutput(preparation);
-    process.env.STORY_GEN_PROVIDER = 'command_json';
-    process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
-    process.env.STORY_GEN_COMMAND = process.execPath;
-    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
-      '-e',
-      'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
-      JSON.stringify(replay),
-    ]);
+    const fixture = await installRecordReplayFixture({ request, preparation });
 
     const result = await executeChinaCultureStoryGeneration({
       request,
@@ -276,12 +355,190 @@ describe('strict Story Agent generation policies', () => {
       generationMode: 'external_model',
       generationUsedFallback: false,
       adapterResult: {
-        provider: 'command_json',
+        provider: 'record_replay_json',
         used_fallback: false,
         execution_evidence: 'record_replay_fixture',
+        record_replay_receipt: {
+          schema_version: 'story-generation-record-replay-receipt/v1',
+          fixture_id: fixture.fixture_id,
+          prompt_sha256: fixture.prompt_sha256,
+          output_sha256: fixture.output_sha256,
+          fixture_sha256: fixture.fixture_sha256,
+          replay_invokes_external_model: false,
+          real_external_model_credit_granted: false,
+        },
       },
     });
     if (!result.ok) return;
     expect(result.storyResult.title).toContain('record replay');
+    const storyId = 'record-replay-persistence-test';
+    const finalStoryBlueprint = attachBlueprintScenes(
+      preparation.preliminaryStoryBlueprint,
+      result.storyResult.scene_breakdown,
+      storyId,
+    );
+    const quality = validateChinaCultureStoryAssemblyBaseQuality({
+      storyResult: result.storyResult,
+      storyStructure: preparation.storyStructure,
+      memoryMosaicSeed: result.memoryMosaicSeed,
+      selectedEvent: preparation.centralEvent,
+      videoType: preparation.videoType,
+      truthMode: preparation.truthMode,
+      materialSufficiency: preparation.materialSufficiency,
+    });
+    const document = buildChinaCultureGeneratedStoryDocument({
+      request,
+      storyId,
+      createdAt: '2026-08-21T00:00:00.000Z',
+      preparation,
+      storyResult: result.storyResult,
+      finalStoryBlueprint,
+      baseQualityReport: quality,
+      adapterResult: result.adapterResult,
+      generationMode: result.generationMode,
+      generationUsedFallback: result.generationUsedFallback,
+      referenceTrace: result.referenceTrace,
+      memoryMosaicSeed: result.memoryMosaicSeed,
+    });
+    expect(document).toMatchObject({
+      external_model_call_performed: false,
+      model_execution_evidence: 'record_replay_fixture',
+      model_record_replay_receipt: result.adapterResult.record_replay_receipt,
+      _request_meta: {
+        model_record_replay_receipt: result.adapterResult.record_replay_receipt,
+      },
+    });
+  });
+
+  it('does not let a command adapter self-assert record replay evidence', async () => {
+    const request = strictExternalRequest();
+    const preparation = await prepareExternalRequest(request);
+    const replay = recordReplayOutput(preparation);
+    process.env.STORY_GEN_PROVIDER = 'command_json';
+    process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
+    process.env.STORY_GEN_COMMAND = process.execPath;
+    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
+      '-e',
+      'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
+      JSON.stringify(replay),
+    ]);
+
+    const result = await executeChinaCultureStoryGeneration({ request, preparation });
+
+    expect(result).toMatchObject({
+      ok: true,
+      generationMode: 'external_model',
+      adapterResult: {
+        provider: 'command_json',
+        execution_evidence: 'live_external_command',
+      },
+    });
+  });
+
+  it('fails closed when recorded output is changed without refreshing integrity hashes', async () => {
+    const request = strictExternalRequest();
+    const preparation = await prepareExternalRequest(request);
+    await installRecordReplayFixture({
+      request,
+      preparation,
+      mutate: fixture => {
+        const output = fixture.output as { title: string };
+        output.title = `${output.title}（tampered）`;
+      },
+    });
+
+    const result = await executeChinaCultureStoryGeneration({ request, preparation });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      details: {
+        adapter_provider: 'record_replay_json',
+        generation_mode: 'local_fallback',
+      },
+    });
+    if (result.ok) return;
+    expect(result.details.reason).toContain('output_sha256 mismatch');
+  });
+
+  it('fails closed when recording metadata is changed without refreshing the package hash', async () => {
+    const request = strictExternalRequest();
+    const preparation = await prepareExternalRequest(request);
+    await installRecordReplayFixture({
+      request,
+      preparation,
+      mutate: fixture => {
+        fixture.recorded_at = '2026-08-22T00:00:00.000Z';
+      },
+    });
+
+    const result = await executeChinaCultureStoryGeneration({ request, preparation });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.details.reason).toContain('fixture_sha256 mismatch');
+  });
+
+  it('fails closed when the current prompt drifts from the recorded prompt', async () => {
+    const recordedRequest = strictExternalRequest();
+    const recordedPreparation = await prepareExternalRequest(recordedRequest);
+    await installRecordReplayFixture({
+      request: recordedRequest,
+      preparation: recordedPreparation,
+    });
+    const driftedRequest = {
+      ...recordedRequest,
+      tone: '冷峻压迫、克制留白',
+    };
+    const driftedPreparation = await prepareExternalRequest(driftedRequest);
+
+    const result = await executeChinaCultureStoryGeneration({
+      request: driftedRequest,
+      preparation: driftedPreparation,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      details: {
+        adapter_provider: 'record_replay_json',
+        generation_mode: 'local_fallback',
+      },
+    });
+    if (result.ok) return;
+    expect(result.details.reason).toContain('prompt_sha256 mismatch');
+  });
+
+  it('preserves primary and secondary genre mechanisms through verified replay merge', async () => {
+    const request: StrictStoryGenerateRequest = {
+      ...strictExternalRequest(),
+      video_type: 'ai_comic_drama',
+      target_video_duration: '3分钟',
+      cultural_source_kinds: ['historical_figure', 'local_anecdote'],
+      narrative_pattern_ids: [
+        'archaeological_mystery_expedition',
+        'fair_play_detective',
+      ],
+    };
+    const preparation = await prepareExternalRequest(request);
+    await installRecordReplayFixture({ request, preparation });
+
+    const result = await executeChinaCultureStoryGeneration({ request, preparation });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(preparation.genreComposition.fusion_plan).toMatchObject({
+      primary_pattern_id: 'archaeological_mystery_expedition',
+      secondary_pattern_ids: ['fair_play_detective'],
+    });
+    expect(result.storyResult.scene_breakdown[0].dramatic_function).toBe('异常器物');
+    expect(result.storyResult.scene_breakdown.at(-1)?.dramatic_function).toBe('带着代价返回');
+    const secondaryScenes = result.storyResult.scene_breakdown.filter(scene => (
+      /证词|物证|时间线|反证/u.test(`${scene.plot} ${scene.key_action}`)
+    ));
+    expect(secondaryScenes).toHaveLength(1);
+    expect(result.storyResult.gears_segments.some(segment => (
+      /证词|物证|时间线|反证/u.test(segment.script_text)
+    ))).toBe(true);
   });
 });

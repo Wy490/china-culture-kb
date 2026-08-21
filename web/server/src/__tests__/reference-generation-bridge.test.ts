@@ -1,8 +1,12 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { EntryDetail } from '@shared/types.js';
+import type {
+  EntryDetail,
+  MemoryMosaicStorySeed,
+  StoryGenerateRequest,
+} from '@shared/types.js';
 import {
   createBenchmarkCard,
   createFilmReferenceAnalysis,
@@ -22,6 +26,10 @@ import { prepareChinaCultureStoryGeneration } from '../domains/china-culture/sto
 import { executeChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-execution-service.js';
 import { generateChinaCultureLocalStoryAssembly } from '../domains/china-culture/story-local-generation-service.js';
 import { generateAndStoreChinaCultureStory } from '../domains/china-culture/story-generation-service.js';
+import {
+  buildStoryGenerationRecordReplayFixture,
+} from '../services/story-generation-model.js';
+import type { StoryGenerationModelOutput } from '../services/story-generation-prompt.js';
 
 const temporaryRoots: string[] = [];
 const approvedAt = '2026-07-24T14:00:00.000Z';
@@ -32,6 +40,8 @@ const originalEnv = {
   STORY_GEN_COMMAND: process.env.STORY_GEN_COMMAND,
   STORY_GEN_COMMAND_ARGS: process.env.STORY_GEN_COMMAND_ARGS,
   STORY_GEN_EXECUTION_EVIDENCE: process.env.STORY_GEN_EXECUTION_EVIDENCE,
+  STORY_GEN_RECORD_REPLAY_FIXTURE_PATH:
+    process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH,
   WEB_GENERATED_ROOT: process.env.WEB_GENERATED_ROOT,
 };
 
@@ -61,6 +71,60 @@ function entry(): EntryDetail {
     verificationMethod: '测试核验',
     unverifiedPoints: [],
   };
+}
+
+type SuccessfulPreparation = Extract<
+  Awaited<ReturnType<typeof prepareChinaCultureStoryGeneration>>,
+  { ok: true }
+>;
+
+async function installRecordReplayFixture(input: {
+  request: StoryGenerateRequest;
+  preparation: SuccessfulPreparation;
+  output: StoryGenerationModelOutput;
+  memoryMosaicSeed?: MemoryMosaicStorySeed;
+}): Promise<void> {
+  const prompt = buildStoryGenerationPromptPackage({
+    entry: input.preparation.entry,
+    request: {
+      ...input.request,
+      narrative_pattern_ids: input.preparation.narrativePatternIds,
+    },
+    videoType: input.preparation.videoType,
+    presentationStyle: input.preparation.presentationStyle,
+    storyStructure: input.preparation.storyStructure,
+    targetDuration: input.preparation.targetDuration,
+    tone: input.preparation.toneWithPriority,
+    selectedEvent: input.preparation.centralEvent,
+    knowledgePack: input.preparation.knowledgePackToUse,
+    materialPack: input.preparation.materialPackToUse,
+    materialSufficiency: input.preparation.materialSufficiency,
+    productionMaterialPack: input.preparation.productionMaterialPack,
+    productionMaterialReadiness: input.preparation.productionMaterialReadiness,
+    creationContract: input.preparation.creationContract,
+    genreMatrix: input.preparation.genreMatrix,
+    memoryMosaicSeed: input.memoryMosaicSeed,
+    storyBlueprint: input.preparation.preliminaryStoryBlueprint,
+    adaptationAnalysis: input.preparation.adaptationAnalysis,
+    referenceGenerationRecipe: input.preparation.referenceGenerationRecipe,
+    referenceGenerationContext: input.preparation.referenceGenerationContext,
+  });
+  const fixture = buildStoryGenerationRecordReplayFixture({
+    pkg: prompt,
+    modelProfileId: input.preparation.selectedModelProfile.id,
+    output: input.output,
+    recordedAt: '2026-08-21T00:00:00.000Z',
+    provenance: {
+      source: 'offline_fixture',
+      external_model_call_recorded: false,
+    },
+  });
+  const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), 'reference-generation-replay-'));
+  temporaryRoots.push(fixtureRoot);
+  const fixturePath = path.join(fixtureRoot, 'fixture.json');
+  await writeFile(fixturePath, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+  process.env.STORY_GEN_PROVIDER = 'record_replay_json';
+  process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH = fixturePath;
 }
 
 async function createApprovedStylePack(
@@ -571,13 +635,11 @@ describe('Reference Generation Bridge', () => {
     expect(local.ok).toBe(true);
     if (!local.ok) return;
 
-    process.env.STORY_GEN_PROVIDER = 'command_json';
-    process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
-    process.env.STORY_GEN_COMMAND = process.execPath;
-    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
-      '-e',
-      'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
-      JSON.stringify({
+    await installRecordReplayFixture({
+      request,
+      preparation,
+      memoryMosaicSeed: local.memoryMosaicSeed,
+      output: {
         title: local.storyResult.title,
         logline: local.storyResult.logline,
         theme: local.storyResult.theme,
@@ -585,8 +647,8 @@ describe('Reference Generation Bridge', () => {
         scene_breakdown: local.storyResult.scene_breakdown,
         cultural_constraints: local.storyResult.cultural_constraints,
         credibility_note: local.storyResult.credibility_note,
-      }),
-    ]);
+      },
+    });
 
     const execution = await executeChinaCultureStoryGeneration({
       request,
@@ -651,13 +713,11 @@ describe('Reference Generation Bridge', () => {
     expect(local.ok).toBe(true);
     if (!local.ok) return;
 
-    process.env.STORY_GEN_PROVIDER = 'command_json';
-    process.env.STORY_GEN_EXECUTION_EVIDENCE = 'record_replay_fixture';
-    process.env.STORY_GEN_COMMAND = process.execPath;
-    process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
-      '-e',
-      'const output=JSON.parse(process.argv[1]);process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(JSON.stringify(output)));',
-      JSON.stringify({
+    await installRecordReplayFixture({
+      request,
+      preparation,
+      memoryMosaicSeed: local.memoryMosaicSeed,
+      output: {
         title: local.storyResult.title,
         logline: local.storyResult.logline,
         theme: local.storyResult.theme,
@@ -665,8 +725,8 @@ describe('Reference Generation Bridge', () => {
         scene_breakdown: local.storyResult.scene_breakdown,
         cultural_constraints: local.storyResult.cultural_constraints,
         credibility_note: local.storyResult.credibility_note,
-      }),
-    ]);
+      },
+    });
 
     const result = await generateAndStoreChinaCultureStory(request, {
       transform_story_before_validation_and_persistence: story => ({

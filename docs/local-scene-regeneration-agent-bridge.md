@@ -103,10 +103,11 @@ export STORY_GEN_AGENT_CODEX_ARGS='["--model","gpt-5.5"]'
 
 | 环境变量 | 说明 | 默认值 |
 |----------|------|--------|
-| `STORY_GEN_PROVIDER` | 模型适配器类型 | `command_json` |
+| `STORY_GEN_PROVIDER` | 模型适配器类型：`command_json` 或 `record_replay_json` | `command_json` |
 | `STORY_GEN_COMMAND` | 要执行的命令 | 无（未配置则走本地 fallback） |
 | `STORY_GEN_COMMAND_ARGS` | 命令参数（JSON 数组或空格分隔） | `[]` |
 | `STORY_GEN_COMMAND_TIMEOUT_MS` | 命令超时（毫秒） | `330000` |
+| `STORY_GEN_RECORD_REPLAY_FIXTURE_PATH` | 离线录制包绝对路径 | 无 |
 | `STORY_GEN_AGENT` | Agent 类型：`claude` 或 `codex` | `claude` |
 | `STORY_GEN_AGENT_MODEL` | 模型名称（如 `sonnet`, `opus`, `gpt-5.5`） | 无 |
 | `STORY_GEN_AGENT_CLAUDE_PATH` | claude CLI 路径 | `claude` |
@@ -114,6 +115,20 @@ export STORY_GEN_AGENT_CODEX_ARGS='["--model","gpt-5.5"]'
 | `STORY_GEN_AGENT_CODEX_PATH` | codex CLI 路径 | `codex` |
 | `STORY_GEN_AGENT_CODEX_ARGS` | codex 附加参数（JSON 数组） | `[]` |
 | `STORY_GEN_AGENT_TIMEOUT_MS` | agent 超时（毫秒，桥接脚本内部） | `300000` |
+
+`STORY_GEN_PROVIDER=record_replay_json` 不会启动 `STORY_GEN_COMMAND`，只读取
+`STORY_GEN_RECORD_REPLAY_FIXTURE_PATH` 指向的
+`story-generation-record-replay/v1` 录制包，并验证模型 profile、当前完整 prompt
+package SHA-256、模型输出 SHA-256 和整包 SHA-256。任一字段漂移或篡改都会进入
+adapter fallback；请求使用 `forbid_local_fallback` 时会严格阻断。
+
+录制包可由服务端导出的 `buildStoryGenerationRecordReplayFixture` 构造。回放成功只会
+产生 `record_replay_fixture` 证据和
+`story-generation-record-replay-receipt/v1` 收据，固定声明
+`replay_invokes_external_model=false`、
+`real_external_model_credit_granted=false`。`command_json` 始终标记为
+`live_external_command`；旧的 `STORY_GEN_EXECUTION_EVIDENCE` 不能再把任意命令输出
+冒充离线回放。
 
 ### 调试建议
 

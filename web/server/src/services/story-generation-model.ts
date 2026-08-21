@@ -4,8 +4,13 @@
 // and falls back to local generation if the adapter fails or is not configured.
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
-import type { AIModelProfile } from '@shared/types.js';
+import type {
+  AIModelProfile,
+  StoryGenerationRecordReplayReceipt,
+} from '@shared/types.js';
 import type { StoryGenerationPromptPackage, StoryGenerationModelOutput } from './story-generation-prompt.js';
 import { getModelProfileById } from './model-catalog.js';
 
@@ -61,6 +66,43 @@ const StoryGenerationOutputSchema = z.object({
   field_notes: z.array(z.string()).optional(),
 });
 
+const Sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
+
+const StoryGenerationRecordReplayFixtureSchema = z.object({
+  schema_version: z.literal('story-generation-record-replay/v1'),
+  fixture_id: z.string().min(1),
+  recorded_at: z.string().min(1),
+  model_profile: z.object({
+    id: z.string().min(1),
+    runtime: z.enum(['claude', 'codex']),
+    model: z.string().min(1),
+  }).strict(),
+  prompt_version: z.literal('story-generation/v1'),
+  prompt_sha256: Sha256Schema,
+  output_sha256: Sha256Schema,
+  output: StoryGenerationOutputSchema,
+  provenance: z.discriminatedUnion('source', [
+    z.object({
+      source: z.literal('offline_fixture'),
+      external_model_call_recorded: z.literal(false),
+    }).strict(),
+    z.object({
+      source: z.literal('captured_external_response'),
+      external_model_call_recorded: z.literal(true),
+    }).strict(),
+  ]),
+  boundaries: z.object({
+    replay_invokes_external_model: z.literal(false),
+    human_review_complete: z.literal(false),
+    real_external_model_credit_granted: z.literal(false),
+  }).strict(),
+  fixture_sha256: Sha256Schema,
+}).strict();
+
+export type StoryGenerationRecordReplayFixture = z.infer<
+  typeof StoryGenerationRecordReplayFixtureSchema
+>;
+
 // ---------------------------------------------------------------------------
 // Result type
 // ---------------------------------------------------------------------------
@@ -71,6 +113,7 @@ export interface StoryGenerationModelResult {
   used_fallback: boolean;
   reason?: string;
   execution_evidence?: 'local_only' | 'live_external_command' | 'record_replay_fixture';
+  record_replay_receipt?: StoryGenerationRecordReplayReceipt;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +158,72 @@ function sanitizeOutput(raw: StoryGenerationModelOutput): StoryGenerationModelOu
   };
 }
 
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => canonicalize(item));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, item]) => item !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, canonicalize(item)]),
+    );
+  }
+  return value;
+}
+
+function canonicalSha256(value: unknown): string {
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
+}
+
+function fixtureHashInput(
+  fixture: Omit<StoryGenerationRecordReplayFixture, 'fixture_sha256'>,
+): Omit<StoryGenerationRecordReplayFixture, 'fixture_sha256'> {
+  return fixture;
+}
+
+export function buildStoryGenerationRecordReplayFixture(input: {
+  pkg: StoryGenerationPromptPackage;
+  modelProfileId: string;
+  output: StoryGenerationModelOutput;
+  recordedAt: string;
+  provenance: StoryGenerationRecordReplayFixture['provenance'];
+}): StoryGenerationRecordReplayFixture {
+  const modelProfile = getModelProfileById(input.modelProfileId);
+  if (!modelProfile || modelProfile.runtime === 'local') {
+    throw new Error(`Record replay requires a known external model profile, received "${input.modelProfileId}"`);
+  }
+  const output = sanitizeOutput(StoryGenerationOutputSchema.parse(input.output));
+  const promptSha256 = canonicalSha256(input.pkg);
+  const outputSha256 = canonicalSha256(output);
+  const fixtureId = `story-generation-recording-${promptSha256.slice(0, 16)}-${outputSha256.slice(0, 16)}`;
+  const unsigned: Omit<StoryGenerationRecordReplayFixture, 'fixture_sha256'> = {
+    schema_version: 'story-generation-record-replay/v1',
+    fixture_id: fixtureId,
+    recorded_at: input.recordedAt,
+    model_profile: {
+      id: modelProfile.id,
+      runtime: modelProfile.runtime,
+      model: modelProfile.model,
+    },
+    prompt_version: input.pkg.prompt_version,
+    prompt_sha256: promptSha256,
+    output_sha256: outputSha256,
+    output,
+    provenance: input.provenance,
+    boundaries: {
+      replay_invokes_external_model: false,
+      human_review_complete: false,
+      real_external_model_credit_granted: false,
+    },
+  };
+  return StoryGenerationRecordReplayFixtureSchema.parse({
+    ...unsigned,
+    fixture_sha256: canonicalSha256(fixtureHashInput(unsigned)),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Command adapter — spawns the bridge script, sends prompt via stdin, reads JSON from stdout
 // ---------------------------------------------------------------------------
@@ -147,9 +256,6 @@ async function runCommandAdapter(input: {
 
   const args = parseArgs(process.env.STORY_GEN_COMMAND_ARGS);
   const timeoutMs = Number(process.env.STORY_GEN_COMMAND_TIMEOUT_MS ?? 330000);
-  const executionEvidence = process.env.STORY_GEN_EXECUTION_EVIDENCE === 'record_replay_fixture'
-    ? 'record_replay_fixture' as const
-    : 'live_external_command' as const;
 
   // Build child env — inject the selected model's runtime + model name
   // This is the correct approach: child env inherits from process.env plus model overrides
@@ -228,7 +334,7 @@ async function runCommandAdapter(input: {
           provider: 'command_json',
           output: sanitizeOutput(validated),
           used_fallback: false,
-          execution_evidence: executionEvidence,
+          execution_evidence: 'live_external_command',
         });
       } catch (err) {
         resolve({
@@ -244,6 +350,81 @@ async function runCommandAdapter(input: {
     child.stdin.write(JSON.stringify(input.pkg, null, 2));
     child.stdin.end();
   });
+}
+
+async function runRecordReplayAdapter(input: {
+  pkg: StoryGenerationPromptPackage;
+  modelProfile: AIModelProfile;
+}): Promise<StoryGenerationModelResult> {
+  const path = process.env.STORY_GEN_RECORD_REPLAY_FIXTURE_PATH?.trim();
+  if (!path) {
+    return {
+      provider: 'record_replay_json',
+      output: null,
+      used_fallback: true,
+      reason: 'STORY_GEN_RECORD_REPLAY_FIXTURE_PATH is not configured',
+    };
+  }
+
+  try {
+    const raw = JSON.parse(await readFile(path, 'utf8')) as unknown;
+    const fixture = StoryGenerationRecordReplayFixtureSchema.parse(raw);
+    const output = sanitizeOutput(fixture.output);
+    const actualOutputSha256 = canonicalSha256(output);
+    if (actualOutputSha256 !== fixture.output_sha256) {
+      throw new Error(
+        `output_sha256 mismatch: expected ${fixture.output_sha256}, received ${actualOutputSha256}`,
+      );
+    }
+    const { fixture_sha256: expectedFixtureSha256, ...unsignedFixture } = fixture;
+    const actualFixtureSha256 = canonicalSha256(fixtureHashInput(unsignedFixture));
+    if (actualFixtureSha256 !== expectedFixtureSha256) {
+      throw new Error(
+        `fixture_sha256 mismatch: expected ${expectedFixtureSha256}, received ${actualFixtureSha256}`,
+      );
+    }
+    if (
+      fixture.model_profile.id !== input.modelProfile.id
+      || fixture.model_profile.runtime !== input.modelProfile.runtime
+      || fixture.model_profile.model !== input.modelProfile.model
+    ) {
+      throw new Error(
+        `model_profile mismatch: fixture targets ${fixture.model_profile.id}/${fixture.model_profile.runtime}/${fixture.model_profile.model}`,
+      );
+    }
+    const actualPromptSha256 = canonicalSha256(input.pkg);
+    if (actualPromptSha256 !== fixture.prompt_sha256) {
+      throw new Error(
+        `prompt_sha256 mismatch: expected ${fixture.prompt_sha256}, received ${actualPromptSha256}`,
+      );
+    }
+
+    return {
+      provider: 'record_replay_json',
+      output,
+      used_fallback: false,
+      execution_evidence: 'record_replay_fixture',
+      record_replay_receipt: {
+        schema_version: 'story-generation-record-replay-receipt/v1',
+        fixture_id: fixture.fixture_id,
+        prompt_sha256: fixture.prompt_sha256,
+        output_sha256: fixture.output_sha256,
+        fixture_sha256: fixture.fixture_sha256,
+        recording_source: fixture.provenance.source,
+        source_recording_external_call_claimed:
+          fixture.provenance.external_model_call_recorded,
+        replay_invokes_external_model: false,
+        real_external_model_credit_granted: false,
+      },
+    };
+  } catch (error) {
+    return {
+      provider: 'record_replay_json',
+      output: null,
+      used_fallback: true,
+      reason: `Story generation record replay fixture rejected: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +450,10 @@ export async function generateStoryWithAdapter(input: {
 
   if (provider === 'command_json' && modelProfile) {
     return runCommandAdapter({ pkg: input.pkg, modelProfile });
+  }
+
+  if (provider === 'record_replay_json' && modelProfile) {
+    return runRecordReplayAdapter({ pkg: input.pkg, modelProfile });
   }
 
   // Unsupported provider or missing model profile → fallback
