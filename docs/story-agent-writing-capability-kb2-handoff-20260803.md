@@ -23,11 +23,12 @@
 
 - 工作目录：`/Users/wuyu/Desktop/china-culture-kb`
 - 当前分支：`codex/story-agent-manifest-integrity-20260718`
-- 本轮前序 HEAD：`0da1c530`（`feat(story-agent): compose cultural story genres`）
+- 本轮起点 HEAD：`a0e6f4b3`（`docs(story-agent): hand off fallback genre slice`）
 - 第三十四切片实现提交：`8fa29b93`（`feat(story-agent): materialize fallback genre mechanisms`）
+- 第三十五切片实现提交：`35fffb0b`（`feat(story-agent): fuse narrative mechanisms`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第三十四切片均已完成；第三十三切片提交点为 `0da1c530`，第三十四切片实现提交点为 `8fa29b93`
+- B4 与 M4 第一至第三十五切片均已完成；第三十三至第三十五切片实现提交依次为 `0da1c530`、`8fa29b93`、`35fffb0b`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -45,10 +46,10 @@ M0 10% + M1 20% + M2 25% + M3 25% + M4 15% + M5 5% = 100%
 - M2 工程实施：99%
 - M3 工程实施：94%
 - M4 工程实施：99%
-- “创作增强与知识库 2.0”专项总进度：97%
+- “创作增强与知识库 2.0”专项总进度：98%
 - 既有 Story Agent MVP 总进度：99%
 
-M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段治理已完成；M4 故事可发布、GEARS 合同与创作质量均已 45/45，机器创作质量不变量整体通过。当前 15×3 矩阵已无可由生成器治理的生产素材字段缺口。Story Agent 的“文化题材源 × 原创叙事机制”组合合同已覆盖神话、民间传说、历史事迹、历史人物、地方掌故、经典文本、非遗/文化记忆和用户原创素材，以及遗迹探秘、公平推理、神话远航、历史阵营群像、民俗异闻、战争谋略、家族代际、团队智取等 16 类新机制。resolved IDs 已同步进入蓝图、prompt、质量信号、repair、最终故事和请求元数据；第三十四切片进一步让本地 fallback 确定性重排场景节拍、观众正文、幕用途和 GEARS，并逐场补齐事实依据与虚构补足边界。组合层只学习通用结构机制，明确禁止复用受保护作品的专有角色、标志性世界设定、独特情节序列、代表性台词和可识别文风。下一重点是扩展多题材 × 多机制组合压力矩阵和多机制融合，而不是只以首个扩展机制为主；项目—源故事跨存储崩溃恢复仍在工程 backlog。
+M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段治理已完成；M4 故事可发布、GEARS 合同与创作质量均已 45/45，机器创作质量不变量整体通过。当前 15×3 矩阵已无可由生成器治理的生产素材字段缺口。Story Agent 的“文化题材源 × 原创叙事机制”组合合同已覆盖神话、民间传说、历史事迹、历史人物、地方掌故、经典文本、非遗/文化记忆和用户原创素材，以及遗迹探秘、公平推理、神话远航、历史阵营群像、民俗异闻、战争谋略、家族代际、团队智取等 16 类新机制。resolved IDs 已同步进入蓝图、prompt、质量信号、repair、最终故事和请求元数据；本地 fallback 现按请求顺序建立主机制与副机制分工，每个副机制必须在独立中段场景兑现，并与正文、场景和 GEARS 同步。公平推理/民俗双解、悲剧/喜剧、遗迹保护/团队行动、阵营群像/战役谋略四类语义张力已有确定性化解规则；副机制超过中段场景容量时 fail closed。正式本地组合矩阵覆盖 8/8 题材源、16/16 主机制、16/16 副机制与 8 个混合题材案例。组合层只学习通用结构机制，明确禁止复用受保护作品表达。下一重点转向项目—源故事跨存储崩溃恢复、兼容片型/时长扩展和既有 pattern 弱信号优化。
 
 ## 5. 不可破坏的主链与架构边界
 
@@ -758,6 +759,18 @@ Knowledge entry / user material
 
 验证：4 组题材 × 类型代表性压力案例先红后绿，并新增全部 16 个扩展机制的可执行覆盖；专项 1 文件/6 项通过，相关 8 文件/74 项通过。最终 Server 全量 207 文件通过、1 文件跳过，1772 项通过、2 项既有跳过；Server lint、build、`git diff --check` 和 M4 独立审计通过。M4 审计仍读取 v32 正式报告：45 案例、故事质量/可发布/事实文化/可拍性 45/45、生产素材 33/45、全生产就绪 0/45、开放动作 23。该正式报告早于第三十三/三十四切片，不能冒充新组合机制的正式 15×3 重生成结果。
 
+### 6.51 M4 第三十五切片：主/副机制融合、冲突门禁与正式组合矩阵
+
+- 新增 `story-genre-fusion-plan/v1`，把扩展机制按请求顺序明确分为一个 `primary_engine` 与零至多个 `secondary_mechanism`。主机制负责全片开场、升级、高潮和结尾因果弧；每个副机制必须在一个独立中段场景以行动和后果兑现，不能替换主机制首尾。
+- 16 类扩展机制 ID 已集中到叙事机制库，组合服务、fallback 与矩阵共同复用，消除上一切片本地服务内的重复名单。
+- 新增四类确定性语义张力合同：公平推理唯一解释 × 民俗异闻残余未知、悲剧损失 × 讽喻喜剧反噬、遗迹原址保护 × 团队智取行动、阵营群像因果 × 战役谋略场景。张力不会被粗暴禁配，而由主机制决定最终口径，副机制限制在独立场景，并把化解规则进入 prompt、蓝图组合合同和文化约束。
+- 本地 fallback 会把副机制行动追加到确定性中段场景，副机制动作同步进入 `plot`、`key_action`、`full_text`、GEARS `script_text`、视觉提示与虚构补足说明；主机制的首场和末场节拍保持不变。运行 trace 新增 `local-genre-composition-secondary:{pattern_id}`。
+- 若副机制数量大于 `scene_count - 2`，生成返回 `genre_fusion_conflict`；不会挤占首尾、把多个副机制塞入同一场或静默丢弃后续机制。
+- 新增 `story-genre-composition-matrix/v1` 正式本地机器矩阵：16/16 案例通过，8/8 题材源、16/16 主机制、16/16 副机制、8 个混合题材案例、4 类语义张力规则和容量冲突 fail-closed 全覆盖；每例验证主机制首尾、副机制唯一中段兑现、正文/场景/GEARS 同步及逐场事实/虚构边界。
+- 矩阵使用虚构 fixture 与本地确定性引擎，固定 `external_model_invoked=false`、`human_review_complete=false`、`professional_credit_granted=false`、`real_production_credit_granted=false`、`province_markdown_written=false`。它是新组合能力的正式本地结构压力证据，不是 v32 的 15 类型 × 3 时长重生成，也不证明真人或外部模型质量。
+
+验证：新行为先观察到 4 项预期失败，随后专项 3 文件/28 项、受影响 8 文件/77 项通过；组合矩阵 1 文件/1 项与 `--write`、`--check` 通过。最终 Server 全量 208 文件通过、1 文件既有跳过，1776 项通过、2 项既有跳过、0 失败；Server lint/build、M3 Production Material、M3 Domain Pack、M4 v32 独立审计和 `git diff --check` 通过。实现提交为 `35fffb0b`。
+
 ## 7. 当前机器报告
 
 关键报告：
@@ -771,6 +784,7 @@ Knowledge entry / user material
 - `data/reports/story-agent-writing-capability-m3-domain-pack-baseline.json`
 - `data/reports/story-agent-writing-capability-m3-domain-pack-15-type-comparison.json`
 - `data/reports/story-agent-writing-capability-m4-15x3-machine-evaluation.json`（45 案例机器质量、边界、可拍性和修复基线）
+- `data/reports/story-agent-story-genre-composition-matrix.json`（8 类题材源 × 16 类主/副机制的本地组合压力矩阵）
 
 M3 基线当前：
 
@@ -827,6 +841,24 @@ external_provider_gate_blocked = 45/45
 repair_attempted = 0
 repair_applied = 0
 open_repair_actions = 23
+```
+
+M4 组合创作当前本地矩阵：
+
+```text
+status = passed
+case_count = 16
+passed_case_count = 16
+source_kind_coverage = 8/8
+primary_pattern_coverage = 16/16
+secondary_pattern_coverage = 16/16
+mixed_source_case_count = 8
+semantic_tension_rule_count = 4
+capacity_conflict_fail_closed = true
+external_model_invoked = false
+human_review_complete = false
+professional_credit_granted = false
+real_production_credit_granted = false
 ```
 
 ## 8. 当前验证证据
@@ -1191,6 +1223,14 @@ M4 第三十四切片完成时：
 - 专项 1 文件/6 项、相关 8 文件/74 项、最终 Server 全量 207 文件/1772 项通过，1 文件/2 项既有跳过；Server lint/build、M4 独立审计和 `git diff --check` 通过。实现提交为 `8fa29b93`。
 - v32 正式 15×3 报告没有重生成，只完成独立一致性审计；新机制的代表性/全机制执行测试不能被表述为正式多题材组合矩阵或真人评审。
 
+M4 第三十五切片完成时：
+
+- `story-genre-fusion-plan/v1` 已把扩展机制分为全片主引擎与独立中段副机制；prompt、本地 fallback、运行 trace、正文、场景和 GEARS 使用同一分工。
+- 四类语义张力进入可审计化解规则；副机制数量超过中段场景容量时返回 `genre_fusion_conflict`，不静默降级。
+- 正式本地组合矩阵 16/16 通过，覆盖 8/8 题材源、16/16 主机制、16/16 副机制、8 个混合题材案例、4 类语义张力与容量门禁。报告 `--write`、`--check` 均通过。
+- 新行为红测 4 项；专项 3 文件/28 项、受影响 8 文件/77 项、最终 Server 全量 208 文件/1776 项通过，1 文件/2 项既有跳过；Server lint/build、M3 两项基线、M4 v32 独立审计和 `git diff --check` 通过。实现提交为 `35fffb0b`。
+- 组合矩阵仍是虚构 fixture + 本地确定性引擎证据；外部模型、真人、专业与真实生产信用均为 false。v32 的 15×3 指标未变，也未被本矩阵替代。
+
 环境限制：
 
 - `mcp-server/__tests__/run-production-readiness-automation.test.ts` 的 3 项测试需要监听 `127.0.0.1`，当前沙箱报 `listen EPERM` 并超时。
@@ -1207,6 +1247,7 @@ cd /Users/wuyu/Desktop/china-culture-kb/web/server
 npm run audit:production-material-m3 -- --check
 npm run audit:domain-pack-m3 -- --check
 npm run audit:domain-pack-m3-comparison -- --check
+npm run audit:story-genre-composition-matrix -- --check
 npm run audit:story-agent-m4-machine-evaluation
 npm run lint
 npm run build
@@ -1253,13 +1294,13 @@ git diff --check
 3. 修复后继续比较事实/文化边界、类型完成度、结构、场景可拍性、实际 repair trace 和稳定性，保持同一 45 案例口径。
 4. 按当前用户指令，人工盲评不作为工程启动前置，但机器报告不得冒充真人反馈。
 
-#### 已入库的剩余开发 backlog（第三十四切片后；正式矩阵仍为 v32）
+#### 已入库的剩余开发 backlog（第三十五切片后；15×3 正式矩阵仍为 v32）
 
 1. 当前 15×3 矩阵已经没有可由生成器或派生结构继续解除的 production material 缺口；`character_story` 改编压力例的 `life_stage_window` 已由完整知识证据行严格派生。
 2. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计和候选状态 CAS 已完成。下一步增加项目—源故事跨存储崩溃恢复；不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
 3. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
 4. pattern 质量优化：继续处理当前 11 个 pattern 开放目标，优先改编类弱信号；保持事实、文化、可发布和 GEARS 45/45，不以降门禁换分数。
-5. 新组合创作能力：8 类文化题材源与 16 类新增原创机制已进入外部模型 prompt、蓝图、质量/repair、持久化和本地 fallback；16/16 机制已有执行覆盖，四类代表性组合已有内容压力测试。下一步建立覆盖神话、传说、历史事迹、历史人物、经典文本、非遗记忆、地方掌故、用户原创和混合题材的正式组合矩阵，并实现主机制/副机制分工、融合冲突检测和次要机制场景兑现。v32 旧报告不能作为这项新能力的正式压力评测证据。
+5. 新组合创作能力：8 类文化题材源与 16 类新增原创机制已进入外部模型 prompt、蓝图、质量/repair、持久化和本地 fallback；主/副机制分工、四类语义张力化解、容量冲突 fail-closed 和副机制独立中段兑现均已完成。正式本地矩阵覆盖 8/8 题材源、16/16 主机制、16/16 副机制和 8 个混合题材案例。下一步把该矩阵扩展到人物/历史/传说等兼容片型与多时长，并增加外部 adapter 的 record-replay 合同验证；v32 旧 15×3 报告仍不能作为新组合能力的外部模型或多片型评测证据。
 6. 真实生产依赖：45/45 仍缺真实图片资产与外部 Provider 回执；后续要完成逐镜资产绑定、hash 校验、失败恢复和成片验证，但不将付费调用或公开发布默认纳入本地开发权限。
 
 ### 非阻塞项
@@ -1284,17 +1325,17 @@ git diff --check
 
 继续开发 Story Agent“创作增强与知识库 2.0”专项。
 
-B4 与 M4 第一至第三十四切片均已完成；第三十三切片提交点为 `0da1c530`，第三十四切片实现提交点为 `8fa29b93`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
+B4 与 M4 第一至第三十五切片均已完成；第三十三至第三十五切片实现提交依次为 `0da1c530`、`8fa29b93`、`35fffb0b`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
 
 当前优先级是把功能做全、把能力做好；人工评审、真人流程和用户注册不作为工程前置，但不得虚构人工信用。生成故事和机器派生生产指导不得写回 data/provinces/*.md。
 
-全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v32 当前正式基线：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 23，GEARS 45/45。production material 缺口已由 42 降到 12，剩余 12 例全部只认外部证据。8 类文化题材源与 16 类新增原创叙事机制的组合合同已经进入 schema、类型矩阵、推荐器、蓝图、prompt、质量/repair、Story 持久化和本地 fallback；fallback 会同步重组正文、场景、幕用途与 GEARS，并保留逐场事实/虚构边界。16/16 机制执行覆盖和四类代表性组合压力测试通过，旧机制兼容测试通过；但当前多机制只选择首个扩展机制作为主引擎，v32 也仍是新组合能力落地前的旧样本，不能写成已完成正式组合矩阵。下一切片优先主/副机制融合与跨题材正式压力矩阵，其次推进跨存储崩溃恢复与既有 pattern 弱信号优化。
+全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v32 当前正式基线：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 23，GEARS 45/45。production material 缺口已由 42 降到 12，剩余 12 例全部只认外部证据。8 类文化题材源与 16 类原创叙事机制已经具备主/副分工：主机制控制全片首尾，副机制必须在独立中段场景兑现；四类语义张力有确定性化解规则，容量不足时 fail closed。本地正式组合矩阵 16/16 通过，覆盖 8/8 题材源、16/16 主机制、16/16 副机制和 8 个混合题材案例；但它使用虚构 fixture 与本地引擎，不能冒充外部模型、真人或 v32 的 15×3 重生成。下一切片优先项目—源故事跨存储崩溃恢复，其次扩展组合矩阵到兼容片型/多时长并处理既有 pattern 弱信号。
 
 每次汇报必须分别说明：当前阶段进度、专项总进度、既有 Story Agent MVP 进度、真实测试/运行健康与外部环境限制。
 ```
 
 ## 12. 交接边界
 
-- B4 与 M4 第一至第三十四切片均已完成；第三十三切片提交点为 `0da1c530`，第三十四切片实现提交点为 `8fa29b93`，交接文档提交与上游状态以 `git log -2` 与 `git status -sb` 为准。v32 报告指标未变，但其正式样本早于新组合能力。
+- B4 与 M4 第一至第三十五切片均已完成；第三十三至第三十五切片实现提交依次为 `0da1c530`、`8fa29b93`、`35fffb0b`，交接文档提交与上游状态以 `git log -3` 与 `git status -sb` 为准。v32 报告指标未变；新组合能力的正式本地矩阵另见 `story-agent-story-genre-composition-matrix.json`。
 - 本文件只总结真实实现和已运行验证，不授予人工审核、真实生产、外部 worker 或公开发布信用。
 - 新对话接手后如修改了行为代码，必须更新相应测试与机器报告；仅修改文档时无需重复完整 CI。
