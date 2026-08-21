@@ -1,0 +1,406 @@
+{
+  "schema_version": "story-generation-record-replay-matrix/v1",
+  "generated_at": "2026-08-21T00:00:00.000+08:00",
+  "status": "passed",
+  "summary": {
+    "positive_case_count": 12,
+    "positive_case_passed_count": 12,
+    "video_type_coverage": "4/4",
+    "duration_coverage": "3/3",
+    "video_type_duration_cell_coverage": "12/12",
+    "unique_prompt_hash_coverage": "12/12",
+    "unique_fixture_hash_coverage": "12/12",
+    "negative_gate_count": 5,
+    "negative_gate_passed_count": 5
+  },
+  "positive_cases": [
+    {
+      "case_id": "record-replay-ai_comic_drama-1-30秒",
+      "video_type": "ai_comic_drama",
+      "target_duration": "30秒",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-98a4af1697e66ad9-b87b84f5b23133c8",
+      "prompt_sha256": "98a4af1697e66ad91a0c0aaef328403db55ce6c6883f058c6a62e75013c154be",
+      "output_sha256": "b87b84f5b23133c813e36c04db223b7445e6e2af5664b8474ccf859825393e4b",
+      "fixture_sha256": "aba22e32a595c8f21514fa78208b6223604108097cf393f3fda9bbdd641b829f",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-ai_comic_drama-2-1分钟",
+      "video_type": "ai_comic_drama",
+      "target_duration": "1分钟",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-9ee140691d20b350-b87b84f5b23133c8",
+      "prompt_sha256": "9ee140691d20b35054f947fac0db26bd95f6671d7f29900242db1f11a39fecd1",
+      "output_sha256": "b87b84f5b23133c813e36c04db223b7445e6e2af5664b8474ccf859825393e4b",
+      "fixture_sha256": "dc5978bc69841df3393da8a8f63021d534387cefcf9af452c45c9b3295fd4135",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-ai_comic_drama-3-3分钟",
+      "video_type": "ai_comic_drama",
+      "target_duration": "3分钟",
+      "primary_pattern_id": "archaeological_mystery_expedition",
+      "secondary_pattern_id": "team_heist_operation",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-8ea03f6d8be3aa48-b87b84f5b23133c8",
+      "prompt_sha256": "8ea03f6d8be3aa48d6c74b5d3f1ac0c02551414e6179ae836996252f97db7f57",
+      "output_sha256": "b87b84f5b23133c813e36c04db223b7445e6e2af5664b8474ccf859825393e4b",
+      "fixture_sha256": "f8a4c8425c8fea809323349803953825aa63906e351680b9ebeb955fb69f9bd6",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-character_story-1-30秒",
+      "video_type": "character_story",
+      "target_duration": "30秒",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-5ae94189d0a6096d-96ab1a8ff7f38ec3",
+      "prompt_sha256": "5ae94189d0a6096d8562ff3e1181cab344c7ac3c003a9759c516efd6192aac7a",
+      "output_sha256": "96ab1a8ff7f38ec3704b3c7c962a9c5839d58c6bbfb33ad8155f4df7709f784c",
+      "fixture_sha256": "3b36bdf0de8c5603ac20b884cd873971c662aeb24a2072832dded99100b09a7e",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-character_story-2-1分钟",
+      "video_type": "character_story",
+      "target_duration": "1分钟",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-14f563700821263e-96ab1a8ff7f38ec3",
+      "prompt_sha256": "14f563700821263e6b332fff12e3fba9475bd19d376df9e622446955e0e006a9",
+      "output_sha256": "96ab1a8ff7f38ec3704b3c7c962a9c5839d58c6bbfb33ad8155f4df7709f784c",
+      "fixture_sha256": "bd0aa1faa87564a83f1f63425c445a814555c2dad3b1730d7ba90365d0fe150e",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-character_story-3-3分钟",
+      "video_type": "character_story",
+      "target_duration": "3分钟",
+      "primary_pattern_id": "tragic_romance_choice",
+      "secondary_pattern_id": "folk_satirical_comedy",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-add9b543ce357bb8-96ab1a8ff7f38ec3",
+      "prompt_sha256": "add9b543ce357bb8da3c7036c7d7a35506a06284940fde0ed5bc18598053f4fc",
+      "output_sha256": "96ab1a8ff7f38ec3704b3c7c962a9c5839d58c6bbfb33ad8155f4df7709f784c",
+      "fixture_sha256": "862f2fd9c8ede42a2ead16a4430fea6bd034dd2d598ba26bbefdc0742934dd77",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-historical_drama-1-30秒",
+      "video_type": "historical_drama",
+      "target_duration": "30秒",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-b260310e092effdd-604256ddc55729b7",
+      "prompt_sha256": "b260310e092effdd29301d4bb05f9d2ae7186a36e6463b2b1bc1eaadf2a34402",
+      "output_sha256": "604256ddc55729b7732a09ca5d8656dd9bbf045ad45bf5bb27bc9626b5721a4f",
+      "fixture_sha256": "3292b099a32000a12d62bc6cc588fa7bd2e75503139a705e8c6f39f60233dc37",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-historical_drama-2-1分钟",
+      "video_type": "historical_drama",
+      "target_duration": "1分钟",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-1d888dbac8273b67-604256ddc55729b7",
+      "prompt_sha256": "1d888dbac8273b674b660f7edbe8ed240385ce092984e31e39e41f7320c093c8",
+      "output_sha256": "604256ddc55729b7732a09ca5d8656dd9bbf045ad45bf5bb27bc9626b5721a4f",
+      "fixture_sha256": "e173b47796cbf32073e823d2988bb352a2b91324b7cbb7dda1c5db7ed2104354",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-historical_drama-3-3分钟",
+      "video_type": "historical_drama",
+      "target_duration": "3分钟",
+      "primary_pattern_id": "historical_faction_epic",
+      "secondary_pattern_id": "war_strategy_campaign",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-e204660b867f0c53-604256ddc55729b7",
+      "prompt_sha256": "e204660b867f0c531c2b3ecb215eff0efc47d368a1e5274a8f993595426ebcb0",
+      "output_sha256": "604256ddc55729b7732a09ca5d8656dd9bbf045ad45bf5bb27bc9626b5721a4f",
+      "fixture_sha256": "12e2f3f2bc461e6f4061be75ba1b38415e1444e44d302454d0c6f569dbce4c67",
+      "scene_count": 6,
+      "secondary_scene_ids": [
+        4
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-legend_story-1-30秒",
+      "video_type": "legend_story",
+      "target_duration": "30秒",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-4ca7f35a5d12678e-17a3d9c5829cfff4",
+      "prompt_sha256": "4ca7f35a5d12678e97512dd654d7203dd9a58d82f11b344c3a6b9b3c3f38c24a",
+      "output_sha256": "17a3d9c5829cfff466860769c5b84f06d16cdb0394290ba4e7e5de0c5f117f65",
+      "fixture_sha256": "d29c7031b7745152203c6e0229197a9ddb801e34372b0707dd8d2d3aa827d1d1",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-legend_story-2-1分钟",
+      "video_type": "legend_story",
+      "target_duration": "1分钟",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-51f0ac2751592e98-17a3d9c5829cfff4",
+      "prompt_sha256": "51f0ac2751592e9895201aec925a12f0d33352eaf44260fa84a6ac311662befa",
+      "output_sha256": "17a3d9c5829cfff466860769c5b84f06d16cdb0394290ba4e7e5de0c5f117f65",
+      "fixture_sha256": "56796664a24bd9a4cd38f85c2e473fa7d7951a1defa895713ff3f69e5179d160",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    },
+    {
+      "case_id": "record-replay-legend_story-3-3分钟",
+      "video_type": "legend_story",
+      "target_duration": "3分钟",
+      "primary_pattern_id": "mythic_voyage_homecoming",
+      "secondary_pattern_id": "road_companion_quest",
+      "status": "passed",
+      "fixture_id": "story-generation-recording-aab00f0876cb056d-17a3d9c5829cfff4",
+      "prompt_sha256": "aab00f0876cb056d46d409be00bf1949c2488fd05a4ee40481403abdcd6e50c5",
+      "output_sha256": "17a3d9c5829cfff466860769c5b84f06d16cdb0394290ba4e7e5de0c5f117f65",
+      "fixture_sha256": "143cc32e23f4a8cbf13eababd9be913391b3be23d25547ab2095558ef96abf2b",
+      "scene_count": 5,
+      "secondary_scene_ids": [
+        3
+      ],
+      "checks": {
+        "replay_accepted": true,
+        "replay_evidence_verified": true,
+        "no_live_external_call_credit": true,
+        "receipt_hashes_match_fixture": true,
+        "receipt_persisted": true,
+        "primary_opening_realized": true,
+        "primary_ending_realized": true,
+        "secondary_realized_once": true,
+        "full_text_synchronized": true,
+        "gears_synchronized": true
+      },
+      "issues": []
+    }
+  ],
+  "negative_gates": [
+    {
+      "gate_id": "output_tamper_rejected",
+      "status": "passed",
+      "observed_reason": "Story generation record replay fixture rejected: output_sha256 mismatch: expected b87b84f5b23133c813e36c04db223b7445e6e2af5664b8474ccf859825393e4b, received da5ddf78590fe2c3b2d4cb323865edd5505a7d1e9ad3dd443b6744e441754e49"
+    },
+    {
+      "gate_id": "metadata_tamper_rejected",
+      "status": "passed",
+      "observed_reason": "Story generation record replay fixture rejected: fixture_sha256 mismatch: expected dc5978bc69841df3393da8a8f63021d534387cefcf9af452c45c9b3295fd4135, received 213a490a62b9d43a83a725cca4756a361f7eac487c04b5b58528ffbbbf4f9428"
+    },
+    {
+      "gate_id": "prompt_drift_rejected",
+      "status": "passed",
+      "observed_reason": "Story generation record replay fixture rejected: prompt_sha256 mismatch: expected 9ee140691d20b35054f947fac0db26bd95f6671d7f29900242db1f11a39fecd1, received 5b18e9f82ca56f563093f45b6e6cdba1c417df77a1006b311280c4bd4678e1c9"
+    },
+    {
+      "gate_id": "model_profile_drift_rejected",
+      "status": "passed",
+      "observed_reason": "Story generation record replay fixture rejected: model_profile mismatch: fixture targets claude_sonnet/claude/sonnet"
+    },
+    {
+      "gate_id": "command_self_assertion_denied",
+      "status": "passed",
+      "observed_reason": "execution_evidence=live_external_command"
+    }
+  ],
+  "boundaries": {
+    "fixture_source": "offline_fixture",
+    "record_replay_fixture_used": true,
+    "replay_invokes_external_model": false,
+    "command_adapter_invocation_count": 1,
+    "real_external_provider_invoked": false,
+    "paid_call_performed": false,
+    "external_data_transfer_performed": false,
+    "human_review_complete": false,
+    "professional_credit_granted": false,
+    "real_production_credit_granted": false,
+    "province_markdown_written": false
+  }
+}
