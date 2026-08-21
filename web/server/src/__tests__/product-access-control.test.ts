@@ -975,6 +975,48 @@ describe('project resource ownership', () => {
     }
   });
 
+  it('restricts the external evidence sync health portfolio to audit operators', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'story-agent-sync-health-access-'));
+    process.env.WEB_GENERATED_ROOT = root;
+    await mkdir(resolve(root, 'projects'), { recursive: true });
+    configureRequiredAccess([
+      {
+        token: 'admin-token',
+        actor_id: 'admin-1',
+        role: 'administrator',
+        enabled_feature_flags: ['internal_story_tools'],
+      },
+      { token: 'owner-token', actor_id: 'owner-1', role: 'creator' },
+    ]);
+    const app = express();
+    app.use('/api/system', systemRouter);
+    const request = supertest(app);
+    try {
+      expect((await request.get('/api/system/story-agent-external-evidence-sync-health')).status)
+        .toBe(401);
+      expect((await request.get('/api/system/story-agent-external-evidence-sync-health')
+        .set('authorization', bearer('owner-token'))).status).toBe(403);
+      const admin = await request.get('/api/system/story-agent-external-evidence-sync-health?limit=10')
+        .set('authorization', bearer('admin-token'));
+      expect(admin.status).toBe(200);
+      expect(admin.body.data).toMatchObject({
+        schema_version: 'project-external-evidence-source-story-sync-health-portfolio/v1',
+        status: 'healthy',
+        machine_read_only: true,
+        project_store_modified: false,
+        source_story_store_modified: false,
+        external_evidence_credit_granted: false,
+        summary: {
+          scanned_project_count: 0,
+          external_evidence_project_count: 0,
+          attention_required_count: 0,
+        },
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('builds a read-only migration manifest without guessing or writing legacy ownership', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'story-agent-resource-audit-'));
     process.env.WEB_GENERATED_ROOT = root;

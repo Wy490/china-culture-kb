@@ -80,6 +80,9 @@ import {
   getStoryAgentGeneratedHealth,
 } from '../services/generated-health-service.js';
 import {
+  getProjectExternalEvidenceSourceStorySyncHealthPortfolio,
+} from '../services/project-external-evidence-sync-health-portfolio-service.js';
+import {
   getStoryAgentSeriesStoryRecoveryCandidates,
 } from '../services/series-story-recovery-candidate-service.js';
 import {
@@ -623,6 +626,23 @@ systemRouter.get('/story-agent-generated-health', async (req, res, next) => {
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/system/story-agent-external-evidence-sync-health — read-only cross-store audit
+// ---------------------------------------------------------------------------
+
+systemRouter.get(
+  '/story-agent-external-evidence-sync-health',
+  requireProductAccess('access:audit:read', { feature_flag: 'internal_story_tools' }),
+  async (req, res, next) => {
+    try {
+      const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+      res.json(success(await getProjectExternalEvidenceSourceStorySyncHealthPortfolio({ limit })));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // GET /api/system/story-agent-series-story-recovery-candidates — read-only relink evidence
