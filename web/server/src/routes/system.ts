@@ -808,8 +808,18 @@ systemRouter.get('/story-agent-mvp-status', async (req, res, next) => {
       : typeof req.query.portfolio_limit === 'string'
         ? Number(req.query.portfolio_limit)
         : undefined;
+    const syncHealthLimit = typeof req.query.syncHealthLimit === 'string'
+      ? Number(req.query.syncHealthLimit)
+      : typeof req.query.sync_health_limit === 'string'
+        ? Number(req.query.sync_health_limit)
+        : undefined;
     const includeArchivedSeries = req.query.includeArchivedSeries === 'true' || req.query.includeArchivedSeries === '1';
-    res.json(success(await getStoryAgentMvpStatus({ generatedLimit, portfolioLimit, includeArchivedSeries })));
+    res.json(success(await getStoryAgentMvpStatus({
+      generatedLimit,
+      portfolioLimit,
+      syncHealthLimit,
+      includeArchivedSeries,
+    })));
   } catch (err) {
     next(err);
   }

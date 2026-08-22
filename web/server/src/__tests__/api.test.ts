@@ -3793,6 +3793,20 @@ describe('System API', () => {
           readiness_target_count: expect.any(Number),
           ready_automation_step_count: expect.any(Number),
           external_or_manual_step_count: expect.any(Number),
+          external_evidence_sync_health_status: expect.stringMatching(/healthy|attention_required|blocked/),
+          external_evidence_sync_health_scanned_project_count: expect.any(Number),
+          external_evidence_sync_health_readable_current_project_count: expect.any(Number),
+          external_evidence_sync_health_external_evidence_project_count: expect.any(Number),
+          external_evidence_sync_health_consistent_count: expect.any(Number),
+          external_evidence_sync_health_recovery_required_count: expect.any(Number),
+          external_evidence_sync_health_source_story_absent_count: expect.any(Number),
+          external_evidence_sync_health_blocked_count: expect.any(Number),
+          external_evidence_sync_health_automatic_recovery_safe_count: expect.any(Number),
+          external_evidence_sync_health_attention_required_count: expect.any(Number),
+          external_evidence_sync_health_machine_read_only: true,
+          external_evidence_sync_health_project_store_modified: false,
+          external_evidence_sync_health_source_story_store_modified: false,
+          external_evidence_sync_health_external_evidence_credit_granted: false,
           real_gears_endpoint_configured: expect.any(Boolean),
           real_gears_callback_secret_configured: expect.any(Boolean),
           real_gears_callback_base_configured: expect.any(Boolean),
@@ -3972,6 +3986,13 @@ describe('System API', () => {
           schema_version: 'domain-pack-expansion-candidates-report/v1',
           status: 'passed',
         },
+        external_evidence_sync_health: {
+          schema_version: 'project-external-evidence-source-story-sync-health-portfolio/v1',
+          machine_read_only: true,
+          project_store_modified: false,
+          source_story_store_modified: false,
+          external_evidence_credit_granted: false,
+        },
         production_portfolio: {
           schema_version: 'production-readiness-portfolio/v1',
           summary: {
@@ -3981,6 +4002,9 @@ describe('System API', () => {
         },
       });
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.lanes).toContainEqual(expect.objectContaining({
+        key: 'external_evidence_sync_health',
+      }));
       expect(res.body.data.summary.readiness_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.summary.domain_pack_expansion_field_workbench_item_count)
         .toBeGreaterThanOrEqual(res.body.data.summary.domain_pack_expansion_field_supplement_candidate_count);

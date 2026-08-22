@@ -5,6 +5,7 @@ import type {
   ProductionMaterialPackHealthReport,
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
+  ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport,
   ProjectSupplementTaskListItem,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedGovernancePlan,
@@ -24,6 +25,9 @@ import {
   getStoryAgentGeneratedHealth,
 } from './generated-health-service.js';
 import { getProductionReadinessPortfolio } from './production-readiness-portfolio-service.js';
+import {
+  getProjectExternalEvidenceSourceStorySyncHealthPortfolio,
+} from './project-external-evidence-sync-health-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
 import { exportProjectSupplementCandidatePackage, listProjectSupplementTasks } from './project-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
@@ -31,6 +35,7 @@ import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-q
 interface StoryAgentMvpStatusOptions {
   generatedLimit?: number;
   portfolioLimit?: number;
+  syncHealthLimit?: number;
   includeArchivedSeries?: boolean;
 }
 
@@ -349,6 +354,57 @@ function generatedGovernanceLane(plan: StoryAgentGeneratedGovernancePlan): Story
     next_action: total === 0
       ? 'Generate or import Story Agent targets so governance can produce an audit plan.'
       : undefined,
+  };
+}
+
+export function externalEvidenceSyncHealthLane(
+  report: ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport,
+): StoryAgentMvpLane {
+  const summary = report.summary;
+  const status: StoryAgentMvpStatus = report.status === 'blocked'
+    ? 'blocked'
+    : report.status === 'attention_required'
+      ? 'needs_action'
+      : 'ready';
+  const score = report.status === 'healthy'
+    ? 100
+    : report.status === 'blocked'
+      ? clampScore(60 - summary.blocked_count * 20 - summary.attention_required_count * 5)
+      : clampScore(100 - summary.attention_required_count * 15);
+  const detail = report.status === 'healthy'
+    ? summary.external_evidence_project_count === 0
+      ? `${summary.readable_current_project_count}/${summary.scanned_project_count} current projects are readable and no external-evidence sync activity needs attention; this does not prove that real external evidence requirements are complete.`
+      : `${summary.consistent_count}/${summary.external_evidence_project_count} evidence-active projects have consistent project/source-story sync state; sync health does not grant external evidence credit.`
+    : report.status === 'blocked'
+      ? `${summary.blocked_count} project(s) have ledger divergence or unreadable current state; replay is blocked pending investigation.`
+      : `${summary.attention_required_count} evidence-active project(s) need source-story sync recovery or a source-story absence decision.`;
+  return {
+    key: 'external_evidence_sync_health',
+    label: 'External evidence sync health',
+    status,
+    score,
+    detail,
+    evidence: [
+      `portfolio_status=${report.status}`,
+      `scanned_projects=${summary.scanned_project_count}`,
+      `readable_current_projects=${summary.readable_current_project_count}`,
+      `external_evidence_projects=${summary.external_evidence_project_count}`,
+      `consistent=${summary.consistent_count}`,
+      `recovery_required=${summary.recovery_required_count}`,
+      `source_story_absent=${summary.source_story_absent_count}`,
+      `blocked=${summary.blocked_count}`,
+      `automatic_recovery_safe=${summary.automatic_recovery_safe_count}`,
+      `attention_required=${summary.attention_required_count}`,
+      `machine_read_only=${report.machine_read_only}`,
+      `project_store_modified=${report.project_store_modified}`,
+      `source_story_store_modified=${report.source_story_store_modified}`,
+      `external_evidence_credit_granted=${report.external_evidence_credit_granted}`,
+    ],
+    next_action: report.status === 'blocked'
+      ? 'Investigate ledger divergence or unreadable current state before replay; do not auto-repair or overwrite the source story.'
+      : report.status === 'attention_required'
+        ? 'Replay only replay-safe recovery items through the controlled operation; resolve source-story-absent items manually without granting external evidence credit.'
+        : undefined,
   };
 }
 
@@ -1571,6 +1627,11 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     `- knowledge writeback manual patch blocker/warning reasons: ${report.summary.knowledge_writeback_manual_patch_blocker_reason_count}/${report.summary.knowledge_writeback_manual_patch_warning_reason_count}`,
     `- safe automation steps: ${report.summary.ready_automation_step_count}`,
     `- GEARS/operator steps: ${report.summary.external_or_manual_step_count}`,
+    `- external evidence sync health: ${report.summary.external_evidence_sync_health_status}`,
+    `- external evidence sync projects: ${report.summary.external_evidence_sync_health_scanned_project_count} scanned / ${report.summary.external_evidence_sync_health_readable_current_project_count} readable / ${report.summary.external_evidence_sync_health_external_evidence_project_count} evidence-active`,
+    `- external evidence sync consistent/recovery/source-absent/blocked: ${report.summary.external_evidence_sync_health_consistent_count}/${report.summary.external_evidence_sync_health_recovery_required_count}/${report.summary.external_evidence_sync_health_source_story_absent_count}/${report.summary.external_evidence_sync_health_blocked_count}`,
+    `- external evidence sync auto-safe/attention: ${report.summary.external_evidence_sync_health_automatic_recovery_safe_count}/${report.summary.external_evidence_sync_health_attention_required_count}`,
+    `- external evidence sync read-only/no-credit: ${report.summary.external_evidence_sync_health_machine_read_only}/${report.summary.external_evidence_sync_health_external_evidence_credit_granted}`,
     `- real GEARS endpoint configured: ${report.summary.real_gears_endpoint_configured}`,
     `- real GEARS callback secret configured: ${report.summary.real_gears_callback_secret_configured}`,
     `- real GEARS callback base public: ${report.summary.real_gears_callback_base_public}`,
@@ -1675,7 +1736,7 @@ export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
   const generatedHealth = await getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 });
-  const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, supplementBacklogMetrics] = await Promise.all([
+  const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, externalEvidenceSyncHealth, supplementBacklogMetrics] = await Promise.all([
     getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
     getStoryAgentBacklogHandoffPackage({ limit: options.generatedLimit ?? 50 }),
     getProductionMaterialPackHealthReport(),
@@ -1686,6 +1747,9 @@ export async function getStoryAgentMvpStatus(
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
     }),
+    getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
+      limit: options.syncHealthLimit ?? 100,
+    }),
     getStorySupplementBacklogMetrics(generatedHealth),
   ]);
   const lanes = [
@@ -1695,6 +1759,7 @@ export async function getStoryAgentMvpStatus(
     domainPackLane(domainPackHealth),
     domainPackExpansionLane(domainPackExpansionCandidates),
     knowledgeWritebackLane(writebackMetrics),
+    externalEvidenceSyncHealthLane(externalEvidenceSyncHealth),
     storyQualityLane(generatedHealth, supplementBacklogMetrics),
     repairLoopLane(productionPortfolio),
     deliveryContractLane(generatedHealth),
@@ -1775,6 +1840,20 @@ export async function getStoryAgentMvpStatus(
       readiness_blocked_count: productionPortfolio.summary.blocked_count,
       ready_automation_step_count: productionPortfolio.summary.ready_automation_step_count,
       external_or_manual_step_count: externalOrManual,
+      external_evidence_sync_health_status: externalEvidenceSyncHealth.status,
+      external_evidence_sync_health_scanned_project_count: externalEvidenceSyncHealth.summary.scanned_project_count,
+      external_evidence_sync_health_readable_current_project_count: externalEvidenceSyncHealth.summary.readable_current_project_count,
+      external_evidence_sync_health_external_evidence_project_count: externalEvidenceSyncHealth.summary.external_evidence_project_count,
+      external_evidence_sync_health_consistent_count: externalEvidenceSyncHealth.summary.consistent_count,
+      external_evidence_sync_health_recovery_required_count: externalEvidenceSyncHealth.summary.recovery_required_count,
+      external_evidence_sync_health_source_story_absent_count: externalEvidenceSyncHealth.summary.source_story_absent_count,
+      external_evidence_sync_health_blocked_count: externalEvidenceSyncHealth.summary.blocked_count,
+      external_evidence_sync_health_automatic_recovery_safe_count: externalEvidenceSyncHealth.summary.automatic_recovery_safe_count,
+      external_evidence_sync_health_attention_required_count: externalEvidenceSyncHealth.summary.attention_required_count,
+      external_evidence_sync_health_machine_read_only: externalEvidenceSyncHealth.machine_read_only,
+      external_evidence_sync_health_project_store_modified: externalEvidenceSyncHealth.project_store_modified,
+      external_evidence_sync_health_source_story_store_modified: externalEvidenceSyncHealth.source_story_store_modified,
+      external_evidence_sync_health_external_evidence_credit_granted: externalEvidenceSyncHealth.external_evidence_credit_granted,
       real_gears_endpoint_configured: realExternalAcceptanceMetrics.real_gears_endpoint_configured,
       real_gears_callback_secret_configured: realExternalAcceptanceMetrics.real_gears_callback_secret_configured,
       real_gears_callback_base_configured: realExternalAcceptanceMetrics.real_gears_callback_base_configured,
@@ -1928,6 +2007,7 @@ export async function getStoryAgentMvpStatus(
       'Domain Pack production health is now a Story Agent MVP lane: required production prompt packs must keep trigger words, production prompts, review boundaries, and asset usage coverage before prompt package sign-off.',
       'Domain Pack expansion candidates are tracked as a Story Agent MVP lane: first-wave material expansion must stay in candidate_review with candidate Markdown, human review, source-level checks, and no direct province Markdown writeback.',
       'Knowledge writeback queue governance is now a Story Agent MVP lane: only approved candidates with writeback drafts are counted, and province Markdown changes remain manual review patches.',
+      'External evidence source-story sync health is read-only and no-write: healthy sync state, including zero evidence-active projects, never grants external evidence credit or proves real evidence requirements complete.',
       'Story Agent backlog handoff is embedded in MVP evidence: generated health gaps and supplement candidates share one P0/P1 operator queue without province Markdown writeback.',
       'Quality passed with follow-ups is expected: quality_report.passed is the main gate, while quality_issue_count and open supplement tasks remain advisory/operator backlog until cleared.',
       'MCP Story Agent loop is complete at 100%: read-only context, blueprint, validation, delivery, repair prompt, controlled versioning, generated governance, readiness automation, MVP status, and GEARS evidence signoff are all exposed as tools.',
@@ -1945,6 +2025,7 @@ export async function getStoryAgentMvpStatus(
     production_material_pack_health: productionMaterialPackHealth,
     domain_pack_health: domainPackHealth,
     domain_pack_expansion_candidates: domainPackExpansionCandidates,
+    external_evidence_sync_health: externalEvidenceSyncHealth,
     production_portfolio: productionPortfolio,
   };
   return {

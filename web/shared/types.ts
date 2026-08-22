@@ -4772,6 +4772,7 @@ export type StoryAgentMvpLaneKey =
   | 'domain_packs'
   | 'domain_pack_expansion'
   | 'knowledge_writeback'
+  | 'external_evidence_sync_health'
   | 'story_quality'
   | 'repair_loop'
   | 'delivery_contract'
@@ -4863,6 +4864,20 @@ export interface StoryAgentMvpStatusReport {
     readiness_blocked_count: number;
     ready_automation_step_count: number;
     external_or_manual_step_count: number;
+    external_evidence_sync_health_status: ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport['status'];
+    external_evidence_sync_health_scanned_project_count: number;
+    external_evidence_sync_health_readable_current_project_count: number;
+    external_evidence_sync_health_external_evidence_project_count: number;
+    external_evidence_sync_health_consistent_count: number;
+    external_evidence_sync_health_recovery_required_count: number;
+    external_evidence_sync_health_source_story_absent_count: number;
+    external_evidence_sync_health_blocked_count: number;
+    external_evidence_sync_health_automatic_recovery_safe_count: number;
+    external_evidence_sync_health_attention_required_count: number;
+    external_evidence_sync_health_machine_read_only: true;
+    external_evidence_sync_health_project_store_modified: false;
+    external_evidence_sync_health_source_story_store_modified: false;
+    external_evidence_sync_health_external_evidence_credit_granted: false;
     real_gears_endpoint_configured: boolean;
     real_gears_callback_secret_configured: boolean;
     real_gears_callback_base_configured: boolean;
@@ -5016,6 +5031,7 @@ export interface StoryAgentMvpStatusReport {
   production_material_pack_health: ProductionMaterialPackHealthReport;
   domain_pack_health: DomainPackProductionHealthReport;
   domain_pack_expansion_candidates: DomainPackExpansionCandidateReport;
+  external_evidence_sync_health: ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport;
   production_portfolio: ProductionReadinessPortfolioReport;
   markdown: string;
 }
