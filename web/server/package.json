@@ -39,6 +39,7 @@
     "smoke:story-agent-persistent-lifecycle": "tsx scripts/story-agent-persistent-lifecycle-smoke.mts",
     "audit:story-knowledge-contract": "tsx scripts/story-knowledge-contract-audit.mts",
     "audit:story-rag-retrieval": "tsx scripts/story-rag-retrieval-evaluation-audit.mts",
+    "audit:story-knowledge-generation-shadow": "tsx scripts/story-knowledge-generation-shadow-audit.mts",
     "audit:story-knowledge-overlay-fixtures": "tsx scripts/story-knowledge-overlay-fixture-audit.mts",
     "audit:writing-capability-routing": "tsx scripts/writing-capability-routing-audit.mts",
     "audit:writing-capability-shadow-plan": "tsx scripts/writing-capability-shadow-plan-audit.mts",

@@ -10475,6 +10475,47 @@ export interface StoryKnowledgePreparationV1 {
   };
 }
 
+export interface StoryKnowledgeGenerationShadowV1 {
+  schema_version: 'story-knowledge-generation-shadow/v1';
+  status: 'safe_no_fact_candidates' | 'safe_fact_candidates' | 'blocked';
+  entry_name: string;
+  preparation_status: StoryKnowledgePreparationStatusV1;
+  legacy_material_projection: {
+    verified_fact_count: number;
+    uncertain_claim_count: number;
+  };
+  contract_projection: {
+    source_count: number;
+    ungraded_source_count: number;
+    machine_mapped_source_count: number;
+    human_verified_authoritative_source_count: number;
+    fact_candidate_claim_ids: string[];
+    bounded_context_claim_ids: string[];
+    blocked_claim_ids: string[];
+  };
+  amplification_checks: {
+    ungraded_source_promoted_to_fact_count: number;
+    machine_only_source_promoted_to_fact_count: number;
+    non_authoritative_source_promoted_to_fact_count: number;
+    non_verified_claim_promoted_to_fact_count: number;
+    blocked_claim_promoted_to_fact_count: number;
+    doubtful_entry_promoted_to_fact: boolean;
+    structured_fact_count_not_above_ready_count: boolean;
+  };
+  issues: string[];
+  boundary: {
+    shadow_only: true;
+    consumed_by_blueprint: false;
+    consumed_by_prompt: false;
+    consumed_by_fallback: false;
+    persistence_allowed: false;
+    generation_output_changed: false;
+    generated_content_writeback_allowed: false;
+    machine_validation_only: true;
+    real_human_review_credit_granted: false;
+  };
+}
+
 export interface LegacyEntryStoryKnowledgeContractAdapterResultV1 {
   schema_version: 'legacy-entry-story-knowledge-contract-adapter/v1';
   contract: StoryKnowledgeContractV1;

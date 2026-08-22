@@ -10,6 +10,9 @@ import {
 import {
   prepareChinaCultureStoryGeneration,
 } from '../domains/china-culture/story-generation-preparation-service.js';
+import {
+  buildStoryKnowledgeGenerationShadow,
+} from '../domains/china-culture/story-knowledge-generation-shadow-service.js';
 
 const REVIEWED_AT = '2026-07-31T13:00:00+08:00';
 const REQUEST: StoryGenerateRequest = {
@@ -135,6 +138,102 @@ describe('story knowledge preparation read-only boundary', () => {
     expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
   });
 
+  it('builds a generation-preparation shadow without changing active generation inputs', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        generationShadow: true,
+        evidenceOverlay: overlay(contract, {
+          status: 'pending',
+          reason: '等待事实与文化审核。',
+        }, 'machine_context'),
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgeGenerationShadow).toMatchObject({
+      schema_version: 'story-knowledge-generation-shadow/v1',
+      status: 'safe_no_fact_candidates',
+      preparation_status: 'overlay_pending',
+      contract_projection: {
+        fact_candidate_claim_ids: [],
+      },
+      amplification_checks: {
+        ungraded_source_promoted_to_fact_count: 0,
+        machine_only_source_promoted_to_fact_count: 0,
+        non_authoritative_source_promoted_to_fact_count: 0,
+        non_verified_claim_promoted_to_fact_count: 0,
+        blocked_claim_promoted_to_fact_count: 0,
+        doubtful_entry_promoted_to_fact: false,
+        structured_fact_count_not_above_ready_count: true,
+      },
+      boundary: {
+        shadow_only: true,
+        consumed_by_blueprint: false,
+        consumed_by_prompt: false,
+        consumed_by_fallback: false,
+        persistence_allowed: false,
+        generation_output_changed: false,
+      },
+    });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+    expect(result.knowledgePackToUse).toEqual(baseline.knowledgePackToUse);
+    expect(result.materialPackToUse).toEqual(baseline.materialPackToUse);
+  });
+
+  it('fails closed when an approved overlay tries to promote a machine-only supporting claim', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const machineFactOverlay: StoryKnowledgeEvidenceOverlayV1 = {
+      ...overlay(contract, {
+        status: 'approved',
+        reviewed_by: 'fixture-reviewer-not-real',
+        reviewer_role: 'fact_culture_reviewer',
+        reviewed_at: REVIEWED_AT,
+        confirmation: 'human_reviewed_story_knowledge_evidence_overlay',
+      }, 'machine_context'),
+      source_reviews: [{
+        source_ref_id: contract.sources[0]!.source_ref_id,
+        grade: 'A',
+        verification_status: 'machine_mapped',
+        note: '机器映射不能成为事实来源。',
+      }],
+      claim_mappings: [{
+        claim_id: contract.claims[0]!.claim_id,
+        source_ref_ids: [contract.sources[0]!.source_ref_id],
+        claim_type: 'supporting_fact',
+        certainty: 'verified',
+        usage: 'fact',
+        scope: '恶意 fixture：尝试用机器映射来源提升事实。',
+      }],
+    };
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        generationShadow: true,
+        evidenceOverlay: machineFactOverlay,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgeGenerationShadow).toMatchObject({
+      status: 'blocked',
+      contract_projection: {
+        fact_candidate_claim_ids: [],
+      },
+      amplification_checks: {
+        machine_only_source_promoted_to_fact_count: 1,
+        non_authoritative_source_promoted_to_fact_count: 1,
+        structured_fact_count_not_above_ready_count: true,
+      },
+      issues: expect.arrayContaining(['machine_only_source_promoted_to_fact']),
+    });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+    expect(result.materialPackToUse).toEqual(baseline.materialPackToUse);
+  });
+
   it('exposes an approved fixture only as a read-only contract and still leaves the blueprint unchanged', async () => {
     const { preparation: baseline, contract } = await preparationBase();
     const result = await prepareChinaCultureStoryGeneration(REQUEST, {
@@ -165,6 +264,50 @@ describe('story knowledge preparation read-only boundary', () => {
         real_human_review_credit_granted: false,
         generation_output_changed: false,
       },
+    });
+    expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
+  });
+
+  it('projects only human-verified critical facts and blocks a doubtful entry from promotion', async () => {
+    const { preparation: baseline, contract } = await preparationBase();
+    const result = await prepareChinaCultureStoryGeneration(REQUEST, {
+      storyKnowledge: {
+        enabled: true,
+        generationShadow: true,
+        evidenceOverlay: overlay(contract, {
+          status: 'approved',
+          reviewed_by: 'fixture-reviewer-not-real',
+          reviewer_role: 'fact_culture_reviewer',
+          reviewed_at: REVIEWED_AT,
+          confirmation: 'human_reviewed_story_knowledge_evidence_overlay',
+        }, 'human_fact'),
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.storyKnowledgeGenerationShadow).toMatchObject({
+      status: 'safe_fact_candidates',
+      contract_projection: {
+        fact_candidate_claim_ids: [contract.claims[0]!.claim_id],
+      },
+      amplification_checks: {
+        ungraded_source_promoted_to_fact_count: 0,
+        machine_only_source_promoted_to_fact_count: 0,
+        structured_fact_count_not_above_ready_count: true,
+      },
+    });
+
+    const doubtfulShadow = buildStoryKnowledgeGenerationShadow({
+      preparation: result.storyKnowledgePreparation!,
+      materialPack: result.materialPackToUse,
+      entryCredibility: '存疑',
+    });
+    expect(doubtfulShadow).toMatchObject({
+      status: 'blocked',
+      contract_projection: { fact_candidate_claim_ids: [] },
+      amplification_checks: { doubtful_entry_promoted_to_fact: true },
+      issues: ['doubtful_entry_promoted_to_fact'],
     });
     expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
   });
@@ -247,10 +390,15 @@ describe('story knowledge preparation read-only boundary', () => {
     ]);
 
     expect(preparation).toContain('resolveStoryKnowledgePreparation(');
+    expect(preparation).toContain('buildStoryKnowledgeGenerationShadow(');
     expect(prompt).not.toContain('StoryKnowledgePreparationV1');
+    expect(prompt).not.toContain('StoryKnowledgeGenerationShadowV1');
     expect(fallback).not.toContain('StoryKnowledgePreparationV1');
+    expect(fallback).not.toContain('StoryKnowledgeGenerationShadowV1');
     expect(blueprint).not.toContain('StoryKnowledgePreparationV1');
+    expect(blueprint).not.toContain('StoryKnowledgeGenerationShadowV1');
     expect(document).not.toContain('storyKnowledgePreparation');
+    expect(document).not.toContain('storyKnowledgeGenerationShadow');
   });
 
   it('keeps the reproducible fixture report synthetic and grants zero real review credit', async () => {

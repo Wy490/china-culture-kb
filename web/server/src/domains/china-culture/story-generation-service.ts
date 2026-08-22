@@ -37,6 +37,7 @@ import {
 import { buildStoryRecipeEffectComparison } from '../../services/reference-recipe-effect-comparison-service.js';
 
 export interface ChinaCultureStoryGenerationOptions extends DomainStoryGenerateOptions {
+  storyKnowledge?: ChinaCultureStoryGenerationPreparationOptions['storyKnowledge'];
   writingCapability?: ChinaCultureStoryGenerationPreparationOptions['writingCapability'];
 }
 
@@ -51,6 +52,9 @@ export async function generateAndStoreChinaCultureStory(
 ): Promise<ApiResponse<StoryGenerateResult>> {
   const { output_gears_segments } = request;
   const preparation = await prepareChinaCultureStoryGeneration(request, {
+    ...(options.storyKnowledge
+      ? { storyKnowledge: options.storyKnowledge }
+      : {}),
     ...(options.writingCapability
       ? { writingCapability: options.writingCapability }
       : {}),

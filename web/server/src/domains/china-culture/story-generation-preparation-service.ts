@@ -31,6 +31,7 @@ import { buildStoryDomainPackContext } from '../../services/story-domain-pack-tr
 import { buildWritingCapabilityShadowPreparationPlan } from '../../services/writing-capability-rollout-service.js';
 import { buildWritingCapabilityRuntimeResolution } from '../../services/writing-capability-runtime-service.js';
 import { buildChinaCultureSingleEntryKnowledgePack } from './story-knowledge-pack-service.js';
+import { buildStoryKnowledgeGenerationShadow } from './story-knowledge-generation-shadow-service.js';
 import { resolveStoryKnowledgePreparation } from './story-knowledge-preparation-service.js';
 import { extractChinaCultureBoldEvents } from './story-planning-service.js';
 import { resolveChinaCultureStorySource } from './story-source-service.js';
@@ -39,6 +40,7 @@ export interface ChinaCultureStoryGenerationPreparationOptions {
   storyKnowledge?: {
     enabled: true;
     evidenceOverlay?: unknown;
+    generationShadow?: true;
   };
   writingCapability?: {
     enabled: true;
@@ -131,6 +133,14 @@ export async function prepareChinaCultureStoryGeneration(
   if (!materialPackToUse) {
     materialPackToUse = materialPackFromKnowledgePack(knowledgePackToUse, request);
   }
+  const storyKnowledgeGenerationShadow = storyKnowledgePreparation
+    && options.storyKnowledge?.generationShadow
+    ? buildStoryKnowledgeGenerationShadow({
+      preparation: storyKnowledgePreparation,
+      materialPack: materialPackToUse,
+      entryCredibility: entry.credibility,
+    })
+    : undefined;
 
   const storyStructure = resolveStoryStructureType(request, videoType, {
     historical_person_entry: entry.type === '历史人物',
@@ -361,6 +371,7 @@ export async function prepareChinaCultureStoryGeneration(
     centralEvent,
     preliminaryStoryBlueprint,
     ...(storyKnowledgePreparation ? { storyKnowledgePreparation } : {}),
+    ...(storyKnowledgeGenerationShadow ? { storyKnowledgeGenerationShadow } : {}),
     ...(writingCapabilityShadowPlan ? { writingCapabilityShadowPlan } : {}),
     ...(writingCapabilityRuntimeResolution
       ? { writingCapabilityRuntimeResolution }

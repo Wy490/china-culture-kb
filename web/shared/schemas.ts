@@ -2623,6 +2623,78 @@ export const StoryKnowledgePreparationV1Schema = z.object({
   }
 });
 
+export const StoryKnowledgeGenerationShadowV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-generation-shadow/v1'),
+  status: z.enum(['safe_no_fact_candidates', 'safe_fact_candidates', 'blocked']),
+  entry_name: StoryKnowledgeNonEmptyTextSchema,
+  preparation_status: z.enum([
+    'base_contract_only',
+    'overlay_pending',
+    'overlay_approved_read_only',
+    'overlay_rejected',
+    'overlay_incompatible',
+  ]),
+  legacy_material_projection: z.object({
+    verified_fact_count: z.number().int().nonnegative(),
+    uncertain_claim_count: z.number().int().nonnegative(),
+  }).strict(),
+  contract_projection: z.object({
+    source_count: z.number().int().nonnegative(),
+    ungraded_source_count: z.number().int().nonnegative(),
+    machine_mapped_source_count: z.number().int().nonnegative(),
+    human_verified_authoritative_source_count: z.number().int().nonnegative(),
+    fact_candidate_claim_ids: StoryKnowledgeUniqueTextArraySchema,
+    bounded_context_claim_ids: StoryKnowledgeUniqueTextArraySchema,
+    blocked_claim_ids: StoryKnowledgeUniqueTextArraySchema,
+  }).strict(),
+  amplification_checks: z.object({
+    ungraded_source_promoted_to_fact_count: z.number().int().nonnegative(),
+    machine_only_source_promoted_to_fact_count: z.number().int().nonnegative(),
+    non_authoritative_source_promoted_to_fact_count: z.number().int().nonnegative(),
+    non_verified_claim_promoted_to_fact_count: z.number().int().nonnegative(),
+    blocked_claim_promoted_to_fact_count: z.number().int().nonnegative(),
+    doubtful_entry_promoted_to_fact: z.boolean(),
+    structured_fact_count_not_above_ready_count: z.boolean(),
+  }).strict(),
+  issues: StoryKnowledgeUniqueTextArraySchema,
+  boundary: z.object({
+    shadow_only: z.literal(true),
+    consumed_by_blueprint: z.literal(false),
+    consumed_by_prompt: z.literal(false),
+    consumed_by_fallback: z.literal(false),
+    persistence_allowed: z.literal(false),
+    generation_output_changed: z.literal(false),
+    generated_content_writeback_allowed: z.literal(false),
+    machine_validation_only: z.literal(true),
+    real_human_review_credit_granted: z.literal(false),
+  }).strict(),
+}).strict().superRefine((shadow, context) => {
+  if (shadow.status === 'blocked' && shadow.issues.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issues'],
+      message: 'blocked shadow reports require at least one issue',
+    });
+  }
+  if (shadow.status !== 'blocked' && shadow.issues.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issues'],
+      message: 'safe shadow reports cannot carry issues',
+    });
+  }
+  if (
+    shadow.status === 'safe_no_fact_candidates'
+    && shadow.contract_projection.fact_candidate_claim_ids.length > 0
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['contract_projection', 'fact_candidate_claim_ids'],
+      message: 'safe_no_fact_candidates requires an empty fact candidate projection',
+    });
+  }
+});
+
 export const MaterialPurposeSchema = z.enum([
   'fact_basis',
   'character_source',
