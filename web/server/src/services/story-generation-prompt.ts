@@ -133,6 +133,10 @@ interface PromptKnowledgeEntry {
   asset_split?: KnowledgeAssetSplit;
   production_prompts?: string[];
   review_boundaries?: string[];
+  credibility?: string;
+  source_refs?: string[];
+  verification_method?: string;
+  unverified_points?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -673,6 +677,7 @@ function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
     entry.entry_role ? `条目角色：${entry.entry_role}` : '',
     entry.era ? `时代：${entry.era}` : '',
     entry.asset_usage?.length ? `用途：${entry.asset_usage.join('、')}` : '',
+    entry.credibility ? `可信度：${entry.credibility}` : '',
   ].filter(Boolean).join('；');
   const assetSplitText = formatAssetSplitForPrompt(entry.asset_split);
   const productionPromptText = entry.production_prompts?.length
@@ -681,7 +686,16 @@ function formatKnowledgeEntryForPrompt(entry: PromptKnowledgeEntry): string {
   const reviewBoundaryText = entry.review_boundaries?.length
     ? `；审稿边界：${entry.review_boundaries.join('；')}`
     : '';
-  return `${entry.entry_name}（${tags}）: ${entry.summary}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}${productionPromptText}${reviewBoundaryText}`;
+  const sourceText = entry.source_refs?.length
+    ? `；来源：${entry.source_refs.join('；')}`
+    : '';
+  const verificationText = entry.verification_method
+    ? `；核验方法：${entry.verification_method}`
+    : '';
+  const unverifiedText = entry.unverified_points?.length
+    ? `；待核点：${entry.unverified_points.join('；')}`
+    : '';
+  return `${entry.entry_name}（${tags}）: ${entry.summary}${sourceText}${verificationText}${unverifiedText}${assetSplitText ? `；资产拆分：${assetSplitText}` : ''}${productionPromptText}${reviewBoundaryText}`;
 }
 
 function formatMaterialForPrompt(entry: MaterialPackEntry): string {
@@ -691,6 +705,7 @@ function formatMaterialForPrompt(entry: MaterialPackEntry): string {
     entry.role_in_story ? `角色：${entry.role_in_story}` : '',
     typeof entry.confidence === 'number' ? `置信度：${entry.confidence}` : '',
     entry.linked_entry_name ? `关联条目：${entry.linked_entry_name}` : '',
+    entry.provenance ? `依据：${entry.provenance}` : '',
   ].filter(Boolean).join('；');
   return `${entry.title}（${tags}）：${entry.summary}`;
 }
@@ -813,6 +828,10 @@ export function buildStoryGenerationPromptPackage(input: {
             asset_split: e.asset_split,
             production_prompts: e.production_prompts,
             review_boundaries: e.review_boundaries,
+            credibility: e.credibility,
+            source_refs: e.source_refs,
+            verification_method: e.verification_method,
+            unverified_points: e.unverified_points,
           })),
           supporting_entries: input.knowledgePack.supporting_entries.map(e => ({
             entry_name: e.entry_name,
@@ -825,6 +844,10 @@ export function buildStoryGenerationPromptPackage(input: {
             asset_split: e.asset_split,
             production_prompts: e.production_prompts,
             review_boundaries: e.review_boundaries,
+            credibility: e.credibility,
+            source_refs: e.source_refs,
+            verification_method: e.verification_method,
+            unverified_points: e.unverified_points,
           })),
         }
       : undefined,

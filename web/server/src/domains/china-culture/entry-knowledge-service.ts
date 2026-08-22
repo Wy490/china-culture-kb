@@ -15,6 +15,9 @@ export interface SearchableEntry extends EntrySearchResult {
   verificationText?: string;
   unverifiedText?: string;
   assetSplitText?: string;
+  sources?: string[];
+  verificationMethod?: string;
+  unverifiedPoints?: string[];
 }
 
 export async function collectChinaCultureSearchableEntries(): Promise<SearchableEntry[]> {
@@ -35,6 +38,9 @@ export async function collectChinaCultureSearchableEntries(): Promise<Searchable
         verificationText: detail?.verificationMethod ?? '',
         unverifiedText: detail?.unverifiedPoints.join(' ') ?? '',
         assetSplitText: assetSplitToText(summaryEntry.asset_split ?? detail?.asset_split),
+        sources: detail?.sources ?? [],
+        verificationMethod: detail?.verificationMethod ?? '',
+        unverifiedPoints: detail?.unverifiedPoints ?? [],
       };
     }));
   }

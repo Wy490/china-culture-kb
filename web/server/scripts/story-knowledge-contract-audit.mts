@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
   buildChinaCultureStoryKnowledgeContractMigrationAudit,
@@ -15,9 +15,32 @@ const originalKbRoot = process.env.KB_ROOT;
 process.env.KB_ROOT = dataRoot;
 
 try {
-  const report = await buildChinaCultureStoryKnowledgeContractMigrationAudit();
-  await mkdir(resolve(dataRoot, 'reports'), { recursive: true });
-  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  const checkOnly = process.argv.includes('--check');
+  const existingText = checkOnly
+    ? await readFile(reportPath, 'utf8').catch(() => '')
+    : '';
+  if (checkOnly && !existingText) {
+    throw new Error(`Story knowledge contract audit baseline is missing: ${reportPath}`);
+  }
+  const existingGeneratedAt = checkOnly
+    ? (JSON.parse(existingText) as { generated_at?: unknown }).generated_at
+    : undefined;
+  if (checkOnly && typeof existingGeneratedAt !== 'string') {
+    throw new Error(`Story knowledge contract audit baseline has no generated_at: ${reportPath}`);
+  }
+
+  const report = await buildChinaCultureStoryKnowledgeContractMigrationAudit(
+    typeof existingGeneratedAt === 'string' ? existingGeneratedAt : undefined,
+  );
+  const reportText = `${JSON.stringify(report, null, 2)}\n`;
+  if (checkOnly) {
+    if (existingText !== reportText) {
+      throw new Error(`Story knowledge contract audit baseline is stale; rerun without --check: ${reportPath}`);
+    }
+  } else {
+    await mkdir(resolve(dataRoot, 'reports'), { recursive: true });
+    await writeFile(reportPath, reportText, 'utf8');
+  }
   console.log(JSON.stringify({
     schema_version: report.schema_version,
     status: report.status,

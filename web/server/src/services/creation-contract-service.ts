@@ -66,6 +66,11 @@ function materialPurposesFromKnowledgeEntry(entry: KnowledgePackEntry, primary: 
 }
 
 function knowledgeEntryToMaterial(entry: KnowledgePackEntry, index: number, primary: boolean): MaterialPackEntry {
+  const provenance = [
+    entry.match_reason,
+    entry.source_refs?.length ? `来源：${entry.source_refs.join('；')}` : '',
+    entry.verification_method ? `核验：${entry.verification_method}` : '',
+  ].filter(Boolean).join('；');
   return {
     material_id: stableId(primary ? 'primary' : 'supporting', entry.entry_name, index),
     title: entry.entry_name,
@@ -74,7 +79,7 @@ function knowledgeEntryToMaterial(entry: KnowledgePackEntry, index: number, prim
     purpose: materialPurposesFromKnowledgeEntry(entry, primary),
     confidence: entry.score,
     role_in_story: entry.role_in_story,
-    provenance: entry.match_reason,
+    provenance,
     linked_entry_name: entry.entry_name,
     tags: [
       entry.type,
@@ -84,6 +89,25 @@ function knowledgeEntryToMaterial(entry: KnowledgePackEntry, index: number, prim
       ...(entry.keywords ?? []),
     ].filter((item): item is string => Boolean(item)),
   };
+}
+
+function isExplicitlyVerifiedKnowledgeEntry(entry: KnowledgePackEntry): boolean {
+  const credibility = entry.credibility?.trim();
+  return Boolean(
+    credibility
+    && ['已核实', '可靠', 'A'].includes(credibility)
+    && (entry.unverified_points?.length ?? 0) === 0,
+  );
+}
+
+function knowledgeEntryClaim(entry: KnowledgePackEntry): string {
+  const notes = [
+    `可信度：${entry.credibility?.trim() || '未声明'}`,
+    entry.unverified_points?.length
+      ? `待核点：${entry.unverified_points.join('；')}`
+      : '',
+  ].filter(Boolean).join('；');
+  return `${entry.entry_name}（${notes}）：${entry.summary}`;
 }
 
 function materialToKnowledgeEntry(material: MaterialPackEntry, index: number): KnowledgePackEntry {
@@ -108,7 +132,7 @@ function materialToKnowledgeEntry(material: MaterialPackEntry, index: number): K
 
 export function materialPackFromKnowledgePack(
   knowledgePack: KnowledgePack,
-  request: Pick<StoryGenerateRequest, 'original_user_query' | 'outline' | 'source_material_mode' | 'client_type'> = {},
+  request: Pick<StoryGenerateRequest, 'original_user_query' | 'outline' | 'source_material_mode' | 'client_type' | 'truth_mode' | 'creation_use_case'> = {},
 ): MaterialPack {
   const primaryMaterials = knowledgePack.primary_entries.map((entry, index) =>
     knowledgeEntryToMaterial(entry, index, true),
@@ -116,6 +140,19 @@ export function materialPackFromKnowledgePack(
   const supportingMaterials = knowledgePack.supporting_entries.map((entry, index) =>
     knowledgeEntryToMaterial(entry, index, false),
   );
+  const verifiedFacts = knowledgePack.primary_entries
+    .filter(isExplicitlyVerifiedKnowledgeEntry)
+    .map(entry => `${entry.entry_name}：${entry.summary}`);
+  const fictionalOriginal = request.truth_mode === 'fictional_original'
+    || request.creation_use_case === 'original_ai_comic';
+  const uncertainClaims = [
+    ...(fictionalOriginal
+      ? []
+      : knowledgePack.primary_entries
+          .filter(entry => !isExplicitlyVerifiedKnowledgeEntry(entry))
+          .map(knowledgeEntryClaim)),
+    ...knowledgePack.missing_needs.map(item => `${item.label}：${normalizeMaterialMessage(item.message)}`),
+  ];
   const referenceMaterials: MaterialPackEntry[] = [];
   const sourceText = request.original_user_query ?? request.outline;
   if (sourceText && request.source_material_mode === 'adapt_user_novel') {
@@ -141,9 +178,13 @@ export function materialPackFromKnowledgePack(
       ? { rights_note: '需由用户确认原作授权与改编边界' }
       : undefined,
     visual_assets: [],
-    verified_facts: primaryMaterials.map(item => `${item.title}：${item.summary}`),
-    uncertain_claims: knowledgePack.missing_needs.map(item => `${item.label}：${normalizeMaterialMessage(item.message)}`),
-    creative_space: ['允许把材料转化为场景调度、镜头动作、对白节奏和视觉表达，但不得把创作补足写成已验证事实。'],
+    verified_facts: verifiedFacts,
+    uncertain_claims: uncertainClaims,
+    creative_space: [
+      fictionalOriginal
+        ? '用户原创故事种子只作为人物、世界、冲突和情节的创作锚点，不归类为历史事实或待核实事实；若引用真实人物、机构、地域或文化细节，仍须另行核验。'
+        : '允许把材料转化为场景调度、镜头动作、对白节奏和视觉表达，但不得把创作补足写成已验证事实。',
+    ],
     missing_needs: knowledgePack.missing_needs,
     overall_confidence: knowledgePack.overall_confidence,
     token_budget_summary: {

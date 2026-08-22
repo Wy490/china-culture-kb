@@ -56,6 +56,10 @@ export function buildChinaCultureSingleEntryKnowledgePack(
     era: entry.era,
     asset_usage: entry.asset_usage,
     asset_split: entry.asset_split,
+    credibility: entry.credibility,
+    source_refs: entry.sources,
+    verification_method: entry.verificationMethod,
+    unverified_points: entry.unverifiedPoints,
   }, {
     name: entry.name,
     type: entry.type,

@@ -50,6 +50,12 @@ describe('china_culture single-entry story knowledge pack', () => {
       })],
     });
     expect(pack.primary_entries[0]?.summary).toContain('待核实');
+    expect(pack.primary_entries[0]).toMatchObject({
+      credibility: 'B',
+      source_refs: ['地方志来源线索'],
+      verification_method: '需与地方志和遗址资料交叉核验。',
+      unverified_points: ['月岩悟道细节属于地方传说，待核实。'],
+    });
     expect(pack.primary_entries[0]?.production_prompts).toEqual(expect.arrayContaining([
       expect.stringContaining('机器派生生产指导'),
       expect.stringContaining('对白口吻'),

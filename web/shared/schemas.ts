@@ -2156,6 +2156,10 @@ export const KnowledgePackEntrySchema = z.object({
   asset_split: KnowledgeAssetSplitSchema.optional(),
   production_prompts: z.array(z.string()).optional(),
   review_boundaries: z.array(z.string()).optional(),
+  credibility: z.string().optional(),
+  source_refs: z.array(z.string()).optional(),
+  verification_method: z.string().optional(),
+  unverified_points: z.array(z.string()).optional(),
 });
 
 export const KnowledgePackMissingSchema = z.object({

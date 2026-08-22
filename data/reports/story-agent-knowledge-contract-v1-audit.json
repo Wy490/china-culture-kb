@@ -1,24 +1,24 @@
 {
   "schema_version": "story-knowledge-contract-migration-audit/v1",
-  "generated_at": "2026-08-03T10:38:18.185Z",
+  "generated_at": "2026-08-22T07:26:08.347Z",
   "status": "ready_for_human_enrichment",
   "totals": {
-    "entry_count": 272,
-    "valid_contract_count": 272,
+    "entry_count": 289,
+    "valid_contract_count": 289,
     "invalid_contract_count": 0,
-    "source_count": 992,
-    "ungraded_source_count": 992,
-    "claim_count": 1405,
-    "blocked_claim_count": 1133,
+    "source_count": 1043,
+    "ungraded_source_count": 1043,
+    "claim_count": 1507,
+    "blocked_claim_count": 1218,
     "critical_fact_ready_count": 0,
-    "missing_material_count": 1359
+    "missing_material_count": 1444
   },
   "missing_category_counts": {
-    "claim_level_source_mapping": 272,
-    "authoritative_source": 272,
-    "creative_affordance": 271,
-    "production_material": 272,
-    "rights_clearance": 272
+    "claim_level_source_mapping": 289,
+    "authoritative_source": 289,
+    "creative_affordance": 288,
+    "production_material": 289,
+    "rights_clearance": 289
   },
   "invariants": {
     "every_entry_preserved": true,

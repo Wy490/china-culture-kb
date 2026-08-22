@@ -288,6 +288,10 @@ describe('outline-service', () => {
     expect(zhou?.summary).toContain('濂溪');
     expect(zhou?.summary).toContain('拒签冤案');
     expect(zhou?.summary.length).toBeGreaterThan(zhou?.entry_name.length ?? 0);
+    expect(zhou?.credibility).toBe('混合');
+    expect(zhou?.source_refs?.length).toBeGreaterThan(10);
+    expect(zhou?.verification_method).toContain('正史线索');
+    expect(zhou?.unverified_points?.some(point => point.includes('月岩悟道'))).toBe(true);
   });
 
   it('injects domain packs for era, folklore, and GEARS asset boundaries', async () => {

@@ -10195,6 +10195,10 @@ export interface KnowledgePackEntry {
   asset_split?: KnowledgeAssetSplit;
   production_prompts?: string[];
   review_boundaries?: string[];
+  credibility?: string;
+  source_refs?: string[];
+  verification_method?: string;
+  unverified_points?: string[];
 }
 
 export interface KnowledgePackMissing {

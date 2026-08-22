@@ -129,6 +129,79 @@ describe('creation contract compatibility layer', () => {
     expect(shadowPack?.supporting_entries[0].role_in_story).toBe('cultural_background');
   });
 
+  it('does not promote a relevant but unverified retrieval summary into verified facts', () => {
+    const pack = makeKnowledgePack();
+    Object.assign(pack.primary_entries[0], {
+      credibility: '待核实',
+      source_refs: ['地方志来源线索'],
+      verification_method: '需与地方志和遗址资料交叉核验。',
+      unverified_points: ['月岩悟道细节属于地方传说。'],
+    });
+
+    const materialPack = materialPackFromKnowledgePack(pack);
+
+    expect(materialPack.verified_facts).toEqual([]);
+    expect(materialPack.uncertain_claims).toEqual(expect.arrayContaining([
+      expect.stringContaining('周敦颐——理学开山鼻祖'),
+      expect.stringContaining('可信度：待核实'),
+      expect.stringContaining('月岩悟道细节属于地方传说'),
+    ]));
+    expect(materialPack.primary_materials[0].provenance).toContain('地方志来源线索');
+  });
+
+  it('promotes only explicitly verified retrieval entries without open unverified points', () => {
+    const pack = makeKnowledgePack();
+    Object.assign(pack.primary_entries[0], {
+      credibility: '可靠',
+      source_refs: ['《宋史》卷四百二十七'],
+      verification_method: '与正史原文交叉核验。',
+      unverified_points: [],
+    });
+    pack.missing_needs = [];
+
+    const materialPack = materialPackFromKnowledgePack(pack);
+
+    expect(materialPack.verified_facts).toEqual([
+      '周敦颐——理学开山鼻祖：周敦颐是北宋理学重要人物。',
+    ]);
+    expect(materialPack.uncertain_claims).toEqual([]);
+  });
+
+  it('keeps a reliable entry uncertain while it still has an open unverified point', () => {
+    const pack = makeKnowledgePack();
+    Object.assign(pack.primary_entries[0], {
+      credibility: '可靠',
+      source_refs: ['《宋史》卷四百二十七'],
+      unverified_points: ['具体对白没有一手原文。'],
+    });
+    pack.missing_needs = [];
+
+    const materialPack = materialPackFromKnowledgePack(pack);
+
+    expect(materialPack.verified_facts).toEqual([]);
+    expect(materialPack.uncertain_claims.join('\n')).toContain('具体对白没有一手原文');
+  });
+
+  it('keeps original-fiction retrieval anchors out of both factual claim buckets', () => {
+    const pack = makeKnowledgePack();
+    Object.assign(pack.primary_entries[0], {
+      credibility: '用户提供',
+      source_refs: ['用户提供素材'],
+      unverified_points: [],
+    });
+    pack.missing_needs = [];
+
+    const materialPack = materialPackFromKnowledgePack(pack, {
+      truth_mode: 'fictional_original',
+      creation_use_case: 'original_ai_comic',
+    });
+
+    expect(materialPack.verified_facts).toEqual([]);
+    expect(materialPack.uncertain_claims).toEqual([]);
+    expect(materialPack.creative_space.join('\n')).toContain('用户原创故事种子');
+    expect(materialPack.creative_space.join('\n')).toContain('真实人物、机构、地域或文化细节');
+  });
+
   it('builds a blocking institutional sufficiency report and creation contract from material gaps', () => {
     const materialPack = {
       ...makeMaterialPack(),

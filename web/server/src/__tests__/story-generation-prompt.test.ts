@@ -124,6 +124,13 @@ describe('story-generation-prompt', () => {
       original_user_query: '周敦颐月岩悟道传说',
     };
 
+    const knowledgePack = makeKnowledgePack();
+    Object.assign(knowledgePack.primary_entries[0], {
+      credibility: '待核实',
+      source_refs: ['地方志来源线索'],
+      verification_method: '需与地方志和遗址资料交叉核验。',
+      unverified_points: ['月岩悟道细节属于地方传说。'],
+    });
     const pkg = buildStoryGenerationPromptPackage({
       entry: makeEntry(),
       request,
@@ -132,7 +139,7 @@ describe('story-generation-prompt', () => {
       storyStructure: 'single_event_drama',
       targetDuration: '1分钟',
       tone: '',
-      knowledgePack: makeKnowledgePack(),
+      knowledgePack,
     });
 
     expect(pkg.user_prompt).toContain('知识域：gears_asset');
@@ -141,6 +148,16 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('场景=洞穴：场景资产、书院：场景资产');
     expect(pkg.user_prompt).toContain('生产提示：把洞穴、书院和衙署拆成独立可拍场景');
     expect(pkg.user_prompt).toContain('审稿边界：不得把通用资产包写成主条目已发生史实');
+    expect(pkg.user_prompt).toContain('可信度：待核实');
+    expect(pkg.user_prompt).toContain('来源：地方志来源线索');
+    expect(pkg.user_prompt).toContain('核验方法：需与地方志和遗址资料交叉核验。');
+    expect(pkg.user_prompt).toContain('待核点：月岩悟道细节属于地方传说。');
+    expect(pkg.knowledge_context?.primary_entries[0]).toMatchObject({
+      credibility: '待核实',
+      source_refs: ['地方志来源线索'],
+      verification_method: '需与地方志和遗址资料交叉核验。',
+      unverified_points: ['月岩悟道细节属于地方传说。'],
+    });
     expect(pkg.knowledge_context?.primary_entries[0].asset_split?.character_props[0]).toContain('手稿');
     expect(pkg.knowledge_context?.supporting_entries[0].production_prompts?.[0]).toContain('独立可拍场景');
     expect(pkg.knowledge_context?.supporting_entries[0].review_boundaries?.[0]).toContain('不得把通用资产包写成主条目');

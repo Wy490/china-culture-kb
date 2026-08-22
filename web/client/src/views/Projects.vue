@@ -2283,6 +2283,7 @@ function storyAgentMvpLaneLabel(key: StoryAgentMvpStatusReport['lanes'][number][
     repair_loop: '修复闭环',
     delivery_contract: 'GEARS 交付合同',
     production_command: '生产指挥',
+    external_evidence_sync_health: '外部证据同步健康',
   }
   return map[key]
 }
