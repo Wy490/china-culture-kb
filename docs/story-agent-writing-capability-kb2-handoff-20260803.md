@@ -37,9 +37,10 @@
 - 第四十四切片实现提交：`d2e3d941`（`feat(story-agent): surface sync health in mvp status`）
 - 第四十五切片实现提交：`a76303ae`（`perf(story-agent): accelerate mvp portfolio scans`）
 - 第四十六切片实现提交：`03b71381`（`perf(story-agent): reuse supplement task snapshot`）
+- 第四十七切片实现提交：`43c91e71`（`fix(story-agent): preserve retrieval evidence boundaries`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第四十六切片均已完成；第三十六至第四十六切片实现提交依次为 `36b1421c`、`8359eb1c`、`e30d5369`、`fc3782c0`、`01d2b97e`、`f1b249f5`、`8b67cacd`、`0c135ef5`、`d2e3d941`、`a76303ae`、`03b71381`
+- B4 与 M4 第一至第四十七切片均已完成；第四十七切片实现提交为 `43c91e71`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -62,7 +63,15 @@ M0 10% + M1 20% + M2 25% + M3 25% + M4 15% + M5 5% = 100%
 
 M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段治理已完成；M4 故事可发布、GEARS 合同与创作质量均已 45/45，机器创作质量不变量整体通过。当前 15×3 矩阵已无可由生成器治理的生产素材字段缺口。Story Agent 的“文化题材源 × 原创叙事机制”组合合同已覆盖神话、民间传说、历史事迹、历史人物、地方掌故、经典文本、非遗/文化记忆和用户原创素材，以及遗迹探秘、公平推理、神话远航、历史阵营群像、民俗异闻、战争谋略、家族代际、团队智取等 16 类新机制。resolved IDs 已同步进入蓝图、prompt、质量信号、repair、最终故事和请求元数据；本地 fallback 现按请求顺序建立主机制与副机制分工，每个副机制必须在独立中段场景兑现，并与正文、场景和 GEARS 同步。公平推理/民俗双解、悲剧/喜剧、遗迹保护/团队行动、阵营群像/战役谋略四类语义张力已有确定性化解规则；副机制超过中段场景容量时 fail closed。正式本地组合矩阵 v2 保留 8/8 题材源、16/16 主机制、16/16 副机制与 8 个混合题材案例，并新增 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格；每格直接复用 GenreStoryProfile 解析并验证时长、主副机制和容量门禁。组合层只学习通用结构机制，明确禁止复用受保护作品表达。外部证据项目版本与源故事之间的提交中断现可在同请求重放时恢复；只有源故事账本能被证明为项目账本前缀时才原子追平，源端领先、分叉或审计不一致一律 fail closed。项目级只读健康接口现可独立报告一致、需要安全重放、源故事缺失和完整性阻断；全局受限运维接口进一步聚合所有项目，只使用 `inspectCurrentStateReadOnly`，不会因查询触发 pending transaction 恢复。同步健康摘要现已接入 MVP lane、summary、Markdown 和 next-actions，且零证据活动不会被解释为真实证据完成。真实仓储 2051/2051 current-state 可读，当前无已导入外部证据项目和同步异常；这不代表剩余 12 项真实素材已经获得。外部全文生成 adapter 已新增独立 `record_replay_json` provider：录制包绑定模型身份、完整 prompt、输出与整包 SHA-256，任一篡改或 prompt 漂移都会 fail closed；命令 adapter 不再能通过环境变量自报回放信用。独立回放矩阵 v1 已固化 4 片型 × 3 时长的 12/12 正例和 5/5 完整性负门禁，并可通过 `--check` 逐字节复核。15×3 正式内容质量快照已刷新为 v34：历史制度压力与传说古今连接改为识别已有的可观察场景证据，刘海 AI 漫剧新增真实关系冲突、选择动作、集末承接和分层镜头提示；全部 pattern 弱信号清零，开放动作 23→12，平均 pattern 93.44→95.69，同时生产素材仍保持 33/45。下一重点是让大项目库 MVP 的多个只读组件共享经验证的请求级项目投影，或在真实外部证据可用时按严格合同接入；不能用本地生成内容填充剩余 12 项。
 
-第四十六切片已让 supplement candidate 与 knowledge writeback 在同一 MVP 请求内复用一份全量任务快照，并把 production portfolio 与 external evidence sync-health 两个重型磁盘扫描错峰执行；当前下一重点是继续减少 generated health、任务快照、production portfolio 和 sync-health 之间的重复项目读取，仍不需要用跨请求陈旧缓存替代全量异常扫描。
+第四十七切片修正了 RAG 证据语义：`KnowledgePackEntry` 现保留可信度、来源、核验方法和待核点，并继续传到 `MaterialPack` 与生成 prompt；检索相关性不再被自动写成“已核实事实”。用户原创种子保留在创作空间，不会误触发史实阻断。下一主线不是无边界继续扩条，而是设计结构化 `story-knowledge-contract/v1` 进入生成链的 fail-closed 迁移，并补齐检索质量基准。
+
+### 4.1 RAG 三层完成度快照
+
+以工程成熟度而非自动 SLA 计算，当前评估为：代码层 90%、检索层 76%、生成层 90%，综合约 85%。
+
+- 代码层 90%：已有独立类型/schema、Domain Pack、REST/MCP、KnowledgePack/MaterialPack/Blueprint、质量/repair、项目版本持久化和大量回归门禁。剩余主要是结构化证据合同尚未成为生成链单一事实源，并且存在多条 parser/打分路径的一致性成本。
+- 检索层 76%：已有字段加权词法检索、意图扩展、长字段命中、多需求匹配、地域/片型/本地化约束、摘要和 Domain Pack 增强。尚无 embedding/向量库、混合召回/重排、大语料索引与缓存、部分读取失败完整性诊断，也没有 precision/recall/NDCG 正式基准。
+- 生成层 90%：知识上下文已进入蓝图、外部 prompt、本地 fallback、场景/GEARS、质量与 repair，v34 机器样本保持故事可发布 45/45、GEARS 45/45。剩余核心缺口是 `story-knowledge-contract/v1` 仍为只读 shadow，且没有真实外部模型、真人/专业评审与成片生产信用。
 
 ## 5. 不可破坏的主链与架构边界
 
@@ -1358,6 +1367,15 @@ M4 第四十六切片完成时：
 - 快照过滤与 MVP performance 合同先红后绿；相关项目任务/导出/API 6 项通过，Server lint/build 与 `git diff --check` 通过。沙箱外最终 Server 全量 214 文件/1796 项通过，1 文件/2 项既有跳过、0 失败。实现提交为 `03b71381`。
 - 本切片保持请求内新鲜快照，不新增跨请求 TTL 缓存；不修改 v34 内容质量快照、不写 `data/provinces/*.md`、不执行同步恢复，也不授予外部证据、真人、专业、Provider 或成片信用。下一性能切片应考虑让多个只读组合共享项目级 current-state/material/readiness 投影，或建立带明确失效合同的请求级扫描上下文，而不是用 limit 或陈旧结果隐藏异常。
 
+M4 第四十七切片完成时：
+
+- RAG 证据语义完成纵向修复：单条与多条检索结果均保留 `credibility`、`source_refs`、`verification_method` 和 `unverified_points`，并传入 `KnowledgePack`、`MaterialPack`、结构化 `knowledge_context` 与最终 prompt。
+- 修正“检索相关=已核实事实”的误分类：只有可信度明确为已核实/可靠/A 且无待核点的条目才能进入 `verified_facts`；其余真实文化条目进入 `uncertain_claims`，用户原创种子则保留在 creative space，不被误当事实阻断。
+- 审查另发现并修复两项回归：前端 MVP lane label 缺少 `external_evidence_sync_health` 导致客户端类型构建失败；知识合同审计脚本忽略 `--check` 并覆写报告。现在 `--check` 使用基线时间戳重算并逐字节比较，校验前后 SHA-256 一致。
+- 当前知识合同报告已刷新到 289/289 条有效、1043 个来源全部尚未分级、1507 个 claims 中 1218 个 blocked、`critical_fact_ready_count=0`、`consumed_by_generation=false`。这是诚实的迁移边界，不能表述为结构化证据已进入生成链。
+- 新行为先观察到 3 类红测（provenance 丢失、未核实条目误入 verified facts、prompt 缺核验信息）再转绿；RAG 定向共 145 项通过。最终沙箱外 Server 全量 214 文件/1800 项通过、1 文件/2 项既有跳过；MCP 全量 111 文件/561 项通过；Web 全栈 lint/build、MCP build、M3/Domain Pack 审计、知识合同与 overlay fixture 审计均通过。实现提交为 `43c91e71`。
+- 本切片不修改 v34 内容质量快照、不写 `data/provinces/*.md`，不授予真人、专业、外部模型或成片信用。下一个价值最高的有界切片是检索评测集与混合召回/重排基线，或结构化证据合同进入生成链的 shadow 对照，不应继续仅以条目数量作为主目标。
+
 环境限制：
 
 - `mcp-server/__tests__/run-production-readiness-automation.test.ts` 的 3 项测试需要监听 `127.0.0.1`，当前沙箱报 `listen EPERM` 并超时。
@@ -1371,7 +1389,7 @@ M4 第四十六切片完成时：
 - 第四十四切片附加真实 MVP 聚合读取在约 6 分钟内未返回，已中止；定向 API、完整 Server 测试和第四十三切片独立真实健康扫描均通过。后续须单独处理大项目库聚合性能，不能把被中止运行转述为业务通过或业务失败。
 - 第四十五切片沙箱内全量出现 289 个 `listen EPERM` 未处理错误并连锁造成 333 项失败；沙箱外同一 `npm test` 为 213 文件/1794 项通过、1 文件/2 项跳过、0 失败。只采用沙箱外结果作为产品门禁，不能把沙箱内端口限制记成业务回归。
 - 第四十六切片的只读真实 MVP 基准在沙箱内因 `tsx` IPC `listen EPERM` 失败，沙箱外完成；两次墙钟约 57–58 秒，同期 production portfolio 独立基准也由历史 11.23 秒波动到 23.06 秒。该结果用于记录磁盘波动与扫描消减边界，不能把单轮墙钟倒退写成逻辑回归，也不能虚报端到端性能提升。最终 Server 全量在沙箱外为 214 文件/1796 项通过、1 文件/2 项跳过、0 失败。
-- 本轮知识合同审计的沙箱外执行请求被自动审批基础设施以未知参数错误拒绝；在审批能力恢复前不要用旁路执行或手工伪造报告。
+- 第四十七切片的知识合同审计在沙箱内因 `tsx` IPC `listen EPERM` 失败，沙箱外成功执行；脚本 `--check` 已修为只读严格比对，校验前后报告 hash 一致。
 - 隔离四种子全功能 smoke 在沙箱内受 `tsx` IPC 阻断，沙箱外申请又被自动审批基础设施拒绝；最后有效证明为本轮服务层端到端组合与全量测试，不得转述为该脚本已通过。
 - 当前报告是在 `kb:production-audit` 成功运行时生成的；后续若修改审计逻辑，必须重新生成报告，不能沿用旧数字。
 
@@ -1379,6 +1397,7 @@ M4 第四十六切片完成时：
 
 ```bash
 cd /Users/wuyu/Desktop/china-culture-kb/web/server
+npm run audit:story-knowledge-contract -- --check
 npm run audit:production-material-m3 -- --check
 npm run audit:domain-pack-m3 -- --check
 npm run audit:domain-pack-m3-comparison -- --check
@@ -1387,12 +1406,13 @@ npm run audit:story-generation-record-replay-matrix -- --check
 npm run audit:story-agent-m4-machine-evaluation
 npm run lint
 npm run build
+npm test
 
 cd /Users/wuyu/Desktop/china-culture-kb/mcp-server
 ../web/node_modules/.bin/vitest run src/lib/production-field-guidance.test.ts src/tools/audit-production-materials.test.ts src/tools/audit-raw-production-field-gaps.test.ts src/tools/production-health-reports.test.ts
 npm run build
 npm run kb:raw-field-gap-audit -- --check
-../web/node_modules/.bin/vitest run --exclude __tests__/run-production-readiness-automation.test.ts
+npm test
 
 cd /Users/wuyu/Desktop/china-culture-kb
 git diff --check
@@ -1430,14 +1450,15 @@ git diff --check
 3. 修复后继续比较事实/文化边界、类型完成度、结构、场景可拍性、实际 repair trace 和稳定性，保持同一 45 案例口径。
 4. 按当前用户指令，人工盲评不作为工程启动前置，但机器报告不得冒充真人反馈。
 
-#### 已入库的剩余开发 backlog（第四十六切片后；15×3 正式快照为 v34）
+#### 已入库的剩余开发 backlog（第四十七切片后；15×3 正式快照为 v34）
 
 1. 当前 15×3 矩阵已经没有可由生成器或派生结构继续解除的 production material 缺口；`character_story` 改编压力例的 `life_stage_window` 已由完整知识证据行严格派生。
-2. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；下一步可设计请求级项目扫描上下文，让 generated health、任务快照、production portfolio 和 sync-health 共享已验证的 current-state/readiness 投影，同时保持失败隔离、全量 summary 与明确失效语义。真实外部证据接入仍须坚持 reviewer、hash、范围和账本链要求；不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
-3. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
-4. pattern 质量优化：改编类、历史制度压力、传说古今连接及 AI 漫剧行动/关系共 11 个开放目标已全部清零；正式 45 案例当前无弱 pattern 信号。后续把 0 作为回归门禁，不为追分继续堆标签或放宽阈值。
-5. 新组合创作能力：8 类文化题材源与 16 类新增原创机制已进入外部模型 prompt、蓝图、质量/repair、持久化和本地 fallback；主/副机制分工、四类语义张力化解、容量冲突 fail-closed 和副机制独立中段兑现均已完成。正式本地矩阵 v2 覆盖 8/8 题材源、16/16 主机制、16/16 副机制、8 个混合题材案例，以及 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格。外部 adapter 的完整性校验合同、双机制集成证明及独立回放矩阵 v1 均已完成；v34 的 15×3 报告仍不能作为新组合能力的外部模型评测证据。
-6. 真实生产依赖：45/45 仍缺真实图片资产与外部 Provider 回执；后续要完成逐镜资产绑定、hash 校验、失败恢复和成片验证，但不将付费调用或公开发布默认纳入本地开发权限。
+2. RAG 检索与证据链：建立小而可复现的查询—相关条目—必须出现/必须拒绝证据集，先固化 Recall@K、MRR/NDCG 与事实边界错误率，再决定是否引入 embedding/混合召回/重排。同时以 shadow 对照证明 `story-knowledge-contract/v1` 进入生成链后不放大未分级来源，未达门禁前保持 `consumed_by_generation=false`。
+3. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；下一步可设计请求级项目扫描上下文，让 generated health、任务快照、production portfolio 和 sync-health 共享已验证的 current-state/readiness 投影，同时保持失败隔离、全量 summary 与明确失效语义。真实外部证据接入仍须坚持 reviewer、hash、范围和账本链要求；不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
+4. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
+5. pattern 质量优化：改编类、历史制度压力、传说古今连接及 AI 漫剧行动/关系共 11 个开放目标已全部清零；正式 45 案例当前无弱 pattern 信号。后续把 0 作为回归门禁，不为追分继续堆标签或放宽阈值。
+6. 新组合创作能力：8 类文化题材源与 16 类新增原创机制已进入外部模型 prompt、蓝图、质量/repair、持久化和本地 fallback；主/副机制分工、四类语义张力化解、容量冲突 fail-closed 和副机制独立中段兑现均已完成。正式本地矩阵 v2 覆盖 8/8 题材源、16/16 主机制、16/16 副机制、8 个混合题材案例，以及 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格。外部 adapter 的完整性校验合同、双机制集成证明及独立回放矩阵 v1 均已完成；v34 的 15×3 报告仍不能作为新组合能力的外部模型评测证据。
+7. 真实生产依赖：45/45 仍缺真实图片资产与外部 Provider 回执；后续要完成逐镜资产绑定、hash 校验、失败恢复和成片验证，但不将付费调用或公开发布默认纳入本地开发权限。
 
 ### 非阻塞项
 
@@ -1461,17 +1482,17 @@ git diff --check
 
 继续开发 Story Agent“创作增强与知识库 2.0”专项。
 
-B4 与 M4 第一至第四十六切片均已完成；第三十六至第四十六切片实现提交依次为 `36b1421c`、`8359eb1c`、`e30d5369`、`fc3782c0`、`01d2b97e`、`f1b249f5`、`8b67cacd`、`0c135ef5`、`d2e3d941`、`a76303ae`、`03b71381`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
+B4 与 M4 第一至第四十七切片均已完成；第四十七切片实现提交为 `43c91e71`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
 
 当前优先级是把功能做全、把能力做好；人工评审、真人流程和用户注册不作为工程前置，但不得虚构人工信用。生成故事和机器派生生产指导不得写回 data/provinces/*.md。
 
-全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。production material 缺口已由 42 降到 12，剩余 12 例全部只认真实外部证据。改编、历史制度压力、传说古今连接和 AI 漫剧行动/关系的结构证据均已收口，metadata-only 和泛化标签不能授信。8 类文化题材源与 16 类原创叙事机制已经具备主/副分工：主机制控制全片首尾，副机制必须在独立中段场景兑现；四类语义张力有确定性化解规则，容量不足时 fail closed。本地正式组合矩阵 v2 为 28/28；它仍使用虚构 fixture 与本地引擎，不能冒充外部模型、真人或 v34 的 15×3 外部模型评测。项目—源故事外部证据跨存储恢复、项目级/全局只读同步健康接口、MVP 状态 lane/next-actions 和独立回放矩阵 v1 均已完成。真实仓储独立扫描 2051/2051 current-state 可读、0 个外部证据活动项目、0 个同步关注项；该健康结果不代表真实证据已补齐。完整真实 MVP 已通过精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照和重型磁盘扫描错峰，从约 6 分钟未返回改善为可完成；第四十五切片暖态曾为 34–37 秒，本切片两轮受磁盘波动影响为 57–58 秒，不能将任一单轮数字冒充稳定 SLA。下一切片继续合并只读项目投影，或在真实外部证据可用时按 reviewer、hash、范围与账本合同接入；不得以生成内容伪造剩余 12 项，也不得让只读审计隐式修复状态。
+全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。第四十七切片已修正 RAG 的证据分层：检索相关性不再自动获得已核实事实信用，来源/可信度/核验/待核点会传到生成 prompt。但 `story-knowledge-contract/v1` 仍固定 `consumed_by_generation=false`，289 条中 `critical_fact_ready_count=0`；下一优先级应是结构化证据入链的 shadow 对照与检索评测基准，而不是无边界继续扩充条目。其他 v34 与外部证据边界保持不变；不得以生成内容伪造剩余 12 项，也不得让只读审计隐式修复状态。
 
 每次汇报必须分别说明：当前阶段进度、专项总进度、既有 Story Agent MVP 进度、真实测试/运行健康与外部环境限制。
 ```
 
 ## 12. 交接边界
 
-- B4 与 M4 第一至第四十六切片均已完成；第三十六至第四十六切片实现提交依次为 `36b1421c`、`8359eb1c`、`e30d5369`、`fc3782c0`、`01d2b97e`、`f1b249f5`、`8b67cacd`、`0c135ef5`、`d2e3d941`、`a76303ae`、`03b71381`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；新组合能力的正式本地矩阵 v2 见 `story-agent-story-genre-composition-matrix.json`，独立回放矩阵 v1 见 `story-agent-story-generation-record-replay-matrix.json`。外部证据同步健康已具备项目级接口、受限全局聚合和 MVP 状态 lane/next-actions；真实完整 MVP 已具备组件耗时诊断、supplement/writeback 单次快照和重型扫描错峰，下一切片继续处理跨组件项目投影复用与磁盘波动。
+- B4 与 M4 第一至第四十七切片均已完成；第四十七切片实现提交为 `43c91e71`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 90%、检索层 76%、生成层 90%、综合约 85%。证据 provenance 已进入现有生成 prompt，但结构化 `story-knowledge-contract/v1` 仍是只读 shadow，下一切片应优先做检索评测基准或结构化证据入链对照。
 - 本文件只总结真实实现和已运行验证，不授予人工审核、真实生产、外部 worker 或公开发布信用。
 - 新对话接手后如修改了行为代码，必须更新相应测试与机器报告；仅修改文档时无需重复完整 CI。
