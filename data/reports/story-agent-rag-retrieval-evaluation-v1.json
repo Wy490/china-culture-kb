@@ -1,0 +1,574 @@
+{
+  "schema_version": "story-agent-rag-retrieval-evaluation/v1",
+  "benchmark_id": "china-culture-lexical-retrieval-v1",
+  "dataset_sha256": "b2c7a3625bfc6bd330a212ad303bc70219a3f53c5885aface89f05ffa1da3b34",
+  "corpus_sha256": "9d19862e88b6289cf203fe5a3fbd576ebc767587065a31f81a8a5d51f4029d7b",
+  "status": "passed",
+  "policy": {
+    "max_rank": 10,
+    "min_macro_recall_at_1": 0.65,
+    "min_macro_recall_at_3": 0.95,
+    "min_macro_recall_at_5": 0.95,
+    "min_mrr_at_10": 0.95,
+    "min_macro_ndcg_at_5": 0.9,
+    "max_forbidden_return_count": 0,
+    "max_unanswerable_candidate_count": 0,
+    "max_unanswerable_usable_false_positive_count": 0
+  },
+  "metrics": {
+    "case_count": 16,
+    "answerable_case_count": 12,
+    "unanswerable_case_count": 4,
+    "macro_recall_at_1": 0.680555,
+    "macro_recall_at_3": 1,
+    "macro_recall_at_5": 1,
+    "mrr_at_10": 1,
+    "macro_ndcg_at_5": 0.977609,
+    "answerable_usable_relevant_case_rate": 0.083333,
+    "forbidden_return_count": 0,
+    "unanswerable_candidate_count": 0,
+    "unanswerable_usable_false_positive_count": 0
+  },
+  "gate_checks": {
+    "macro_recall_at_1": true,
+    "macro_recall_at_3": true,
+    "macro_recall_at_5": true,
+    "mrr_at_10": true,
+    "macro_ndcg_at_5": true,
+    "forbidden_return_count": true,
+    "unanswerable_candidate_count": true,
+    "unanswerable_usable_false_positive_count": true
+  },
+  "cases": [
+    {
+      "case_id": "zhou-dunyi-events",
+      "query": "周敦颐月岩拒签冤案",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "score": 0.72,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞",
+          "score": 0.38,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "宋代士人服饰与随身物——周敦颐故事的人物设定边界",
+          "score": 0.37,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "grade": 3,
+          "rank": 1
+        },
+        {
+          "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞",
+          "grade": 2,
+          "rank": 2
+        },
+        {
+          "entry_name": "宋代士人服饰与随身物——周敦颐故事的人物设定边界",
+          "grade": 1,
+          "rank": 3
+        }
+      ],
+      "recall_at_1": 0.333333,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "mao-new-people-society",
+      "query": "韶山求学新民学会农民运动",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "新民学会——湖南共产党的前身",
+          "score": 0.72,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "韶山——红色文化圣地",
+          "score": 0.68,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "毛泽东——从韶山冲走向天安门的农家革命者",
+          "score": 0.44,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "何叔衡——清末秀才的革命觉醒",
+          "score": 0.36,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "毛泽东——从韶山冲走向天安门的农家革命者",
+          "grade": 3,
+          "rank": 3
+        },
+        {
+          "entry_name": "新民学会——湖南共产党的前身",
+          "grade": 2,
+          "rank": 1
+        },
+        {
+          "entry_name": "韶山——红色文化圣地",
+          "grade": 1,
+          "rank": 2
+        }
+      ],
+      "recall_at_1": 0.333333,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 0.759192,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "xiang-embroidery-process",
+      "query": "鬅毛针劈丝绣狮虎",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "湘绣——中国四大名绣之一",
+          "score": 0.47,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "湘绣——中国四大名绣之一",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "cloisonne-process",
+      "query": "铜胎掐丝点蓝烧蓝",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "景泰蓝制作技艺——铜胎、掐丝与珐琅釉的多工序协作",
+          "score": 0.43,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "景泰蓝制作技艺——铜胎、掐丝与珐琅釉的多工序协作",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "khoomei-performance",
+      "query": "泛音持续低音草原歌唱",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "蒙古族呼麦——持续低音与泛音旋律的歌唱艺术",
+          "score": 0.5,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "蒙古族呼麦——持续低音与泛音旋律的歌唱艺术",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "dunhuang-sculpture-process",
+      "query": "木骨泥胎塑绘一体石窟彩塑",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "敦煌彩塑制作技艺——木骨泥胎与塑绘一体的石窟彩塑传统",
+          "score": 0.6,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "敦煌彩塑制作技艺——木骨泥胎与塑绘一体的石窟彩塑传统",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "yuelu-academy-lineage",
+      "query": "千年学府弦歌湖湘学脉",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "score": 0.51,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "score": 0.42,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "新民学会——湖南共产党的前身",
+          "score": 0.38,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "岳麓书院——千年学府弦歌不绝",
+          "grade": 3,
+          "rank": 1
+        },
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "grade": 1,
+          "rank": 2
+        }
+      ],
+      "recall_at_1": 0.5,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "liu-hai-folk-opera",
+      "query": "刘海砍樵胡大姐花鼓戏",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "刘海砍樵——人仙之恋的湖南民间传说",
+          "score": 0.73,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界",
+          "score": 0.46,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "湖南花鼓戏——湖南人的戏",
+          "score": 0.45,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "湘剧——湖南戏曲的中州遗韵",
+          "score": 0.39,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "刘海砍樵——人仙之恋的湖南民间传说",
+          "grade": 3,
+          "rank": 1
+        },
+        {
+          "entry_name": "湖南花鼓戏——湖南人的戏",
+          "grade": 2,
+          "rank": 3
+        },
+        {
+          "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界",
+          "grade": 1,
+          "rank": 2
+        }
+      ],
+      "recall_at_1": 0.333333,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 0.972121,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "miluo-dragon-boat",
+      "query": "龙舟粽子汨罗江",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "汨罗江畔端午习俗——屈原故乡的龙舟与粽子",
+          "score": 0.53,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
+          "score": 0.5,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "屈原投江汨罗——端午节起源",
+          "score": 0.47,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "汨罗江畔端午习俗——屈原故乡的龙舟与粽子",
+          "grade": 3,
+          "rank": 1
+        },
+        {
+          "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地",
+          "grade": 2,
+          "rank": 2
+        },
+        {
+          "entry_name": "屈原投江汨罗——端午节起源",
+          "grade": 2,
+          "rank": 3
+        }
+      ],
+      "recall_at_1": 0.333333,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "beida-red-building",
+      "query": "北大红楼新文化运动李大钊",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "北大红楼——新文化运动的策源地",
+          "score": 0.76,
+          "usable_for_story": true
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "北大红楼——新文化运动的策源地",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": true,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "daqingshan-resistance",
+      "query": "大青山铁骑抗日游击根据地",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "大青山抗日游击根据地——草原上的铁骑兵",
+          "score": 0.54,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "大青山抗日游击根据地——草原上的铁骑兵",
+          "grade": 3,
+          "rank": 1
+        }
+      ],
+      "recall_at_1": 1,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "yueyan-cave-space",
+      "query": "月岩洞读书悟道",
+      "answerable": true,
+      "returned": [
+        {
+          "entry_name": "月岩洞——道县天然洞穴与地方传说空间",
+          "score": 0.74,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞",
+          "score": 0.51,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "score": 0.5,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "书生遇异母题——志异叙事中的相遇结构与边界",
+          "score": 0.39,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "宋代士人服饰与随身物——周敦颐故事的人物设定边界",
+          "score": 0.38,
+          "usable_for_story": false
+        },
+        {
+          "entry_name": "古代书斋陈设——书院与私塾场景资产",
+          "score": 0.38,
+          "usable_for_story": false
+        }
+      ],
+      "relevant_ranks": [
+        {
+          "entry_name": "月岩洞——道县天然洞穴与地方传说空间",
+          "grade": 3,
+          "rank": 1
+        },
+        {
+          "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞",
+          "grade": 2,
+          "rank": 2
+        },
+        {
+          "entry_name": "周敦颐——理学开山鼻祖",
+          "grade": 1,
+          "rank": 3
+        }
+      ],
+      "recall_at_1": 0.333333,
+      "recall_at_3": 1,
+      "recall_at_5": 1,
+      "reciprocal_rank_at_10": 1,
+      "ndcg_at_5": 1,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "off-domain-quantum",
+      "query": "量子计算芯片神经网络",
+      "answerable": false,
+      "returned": [],
+      "relevant_ranks": [],
+      "recall_at_1": 0,
+      "recall_at_3": 0,
+      "recall_at_5": 0,
+      "reciprocal_rank_at_10": 0,
+      "ndcg_at_5": 0,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "off-domain-mars-ritual",
+      "query": "火星王朝量子祭祀",
+      "answerable": false,
+      "returned": [],
+      "relevant_ranks": [],
+      "recall_at_1": 0,
+      "recall_at_3": 0,
+      "recall_at_5": 0,
+      "reciprocal_rank_at_10": 0,
+      "ndcg_at_5": 0,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "off-domain-paris-cathedral",
+      "query": "巴黎哥特教堂彩窗",
+      "answerable": false,
+      "returned": [],
+      "relevant_ranks": [],
+      "recall_at_1": 0,
+      "recall_at_3": 0,
+      "recall_at_5": 0,
+      "reciprocal_rank_at_10": 0,
+      "ndcg_at_5": 0,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    },
+    {
+      "case_id": "missing-fujian-tulou",
+      "query": "福建土楼夯土聚居",
+      "answerable": false,
+      "returned": [],
+      "relevant_ranks": [],
+      "recall_at_1": 0,
+      "recall_at_3": 0,
+      "recall_at_5": 0,
+      "reciprocal_rank_at_10": 0,
+      "ndcg_at_5": 0,
+      "usable_relevant_returned": false,
+      "forbidden_return_hits": [],
+      "issues": []
+    }
+  ],
+  "boundary": {
+    "machine_evaluation_only": true,
+    "human_relevance_review_complete": false,
+    "external_model_evaluation_complete": false,
+    "production_credit_granted": false
+  }
+}

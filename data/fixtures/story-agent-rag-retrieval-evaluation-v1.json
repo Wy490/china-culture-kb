@@ -1,0 +1,158 @@
+{
+  "schema_version": "story-agent-rag-retrieval-evaluation-dataset/v1",
+  "benchmark_id": "china-culture-lexical-retrieval-v1",
+  "description": "Machine-authored ranking and off-domain rejection baseline for the production china-culture entry matcher.",
+  "policy": {
+    "max_rank": 10,
+    "min_macro_recall_at_1": 0.65,
+    "min_macro_recall_at_3": 0.95,
+    "min_macro_recall_at_5": 0.95,
+    "min_mrr_at_10": 0.95,
+    "min_macro_ndcg_at_5": 0.9,
+    "max_forbidden_return_count": 0,
+    "max_unanswerable_candidate_count": 0,
+    "max_unanswerable_usable_false_positive_count": 0
+  },
+  "cases": [
+    {
+      "case_id": "zhou-dunyi-events",
+      "query": "周敦颐月岩拒签冤案",
+      "relevance": [
+        { "entry_name": "周敦颐——理学开山鼻祖", "grade": 3 },
+        { "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞", "grade": 2 },
+        { "entry_name": "宋代士人服饰与随身物——周敦颐故事的人物设定边界", "grade": 1 }
+      ],
+      "must_not_return": ["湖南花鼓戏——湖南人的戏"]
+    },
+    {
+      "case_id": "mao-new-people-society",
+      "query": "韶山求学新民学会农民运动",
+      "relevance": [
+        { "entry_name": "毛泽东——从韶山冲走向天安门的农家革命者", "grade": 3 },
+        { "entry_name": "新民学会——湖南共产党的前身", "grade": 2 },
+        { "entry_name": "韶山——红色文化圣地", "grade": 1 }
+      ],
+      "must_not_return": [
+        "湖南花鼓戏——湖南人的戏",
+        "刘海砍樵——人仙之恋的湖南民间传说"
+      ]
+    },
+    {
+      "case_id": "xiang-embroidery-process",
+      "query": "鬅毛针劈丝绣狮虎",
+      "relevance": [
+        { "entry_name": "湘绣——中国四大名绣之一", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "cloisonne-process",
+      "query": "铜胎掐丝点蓝烧蓝",
+      "relevance": [
+        { "entry_name": "景泰蓝制作技艺——铜胎、掐丝与珐琅釉的多工序协作", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "khoomei-performance",
+      "query": "泛音持续低音草原歌唱",
+      "relevance": [
+        { "entry_name": "蒙古族呼麦——持续低音与泛音旋律的歌唱艺术", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "dunhuang-sculpture-process",
+      "query": "木骨泥胎塑绘一体石窟彩塑",
+      "relevance": [
+        { "entry_name": "敦煌彩塑制作技艺——木骨泥胎与塑绘一体的石窟彩塑传统", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "yuelu-academy-lineage",
+      "query": "千年学府弦歌湖湘学脉",
+      "relevance": [
+        { "entry_name": "岳麓书院——千年学府弦歌不绝", "grade": 3 },
+        { "entry_name": "周敦颐——理学开山鼻祖", "grade": 1 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "liu-hai-folk-opera",
+      "query": "刘海砍樵胡大姐花鼓戏",
+      "relevance": [
+        { "entry_name": "刘海砍樵——人仙之恋的湖南民间传说", "grade": 3 },
+        { "entry_name": "湖南花鼓戏——湖南人的戏", "grade": 2 },
+        { "entry_name": "狐仙报恩母题——湖南民间叙事与志异边界", "grade": 1 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "miluo-dragon-boat",
+      "query": "龙舟粽子汨罗江",
+      "relevance": [
+        { "entry_name": "汨罗江畔端午习俗——屈原故乡的龙舟与粽子", "grade": 3 },
+        { "entry_name": "汨罗江畔端午习俗——龙舟文化的发源地", "grade": 2 },
+        { "entry_name": "屈原投江汨罗——端午节起源", "grade": 2 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "beida-red-building",
+      "query": "北大红楼新文化运动李大钊",
+      "relevance": [
+        { "entry_name": "北大红楼——新文化运动的策源地", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "daqingshan-resistance",
+      "query": "大青山铁骑抗日游击根据地",
+      "relevance": [
+        { "entry_name": "大青山抗日游击根据地——草原上的铁骑兵", "grade": 3 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "yueyan-cave-space",
+      "query": "月岩洞读书悟道",
+      "relevance": [
+        { "entry_name": "月岩洞——道县天然洞穴与地方传说空间", "grade": 3 },
+        { "entry_name": "月岩悟道传说——周敦颐与道县天然岩洞", "grade": 2 },
+        { "entry_name": "周敦颐——理学开山鼻祖", "grade": 1 }
+      ],
+      "must_not_return": []
+    },
+    {
+      "case_id": "off-domain-quantum",
+      "query": "量子计算芯片神经网络",
+      "relevance": [],
+      "must_not_return": []
+    },
+    {
+      "case_id": "off-domain-mars-ritual",
+      "query": "火星王朝量子祭祀",
+      "relevance": [],
+      "must_not_return": ["苗族椎牛祭——湘西苗族最高祭祀礼仪"]
+    },
+    {
+      "case_id": "off-domain-paris-cathedral",
+      "query": "巴黎哥特教堂彩窗",
+      "relevance": [],
+      "must_not_return": []
+    },
+    {
+      "case_id": "missing-fujian-tulou",
+      "query": "福建土楼夯土聚居",
+      "relevance": [],
+      "must_not_return": ["土家族吊脚楼营造技艺——武陵山地的木构智慧"]
+    }
+  ],
+  "boundary": {
+    "machine_authored_fixture": true,
+    "human_relevance_review_complete": false,
+    "external_model_evaluation_complete": false,
+    "production_credit_granted": false
+  }
+}

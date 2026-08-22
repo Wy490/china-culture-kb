@@ -30,7 +30,7 @@ export async function matchChinaCultureEntries(
   const scored: EntryMatchItem[] = [];
   for (const entry of allEntries) {
     const score = computeChinaCultureMatchScore(trimmedQuery, queryKeywords, entry, queryProvince, preferred_type);
-    if (score >= 0.35) {
+    if (score >= 0.35 && hasSufficientChinaCultureMatchCoverage(trimmedQuery, queryKeywords, entry)) {
       scored.push({
         entry_name: entry.name,
         province: entry.province,
@@ -128,6 +128,34 @@ export function computeChinaCultureMatchScore(
     }
   }
   return Math.min(0.99, score);
+}
+
+export function hasSufficientChinaCultureMatchCoverage(
+  query: string,
+  queryKeywords: string[],
+  entry: SearchableEntry,
+): boolean {
+  if (query === entry.name || entry.name.includes(query) || query.includes(entry.name)) return true;
+  if (queryKeywords.length < 4) return true;
+
+  const strongFieldText = [
+    entry.name,
+    entry.name.split('——')[0],
+    entry.summary,
+    entry.story,
+    entry.relatedLocationText,
+    entry.localCreativeRelationText,
+    entry.culturalSignificance,
+    entry.keywords.join(' '),
+    entry.assetSplitText,
+  ].filter(Boolean).join(' ');
+  const distinctHits = [...new Set(
+    queryKeywords.filter(keyword => keyword && strongFieldText.includes(keyword)),
+  )];
+  const independentHits = distinctHits.filter(hit => (
+    !distinctHits.some(other => other !== hit && other.includes(hit))
+  ));
+  return independentHits.length >= 2;
 }
 
 function buildMatchReason(query: string, entry: SearchableEntry, score: number): string {
