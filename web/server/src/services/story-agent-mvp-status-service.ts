@@ -6,12 +6,13 @@ import type {
   ProductionReadinessPortfolioItem,
   ProductionReadinessPortfolioReport,
   ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport,
-  ProjectSupplementTaskListItem,
+  ProjectSupplementCandidateExportPackage,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthScope,
   StoryAgentMvpLane,
+  StoryAgentMvpPerformanceDiagnostics,
   StoryAgentMvpPriorityTarget,
   StoryAgentMvpProgressSlice,
   StoryAgentMvpStatus,
@@ -29,7 +30,7 @@ import {
   getProjectExternalEvidenceSourceStorySyncHealthPortfolio,
 } from './project-external-evidence-sync-health-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
-import { exportProjectSupplementCandidatePackage, listProjectSupplementTasks } from './project-service.js';
+import { exportProjectSupplementCandidatePackage } from './project-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
 
 interface StoryAgentMvpStatusOptions {
@@ -631,12 +632,10 @@ function domainPackExpansionDevelopmentProgress(
   };
 }
 
-function taskWritebackStatus(item: ProjectSupplementTaskListItem): KnowledgeWritebackStatus {
-  return item.task.knowledge_writeback_status ?? 'draft_ready';
-}
-
 async function getStorySupplementBacklogMetrics(
   health: StoryAgentGeneratedHealthReport,
+  candidatePackage?: ProjectSupplementCandidateExportPackage,
+  candidatePackageError?: string,
 ): Promise<StorySupplementBacklogMetrics> {
   const fallbackOpenCount = health.summary.story_open_supplement_task_count ?? 0;
   const defaultCandidatePackageMetrics = {
@@ -652,50 +651,38 @@ async function getStorySupplementBacklogMetrics(
     candidate_package_direct_writeback_to_province_markdown: false as const,
     candidate_package_province_markdown_written: false as const,
   };
-  const result = await listProjectSupplementTasks({ status: 'open' });
-  if (!result.ok || !result.data) {
+  if (!candidatePackage) {
     return {
       open_count: fallbackOpenCount,
       optional_open_count: 0,
       risk_open_count: 0,
       blocking_open_count: 0,
       ...defaultCandidatePackageMetrics,
-      read_error: result.error?.message ?? 'Failed to read open supplement tasks',
+      read_error: candidatePackageError ?? 'Failed to export supplement candidate package',
     };
   }
-  const candidatePackageResult = await exportProjectSupplementCandidatePackage({ status: 'open' });
-  const candidatePackageMetrics = candidatePackageResult.ok && candidatePackageResult.data
-    ? {
-        candidate_package_schema: candidatePackageResult.data.schema_version,
-        candidate_package_ready: true,
-        candidate_package_task_count: candidatePackageResult.data.task_count,
-        candidate_package_open_task_count: candidatePackageResult.data.open_task_count,
-        candidate_package_blocking_open_count: candidatePackageResult.data.blocking_open_count,
-        candidate_package_risk_open_count: candidatePackageResult.data.risk_open_count,
-        candidate_package_optional_open_count: candidatePackageResult.data.optional_open_count,
-        candidate_package_project_count: candidatePackageResult.data.project_count,
-        candidate_package_target_file_count: candidatePackageResult.data.target_files.length,
-        candidate_package_direct_writeback_to_province_markdown:
-          candidatePackageResult.data.direct_writeback_to_province_markdown,
-        candidate_package_province_markdown_written:
-          candidatePackageResult.data.province_markdown_written,
-      }
-    : defaultCandidatePackageMetrics;
-  const counts: StorySupplementBacklogMetrics = {
-    open_count: result.data.length,
-    optional_open_count: 0,
-    risk_open_count: 0,
-    blocking_open_count: 0,
-    ...candidatePackageMetrics,
-    ...(candidatePackageResult.ok
-      ? {}
-      : { read_error: candidatePackageResult.error?.message ?? 'Failed to export supplement candidate package' }),
+  const candidatePackageMetrics = {
+    candidate_package_schema: candidatePackage.schema_version,
+    candidate_package_ready: true,
+    candidate_package_task_count: candidatePackage.task_count,
+    candidate_package_open_task_count: candidatePackage.open_task_count,
+    candidate_package_blocking_open_count: candidatePackage.blocking_open_count,
+    candidate_package_risk_open_count: candidatePackage.risk_open_count,
+    candidate_package_optional_open_count: candidatePackage.optional_open_count,
+    candidate_package_project_count: candidatePackage.project_count,
+    candidate_package_target_file_count: candidatePackage.target_files.length,
+    candidate_package_direct_writeback_to_province_markdown:
+      candidatePackage.direct_writeback_to_province_markdown,
+    candidate_package_province_markdown_written:
+      candidatePackage.province_markdown_written,
   };
-  for (const item of result.data) {
-    if (item.task.blocking_level === 'blocking') counts.blocking_open_count += 1;
-    else if (item.task.blocking_level === 'risk') counts.risk_open_count += 1;
-    else counts.optional_open_count += 1;
-  }
+  const counts: StorySupplementBacklogMetrics = {
+    open_count: candidatePackage.open_task_count,
+    optional_open_count: candidatePackage.optional_open_count,
+    risk_open_count: candidatePackage.risk_open_count,
+    blocking_open_count: candidatePackage.blocking_open_count,
+    ...candidatePackageMetrics,
+  };
   return counts;
 }
 
@@ -819,7 +806,10 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   | 'missing_writeback_hint_field_count'
   | 'manual_patch_blocker_reason_count'
   | 'manual_patch_warning_reason_count'
->> {
+> & {
+  project_queue_count: number;
+  project_status_counts: Record<KnowledgeWritebackStatus, number>;
+}> {
   try {
     const exportPackage = await getKnowledgeWritebackQueueExportPackage();
     const reviewHandoff = exportPackage.preflight.review_handoff;
@@ -880,6 +870,8 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       missing_writeback_hint_field_count: sourceRefQuality.missing_writeback_hint_field_count,
       manual_patch_blocker_reason_count: exportPackage.manual_patch_package.blocker_reasons.length,
       manual_patch_warning_reason_count: exportPackage.manual_patch_package.warning_reasons.length,
+      project_queue_count: exportPackage.project_count,
+      project_status_counts: exportPackage.status_counts.project,
     };
   } catch {
     return {
@@ -931,6 +923,10 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
       missing_writeback_hint_field_count: 0,
       manual_patch_blocker_reason_count: 0,
       manual_patch_warning_reason_count: 0,
+      project_queue_count: 0,
+      project_status_counts: Object.fromEntries(
+        KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0]),
+      ) as Record<KnowledgeWritebackStatus, number>,
     };
   }
 }
@@ -940,8 +936,7 @@ async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQu
   const expansionMetrics = domainPackExpansionReviewMetrics(expansionReport);
   const expansionReadyCount = expansionMetrics.approved_writeback_draft_count;
   const unifiedExportMetrics = await getKnowledgeWritebackUnifiedExportMetrics();
-  const result = await listProjectSupplementTasks({ knowledge_writeback_ready: true });
-  if (!result.ok || !result.data) {
+  if (!unifiedExportMetrics.unified_export_ready) {
     return {
       ready_count: 0,
       project_ready_count: 0,
@@ -961,23 +956,18 @@ async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQu
       total_written_back_count: expansionMetrics.writeback_written_back_count,
       total_needs_revision_count: expansionMetrics.writeback_needs_revision_count,
       ...unifiedExportMetrics,
-      read_error: result.error?.message ?? 'Failed to read knowledge writeback queue',
+      read_error: 'Failed to read knowledge writeback queue export',
     };
   }
 
-  const counts = Object.fromEntries(KNOWLEDGE_WRITEBACK_STATUSES.map(status => [status, 0])) as Record<KnowledgeWritebackStatus, number>;
-  const projectIds = new Set<string>();
-  for (const item of result.data) {
-    projectIds.add(item.project_id);
-      counts[taskWritebackStatus(item)] += 1;
-  }
-  const projectReadyCount = result.data.length;
+  const counts = unifiedExportMetrics.project_status_counts;
+  const projectReadyCount = unifiedExportMetrics.unified_export_project_approved_count;
   return {
     ready_count: projectReadyCount,
     project_ready_count: projectReadyCount,
     expansion_ready_count: expansionReadyCount,
     total_ready_count: projectReadyCount + expansionReadyCount,
-    project_count: projectIds.size,
+    project_count: unifiedExportMetrics.project_queue_count,
     draft_ready_count: counts.draft_ready,
     queued_count: counts.queued,
     written_back_count: counts.written_back,
@@ -1568,6 +1558,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     '',
     '## Summary',
     '',
+    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms`,
     `- generated targets: ${report.summary.generated_target_count}`,
     `- generated ready: ${report.summary.generated_ready_count}`,
     `- generated production_gap: ${report.summary.generated_production_gap_count}`,
@@ -1735,23 +1726,71 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
 export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
-  const generatedHealth = await getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 });
+  const totalStartedAt = Date.now();
+  const performanceDiagnostics: StoryAgentMvpPerformanceDiagnostics = {
+    total_ms: 0,
+    generated_health_ms: 0,
+    supplement_package_ms: 0,
+    generated_governance_ms: 0,
+    backlog_handoff_ms: 0,
+    production_material_pack_ms: 0,
+    domain_pack_ms: 0,
+    domain_pack_expansion_ms: 0,
+    knowledge_writeback_ms: 0,
+    production_portfolio_ms: 0,
+    external_evidence_sync_health_ms: 0,
+    supplement_backlog_ms: 0,
+  };
+  const measure = async <T>(
+    key: Exclude<keyof StoryAgentMvpPerformanceDiagnostics, 'total_ms'>,
+    operation: () => T | Promise<T>,
+  ): Promise<T> => {
+    const startedAt = Date.now();
+    try {
+      return await operation();
+    } finally {
+      performanceDiagnostics[key] = Date.now() - startedAt;
+    }
+  };
+  const generatedHealth = await measure(
+    'generated_health_ms',
+    () => getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
+  );
+  const supplementPackageResult = await measure(
+    'supplement_package_ms',
+    () => exportProjectSupplementCandidatePackage({ status: 'open' }),
+  );
+  const supplementPackage = supplementPackageResult.ok && supplementPackageResult.data
+    ? supplementPackageResult.data
+    : undefined;
   const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, externalEvidenceSyncHealth, supplementBacklogMetrics] = await Promise.all([
-    getStoryAgentGeneratedGovernancePlan({ limit: options.generatedLimit ?? 200 }),
-    getStoryAgentBacklogHandoffPackage({ limit: options.generatedLimit ?? 50 }),
-    getProductionMaterialPackHealthReport(),
-    getChinaCultureDomainPackProductionHealthReport(),
-    getDomainPackExpansionCandidateReport({ includeMarkdown: false }),
-    getKnowledgeWritebackQueueMetrics(),
-    getProductionReadinessPortfolio({
+    measure('generated_governance_ms', () => getStoryAgentGeneratedGovernancePlan({
+      limit: options.generatedLimit ?? 200,
+      health: generatedHealth,
+    })),
+    measure('backlog_handoff_ms', () => getStoryAgentBacklogHandoffPackage({
+      limit: options.generatedLimit ?? 50,
+      health: generatedHealth,
+      supplementPackage,
+    })),
+    measure('production_material_pack_ms', () => getProductionMaterialPackHealthReport()),
+    measure('domain_pack_ms', () => getChinaCultureDomainPackProductionHealthReport()),
+    measure('domain_pack_expansion_ms', () => getDomainPackExpansionCandidateReport({ includeMarkdown: false })),
+    measure('knowledge_writeback_ms', () => getKnowledgeWritebackQueueMetrics()),
+    measure('production_portfolio_ms', () => getProductionReadinessPortfolio({
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
-    }),
-    getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
+    })),
+    measure('external_evidence_sync_health_ms', () => getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
       limit: options.syncHealthLimit ?? 100,
-    }),
-    getStorySupplementBacklogMetrics(generatedHealth),
+    })),
+    measure('supplement_backlog_ms', () => getStorySupplementBacklogMetrics(
+      generatedHealth,
+      supplementPackage,
+      supplementPackageResult.error?.message,
+    )),
   ]);
+  performanceDiagnostics.total_ms = Date.now() - totalStartedAt;
   const lanes = [
     generatedArtifactsLane(generatedHealth),
     generatedGovernanceLane(generatedGovernancePlan),
@@ -1789,6 +1828,7 @@ export async function getStoryAgentMvpStatus(
     generated_at: new Date().toISOString(),
     status,
     score: clampScore(lanes.reduce((sum, lane) => sum + lane.score, 0) / Math.max(1, lanes.length)),
+    performance: performanceDiagnostics,
     summary: {
       generated_target_count: generatedHealth.summary.total_target_count,
       generated_ready_count: generatedHealth.summary.ready_count,

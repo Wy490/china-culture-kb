@@ -6629,6 +6629,26 @@ function buildProjectExportMarkdown(pkg: Omit<StoryProjectExportPackage, 'markdo
   return lines.join('\n');
 }
 
+async function mapProjectSupplementTaskProjectsWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await worker(items[index]);
+      }
+    },
+  ));
+  return results;
+}
+
 export async function listProjectSupplementTasks(
   filtersOrStatus: ProjectSupplementTaskListFilters | KnowledgeSupplementTaskStatus = {},
 ): Promise<ApiResponse<ProjectSupplementTaskListItem[]>> {
@@ -6643,46 +6663,52 @@ export async function listProjectSupplementTasks(
     );
   }
 
-  const items: ProjectSupplementTaskListItem[] = [];
-  for (const project of projectsResult.data) {
-    if (filters.project_id && project.project_id !== filters.project_id) continue;
-    if (filters.video_type && project.video_type !== filters.video_type) continue;
-    const detailResult = await getProject(project.project_id);
-    if (!detailResult.ok || !detailResult.data) continue;
-    const writebackTarget = await planStoryDomainKnowledgeWriteback(detailResult.data.current_story);
-    if (filters.province && writebackTarget.target_region !== filters.province) continue;
-    for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
-      if (filters.status && task.status !== filters.status) continue;
-      if (filters.stage && task.stage !== filters.stage) continue;
-      if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
-      if (filters.source && task.source !== filters.source) continue;
-      if (
-        filters.knowledge_writeback_ready
-        && (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task))
-      ) continue;
-      if (filters.knowledge_writeback_status) {
-        if (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task)) continue;
-        const writebackStatus = task.knowledge_writeback_status
-          ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
-        if (writebackStatus !== filters.knowledge_writeback_status) continue;
+  const itemGroups = await mapProjectSupplementTaskProjectsWithConcurrency(
+    projectsResult.data,
+    8,
+    async project => {
+      if (filters.project_id && project.project_id !== filters.project_id) return [];
+      if (filters.video_type && project.video_type !== filters.video_type) return [];
+      const detailResult = await getProject(project.project_id);
+      if (!detailResult.ok || !detailResult.data) return [];
+      const writebackTarget = await planStoryDomainKnowledgeWriteback(detailResult.data.current_story);
+      if (filters.province && writebackTarget.target_region !== filters.province) return [];
+      const items: ProjectSupplementTaskListItem[] = [];
+      for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
+        if (filters.status && task.status !== filters.status) continue;
+        if (filters.stage && task.stage !== filters.stage) continue;
+        if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
+        if (filters.source && task.source !== filters.source) continue;
+        if (
+          filters.knowledge_writeback_ready
+          && (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task))
+        ) continue;
+        if (filters.knowledge_writeback_status) {
+          if (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task)) continue;
+          const writebackStatus = task.knowledge_writeback_status
+            ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
+          if (writebackStatus !== filters.knowledge_writeback_status) continue;
+        }
+        items.push({
+          project_id: project.project_id,
+          current_story_id: project.current_story_id,
+          project_title: project.title,
+          source_domain: writebackTarget.domain_id,
+          source_entry: project.source_entry,
+          video_type: project.video_type,
+          knowledge_writeback_eligible: writebackTarget.eligible,
+          knowledge_writeback_blockers: [...writebackTarget.blockers],
+          target_province: writebackTarget.target_region,
+          suggested_file_path: writebackTarget.suggested_file_path,
+          suggested_section_heading: writebackTarget.suggested_section_heading,
+          updated_at: project.updated_at,
+          task,
+        });
       }
-      items.push({
-        project_id: project.project_id,
-        current_story_id: project.current_story_id,
-        project_title: project.title,
-        source_domain: writebackTarget.domain_id,
-        source_entry: project.source_entry,
-        video_type: project.video_type,
-        knowledge_writeback_eligible: writebackTarget.eligible,
-        knowledge_writeback_blockers: [...writebackTarget.blockers],
-        target_province: writebackTarget.target_region,
-        suggested_file_path: writebackTarget.suggested_file_path,
-        suggested_section_heading: writebackTarget.suggested_section_heading,
-        updated_at: project.updated_at,
-        task,
-      });
-    }
-  }
+      return items;
+    },
+  );
+  const items = itemGroups.flat();
 
   items.sort((a, b) => {
     if (a.task.status !== b.task.status) return a.task.status === 'open' ? -1 : 1;

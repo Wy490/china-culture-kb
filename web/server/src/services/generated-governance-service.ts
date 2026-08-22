@@ -7,6 +7,7 @@ import type {
   StoryAgentGeneratedGovernanceRunTarget,
   StoryAgentGeneratedGovernanceTarget,
   StoryAgentGeneratedHealthItem,
+  StoryAgentGeneratedHealthReport,
 } from '@shared/types.js';
 import { getStoryAgentGeneratedHealth } from './generated-health-service.js';
 import {
@@ -15,6 +16,7 @@ import {
 
 interface GeneratedGovernanceOptions {
   limit?: number;
+  health?: StoryAgentGeneratedHealthReport;
 }
 
 const DEFAULT_RUN_ACTIONS: StoryAgentGeneratedGovernanceActionKey[] = [
@@ -210,7 +212,7 @@ export async function getStoryAgentGeneratedGovernancePlan(
   options: GeneratedGovernanceOptions = {},
 ): Promise<StoryAgentGeneratedGovernancePlan> {
   const sampleLimit = boundedSampleLimit(options.limit);
-  const health = await getStoryAgentGeneratedHealth();
+  const health = options.health ?? await getStoryAgentGeneratedHealth();
   const seriesItems = health.items.filter(item => item.scope === 'ai_comic_series_project');
   const storyItems = health.items.filter(item => item.scope === 'story_project');
   const relinkSeries = seriesItems.filter(item => item.relink_candidate);

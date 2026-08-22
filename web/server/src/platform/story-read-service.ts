@@ -49,7 +49,8 @@ async function readCurrentProjectStoryForStoryId(
   const repository = createProjectRepository();
   const candidates: Array<{ updatedAt: string; story: StoryGenerateResult }> = [];
 
-  for (const projectId of await repository.listProjectIds()) {
+  for (const videoType of ALL_STORY_VIDEO_TYPES) {
+    const projectId = `${storyId}--${videoType}`;
     try {
       const meta = await repository.readMeta(projectId);
       if (!meta?.current_version_id || meta.current_story_id !== storyId) continue;

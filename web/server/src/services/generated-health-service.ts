@@ -23,6 +23,8 @@ interface GeneratedHealthOptions {
 
 interface StoryAgentBacklogHandoffOptions {
   limit?: number;
+  health?: StoryAgentGeneratedHealthReport;
+  supplementPackage?: ProjectSupplementCandidateExportPackage;
 }
 
 interface GeneratedProjectRecord {
@@ -994,11 +996,10 @@ export async function getStoryAgentGeneratedHealth(
 export async function getStoryAgentBacklogHandoffPackage(
   options: StoryAgentBacklogHandoffOptions = {},
 ): Promise<StoryAgentBacklogHandoffPackage> {
-  const [health, supplementResult] = await Promise.all([
-    getStoryAgentGeneratedHealth(),
-    exportProjectSupplementCandidatePackage({ status: 'open' }),
-  ]);
-  const supplementPackage = supplementResult.ok && supplementResult.data ? supplementResult.data : undefined;
+  const health = options.health ?? await getStoryAgentGeneratedHealth();
+  const supplementPackage = options.supplementPackage ?? await exportProjectSupplementCandidatePackage({
+    status: 'open',
+  }).then(result => result.ok && result.data ? result.data : undefined);
   const healthItems = health.items
     .filter(item => item.signoff_eligible !== false)
     .filter(healthItemNeedsBacklog)

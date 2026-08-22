@@ -54,8 +54,36 @@ export interface GearsExternalCallbackHandoffQueueOptions {
 }
 
 type ReadinessReport = StoryProjectProductionReadinessReport | AiComicSeriesProductionReadinessReport;
+type PortfolioReadinessTarget = {
+  scope: ProductionReadinessScope;
+  project_id: string;
+};
+type PortfolioReadinessScanResult =
+  | { report: ReadinessReport; error?: never }
+  | { report?: never; error: ProductionReadinessPortfolioReport['errors'][number] };
 
 const portfolioAutomationLedgerLimit = 20;
+const portfolioReadConcurrency = 8;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await worker(items[index]);
+      }
+    },
+  ));
+  return results;
+}
 
 function generatedRoot(): string {
   return storyGeneratedRoot();
@@ -483,30 +511,40 @@ export async function getProductionReadinessPortfolio(
     listAiComicSeriesProjects({ includeArchived: options.includeArchivedSeries }),
   ]);
 
-  for (const project of storyListRes.data ?? []) {
-    const readiness = await getProjectProductionReadiness(project.project_id);
-    if (readiness.ok && readiness.data) {
-      reports.push(readiness.data);
-    } else {
-      errors.push({
-        scope: 'story_project',
-        project_id: project.project_id,
-        message: readiness.error?.message ?? 'Failed to read story project readiness',
-      });
-    }
-  }
-
-  for (const project of seriesListRes.data ?? []) {
-    const readiness = await getAiComicSeriesProductionReadiness(project.series_project_id);
-    if (readiness.ok && readiness.data) {
-      reports.push(readiness.data);
-    } else {
-      errors.push({
-        scope: 'ai_comic_series',
-        project_id: project.series_project_id,
-        message: readiness.error?.message ?? 'Failed to read AI comic series readiness',
-      });
-    }
+  const targets: PortfolioReadinessTarget[] = [
+    ...(storyListRes.data ?? []).map(project => ({
+      scope: 'story_project' as const,
+      project_id: project.project_id,
+    })),
+    ...(seriesListRes.data ?? []).map(project => ({
+      scope: 'ai_comic_series' as const,
+      project_id: project.series_project_id,
+    })),
+  ];
+  const scanResults = await mapWithConcurrency(
+    targets,
+    portfolioReadConcurrency,
+    async (target): Promise<PortfolioReadinessScanResult> => {
+      const readiness = target.scope === 'story_project'
+        ? await getProjectProductionReadiness(target.project_id)
+        : await getAiComicSeriesProductionReadiness(target.project_id);
+      if (readiness.ok && readiness.data) return { report: readiness.data };
+      return {
+        error: {
+          scope: target.scope,
+          project_id: target.project_id,
+          message: readiness.error?.message ?? (
+            target.scope === 'story_project'
+              ? 'Failed to read story project readiness'
+              : 'Failed to read AI comic series readiness'
+          ),
+        },
+      };
+    },
+  );
+  for (const result of scanResults) {
+    if (result.report) reports.push(result.report);
+    else errors.push(result.error);
   }
 
   const allItems = reports

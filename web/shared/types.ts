@@ -4815,11 +4815,27 @@ export interface StoryAgentMvpProgressSlice {
   evidence: string[];
 }
 
+export interface StoryAgentMvpPerformanceDiagnostics {
+  total_ms: number;
+  generated_health_ms: number;
+  supplement_package_ms: number;
+  generated_governance_ms: number;
+  backlog_handoff_ms: number;
+  production_material_pack_ms: number;
+  domain_pack_ms: number;
+  domain_pack_expansion_ms: number;
+  knowledge_writeback_ms: number;
+  production_portfolio_ms: number;
+  external_evidence_sync_health_ms: number;
+  supplement_backlog_ms: number;
+}
+
 export interface StoryAgentMvpStatusReport {
   schema_version: 'story-agent-mvp-status/v1';
   generated_at: string;
   status: StoryAgentMvpStatus;
   score: number;
+  performance: StoryAgentMvpPerformanceDiagnostics;
   summary: {
     generated_target_count: number;
     generated_ready_count: number;
