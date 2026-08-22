@@ -6,6 +6,12 @@ import {
   buildChinaCultureStoryRetrievalEvaluationReport,
   evaluateStoryRetrievalDataset,
 } from '../domains/china-culture/story-retrieval-evaluation-service.js';
+import {
+  computeChinaCultureMatchScore,
+  isChinaCultureEntryUsableForStory,
+} from '../domains/china-culture/entry-match-service.js';
+import { extractChinaCultureKeywords } from '../domains/china-culture/entry-language-helpers.js';
+import type { SearchableEntry } from '../domains/china-culture/entry-knowledge-service.js';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../../..');
 const fixturePath = resolve(
@@ -20,6 +26,37 @@ async function readDataset() {
 }
 
 describe('story RAG retrieval evaluation', () => {
+  it('separates calibrated relevance from credibility-bounded story usability', () => {
+    const query = '铜胎掐丝点蓝烧蓝';
+    const queryKeywords = extractChinaCultureKeywords(query);
+    const entry: SearchableEntry = {
+      name: '景泰蓝制作技艺——铜胎、掐丝与珐琅釉的多工序协作',
+      province: '北京',
+      region: '北京',
+      type: '传统工艺',
+      summary: '铜胎经掐丝、点蓝和烧蓝等工序形成景泰蓝器物。',
+      keywords: ['景泰蓝', '铜胎', '掐丝', '点蓝', '烧蓝'],
+      credibility: '基本可靠',
+      story: '工匠先制铜胎，再掐丝、点蓝并分次烧蓝。',
+    };
+    const score = computeChinaCultureMatchScore(query, queryKeywords, entry, null);
+
+    expect(score).toBeGreaterThan(0.62);
+    expect(isChinaCultureEntryUsableForStory(query, queryKeywords, entry, score)).toBe(true);
+    expect(isChinaCultureEntryUsableForStory(
+      query,
+      queryKeywords,
+      { ...entry, credibility: '存疑' },
+      score,
+    )).toBe(false);
+    expect(isChinaCultureEntryUsableForStory(
+      entry.name,
+      extractChinaCultureKeywords(entry.name),
+      { ...entry, credibility: '待核实' },
+      1,
+    )).toBe(true);
+  });
+
   it('computes ranked relevance and rejection metrics without granting human credit', async () => {
     const dataset = StoryRetrievalEvaluationDatasetSchema.parse({
       schema_version: 'story-agent-rag-retrieval-evaluation-dataset/v1',
@@ -32,6 +69,8 @@ describe('story RAG retrieval evaluation', () => {
         min_macro_recall_at_5: 1,
         min_mrr_at_10: 1,
         min_macro_ndcg_at_5: 1,
+        min_top_grade_relevant_at_1_rate: 1,
+        min_answerable_usable_relevant_case_rate: 1,
         max_forbidden_return_count: 0,
         max_unanswerable_candidate_count: 0,
         max_unanswerable_usable_false_positive_count: 0,
@@ -77,6 +116,7 @@ describe('story RAG retrieval evaluation', () => {
       macro_recall_at_3: 1,
       macro_recall_at_5: 1,
       mrr_at_10: 1,
+      top_grade_relevant_at_1_rate: 0,
       answerable_usable_relevant_case_rate: 1,
       forbidden_return_count: 1,
       unanswerable_candidate_count: 1,
@@ -108,13 +148,14 @@ describe('story RAG retrieval evaluation', () => {
       expect(report.dataset_sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(report.corpus_sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(report.metrics).toMatchObject({
-        case_count: 16,
-        answerable_case_count: 12,
+        case_count: 19,
+        answerable_case_count: 15,
         unanswerable_case_count: 4,
         macro_recall_at_3: 1,
         macro_recall_at_5: 1,
         mrr_at_10: 1,
-        answerable_usable_relevant_case_rate: 0.083333,
+        top_grade_relevant_at_1_rate: 1,
+        answerable_usable_relevant_case_rate: 1,
         forbidden_return_count: 0,
         unanswerable_candidate_count: 0,
         unanswerable_usable_false_positive_count: 0,

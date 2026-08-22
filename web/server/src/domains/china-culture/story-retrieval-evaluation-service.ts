@@ -41,6 +41,8 @@ const EvaluationPolicySchema = z.object({
   min_macro_recall_at_5: z.number().min(0).max(1),
   min_mrr_at_10: z.number().min(0).max(1),
   min_macro_ndcg_at_5: z.number().min(0).max(1),
+  min_top_grade_relevant_at_1_rate: z.number().min(0).max(1).default(0),
+  min_answerable_usable_relevant_case_rate: z.number().min(0).max(1).default(0),
   max_forbidden_return_count: z.number().int().min(0),
   max_unanswerable_candidate_count: z.number().int().min(0),
   max_unanswerable_usable_false_positive_count: z.number().int().min(0),
@@ -115,6 +117,7 @@ export interface StoryRetrievalEvaluationReport {
     macro_recall_at_5: number;
     mrr_at_10: number;
     macro_ndcg_at_5: number;
+    top_grade_relevant_at_1_rate: number;
     answerable_usable_relevant_case_rate: number;
     forbidden_return_count: number;
     unanswerable_candidate_count: number;
@@ -237,6 +240,12 @@ export async function evaluateStoryRetrievalDataset(
     macro_recall_at_5: mean(answerableCases.map(item => item.recall_at_5)),
     mrr_at_10: mean(answerableCases.map(item => item.reciprocal_rank_at_10)),
     macro_ndcg_at_5: mean(answerableCases.map(item => item.ndcg_at_5)),
+    top_grade_relevant_at_1_rate: mean(answerableCases.map(item => {
+      const highestGrade = Math.max(...item.relevant_ranks.map(result => result.grade));
+      return Number(item.relevant_ranks.some(result => (
+        result.grade === highestGrade && result.rank === 1
+      )));
+    })),
     answerable_usable_relevant_case_rate: mean(answerableCases.map(
       item => Number(item.usable_relevant_returned),
     )),
@@ -253,6 +262,10 @@ export async function evaluateStoryRetrievalDataset(
     macro_recall_at_5: metrics.macro_recall_at_5 >= dataset.policy.min_macro_recall_at_5,
     mrr_at_10: metrics.mrr_at_10 >= dataset.policy.min_mrr_at_10,
     macro_ndcg_at_5: metrics.macro_ndcg_at_5 >= dataset.policy.min_macro_ndcg_at_5,
+    top_grade_relevant_at_1_rate: metrics.top_grade_relevant_at_1_rate
+      >= dataset.policy.min_top_grade_relevant_at_1_rate,
+    answerable_usable_relevant_case_rate: metrics.answerable_usable_relevant_case_rate
+      >= dataset.policy.min_answerable_usable_relevant_case_rate,
     forbidden_return_count: metrics.forbidden_return_count <= dataset.policy.max_forbidden_return_count,
     unanswerable_candidate_count: metrics.unanswerable_candidate_count <= dataset.policy.max_unanswerable_candidate_count,
     unanswerable_usable_false_positive_count: metrics.unanswerable_usable_false_positive_count

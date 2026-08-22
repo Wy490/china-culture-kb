@@ -9,6 +9,8 @@
     "min_macro_recall_at_5": 0.95,
     "min_mrr_at_10": 0.95,
     "min_macro_ndcg_at_5": 0.9,
+    "min_top_grade_relevant_at_1_rate": 1,
+    "min_answerable_usable_relevant_case_rate": 0.9,
     "max_forbidden_return_count": 0,
     "max_unanswerable_candidate_count": 0,
     "max_unanswerable_usable_false_positive_count": 0
@@ -123,6 +125,41 @@
         { "entry_name": "周敦颐——理学开山鼻祖", "grade": 1 }
       ],
       "must_not_return": []
+    },
+    {
+      "case_id": "mao-subject-intent-chain",
+      "query": "韶山青年长沙求学创建新民学会再到农民运动",
+      "preferred_type": "历史人物",
+      "relevance": [
+        { "entry_name": "毛泽东——从韶山冲走向天安门的农家革命者", "grade": 3 },
+        { "entry_name": "新民学会——湖南共产党的前身", "grade": 2 },
+        { "entry_name": "韶山——红色文化圣地", "grade": 1 }
+      ],
+      "must_not_return": ["湖南花鼓戏——湖南人的戏"]
+    },
+    {
+      "case_id": "dai-paper-cut-regional-disambiguation",
+      "query": "云南芒市傣族仪式纸饰剪凿技艺",
+      "preferred_province": "云南",
+      "relevance": [
+        { "entry_name": "剪纸（傣族剪纸）——剪凿并用、仪式纸饰与芒市传承", "grade": 3 }
+      ],
+      "must_not_return": [
+        "回族剪纸——生活纹样、绣花底样与宁夏女性传承",
+        "蔚县剪纸——刀刻、点染与多色窗花传统"
+      ]
+    },
+    {
+      "case_id": "nanjing-yunjin-same-craft-negative",
+      "query": "南京云锦木机妆花拽花织手逐花异色",
+      "preferred_province": "江苏",
+      "relevance": [
+        { "entry_name": "南京云锦木机妆花手工织造技艺——拽花、织手与逐花异色", "grade": 3 }
+      ],
+      "must_not_return": [
+        "苏州缂丝织造技艺——通经断纬与逐色缂织",
+        "蜀锦织造技艺——花楼织机上的经纬协作"
+      ]
     },
     {
       "case_id": "off-domain-quantum",

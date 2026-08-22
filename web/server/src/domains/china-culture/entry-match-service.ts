@@ -29,22 +29,35 @@ export async function matchChinaCultureEntries(
   const queryProvince = detectChinaCultureProvince(trimmedQuery, preferred_province);
   const scored: EntryMatchItem[] = [];
   for (const entry of allEntries) {
-    const score = computeChinaCultureMatchScore(trimmedQuery, queryKeywords, entry, queryProvince, preferred_type);
-    if (score >= 0.35 && hasSufficientChinaCultureMatchCoverage(trimmedQuery, queryKeywords, entry)) {
+    const rawScore = computeChinaCultureRawMatchScore(
+      trimmedQuery,
+      queryKeywords,
+      entry,
+      queryProvince,
+      preferred_type,
+    );
+    const score = calibrateChinaCultureMatchScore(rawScore, queryKeywords, entry);
+    if (rawScore >= 0.35 && hasSufficientChinaCultureMatchCoverage(trimmedQuery, queryKeywords, entry)) {
+      const usableForStory = isChinaCultureEntryUsableForStory(
+        trimmedQuery,
+        queryKeywords,
+        entry,
+        score,
+      );
       scored.push({
         entry_name: entry.name,
         province: entry.province,
         type: entry.type,
         score: Math.round(score * 100) / 100,
         match_reason: buildMatchReason(trimmedQuery, entry, score),
-        usable_for_story: score >= 0.75,
+        usable_for_story: usableForStory,
       });
     }
   }
 
   scored.sort((left, right) => right.score - left.score);
   const matches = scored.slice(0, limit);
-  const bestMatch = matches.find(match => match.score >= 0.75) ?? null;
+  const bestMatch = matches.find(match => match.usable_for_story) ?? null;
   let fallbackMessage: string | null = null;
   if (matches.length === 0) {
     fallbackMessage = '素材库中暂未找到高度相关来源条目，请更换关键词或先补充项目素材。';
@@ -61,6 +74,23 @@ export async function matchChinaCultureEntries(
 }
 
 export function computeChinaCultureMatchScore(
+  query: string,
+  queryKeywords: string[],
+  entry: SearchableEntry,
+  queryProvince: string | null,
+  preferredType?: string,
+): number {
+  const rawScore = computeChinaCultureRawMatchScore(
+    query,
+    queryKeywords,
+    entry,
+    queryProvince,
+    preferredType,
+  );
+  return calibrateChinaCultureMatchScore(rawScore, queryKeywords, entry);
+}
+
+function computeChinaCultureRawMatchScore(
   query: string,
   queryKeywords: string[],
   entry: SearchableEntry,
@@ -128,6 +158,96 @@ export function computeChinaCultureMatchScore(
     }
   }
   return Math.min(0.99, score);
+}
+
+function calibrateChinaCultureMatchScore(
+  rawScore: number,
+  queryKeywords: string[],
+  entry: SearchableEntry,
+): number {
+  if (rawScore >= 1) return 1;
+  const evidence = analyzeChinaCultureMatchEvidence(queryKeywords, entry);
+  const coverageMultiplier = 0.62 + evidence.strong_keyword_coverage * 0.38;
+  const coverageBoost = evidence.strong_keyword_coverage * 0.28;
+  const conceptBoost = Math.min(0.25, evidence.entry_keyword_concept_count * 0.05);
+  const fieldDiversityBoost = evidence.matched_strong_field_count >= 2 ? 0.04 : 0;
+  return Math.min(
+    0.99,
+    rawScore * coverageMultiplier + coverageBoost + conceptBoost + fieldDiversityBoost,
+  );
+}
+
+export function isChinaCultureEntryUsableForStory(
+  query: string,
+  queryKeywords: string[],
+  entry: SearchableEntry,
+  calibratedScore: number,
+): boolean {
+  const credibilityTier = chinaCultureCredibilityTier(entry.credibility);
+  if (credibilityTier === 'unverified') return false;
+
+  const coreName = entry.name.split('——')[0] ?? entry.name;
+  if (query === entry.name || query === coreName) return true;
+
+  const evidence = analyzeChinaCultureMatchEvidence(queryKeywords, entry);
+  const hasDiverseEvidence = evidence.matched_strong_field_count >= 2;
+  const hasSufficientCoverage = evidence.strong_keyword_coverage >= 0.5;
+  const hasSubjectAnchor = query.includes(coreName) || coreName.includes(query);
+  const minimumScore = credibilityTier === 'bounded' ? 0.68 : 0.62;
+
+  return calibratedScore >= minimumScore
+    && hasDiverseEvidence
+    && (hasSufficientCoverage || hasSubjectAnchor);
+}
+
+interface ChinaCultureMatchEvidence {
+  strong_keyword_coverage: number;
+  matched_strong_field_count: number;
+  entry_keyword_concept_count: number;
+}
+
+function analyzeChinaCultureMatchEvidence(
+  queryKeywords: string[],
+  entry: SearchableEntry,
+): ChinaCultureMatchEvidence {
+  const strongFields = [
+    entry.name,
+    entry.summary,
+    entry.story ?? '',
+    entry.relatedLocationText ?? '',
+    entry.localCreativeRelationText ?? '',
+    entry.culturalSignificance ?? '',
+    entry.keywords.join(' '),
+    entry.assetSplitText ?? '',
+  ];
+  const distinctQueryKeywords = [...new Set(queryKeywords.filter(Boolean))];
+  const matchedQueryKeywords = distinctQueryKeywords.filter(keyword => (
+    strongFields.some(field => field.includes(keyword))
+  ));
+  const matchedStrongFieldCount = strongFields.filter(field => (
+    distinctQueryKeywords.some(keyword => field.includes(keyword))
+  )).length;
+  const matchedEntryKeywordConceptCount = entry.keywords.filter(entryKeyword => (
+    distinctQueryKeywords.some(queryKeyword => (
+      entryKeyword.includes(queryKeyword) || queryKeyword.includes(entryKeyword)
+    ))
+  )).length;
+
+  return {
+    strong_keyword_coverage: distinctQueryKeywords.length > 0
+      ? matchedQueryKeywords.length / distinctQueryKeywords.length
+      : 0,
+    matched_strong_field_count: matchedStrongFieldCount,
+    entry_keyword_concept_count: matchedEntryKeywordConceptCount,
+  };
+}
+
+function chinaCultureCredibilityTier(
+  credibility: string,
+): 'reliable' | 'bounded' | 'unverified' {
+  if (credibility === '可靠' || credibility === '基本可靠') return 'reliable';
+  if (credibility === '混合' || credibility === '待核实') return 'bounded';
+  return 'unverified';
 }
 
 export function hasSufficientChinaCultureMatchCoverage(
