@@ -4818,6 +4818,7 @@ export interface StoryAgentMvpProgressSlice {
 export interface StoryAgentMvpPerformanceDiagnostics {
   total_ms: number;
   generated_health_ms: number;
+  supplement_task_snapshot_ms: number;
   supplement_package_ms: number;
   generated_governance_ms: number;
   backlog_handoff_ms: number;

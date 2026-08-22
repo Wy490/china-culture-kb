@@ -6074,13 +6074,18 @@ export async function exportProjectKnowledgeWritebackPatch(
   });
 }
 
+export interface ProjectSupplementTaskSnapshotOptions {
+  taskItems?: ProjectSupplementTaskListItem[];
+}
+
 export async function exportProjectSupplementCandidatePackage(
   filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'status' | 'stage' | 'blocking_level' | 'source' | 'knowledge_writeback_status' | 'task_keys' | 'search_query'> = {},
+  options: ProjectSupplementTaskSnapshotOptions = {},
 ): Promise<ApiResponse<ProjectSupplementCandidateExportPackage>> {
   const exportedAt = new Date().toISOString();
   const taskKeySet = new Set((filters.task_keys ?? []).map(item => item.trim()).filter(Boolean));
   const searchQuery = filters.search_query?.trim();
-  const tasksResult = await listProjectSupplementTasks({
+  const taskFilters = {
     project_id: filters.project_id,
     video_type: filters.video_type,
     province: filters.province,
@@ -6089,7 +6094,10 @@ export async function exportProjectSupplementCandidatePackage(
     blocking_level: filters.blocking_level,
     source: filters.source,
     knowledge_writeback_status: filters.knowledge_writeback_status,
-  });
+  } satisfies ProjectSupplementTaskListFilters;
+  const tasksResult = options.taskItems !== undefined
+    ? success(filterProjectSupplementTaskSnapshot(options.taskItems, taskFilters))
+    : await listProjectSupplementTasks(taskFilters);
   if (!tasksResult.ok || !tasksResult.data) {
     return fail(
       ErrorCodes.INTERNAL_ERROR,
@@ -6156,16 +6164,20 @@ export async function exportProjectSupplementCandidatePackage(
 
 export async function exportProjectKnowledgeWritebackQueuePatch(
   filters: Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status' | 'task_keys' | 'search_query'> = {},
+  options: ProjectSupplementTaskSnapshotOptions = {},
 ): Promise<ApiResponse<ProjectKnowledgeWritebackPatchPackage>> {
   const exportedAt = new Date().toISOString();
   const taskKeySet = new Set((filters.task_keys ?? []).map(item => item.trim()).filter(Boolean));
   const searchQuery = filters.search_query?.trim();
-  const tasksResult = await listProjectSupplementTasks({
+  const taskFilters = {
     project_id: filters.project_id,
     video_type: filters.video_type,
     province: filters.province,
     knowledge_writeback_status: filters.knowledge_writeback_status,
-  });
+  } satisfies ProjectSupplementTaskListFilters;
+  const tasksResult = options.taskItems !== undefined
+    ? success(filterProjectSupplementTaskSnapshot(options.taskItems, taskFilters))
+    : await listProjectSupplementTasks(taskFilters);
   if (!tasksResult.ok || !tasksResult.data) {
     return fail(
       ErrorCodes.INTERNAL_ERROR,
@@ -6675,20 +6687,6 @@ export async function listProjectSupplementTasks(
       if (filters.province && writebackTarget.target_region !== filters.province) return [];
       const items: ProjectSupplementTaskListItem[] = [];
       for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
-        if (filters.status && task.status !== filters.status) continue;
-        if (filters.stage && task.stage !== filters.stage) continue;
-        if (filters.blocking_level && task.blocking_level !== filters.blocking_level) continue;
-        if (filters.source && task.source !== filters.source) continue;
-        if (
-          filters.knowledge_writeback_ready
-          && (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task))
-        ) continue;
-        if (filters.knowledge_writeback_status) {
-          if (!writebackTarget.eligible || !isKnowledgeWritebackReadyTask(task)) continue;
-          const writebackStatus = task.knowledge_writeback_status
-            ?? (task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
-          if (writebackStatus !== filters.knowledge_writeback_status) continue;
-        }
         items.push({
           project_id: project.project_id,
           current_story_id: project.current_story_id,
@@ -6708,7 +6706,7 @@ export async function listProjectSupplementTasks(
       return items;
     },
   );
-  const items = itemGroups.flat();
+  const items = filterProjectSupplementTaskSnapshot(itemGroups.flat(), filters);
 
   items.sort((a, b) => {
     if (a.task.status !== b.task.status) return a.task.status === 'open' ? -1 : 1;
@@ -6721,6 +6719,32 @@ export async function listProjectSupplementTasks(
     return bTime.localeCompare(aTime);
   });
   return success(items);
+}
+
+export function filterProjectSupplementTaskSnapshot(
+  items: ProjectSupplementTaskListItem[],
+  filters: ProjectSupplementTaskListFilters = {},
+): ProjectSupplementTaskListItem[] {
+  return items.filter(item => {
+    if (filters.project_id && item.project_id !== filters.project_id) return false;
+    if (filters.video_type && item.video_type !== filters.video_type) return false;
+    if (filters.province && item.target_province !== filters.province) return false;
+    if (filters.status && item.task.status !== filters.status) return false;
+    if (filters.stage && item.task.stage !== filters.stage) return false;
+    if (filters.blocking_level && item.task.blocking_level !== filters.blocking_level) return false;
+    if (filters.source && item.task.source !== filters.source) return false;
+    if (
+      filters.knowledge_writeback_ready
+      && (!item.knowledge_writeback_eligible || !isKnowledgeWritebackReadyTask(item.task))
+    ) return false;
+    if (filters.knowledge_writeback_status) {
+      if (!item.knowledge_writeback_eligible || !isKnowledgeWritebackReadyTask(item.task)) return false;
+      const writebackStatus = item.task.knowledge_writeback_status
+        ?? (item.task.knowledge_writeback_draft_markdown ? 'draft_ready' : undefined);
+      if (writebackStatus !== filters.knowledge_writeback_status) return false;
+    }
+    return true;
+  });
 }
 
 function isKnowledgeWritebackReadyTask(task: KnowledgeSupplementTask): boolean {

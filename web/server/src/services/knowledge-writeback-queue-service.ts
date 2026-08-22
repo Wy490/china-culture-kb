@@ -20,6 +20,7 @@ import type {
   KnowledgeWritebackSourceRefQualitySummary,
   KnowledgeWritebackStatus,
   ProjectKnowledgeWritebackPatchItem,
+  ProjectSupplementTaskListItem,
   ProjectSupplementTaskListFilters,
   VideoType,
 } from '@shared/types.js';
@@ -50,8 +51,13 @@ export interface KnowledgeWritebackQueueExportInput {
   expansionReviewItemIds?: string[];
 }
 
+export interface KnowledgeWritebackQueueExportOptions {
+  projectTaskItems?: ProjectSupplementTaskListItem[];
+}
+
 export async function getKnowledgeWritebackQueueExportPackage(
   input: KnowledgeWritebackQueueExportInput = {},
+  options: KnowledgeWritebackQueueExportOptions = {},
 ): Promise<KnowledgeWritebackQueueExportPackage> {
   const exportedAt = new Date().toISOString();
   const projectPatchResult = await exportProjectKnowledgeWritebackQueuePatch({
@@ -61,7 +67,9 @@ export async function getKnowledgeWritebackQueueExportPackage(
     knowledge_writeback_status: input.knowledgeWritebackStatus,
     search_query: input.searchQuery,
     task_keys: input.projectTaskKeys,
-  } satisfies Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status' | 'search_query' | 'task_keys'>);
+  } satisfies Pick<ProjectSupplementTaskListFilters, 'project_id' | 'video_type' | 'province' | 'knowledge_writeback_status' | 'search_query' | 'task_keys'>, {
+    taskItems: options.projectTaskItems,
+  });
   if (!projectPatchResult.ok || !projectPatchResult.data) {
     throw new Error(projectPatchResult.error?.message ?? 'Failed to export project knowledge writeback queue');
   }

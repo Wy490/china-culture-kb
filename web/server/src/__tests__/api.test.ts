@@ -3791,6 +3791,7 @@ describe('System API', () => {
         performance: {
           total_ms: expect.any(Number),
           generated_health_ms: expect.any(Number),
+          supplement_task_snapshot_ms: expect.any(Number),
           supplement_package_ms: expect.any(Number),
           generated_governance_ms: expect.any(Number),
           backlog_handoff_ms: expect.any(Number),

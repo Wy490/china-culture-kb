@@ -7,6 +7,7 @@ import type {
   ProductionReadinessPortfolioReport,
   ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport,
   ProjectSupplementCandidateExportPackage,
+  ProjectSupplementTaskListItem,
   StoryAgentGeneratedHealthItem,
   StoryAgentGeneratedGovernancePlan,
   StoryAgentGeneratedHealthReport,
@@ -30,7 +31,10 @@ import {
   getProjectExternalEvidenceSourceStorySyncHealthPortfolio,
 } from './project-external-evidence-sync-health-portfolio-service.js';
 import { getProductionMaterialPackHealthReport } from './production-material-pack-service.js';
-import { exportProjectSupplementCandidatePackage } from './project-service.js';
+import {
+  exportProjectSupplementCandidatePackage,
+  listProjectSupplementTasks,
+} from './project-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
 
 interface StoryAgentMvpStatusOptions {
@@ -756,7 +760,9 @@ function getRealExternalAcceptanceMetrics(): RealExternalAcceptanceMetrics {
   };
 }
 
-async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
+async function getKnowledgeWritebackUnifiedExportMetrics(
+  projectTaskItems?: ProjectSupplementTaskListItem[],
+): Promise<Pick<
   KnowledgeWritebackQueueMetrics,
   | 'unified_export_schema'
   | 'unified_export_ready'
@@ -811,7 +817,7 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   project_status_counts: Record<KnowledgeWritebackStatus, number>;
 }> {
   try {
-    const exportPackage = await getKnowledgeWritebackQueueExportPackage();
+    const exportPackage = await getKnowledgeWritebackQueueExportPackage({}, { projectTaskItems });
     const reviewHandoff = exportPackage.preflight.review_handoff;
     const sourceRefQuality = exportPackage.preflight.source_ref_quality;
     const signoffReadyCount = reviewHandoff.signoff_batch_summaries
@@ -931,11 +937,13 @@ async function getKnowledgeWritebackUnifiedExportMetrics(): Promise<Pick<
   }
 }
 
-async function getKnowledgeWritebackQueueMetrics(): Promise<KnowledgeWritebackQueueMetrics> {
+async function getKnowledgeWritebackQueueMetrics(
+  projectTaskItems?: ProjectSupplementTaskListItem[],
+): Promise<KnowledgeWritebackQueueMetrics> {
   const expansionReport = getDomainPackExpansionCandidateReport({ includeMarkdown: false });
   const expansionMetrics = domainPackExpansionReviewMetrics(expansionReport);
   const expansionReadyCount = expansionMetrics.approved_writeback_draft_count;
-  const unifiedExportMetrics = await getKnowledgeWritebackUnifiedExportMetrics();
+  const unifiedExportMetrics = await getKnowledgeWritebackUnifiedExportMetrics(projectTaskItems);
   if (!unifiedExportMetrics.unified_export_ready) {
     return {
       ready_count: 0,
@@ -1558,7 +1566,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     '',
     '## Summary',
     '',
-    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms`,
+    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement snapshot ${report.performance.supplement_task_snapshot_ms}ms; supplement package ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms`,
     `- generated targets: ${report.summary.generated_target_count}`,
     `- generated ready: ${report.summary.generated_ready_count}`,
     `- generated production_gap: ${report.summary.generated_production_gap_count}`,
@@ -1730,6 +1738,7 @@ export async function getStoryAgentMvpStatus(
   const performanceDiagnostics: StoryAgentMvpPerformanceDiagnostics = {
     total_ms: 0,
     generated_health_ms: 0,
+    supplement_task_snapshot_ms: 0,
     supplement_package_ms: 0,
     generated_governance_ms: 0,
     backlog_handoff_ms: 0,
@@ -1756,14 +1765,24 @@ export async function getStoryAgentMvpStatus(
     'generated_health_ms',
     () => getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
   );
+  const supplementTaskSnapshotResult = await measure(
+    'supplement_task_snapshot_ms',
+    () => listProjectSupplementTasks(),
+  );
+  const supplementTaskItems = supplementTaskSnapshotResult.ok && supplementTaskSnapshotResult.data
+    ? supplementTaskSnapshotResult.data
+    : undefined;
   const supplementPackageResult = await measure(
     'supplement_package_ms',
-    () => exportProjectSupplementCandidatePackage({ status: 'open' }),
+    () => exportProjectSupplementCandidatePackage(
+      { status: 'open' },
+      { taskItems: supplementTaskItems },
+    ),
   );
   const supplementPackage = supplementPackageResult.ok && supplementPackageResult.data
     ? supplementPackageResult.data
     : undefined;
-  const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, externalEvidenceSyncHealth, supplementBacklogMetrics] = await Promise.all([
+  const [generatedGovernancePlan, backlogHandoff, productionMaterialPackHealth, domainPackHealth, domainPackExpansionCandidates, writebackMetrics, productionPortfolio, supplementBacklogMetrics] = await Promise.all([
     measure('generated_governance_ms', () => getStoryAgentGeneratedGovernancePlan({
       limit: options.generatedLimit ?? 200,
       health: generatedHealth,
@@ -1776,13 +1795,10 @@ export async function getStoryAgentMvpStatus(
     measure('production_material_pack_ms', () => getProductionMaterialPackHealthReport()),
     measure('domain_pack_ms', () => getChinaCultureDomainPackProductionHealthReport()),
     measure('domain_pack_expansion_ms', () => getDomainPackExpansionCandidateReport({ includeMarkdown: false })),
-    measure('knowledge_writeback_ms', () => getKnowledgeWritebackQueueMetrics()),
+    measure('knowledge_writeback_ms', () => getKnowledgeWritebackQueueMetrics(supplementTaskItems)),
     measure('production_portfolio_ms', () => getProductionReadinessPortfolio({
       includeArchivedSeries: options.includeArchivedSeries,
       limit: options.portfolioLimit ?? 100,
-    })),
-    measure('external_evidence_sync_health_ms', () => getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
-      limit: options.syncHealthLimit ?? 100,
     })),
     measure('supplement_backlog_ms', () => getStorySupplementBacklogMetrics(
       generatedHealth,
@@ -1790,6 +1806,12 @@ export async function getStoryAgentMvpStatus(
       supplementPackageResult.error?.message,
     )),
   ]);
+  const externalEvidenceSyncHealth = await measure(
+    'external_evidence_sync_health_ms',
+    () => getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
+      limit: options.syncHealthLimit ?? 100,
+    }),
+  );
   performanceDiagnostics.total_ms = Date.now() - totalStartedAt;
   const lanes = [
     generatedArtifactsLane(generatedHealth),
