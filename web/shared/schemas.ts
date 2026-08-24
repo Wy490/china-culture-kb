@@ -2786,6 +2786,40 @@ export const StoryKnowledgePromptShadowComparisonV1Schema = z.object({
   }
 });
 
+export const StoryKnowledgeMigrationDecisionV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-migration-decision/v1'),
+  decision: z.enum(['eligible_for_operator_review', 'remain_shadow']),
+  formal_consumption_blockers: StoryKnowledgeUniqueTextArraySchema.refine(
+    values => values.length > 0,
+    'formal consumption requires at least one unresolved blocker',
+  ),
+  summary: z.object({
+    preparation_status: z.enum([
+      'base_contract_only',
+      'overlay_pending',
+      'overlay_approved_read_only',
+      'overlay_rejected',
+      'overlay_incompatible',
+    ]),
+    generation_shadow_status: z.enum([
+      'safe_no_fact_candidates',
+      'safe_fact_candidates',
+      'blocked',
+    ]),
+    prompt_shadow_status: z.enum(['safe_no_candidate', 'candidate_ready', 'blocked']),
+    fact_candidate_count: z.number().int().nonnegative(),
+  }).strict(),
+  boundary: z.object({
+    operator_review_only: z.literal(true),
+    formal_consumption_allowed: z.literal(false),
+    activation_performed: z.literal(false),
+    rollback_required: z.literal(false),
+    persistence_allowed: z.literal(false),
+    real_human_review_credit_granted: z.literal(false),
+    production_credit_granted: z.literal(false),
+  }).strict(),
+}).strict();
+
 export const MaterialPurposeSchema = z.enum([
   'fact_basis',
   'character_source',
@@ -3221,6 +3255,40 @@ export const StoryGenerateRequestSchema = z.object({
   },
   { message: 'memory_mosaic_biography is only compatible with character_story, historical_drama, documentary_short, or ai_comic_drama', path: ['story_structure'] },
 );
+
+export const StoryKnowledgePromptShadowCanaryRequestV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-prompt-shadow-canary-request/v1'),
+  operator_intent: z.literal('read_only_shadow_canary'),
+  generation_request: StoryGenerateRequestSchema,
+  evidence_overlay: z.unknown().optional(),
+}).strict();
+
+export const StoryKnowledgePromptShadowCanaryV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-prompt-shadow-canary/v1'),
+  canary_status: z.literal('evaluated'),
+  request_sha256: StoryKnowledgeSha256Schema,
+  entry_name: StoryKnowledgeNonEmptyTextSchema,
+  generation_shadow: StoryKnowledgeGenerationShadowV1Schema,
+  prompt_shadow_comparison: StoryKnowledgePromptShadowComparisonV1Schema,
+  migration_decision: StoryKnowledgeMigrationDecisionV1Schema,
+  boundary: z.object({
+    restricted_operator_entry: z.literal(true),
+    read_only: z.literal(true),
+    adapter_invoked: z.literal(false),
+    external_model_called: z.literal(false),
+    local_generation_computed_in_memory: z.literal(true),
+    local_generation_output_discarded: z.literal(true),
+    local_story_result_returned: z.literal(false),
+    prompt_text_returned: z.literal(false),
+    shadow_prompt_executed: z.literal(false),
+    story_persisted: z.literal(false),
+    project_persisted: z.literal(false),
+    source_markdown_written: z.literal(false),
+    formal_generation_consumption_allowed: z.literal(false),
+    real_human_review_credit_granted: z.literal(false),
+    production_credit_granted: z.literal(false),
+  }).strict(),
+}).strict();
 
 export const ReferenceGenerationRecipeRecommendationRequestSchema = z.object({
   creation_path: z.enum(['original', 'adaptation', 'institutional']),

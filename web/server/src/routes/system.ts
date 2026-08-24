@@ -20,6 +20,7 @@ import {
   StoryAgentFinalDeliveryManifestPreflightRequestSchema,
   StoryProjectFileToSqliteMigrationRequestSchema,
   StoryAgentGeneratedGovernanceRunRequestSchema,
+  StoryKnowledgePromptShadowCanaryRequestV1Schema,
 } from '@shared/schemas.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
 import { requireCallbackSecret } from '../middleware/callback-auth.js';
@@ -33,6 +34,7 @@ import type {
   VideoType,
   StoryDomainSafetyMigrationRequest,
   StoryProjectFileToSqliteMigrationRequest,
+  StoryKnowledgePromptShadowCanaryRequestV1,
 } from '@shared/types.js';
 import type { ProductResourceOwnershipMigrationRequest } from '@shared/product-access.js';
 import { listModelProfiles } from '../services/model-catalog.js';
@@ -118,6 +120,9 @@ import {
   getStoryProjectFileToSqliteMigrationPreflight,
   migrateStoryProjectFileToSqlite,
 } from '../services/story-project-file-to-sqlite-migration-service.js';
+import {
+  runStoryKnowledgePromptShadowCanary,
+} from '../domains/china-culture/story-knowledge-prompt-shadow-canary-service.js';
 
 export const systemRouter = Router();
 
@@ -298,6 +303,29 @@ systemRouter.use((req, res, next) => {
   }
   requireSystemOperation(req, res, next);
 });
+
+systemRouter.post(
+  '/story-knowledge-prompt-shadow-canary',
+  validateBody(StoryKnowledgePromptShadowCanaryRequestV1Schema),
+  async (req, res, next) => {
+    try {
+      const result = await runStoryKnowledgePromptShadowCanary(
+        req.body as StoryKnowledgePromptShadowCanaryRequestV1,
+      );
+      if (!result.ok) {
+        res.status(422).json(fail(
+          result.code,
+          result.message,
+          result.details,
+        ));
+        return;
+      }
+      res.json(success(result.data));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 const SYSTEM_WRITEBACK_STATUSES: KnowledgeWritebackStatus[] = [
   'draft_ready',

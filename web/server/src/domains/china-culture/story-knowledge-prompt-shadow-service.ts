@@ -3,12 +3,84 @@ import { StoryKnowledgePromptShadowComparisonV1Schema } from '@shared/schemas.js
 import type {
   KnowledgePack,
   MaterialPack,
+  MemoryMosaicStorySeed,
+  StoryGenerateRequest,
   StoryBlueprint,
   StoryKnowledgeGenerationShadowV1,
   StoryKnowledgePreparationV1,
   StoryKnowledgePromptShadowComparisonV1,
 } from '@shared/types.js';
-import type { StoryGenerationPromptPackage } from '../../services/story-generation-prompt.js';
+import {
+  buildStoryGenerationPromptPackage,
+  type StoryGenerationPromptPackage,
+} from '../../services/story-generation-prompt.js';
+import type { PreparedChinaCultureStoryGeneration } from './story-generation-preparation-service.js';
+
+export function buildPreparedStoryKnowledgePromptShadow(input: {
+  request: StoryGenerateRequest;
+  preparation: PreparedChinaCultureStoryGeneration;
+  memoryMosaicSeed?: MemoryMosaicStorySeed;
+}): {
+  activePromptPackage: StoryGenerationPromptPackage;
+  comparison?: StoryKnowledgePromptShadowComparisonV1;
+} {
+  const { request, preparation } = input;
+  const buildPromptPackage = (materialPack: MaterialPack) => (
+    buildStoryGenerationPromptPackage({
+      entry: preparation.entry,
+      request: {
+        ...request,
+        narrative_pattern_ids: preparation.narrativePatternIds,
+      },
+      videoType: preparation.videoType,
+      presentationStyle: preparation.presentationStyle,
+      storyStructure: preparation.storyStructure,
+      targetDuration: preparation.targetDuration,
+      tone: preparation.toneWithPriority,
+      selectedEvent: preparation.centralEvent,
+      knowledgePack: preparation.knowledgePackToUse,
+      materialPack,
+      materialSufficiency: preparation.materialSufficiency,
+      productionMaterialPack: preparation.productionMaterialPack,
+      productionMaterialReadiness: preparation.productionMaterialReadiness,
+      creationContract: preparation.creationContract,
+      genreMatrix: preparation.genreMatrix,
+      memoryMosaicSeed: input.memoryMosaicSeed,
+      storyBlueprint: preparation.preliminaryStoryBlueprint,
+      adaptationAnalysis: preparation.adaptationAnalysis,
+      referenceGenerationRecipe: preparation.referenceGenerationRecipe,
+      referenceGenerationContext: preparation.referenceGenerationContext,
+    })
+  );
+  const activePromptPackage = buildPromptPackage(preparation.materialPackToUse);
+  const shadowMaterialPack = preparation.storyKnowledgeGenerationShadow
+    && preparation.storyKnowledgePreparation
+    ? projectStoryKnowledgeFactCandidatesToMaterialPack({
+      preparation: preparation.storyKnowledgePreparation,
+      generationShadow: preparation.storyKnowledgeGenerationShadow,
+      activeMaterialPack: preparation.materialPackToUse,
+    })
+    : undefined;
+  const shadowPromptPackage = shadowMaterialPack
+    ? buildPromptPackage(shadowMaterialPack)
+    : undefined;
+  const comparison = preparation.storyKnowledgeGenerationShadow
+    && preparation.storyKnowledgePreparation
+    ? buildStoryKnowledgePromptShadowComparison({
+      preparation: preparation.storyKnowledgePreparation,
+      generationShadow: preparation.storyKnowledgeGenerationShadow,
+      activeGenerationInputs: {
+        knowledge_pack: preparation.knowledgePackToUse,
+        material_pack: preparation.materialPackToUse,
+        story_blueprint: preparation.preliminaryStoryBlueprint,
+      },
+      activePromptPackage,
+      shadowMaterialPack,
+      shadowPromptPackage,
+    })
+    : undefined;
+  return { activePromptPackage, ...(comparison ? { comparison } : {}) };
+}
 
 export function projectStoryKnowledgeFactCandidatesToMaterialPack(input: {
   preparation: StoryKnowledgePreparationV1;

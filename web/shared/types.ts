@@ -10542,6 +10542,61 @@ export interface StoryKnowledgePromptShadowComparisonV1 {
   };
 }
 
+export interface StoryKnowledgeMigrationDecisionV1 {
+  schema_version: 'story-knowledge-migration-decision/v1';
+  decision: 'eligible_for_operator_review' | 'remain_shadow';
+  formal_consumption_blockers: string[];
+  summary: {
+    preparation_status: StoryKnowledgePreparationStatusV1;
+    generation_shadow_status: StoryKnowledgeGenerationShadowV1['status'];
+    prompt_shadow_status: StoryKnowledgePromptShadowComparisonV1['status'];
+    fact_candidate_count: number;
+  };
+  boundary: {
+    operator_review_only: true;
+    formal_consumption_allowed: false;
+    activation_performed: false;
+    rollback_required: false;
+    persistence_allowed: false;
+    real_human_review_credit_granted: false;
+    production_credit_granted: false;
+  };
+}
+
+export interface StoryKnowledgePromptShadowCanaryRequestV1 {
+  schema_version: 'story-knowledge-prompt-shadow-canary-request/v1';
+  operator_intent: 'read_only_shadow_canary';
+  generation_request: StoryGenerateRequest;
+  evidence_overlay?: unknown;
+}
+
+export interface StoryKnowledgePromptShadowCanaryV1 {
+  schema_version: 'story-knowledge-prompt-shadow-canary/v1';
+  canary_status: 'evaluated';
+  request_sha256: string;
+  entry_name: string;
+  generation_shadow: StoryKnowledgeGenerationShadowV1;
+  prompt_shadow_comparison: StoryKnowledgePromptShadowComparisonV1;
+  migration_decision: StoryKnowledgeMigrationDecisionV1;
+  boundary: {
+    restricted_operator_entry: true;
+    read_only: true;
+    adapter_invoked: false;
+    external_model_called: false;
+    local_generation_computed_in_memory: true;
+    local_generation_output_discarded: true;
+    local_story_result_returned: false;
+    prompt_text_returned: false;
+    shadow_prompt_executed: false;
+    story_persisted: false;
+    project_persisted: false;
+    source_markdown_written: false;
+    formal_generation_consumption_allowed: false;
+    real_human_review_credit_granted: false;
+    production_credit_granted: false;
+  };
+}
+
 export interface LegacyEntryStoryKnowledgeContractAdapterResultV1 {
   schema_version: 'legacy-entry-story-knowledge-contract-adapter/v1';
   contract: StoryKnowledgeContractV1;
