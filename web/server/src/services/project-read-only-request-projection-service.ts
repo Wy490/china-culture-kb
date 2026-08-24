@@ -34,6 +34,9 @@ export interface ProjectReadOnlyRequestProjectionDiagnostics {
   current_state_request_count: number;
   current_state_repository_call_count: number;
   current_state_cache_hit_count: number;
+  current_state_seed_request_count: number;
+  current_state_seeded_count: number;
+  current_state_seed_rejected_count: number;
   readable_project_count: number;
   failed_project_count: number;
   boundary: {
@@ -42,11 +45,14 @@ export interface ProjectReadOnlyRequestProjectionDiagnostics {
     repository_write_allowed: false;
     failed_projects_isolated: true;
     cross_request_cache_allowed: false;
+    seed_validation_required: true;
+    seed_overwrite_allowed: false;
   };
 }
 
 export interface ProjectReadOnlyRequestProjection {
   listProjectIds(): Promise<string[]>;
+  seedCurrentState(projectId: string, state: ProjectCurrentStateInspection): boolean;
   inspectCurrentState(projectId: string): Promise<ProjectReadOnlyCurrentStateProjection>;
   diagnostics(): ProjectReadOnlyRequestProjectionDiagnostics;
 }
@@ -56,12 +62,16 @@ export function createProjectReadOnlyRequestProjection(options: {
 } = {}): ProjectReadOnlyRequestProjection {
   const repository = options.repository ?? projectRepository();
   let projectIdListPromise: Promise<readonly string[]> | undefined;
+  let listedProjectIds: ReadonlySet<string> | undefined;
   let projectIdListRequestCount = 0;
   let projectIdListRepositoryCallCount = 0;
   let projectIdListCacheHitCount = 0;
   let currentStateRequestCount = 0;
   let currentStateRepositoryCallCount = 0;
   let currentStateCacheHitCount = 0;
+  let currentStateSeedRequestCount = 0;
+  let currentStateSeededCount = 0;
+  let currentStateSeedRejectedCount = 0;
   const currentStatePromises = new Map<
     string,
     Promise<ProjectReadOnlyCurrentStateProjection>
@@ -78,10 +88,33 @@ export function createProjectReadOnlyRequestProjection(options: {
       return [...await projectIdListPromise];
     }
     projectIdListRepositoryCallCount += 1;
-    projectIdListPromise = repository.listProjectIds().then(ids => (
-      Object.freeze([...new Set(ids)].sort())
-    ));
+    projectIdListPromise = repository.listProjectIds().then(ids => {
+      const normalized = [...new Set(ids)].sort();
+      listedProjectIds = new Set(normalized);
+      return Object.freeze(normalized);
+    });
     return [...await projectIdListPromise];
+  };
+
+  const seedCurrentState = (
+    projectId: string,
+    state: ProjectCurrentStateInspection,
+  ): boolean => {
+    currentStateSeedRequestCount += 1;
+    if (!listedProjectIds?.has(projectId) || currentStatePromises.has(projectId)) {
+      currentStateSeedRejectedCount += 1;
+      return false;
+    }
+    const classified = classifyCurrentState(projectId, state);
+    if (classified.status !== 'readable') {
+      currentStateSeedRejectedCount += 1;
+      return false;
+    }
+    const frozen = Object.freeze(classified);
+    currentStatePromises.set(projectId, Promise.resolve(frozen));
+    resolvedCurrentStates.set(projectId, frozen);
+    currentStateSeededCount += 1;
+    return true;
   };
 
   const inspectCurrentState = async (
@@ -113,6 +146,7 @@ export function createProjectReadOnlyRequestProjection(options: {
 
   return {
     listProjectIds,
+    seedCurrentState,
     inspectCurrentState,
     diagnostics: () => ({
       schema_version: 'project-read-only-request-projection-diagnostics/v1',
@@ -122,6 +156,9 @@ export function createProjectReadOnlyRequestProjection(options: {
       current_state_request_count: currentStateRequestCount,
       current_state_repository_call_count: currentStateRepositoryCallCount,
       current_state_cache_hit_count: currentStateCacheHitCount,
+      current_state_seed_request_count: currentStateSeedRequestCount,
+      current_state_seeded_count: currentStateSeededCount,
+      current_state_seed_rejected_count: currentStateSeedRejectedCount,
       readable_project_count: [...resolvedCurrentStates.values()].filter(
         item => item.status === 'readable',
       ).length,
@@ -134,6 +171,8 @@ export function createProjectReadOnlyRequestProjection(options: {
         repository_write_allowed: false,
         failed_projects_isolated: true,
         cross_request_cache_allowed: false,
+        seed_validation_required: true,
+        seed_overwrite_allowed: false,
       },
     }),
   };

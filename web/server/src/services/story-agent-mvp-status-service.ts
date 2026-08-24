@@ -1567,7 +1567,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     '',
     '## Summary',
     '',
-    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement snapshot ${report.performance.supplement_task_snapshot_ms}ms; supplement package ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms; project projection list repository/cache ${report.performance.project_projection_list_repository_call_count}/${report.performance.project_projection_list_cache_hit_count}; current state repository/cache ${report.performance.project_projection_current_state_repository_call_count}/${report.performance.project_projection_current_state_cache_hit_count}; readable/failed ${report.performance.project_projection_readable_project_count}/${report.performance.project_projection_failed_project_count}`,
+    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement snapshot ${report.performance.supplement_task_snapshot_ms}ms; supplement package ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms; project projection list repository/cache ${report.performance.project_projection_list_repository_call_count}/${report.performance.project_projection_list_cache_hit_count}; current state seeded/rejected ${report.performance.project_projection_current_state_seeded_count}/${report.performance.project_projection_current_state_seed_rejected_count}; current state repository/cache ${report.performance.project_projection_current_state_repository_call_count}/${report.performance.project_projection_current_state_cache_hit_count}; readable/failed ${report.performance.project_projection_readable_project_count}/${report.performance.project_projection_failed_project_count}`,
     `- generated targets: ${report.summary.generated_target_count}`,
     `- generated ready: ${report.summary.generated_ready_count}`,
     `- generated production_gap: ${report.summary.generated_production_gap_count}`,
@@ -1755,6 +1755,8 @@ export async function getStoryAgentMvpStatus(
     project_projection_list_cache_hit_count: 0,
     project_projection_current_state_repository_call_count: 0,
     project_projection_current_state_cache_hit_count: 0,
+    project_projection_current_state_seeded_count: 0,
+    project_projection_current_state_seed_rejected_count: 0,
     project_projection_readable_project_count: 0,
     project_projection_failed_project_count: 0,
   };
@@ -1775,7 +1777,10 @@ export async function getStoryAgentMvpStatus(
   };
   const generatedHealth = await measure(
     'generated_health_ms',
-    () => getStoryAgentGeneratedHealth({ limit: options.generatedLimit ?? 200 }),
+    () => getStoryAgentGeneratedHealth({
+      limit: options.generatedLimit ?? 200,
+      readOnlyProjection: projectReadOnlyProjection,
+    }),
   );
   const supplementTaskSnapshotResult = await measure(
     'supplement_task_snapshot_ms',
@@ -1836,6 +1841,10 @@ export async function getStoryAgentMvpStatus(
     projectionDiagnostics.current_state_repository_call_count;
   performanceDiagnostics.project_projection_current_state_cache_hit_count =
     projectionDiagnostics.current_state_cache_hit_count;
+  performanceDiagnostics.project_projection_current_state_seeded_count =
+    projectionDiagnostics.current_state_seeded_count;
+  performanceDiagnostics.project_projection_current_state_seed_rejected_count =
+    projectionDiagnostics.current_state_seed_rejected_count;
   performanceDiagnostics.project_projection_readable_project_count =
     projectionDiagnostics.readable_project_count;
   performanceDiagnostics.project_projection_failed_project_count =

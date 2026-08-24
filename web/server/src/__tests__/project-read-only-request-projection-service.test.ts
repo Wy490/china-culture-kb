@@ -62,6 +62,9 @@ describe('project read-only request projection', () => {
     ]);
     expect(firstIds).toEqual([readableId, failedId].sort());
     expect(secondIds).toEqual(firstIds);
+    expect(projection.seedCurrentState(readableId, { meta, snapshot })).toBe(true);
+    expect(projection.seedCurrentState(readableId, { meta, snapshot })).toBe(false);
+    expect(projection.seedCurrentState('unlisted-project', { meta, snapshot })).toBe(false);
     const [firstReadable, secondReadable, failed] = await Promise.all([
       projection.inspectCurrentState(readableId),
       projection.inspectCurrentState(readableId),
@@ -79,15 +82,18 @@ describe('project read-only request projection', () => {
     await projection.inspectCurrentState(failedId);
 
     expect(repository.listProjectIds).toHaveBeenCalledTimes(1);
-    expect(repository.inspectCurrentStateReadOnly).toHaveBeenCalledTimes(2);
+    expect(repository.inspectCurrentStateReadOnly).toHaveBeenCalledTimes(1);
     expect(projection.diagnostics()).toEqual({
       schema_version: 'project-read-only-request-projection-diagnostics/v1',
       project_id_list_request_count: 2,
       project_id_list_repository_call_count: 1,
       project_id_list_cache_hit_count: 1,
       current_state_request_count: 5,
-      current_state_repository_call_count: 2,
-      current_state_cache_hit_count: 3,
+      current_state_repository_call_count: 1,
+      current_state_cache_hit_count: 4,
+      current_state_seed_request_count: 3,
+      current_state_seeded_count: 1,
+      current_state_seed_rejected_count: 2,
       readable_project_count: 1,
       failed_project_count: 1,
       boundary: {
@@ -96,6 +102,8 @@ describe('project read-only request projection', () => {
         repository_write_allowed: false,
         failed_projects_isolated: true,
         cross_request_cache_allowed: false,
+        seed_validation_required: true,
+        seed_overwrite_allowed: false,
       },
     });
   });
@@ -107,6 +115,6 @@ describe('project read-only request projection', () => {
     );
     expect(source).toContain('createProjectReadOnlyRequestProjection()');
     expect(source).toContain('readOnlyProjection: projectReadOnlyProjection');
-    expect(source.match(/readOnlyProjection: projectReadOnlyProjection/g)).toHaveLength(2);
+    expect(source.match(/readOnlyProjection: projectReadOnlyProjection/g)).toHaveLength(3);
   });
 });

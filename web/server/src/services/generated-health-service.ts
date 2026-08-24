@@ -12,13 +12,19 @@ import type {
   StoryAgentGeneratedHealthReport,
   StoryAgentGeneratedHealthScope,
   StoryAgentGeneratedHealthStatus,
+  StoryProjectMeta,
+  StoryProjectVersionSnapshot,
 } from '@shared/types.js';
 import { exportProjectSupplementCandidatePackage } from './project-service.js';
+import type {
+  ProjectReadOnlyRequestProjection,
+} from './project-read-only-request-projection-service.js';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
 import { inspectStoryGenerationActivity } from './story-generation-activity-service.js';
 
 interface GeneratedHealthOptions {
   limit?: number;
+  readOnlyProjection?: ProjectReadOnlyRequestProjection;
 }
 
 interface StoryAgentBacklogHandoffOptions {
@@ -240,7 +246,11 @@ function buildStoryRecommendations(status: StoryAgentGeneratedHealthStatus, miss
   return actions;
 }
 
-async function buildStoryHealthItem(input: GeneratedProjectRecord): Promise<StoryAgentGeneratedHealthItem> {
+async function buildStoryHealthItem(
+  input: GeneratedProjectRecord,
+  readOnlyProjection?: ProjectReadOnlyRequestProjection,
+  projectIdsEligibleForSeeding: ReadonlySet<string> = new Set(),
+): Promise<StoryAgentGeneratedHealthItem> {
   const project = input.record;
   const versions = await readStoryVersionRecords(input.project_dir);
   const currentVersionId = stringField(project.current_version_id);
@@ -248,6 +258,14 @@ async function buildStoryHealthItem(input: GeneratedProjectRecord): Promise<Stor
   const currentVersion = currentVersionId
     ? versions.find(item => item.version_id === currentVersionId)
     : undefined;
+  if (readOnlyProjection && projectIdsEligibleForSeeding.has(input.dir_name)) {
+    readOnlyProjection.seedCurrentState(input.dir_name, {
+      meta: project as unknown as StoryProjectMeta,
+      snapshot: currentVersion
+        ? currentVersion.record as unknown as StoryProjectVersionSnapshot
+        : null,
+    });
+  }
   const story = isObjectRecord(currentVersion?.record.story) ? currentVersion?.record.story : undefined;
   const qualityReport = isObjectRecord(currentVersion?.record.quality_report)
     ? currentVersion?.record.quality_report
@@ -839,14 +857,20 @@ function renderStoryAgentBacklogHandoffMarkdown(
 export async function getStoryAgentGeneratedHealth(
   options: GeneratedHealthOptions = {},
 ): Promise<StoryAgentGeneratedHealthReport> {
-  const [storyRecords, seriesRecords, availableStoryIds, signoffExcludedSeriesIds, generationActivity] = await Promise.all([
+  const [storyRecords, seriesRecords, availableStoryIds, signoffExcludedSeriesIds, generationActivity, projectionProjectIds] = await Promise.all([
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'projects'))),
     readGeneratedProjectRecords(generatedRoots().map(root => resolve(root, 'ai-comic-series-projects'))),
     readGeneratedStoryIds(),
     readSignoffExcludedSeriesIds(),
     inspectStoryGenerationActivity(),
+    options.readOnlyProjection?.listProjectIds() ?? Promise.resolve([]),
   ]);
-  const storyItems = await Promise.all(storyRecords.map(buildStoryHealthItem));
+  const projectIdsEligibleForSeeding = new Set(projectionProjectIds);
+  const storyItems = await Promise.all(storyRecords.map(record => buildStoryHealthItem(
+    record,
+    options.readOnlyProjection,
+    projectIdsEligibleForSeeding,
+  )));
   const seriesItems = seriesRecords.map(record => buildSeriesHealthItem(
     record,
     availableStoryIds,

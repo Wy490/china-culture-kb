@@ -3806,6 +3806,8 @@ describe('System API', () => {
           project_projection_list_cache_hit_count: expect.any(Number),
           project_projection_current_state_repository_call_count: expect.any(Number),
           project_projection_current_state_cache_hit_count: expect.any(Number),
+          project_projection_current_state_seeded_count: expect.any(Number),
+          project_projection_current_state_seed_rejected_count: expect.any(Number),
           project_projection_readable_project_count: expect.any(Number),
           project_projection_failed_project_count: expect.any(Number),
         },
@@ -4022,15 +4024,19 @@ describe('System API', () => {
           },
         },
       });
-      expect(res.body.data.performance.project_projection_list_cache_hit_count).toBeGreaterThanOrEqual(1);
-      expect(res.body.data.performance.project_projection_current_state_repository_call_count).toBeGreaterThan(0);
+      expect(res.body.data.performance.project_projection_list_cache_hit_count).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.performance.project_projection_current_state_seeded_count).toBeGreaterThan(0);
       expect(res.body.data.performance.project_projection_current_state_cache_hit_count).toBe(
-        res.body.data.performance.project_projection_current_state_repository_call_count,
+        res.body.data.performance.project_projection_current_state_seeded_count * 2
+          + res.body.data.performance.project_projection_current_state_repository_call_count,
       );
       expect(
         res.body.data.performance.project_projection_readable_project_count
           + res.body.data.performance.project_projection_failed_project_count,
-      ).toBe(res.body.data.performance.project_projection_current_state_repository_call_count);
+      ).toBe(
+        res.body.data.performance.project_projection_current_state_seeded_count
+          + res.body.data.performance.project_projection_current_state_repository_call_count,
+      );
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.lanes).toContainEqual(expect.objectContaining({
         key: 'external_evidence_sync_health',

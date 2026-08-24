@@ -4833,6 +4833,8 @@ export interface StoryAgentMvpPerformanceDiagnostics {
   project_projection_list_cache_hit_count: number;
   project_projection_current_state_repository_call_count: number;
   project_projection_current_state_cache_hit_count: number;
+  project_projection_current_state_seeded_count: number;
+  project_projection_current_state_seed_rejected_count: number;
   project_projection_readable_project_count: number;
   project_projection_failed_project_count: number;
 }
