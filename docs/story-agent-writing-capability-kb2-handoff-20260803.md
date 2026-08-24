@@ -43,9 +43,10 @@
 - 第五十切片实现提交：`7c27f68d`（`feat(story-agent): shadow structured knowledge generation`）
 - 第五十一切片实现提交：`ba150b05`（`feat(story-agent): compare knowledge prompt shadows`）
 - 第五十二切片实现提交：`645206a3`（`feat(story-agent): expose read-only prompt canary`）
+- 第五十三切片实现提交：`cf649fcf`（`feat(story-agent): bind prompt canary decisions`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`
+- B4 与 M4 第一至第五十三切片均已完成；第五十三切片实现提交为 `cf649fcf`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -68,15 +69,15 @@ M0 10% + M1 20% + M2 25% + M3 25% + M4 15% + M5 5% = 100%
 
 M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段治理已完成；M4 故事可发布、GEARS 合同与创作质量均已 45/45，机器创作质量不变量整体通过。当前 15×3 矩阵已无可由生成器治理的生产素材字段缺口。Story Agent 的“文化题材源 × 原创叙事机制”组合合同已覆盖神话、民间传说、历史事迹、历史人物、地方掌故、经典文本、非遗/文化记忆和用户原创素材，以及遗迹探秘、公平推理、神话远航、历史阵营群像、民俗异闻、战争谋略、家族代际、团队智取等 16 类新机制。resolved IDs 已同步进入蓝图、prompt、质量信号、repair、最终故事和请求元数据；本地 fallback 现按请求顺序建立主机制与副机制分工，每个副机制必须在独立中段场景兑现，并与正文、场景和 GEARS 同步。公平推理/民俗双解、悲剧/喜剧、遗迹保护/团队行动、阵营群像/战役谋略四类语义张力已有确定性化解规则；副机制超过中段场景容量时 fail closed。正式本地组合矩阵 v2 保留 8/8 题材源、16/16 主机制、16/16 副机制与 8 个混合题材案例，并新增 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格；每格直接复用 GenreStoryProfile 解析并验证时长、主副机制和容量门禁。组合层只学习通用结构机制，明确禁止复用受保护作品表达。外部证据项目版本与源故事之间的提交中断现可在同请求重放时恢复；只有源故事账本能被证明为项目账本前缀时才原子追平，源端领先、分叉或审计不一致一律 fail closed。项目级只读健康接口现可独立报告一致、需要安全重放、源故事缺失和完整性阻断；全局受限运维接口进一步聚合所有项目，只使用 `inspectCurrentStateReadOnly`，不会因查询触发 pending transaction 恢复。同步健康摘要现已接入 MVP lane、summary、Markdown 和 next-actions，且零证据活动不会被解释为真实证据完成。真实仓储 2051/2051 current-state 可读，当前无已导入外部证据项目和同步异常；这不代表剩余 12 项真实素材已经获得。外部全文生成 adapter 已新增独立 `record_replay_json` provider：录制包绑定模型身份、完整 prompt、输出与整包 SHA-256，任一篡改或 prompt 漂移都会 fail closed；命令 adapter 不再能通过环境变量自报回放信用。独立回放矩阵 v1 已固化 4 片型 × 3 时长的 12/12 正例和 5/5 完整性负门禁，并可通过 `--check` 逐字节复核。15×3 正式内容质量快照已刷新为 v34：历史制度压力与传说古今连接改为识别已有的可观察场景证据，刘海 AI 漫剧新增真实关系冲突、选择动作、集末承接和分层镜头提示；全部 pattern 弱信号清零，开放动作 23→12，平均 pattern 93.44→95.69，同时生产素材仍保持 33/45。下一重点是让大项目库 MVP 的多个只读组件共享经验证的请求级项目投影，或在真实外部证据可用时按严格合同接入；不能用本地生成内容填充剩余 12 项。
 
-第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。第五十二切片已提供 `system:operate + internal_story_tools` 受限 POST canary：只返回 active/shadow hash、字段 diff 和迁移决策，不返回提示词或故事，不调用 adapter、不持久化；即使安全候选达到 `eligible_for_operator_review`，正式消费仍被真实人工证明、独立审批和生产 canary 三项证据阻断。blueprint、正式 prompt、fallback、adapter、持久化及输出继续不消费 shadow。
+第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。第五十二切片已提供 `system:operate + internal_story_tools` 受限 POST canary：只返回 active/shadow hash、字段 diff 和迁移决策，不返回提示词或故事，不调用 adapter、不持久化；即使安全候选达到 `eligible_for_operator_review`，正式消费仍被真实人工证明、独立审批和生产 canary 三项证据阻断。第五十三切片进一步让 receipt 分别绑定 generation request、overlay、generation shadow、prompt comparison 和 migration decision；7 路确定性审计为 1 eligible/6 remain-shadow、7/7 绑定有效、正式消费/adapter/持久化均为 0。blueprint、正式 prompt、fallback、adapter、持久化及输出继续不消费 shadow。
 
 ### 4.1 RAG 三层完成度快照
 
-以工程成熟度而非自动 SLA 计算，当前评估为：代码层 93%、检索层 85%、生成层 93%，综合约 91%。
+以工程成熟度而非自动 SLA 计算，当前评估为：代码层 94%、检索层 85%、生成层 94%，综合约 91%。
 
-- 代码层 93%：已有独立类型/schema、Domain Pack、REST/MCP、KnowledgePack/MaterialPack/Blueprint、质量/repair、项目版本持久化和大量回归门禁；结构化证据合同已进入生成准备与 prompt-package shadow，并有全库审计、approved overlay 正负矩阵和受限只读 canary/迁移决策入口。剩余主要是可复现批量 canary 决策基线、结构化证据尚未成为生成链单一事实源，以及多条 parser/打分路径的一致性成本。
+- 代码层 94%：已有独立类型/schema、Domain Pack、REST/MCP、KnowledgePack/MaterialPack/Blueprint、质量/repair、项目版本持久化和大量回归门禁；结构化证据合同已进入生成准备与 prompt-package shadow，并有全库审计、approved overlay 正负矩阵、受限只读 canary、制品绑定验证器和多案例迁移决策基线。剩余主要是结构化证据尚未成为生成链单一事实源、多条 parser/打分路径的一致性成本，以及真实审批/生产证据依赖。
 - 检索层 85%：已有字段加权词法检索、意图扩展、长字段命中、多需求匹配、地域/片型/本地化约束、Domain Pack 增强，以及绑定数据集/语料指纹的 Recall/MRR/NDCG、主体 Top-1、可信度分层可用性与离域误报门禁。当前机器数据集内可用相关覆盖为 15/15，但尚无人评相关性标签、embedding/混合召回/重排、大语料索引与缓存、部分读取失败完整性诊断；不能把机器编制 19 案例外推为真实流量质量。
-- 生成层 93%：知识上下文已进入蓝图、外部 prompt、本地 fallback、场景/GEARS、质量与 repair，v34 机器样本保持故事可发布 45/45、GEARS 45/45；`story-knowledge-contract/v1` 已进入生成准备和未执行 prompt-package 的只读 fail-closed shadow，7/7 对照证明正式 prompt 与故事输出不变，受限 canary 可输出不可消费的迁移决策。剩余核心缺口是正式消费所需的真实核验/独立审批/生产 canary 证据，以及真实外部模型、真人/专业评审与成片生产信用。
+- 生成层 94%：知识上下文已进入蓝图、外部 prompt、本地 fallback、场景/GEARS、质量与 repair，v34 机器样本保持故事可发布 45/45、GEARS 45/45；`story-knowledge-contract/v1` 已进入生成准备和未执行 prompt-package 的只读 fail-closed shadow，7/7 对照证明正式 prompt 与故事输出不变，受限 canary 可输出并验证不可消费的绑定迁移决策。剩余核心缺口是正式消费所需的真实核验/独立审批/生产 canary 证据，以及真实外部模型、真人/专业评审与成片生产信用。
 
 ## 5. 不可破坏的主链与架构边界
 
@@ -836,6 +837,7 @@ Knowledge entry / user material
 - `data/reports/story-agent-rag-retrieval-evaluation-v1.json`（19 案例主体排序、可用性和离域拒绝基线）
 - `data/reports/story-agent-story-knowledge-generation-shadow-v1.json`（289 条全库结构化知识生成准备 shadow 与事实放大门禁）
 - `data/reports/story-agent-story-knowledge-prompt-shadow-matrix-v1.json`（7 案例 approved overlay、prompt hash/diff 与不执行门禁）
+- `data/reports/story-agent-story-knowledge-prompt-shadow-canary-decision-v1.json`（7 路只读 canary receipt 绑定与不可消费迁移决策基线）
 
 M3 基线当前：
 
@@ -1449,6 +1451,15 @@ M4 第五十二切片完成时：
 - canary API 5 项测试覆盖 schema、权限/feature flag、安全候选、无证据安全空候选和源码边界；与原 generation preparation/execution 的组合定向为 17/17。既有 7 案例 prompt-shadow 报告逐字节 `--check` 通过，仍为 active prompt 7/7、故事结果 7/7 一致、shadow 执行 0。Server lint/build 与 `git diff --check` 通过；沙箱外最终 Server 全量 218 文件/1814 项通过、1 文件/2 项既有跳过、0 失败。实现提交为 `645206a3`。
 - 本切片不修改 v34、不写 `data/provinces/*.md`，不授予真人审核、事实核验、外部模型、真实生产流量或成片信用。下一有界切片可固化多案例只读 canary/迁移决策审计基线与绑定证明；在真实核验、独立审批和生产 canary 证据齐备前，不实现正式消费开关。
 
+M4 第五十三切片完成时：
+
+- canary receipt 新增五段规范化 SHA-256 绑定：解析后的 generation request、可选 evidence overlay、generation shadow、prompt shadow comparison 和 migration decision。migration decision 自身再绑定 generation shadow 与 prompt comparison，避免决策脱离所评估制品被替换。
+- 新增 `verifyStoryKnowledgePromptShadowCanaryReceipt`：同时解析 request/receipt schema 并重算所有绑定；篡改 `changed_prompt_package_paths` 的红测会明确得到 `prompt_shadow_comparison_sha256_mismatch` 与 `migration_decision_prompt_shadow_binding_mismatch`，不再只检查哈希字符串格式。
+- prompt-shadow matrix 的 7 路 fixture 定义抽为共享确定性构建器，原矩阵仍保持 1 candidate-ready、2 blocked、4 safe-no，7/7 active prompt 与故事结果一致、shadow 执行 0；共享 fixture 不改变正式 execution。
+- 新增 `story-knowledge-prompt-shadow-canary-decision-audit/v1` 机器报告和 `audit:story-knowledge-prompt-shadow-canary-decision` 的 `--write`/`--check` 脚本。审计覆盖 base-only、approved multi-source、machine-only、mixed certainty、pending、rejected、incompatible 共 7 路：1 路仅达到 `eligible_for_operator_review`，6 路 `remain_shadow`；7/7 receipt 绑定有效，正式消费、adapter 调用和持久化均为 0。
+- canary/审计/原矩阵/preparation 定向 4 文件/19 项通过；新报告 `--write` 后逐字节 `--check` 通过，原 prompt-shadow matrix 也逐字节不漂移。Server lint/build 与 `git diff --check` 通过；沙箱外最终 Server 全量 219 文件/1816 项通过、1 文件/2 项既有跳过、0 失败。实现提交为 `cf649fcf`。
+- 所有 overlay/reviewer 仍是合成 fixture；报告固定 `human_review_complete=false`、`production_canary_executed=false`，不写 `data/provinces/*.md`，不授予真人、事实核验、外部模型、生产流量或成片信用。知识 shadow 的下一工程步骤已受真实证据约束；后续优先转向大项目库共享只读请求投影，或等待真实核验/审批/生产 canary 证据，不创建虚假的正式消费开关。
+
 环境限制：
 
 - `mcp-server/__tests__/run-production-readiness-automation.test.ts` 的 3 项测试需要监听 `127.0.0.1`，当前沙箱报 `listen EPERM` 并超时。
@@ -1468,6 +1479,7 @@ M4 第五十二切片完成时：
 - 第五十切片的 shadow 报告 `--write`/`--check` 与完整 Server 门禁在沙箱外运行，以避开已知 `tsx` IPC/Supertest 监听限制。报告只证明当前本地 289 条语料和合成 overlay 门禁，不代表真人完成来源分级、事实核验或生产接入。
 - 第五十一切片的 prompt-shadow 矩阵首次在沙箱内命中已知 `tsx` IPC `listen EPERM`，随后沙箱外原命令完成 `--write`/`--check`；完整 Server 门禁也在沙箱外运行。7 案例只证明本地确定性 fixture 与默认本地生成路径，不代表真实外部模型调用、真人审核或生产流量。
 - 第五十二切片的 canary Supertest 红测与完整 Server 门禁需在沙箱外运行以避开已知监听 `EPERM`；prompt-shadow `--check` 首次在沙箱内命中 `tsx` IPC socket `EPERM`，随后沙箱外原命令通过。canary 的“执行”仅指本地只读内存计算和立即丢弃，不是外部 adapter、真实流量或生产 canary。
+- 第五十三切片的新 canary-decision 报告和原 prompt-shadow 报告均在沙箱外运行 `tsx --write/--check`，完整 Server/Supertest 也在沙箱外运行；这些证据只证明本地合成 fixture 的确定性绑定和 fail-closed 决策，不代表真实人工签署或生产 canary。
 - 隔离四种子全功能 smoke 在沙箱内受 `tsx` IPC 阻断，沙箱外申请又被自动审批基础设施拒绝；最后有效证明为本轮服务层端到端组合与全量测试，不得转述为该脚本已通过。
 - 当前报告是在 `kb:production-audit` 成功运行时生成的；后续若修改审计逻辑，必须重新生成报告，不能沿用旧数字。
 
@@ -1479,6 +1491,7 @@ npm run audit:story-knowledge-contract -- --check
 npm run audit:story-rag-retrieval -- --check
 npm run audit:story-knowledge-generation-shadow -- --check
 npm run audit:story-knowledge-prompt-shadow-matrix -- --check
+npm run audit:story-knowledge-prompt-shadow-canary-decision -- --check
 npm run audit:production-material-m3 -- --check
 npm run audit:domain-pack-m3 -- --check
 npm run audit:domain-pack-m3-comparison -- --check
@@ -1531,10 +1544,10 @@ git diff --check
 3. 修复后继续比较事实/文化边界、类型完成度、结构、场景可拍性、实际 repair trace 和稳定性，保持同一 45 案例口径。
 4. 按当前用户指令，人工盲评不作为工程启动前置，但机器报告不得冒充真人反馈。
 
-#### 已入库的剩余开发 backlog（第五十二切片后；15×3 正式快照为 v34）
+#### 已入库的剩余开发 backlog（第五十三切片后；15×3 正式快照为 v34）
 
 1. 当前 15×3 矩阵已经没有可由生成器或派生结构继续解除的 production material 缺口；`character_story` 改编压力例的 `life_stage_window` 已由完整知识证据行严格派生。
-2. RAG 检索与证据链：19 案例机器基线已覆盖主体意图、地域歧义、同类工艺负例和离域拒绝，主体 Top-1 与可用相关覆盖均为 15/15。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow；全库 289 条当前为 0 事实候选、0 放大、0 正式消费，7 案例 overlay 矩阵为 1 candidate/2 blocked/4 safe-no，且 7/7 active prompt 与故事结果不变。受限 system canary 已可返回 hash/diff 与不可消费迁移决策，且明确不调用 adapter、不返回 prompt/故事、不持久化。下一步可固化多案例 canary/decision 审计基线和请求—overlay—决策绑定；没有真实核验、独立审批与生产 canary 证据前保持 `consumed_by_generation=false`。继续补真人相关性标签与更难负例，只有词法基线出现可复现瓶颈时再引入 embedding/混合召回/重排。
+2. RAG 检索与证据链：19 案例机器基线已覆盖主体意图、地域歧义、同类工艺负例和离域拒绝，主体 Top-1 与可用相关覆盖均为 15/15。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow；全库 289 条当前为 0 事实候选、0 放大、0 正式消费，7 案例 overlay 矩阵为 1 candidate/2 blocked/4 safe-no，且 7/7 active prompt 与故事结果不变。受限 system canary、receipt 制品绑定、篡改验证器和 7 路迁移决策基线均已完成；7/7 绑定有效，正式消费/adapter/持久化为 0。没有真实核验、独立审批与生产 canary 证据前保持 `consumed_by_generation=false`，不再用更多合成 fixture 冒充迁移进度。继续补真人相关性标签与更难负例，只有词法基线出现可复现瓶颈时再引入 embedding/混合召回/重排。
 3. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；下一步可设计请求级项目扫描上下文，让 generated health、任务快照、production portfolio 和 sync-health 共享已验证的 current-state/readiness 投影，同时保持失败隔离、全量 summary 与明确失效语义。真实外部证据接入仍须坚持 reviewer、hash、范围和账本链要求；不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
 4. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
 5. pattern 质量优化：改编类、历史制度压力、传说古今连接及 AI 漫剧行动/关系共 11 个开放目标已全部清零；正式 45 案例当前无弱 pattern 信号。后续把 0 作为回归门禁，不为追分继续堆标签或放宽阈值。
@@ -1563,17 +1576,17 @@ git diff --check
 
 继续开发 Story Agent“创作增强与知识库 2.0”专项。
 
-B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
+B4 与 M4 第一至第五十三切片均已完成；第五十三切片实现提交为 `cf649fcf`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
 
 当前优先级是把功能做全、把能力做好；人工评审、真人流程和用户注册不作为工程前置，但不得虚构人工信用。生成故事和机器派生生产指导不得写回 data/provinces/*.md。
 
-全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。受限 system canary 与迁移决策合同已完成：只返回 hash/diff/decision，不调用 adapter、不返回 prompt/故事、不持久化，正式消费仍由真实核验、独立审批和生产 canary 三项证据阻断。下一优先级是固化多案例 canary/decision 审计基线或继续优化共享只读项目投影；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
+全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。受限 system canary、五段 receipt 绑定、篡改验证器与 7 路决策基线已完成：7/7 绑定有效，只返回 hash/diff/decision，不调用 adapter、不返回 prompt/故事、不持久化，正式消费仍由真实核验、独立审批和生产 canary 三项证据阻断。下一优先级转向大项目库共享只读请求投影，或等待真实证据后继续迁移；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
 
 每次汇报必须分别说明：当前阶段进度、专项总进度、既有 Story Agent MVP 进度、真实测试/运行健康与外部环境限制。
 ```
 
 ## 12. 交接边界
 
-- B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 93%、检索层 85%、生成层 93%、综合约 91%。19 案例检索基线、289 条生成准备 shadow、7 案例不可消费 prompt hash/diff 矩阵和受限只读 canary/迁移决策入口均已完成；下一切片可固化多案例 canary 决策基线和绑定证明，仍不得开启正式消费。
+- B4 与 M4 第一至第五十三切片均已完成；第五十三切片实现提交为 `cf649fcf`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 94%、检索层 85%、生成层 94%、综合约 91%。19 案例检索基线、289 条生成准备 shadow、7 案例不可消费 prompt hash/diff 矩阵、受限只读 canary、receipt 绑定验证和 7 路迁移决策报告均已完成；知识 shadow 的下一步受真实证据约束，工程优先级可转向共享只读项目投影，仍不得开启正式消费。
 - 本文件只总结真实实现和已运行验证，不授予人工审核、真实生产、外部 worker 或公开发布信用。
 - 新对话接手后如修改了行为代码，必须更新相应测试与机器报告；仅修改文档时无需重复完整 CI。
