@@ -42,9 +42,10 @@
 - 第四十九切片实现提交：`fa3cd897`（`feat(story-agent): calibrate rag story matches`）
 - 第五十切片实现提交：`7c27f68d`（`feat(story-agent): shadow structured knowledge generation`）
 - 第五十一切片实现提交：`ba150b05`（`feat(story-agent): compare knowledge prompt shadows`）
+- 第五十二切片实现提交：`645206a3`（`feat(story-agent): expose read-only prompt canary`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第五十一切片均已完成；第五十一切片实现提交为 `ba150b05`
+- B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -67,15 +68,15 @@ M0 10% + M1 20% + M2 25% + M3 25% + M4 15% + M5 5% = 100%
 
 M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段治理已完成；M4 故事可发布、GEARS 合同与创作质量均已 45/45，机器创作质量不变量整体通过。当前 15×3 矩阵已无可由生成器治理的生产素材字段缺口。Story Agent 的“文化题材源 × 原创叙事机制”组合合同已覆盖神话、民间传说、历史事迹、历史人物、地方掌故、经典文本、非遗/文化记忆和用户原创素材，以及遗迹探秘、公平推理、神话远航、历史阵营群像、民俗异闻、战争谋略、家族代际、团队智取等 16 类新机制。resolved IDs 已同步进入蓝图、prompt、质量信号、repair、最终故事和请求元数据；本地 fallback 现按请求顺序建立主机制与副机制分工，每个副机制必须在独立中段场景兑现，并与正文、场景和 GEARS 同步。公平推理/民俗双解、悲剧/喜剧、遗迹保护/团队行动、阵营群像/战役谋略四类语义张力已有确定性化解规则；副机制超过中段场景容量时 fail closed。正式本地组合矩阵 v2 保留 8/8 题材源、16/16 主机制、16/16 副机制与 8 个混合题材案例，并新增 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格；每格直接复用 GenreStoryProfile 解析并验证时长、主副机制和容量门禁。组合层只学习通用结构机制，明确禁止复用受保护作品表达。外部证据项目版本与源故事之间的提交中断现可在同请求重放时恢复；只有源故事账本能被证明为项目账本前缀时才原子追平，源端领先、分叉或审计不一致一律 fail closed。项目级只读健康接口现可独立报告一致、需要安全重放、源故事缺失和完整性阻断；全局受限运维接口进一步聚合所有项目，只使用 `inspectCurrentStateReadOnly`，不会因查询触发 pending transaction 恢复。同步健康摘要现已接入 MVP lane、summary、Markdown 和 next-actions，且零证据活动不会被解释为真实证据完成。真实仓储 2051/2051 current-state 可读，当前无已导入外部证据项目和同步异常；这不代表剩余 12 项真实素材已经获得。外部全文生成 adapter 已新增独立 `record_replay_json` provider：录制包绑定模型身份、完整 prompt、输出与整包 SHA-256，任一篡改或 prompt 漂移都会 fail closed；命令 adapter 不再能通过环境变量自报回放信用。独立回放矩阵 v1 已固化 4 片型 × 3 时长的 12/12 正例和 5/5 完整性负门禁，并可通过 `--check` 逐字节复核。15×3 正式内容质量快照已刷新为 v34：历史制度压力与传说古今连接改为识别已有的可观察场景证据，刘海 AI 漫剧新增真实关系冲突、选择动作、集末承接和分层镜头提示；全部 pattern 弱信号清零，开放动作 23→12，平均 pattern 93.44→95.69，同时生产素材仍保持 33/45。下一重点是让大项目库 MVP 的多个只读组件共享经验证的请求级项目投影，或在真实外部证据可用时按严格合同接入；不能用本地生成内容填充剩余 12 项。
 
-第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。blueprint、正式 prompt、fallback、adapter、持久化及输出仍不消费 shadow。下一步优先提供受限只读 canary/运维入口及迁移决策合同，继续保持正式消费关闭，直到存在真实核验来源与独立审批证据。
+第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。第五十二切片已提供 `system:operate + internal_story_tools` 受限 POST canary：只返回 active/shadow hash、字段 diff 和迁移决策，不返回提示词或故事，不调用 adapter、不持久化；即使安全候选达到 `eligible_for_operator_review`，正式消费仍被真实人工证明、独立审批和生产 canary 三项证据阻断。blueprint、正式 prompt、fallback、adapter、持久化及输出继续不消费 shadow。
 
 ### 4.1 RAG 三层完成度快照
 
-以工程成熟度而非自动 SLA 计算，当前评估为：代码层 92%、检索层 85%、生成层 92%，综合约 90%。
+以工程成熟度而非自动 SLA 计算，当前评估为：代码层 93%、检索层 85%、生成层 93%，综合约 91%。
 
-- 代码层 92%：已有独立类型/schema、Domain Pack、REST/MCP、KnowledgePack/MaterialPack/Blueprint、质量/repair、项目版本持久化和大量回归门禁；结构化证据合同已进入生成准备与 prompt-package shadow，并有全库审计和 approved overlay 正负矩阵。剩余主要是受限 canary/运维入口、结构化证据尚未成为生成链单一事实源，以及多条 parser/打分路径的一致性成本。
+- 代码层 93%：已有独立类型/schema、Domain Pack、REST/MCP、KnowledgePack/MaterialPack/Blueprint、质量/repair、项目版本持久化和大量回归门禁；结构化证据合同已进入生成准备与 prompt-package shadow，并有全库审计、approved overlay 正负矩阵和受限只读 canary/迁移决策入口。剩余主要是可复现批量 canary 决策基线、结构化证据尚未成为生成链单一事实源，以及多条 parser/打分路径的一致性成本。
 - 检索层 85%：已有字段加权词法检索、意图扩展、长字段命中、多需求匹配、地域/片型/本地化约束、Domain Pack 增强，以及绑定数据集/语料指纹的 Recall/MRR/NDCG、主体 Top-1、可信度分层可用性与离域误报门禁。当前机器数据集内可用相关覆盖为 15/15，但尚无人评相关性标签、embedding/混合召回/重排、大语料索引与缓存、部分读取失败完整性诊断；不能把机器编制 19 案例外推为真实流量质量。
-- 生成层 92%：知识上下文已进入蓝图、外部 prompt、本地 fallback、场景/GEARS、质量与 repair，v34 机器样本保持故事可发布 45/45、GEARS 45/45；`story-knowledge-contract/v1` 已进入生成准备和未执行 prompt-package 的只读 fail-closed shadow，7/7 对照证明正式 prompt 与故事输出不变。剩余核心缺口是只读 canary、正式消费迁移决策，以及真实外部模型、真人/专业评审与成片生产信用。
+- 生成层 93%：知识上下文已进入蓝图、外部 prompt、本地 fallback、场景/GEARS、质量与 repair，v34 机器样本保持故事可发布 45/45、GEARS 45/45；`story-knowledge-contract/v1` 已进入生成准备和未执行 prompt-package 的只读 fail-closed shadow，7/7 对照证明正式 prompt 与故事输出不变，受限 canary 可输出不可消费的迁移决策。剩余核心缺口是正式消费所需的真实核验/独立审批/生产 canary 证据，以及真实外部模型、真人/专业评审与成片生产信用。
 
 ## 5. 不可破坏的主链与架构边界
 
@@ -1439,6 +1440,15 @@ M4 第五十一切片完成时：
 - 7/7 active prompt hash 与 baseline 相同，7/7 本地故事结果相同，shadow prompt 创建 1、执行 0。矩阵报告 `--write`、`--check` 与上一切片 289 条 generation-shadow `--check` 均通过；定向 8 文件/54 项、Server lint/build 通过；沙箱外最终 Server 全量 217 文件/1809 项通过、1 文件/2 项既有跳过、0 失败。实现提交为 `ba150b05`。
 - 本切片使用的 reviewer、时间与 overlay 均是显式合成 fixture；不修改 v34，不写 `data/provinces/*.md`，不授予真人审核、事实核验、外部模型或生产信用。下一有界切片优先新增受限只读 canary/运维入口与迁移决策合同，必须继续拒绝未具备真实核验/审批证据的正式消费。
 
+M4 第五十二切片完成时：
+
+- 新增受限运维入口 `POST /api/system/story-knowledge-prompt-shadow-canary`，请求合同为 `story-knowledge-prompt-shadow-canary-request/v1`。入口位于 system 统一写操作门禁之后；实测无 token 返回 401、管理员缺 `internal_story_tools` 返回 403，只有具备 `system:operate` 且开启内部工具 feature flag 的调用方才能进入请求验证和计算。
+- 新增 `story-knowledge-prompt-shadow-canary/v1` 与 `story-knowledge-migration-decision/v1`。响应只返回请求 SHA-256、generation shadow、active/shadow prompt hash、字段 diff 和迁移决策；不会返回 active/shadow prompt 正文或本地故事结果。canary 会在内存中计算并丢弃确定性本地生成上下文，以保持 prompt hash 与正式 execution 同口径，但不调用 adapter、外部模型或任何持久化路径。
+- 迁移决策只有 `eligible_for_operator_review` 与 `remain_shadow`；前者不等于允许激活。即使合成 A/B 多来源候选达到 operator review 条件，仍固定保留 `real_human_review_attestation_unavailable`、`independent_migration_approval_unavailable`、`production_canary_not_executed` 三项正式消费 blocker，且 `formal_consumption_allowed=false`、`activation_performed=false`、`persistence_allowed=false`。
+- prompt 构建抽为 execution 与 canary 共用的纯函数；正式 execution 仍只把 `activePromptPackage` 作为 `pkg` 传给 `generateStoryWithAdapter`。源码边界测试明确禁止 canary service 引用 adapter、完整生成存储、故事持久化或文件写入函数。
+- canary API 5 项测试覆盖 schema、权限/feature flag、安全候选、无证据安全空候选和源码边界；与原 generation preparation/execution 的组合定向为 17/17。既有 7 案例 prompt-shadow 报告逐字节 `--check` 通过，仍为 active prompt 7/7、故事结果 7/7 一致、shadow 执行 0。Server lint/build 与 `git diff --check` 通过；沙箱外最终 Server 全量 218 文件/1814 项通过、1 文件/2 项既有跳过、0 失败。实现提交为 `645206a3`。
+- 本切片不修改 v34、不写 `data/provinces/*.md`，不授予真人审核、事实核验、外部模型、真实生产流量或成片信用。下一有界切片可固化多案例只读 canary/迁移决策审计基线与绑定证明；在真实核验、独立审批和生产 canary 证据齐备前，不实现正式消费开关。
+
 环境限制：
 
 - `mcp-server/__tests__/run-production-readiness-automation.test.ts` 的 3 项测试需要监听 `127.0.0.1`，当前沙箱报 `listen EPERM` 并超时。
@@ -1457,6 +1467,7 @@ M4 第五十一切片完成时：
 - 第四十九切片的 RAG `--check` 在沙箱内再次命中同一 `tsx` IPC `listen EPERM`，随后沙箱外原命令通过；报告 `--write`/`--check` 与完整 Server 门禁也在沙箱外运行。该证据只证明当前本地语料和机器 fixture，不代表真实用户查询或真人相关性评审。
 - 第五十切片的 shadow 报告 `--write`/`--check` 与完整 Server 门禁在沙箱外运行，以避开已知 `tsx` IPC/Supertest 监听限制。报告只证明当前本地 289 条语料和合成 overlay 门禁，不代表真人完成来源分级、事实核验或生产接入。
 - 第五十一切片的 prompt-shadow 矩阵首次在沙箱内命中已知 `tsx` IPC `listen EPERM`，随后沙箱外原命令完成 `--write`/`--check`；完整 Server 门禁也在沙箱外运行。7 案例只证明本地确定性 fixture 与默认本地生成路径，不代表真实外部模型调用、真人审核或生产流量。
+- 第五十二切片的 canary Supertest 红测与完整 Server 门禁需在沙箱外运行以避开已知监听 `EPERM`；prompt-shadow `--check` 首次在沙箱内命中 `tsx` IPC socket `EPERM`，随后沙箱外原命令通过。canary 的“执行”仅指本地只读内存计算和立即丢弃，不是外部 adapter、真实流量或生产 canary。
 - 隔离四种子全功能 smoke 在沙箱内受 `tsx` IPC 阻断，沙箱外申请又被自动审批基础设施拒绝；最后有效证明为本轮服务层端到端组合与全量测试，不得转述为该脚本已通过。
 - 当前报告是在 `kb:production-audit` 成功运行时生成的；后续若修改审计逻辑，必须重新生成报告，不能沿用旧数字。
 
@@ -1520,10 +1531,10 @@ git diff --check
 3. 修复后继续比较事实/文化边界、类型完成度、结构、场景可拍性、实际 repair trace 和稳定性，保持同一 45 案例口径。
 4. 按当前用户指令，人工盲评不作为工程启动前置，但机器报告不得冒充真人反馈。
 
-#### 已入库的剩余开发 backlog（第五十一切片后；15×3 正式快照为 v34）
+#### 已入库的剩余开发 backlog（第五十二切片后；15×3 正式快照为 v34）
 
 1. 当前 15×3 矩阵已经没有可由生成器或派生结构继续解除的 production material 缺口；`character_story` 改编压力例的 `life_stage_window` 已由完整知识证据行严格派生。
-2. RAG 检索与证据链：19 案例机器基线已覆盖主体意图、地域歧义、同类工艺负例和离域拒绝，主体 Top-1 与可用相关覆盖均为 15/15。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow；全库 289 条当前为 0 事实候选、0 放大、0 正式消费，7 案例 overlay 矩阵为 1 candidate/2 blocked/4 safe-no，且 7/7 active prompt 与故事结果不变。下一步提供受限只读 canary/运维入口和迁移决策合同，让调用方可取得 hash/diff 收据但不能触发候选执行或持久化；没有真实核验来源与独立审批前保持 `consumed_by_generation=false`。继续补真人相关性标签与更难负例，只有词法基线出现可复现瓶颈时再引入 embedding/混合召回/重排。
+2. RAG 检索与证据链：19 案例机器基线已覆盖主体意图、地域歧义、同类工艺负例和离域拒绝，主体 Top-1 与可用相关覆盖均为 15/15。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow；全库 289 条当前为 0 事实候选、0 放大、0 正式消费，7 案例 overlay 矩阵为 1 candidate/2 blocked/4 safe-no，且 7/7 active prompt 与故事结果不变。受限 system canary 已可返回 hash/diff 与不可消费迁移决策，且明确不调用 adapter、不返回 prompt/故事、不持久化。下一步可固化多案例 canary/decision 审计基线和请求—overlay—决策绑定；没有真实核验、独立审批与生产 canary 证据前保持 `consumed_by_generation=false`。继续补真人相关性标签与更难负例，只有词法基线出现可复现瓶颈时再引入 embedding/混合召回/重排。
 3. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；下一步可设计请求级项目扫描上下文，让 generated health、任务快照、production portfolio 和 sync-health 共享已验证的 current-state/readiness 投影，同时保持失败隔离、全量 summary 与明确失效语义。真实外部证据接入仍须坚持 reviewer、hash、范围和账本链要求；不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
 4. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
 5. pattern 质量优化：改编类、历史制度压力、传说古今连接及 AI 漫剧行动/关系共 11 个开放目标已全部清零；正式 45 案例当前无弱 pattern 信号。后续把 0 作为回归门禁，不为追分继续堆标签或放宽阈值。
@@ -1552,17 +1563,17 @@ git diff --check
 
 继续开发 Story Agent“创作增强与知识库 2.0”专项。
 
-B4 与 M4 第一至第五十一切片均已完成；第五十一切片实现提交为 `ba150b05`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
+B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
 
 当前优先级是把功能做全、把能力做好；人工评审、真人流程和用户注册不作为工程前置，但不得虚构人工信用。生成故事和机器派生生产指导不得写回 data/provinces/*.md。
 
-全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。下一优先级是受限只读 canary/运维入口与迁移决策合同；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
+全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。受限 system canary 与迁移决策合同已完成：只返回 hash/diff/decision，不调用 adapter、不返回 prompt/故事、不持久化，正式消费仍由真实核验、独立审批和生产 canary 三项证据阻断。下一优先级是固化多案例 canary/decision 审计基线或继续优化共享只读项目投影；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
 
 每次汇报必须分别说明：当前阶段进度、专项总进度、既有 Story Agent MVP 进度、真实测试/运行健康与外部环境限制。
 ```
 
 ## 12. 交接边界
 
-- B4 与 M4 第一至第五十一切片均已完成；第五十一切片实现提交为 `ba150b05`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 92%、检索层 85%、生成层 92%、综合约 90%。19 案例检索基线、289 条生成准备 shadow 和 7 案例不可消费 prompt hash/diff 矩阵均已入库，下一切片优先完成受限只读 canary/运维入口与迁移决策合同。
+- B4 与 M4 第一至第五十二切片均已完成；第五十二切片实现提交为 `645206a3`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 93%、检索层 85%、生成层 93%、综合约 91%。19 案例检索基线、289 条生成准备 shadow、7 案例不可消费 prompt hash/diff 矩阵和受限只读 canary/迁移决策入口均已完成；下一切片可固化多案例 canary 决策基线和绑定证明，仍不得开启正式消费。
 - 本文件只总结真实实现和已运行验证，不授予人工审核、真实生产、外部 worker 或公开发布信用。
 - 新对话接手后如修改了行为代码，必须更新相应测试与机器报告；仅修改文档时无需重复完整 CI。
