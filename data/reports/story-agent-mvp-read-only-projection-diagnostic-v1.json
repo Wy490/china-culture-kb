@@ -1,0 +1,150 @@
+{
+  "schema_version": "story-agent-mvp-read-only-projection-diagnostic/v1",
+  "captured_at": "2026-08-24T07:05:02.441Z",
+  "status": "passed",
+  "wall_clock_ms": 24809,
+  "wall_clock_observation_not_sla": true,
+  "machine_read_only": true,
+  "project_store_modified": false,
+  "source_story_store_modified": false,
+  "province_markdown_modified": false,
+  "external_evidence_credit_granted": false,
+  "inventory": {
+    "story_project_count": 2051,
+    "series_project_count": 963,
+    "sync_health_scanned_project_count": 2051
+  },
+  "projection": {
+    "list_repository_call_count": 1,
+    "list_cache_hit_count": 2,
+    "current_state_seeded_count": 2051,
+    "current_state_seed_rejected_count": 0,
+    "current_state_repository_call_count": 0,
+    "current_state_cache_hit_count": 4102,
+    "readable_project_count": 2051,
+    "failed_project_count": 0
+  },
+  "component_observations_ms": {
+    "total_ms": 24808,
+    "generated_health_ms": 3646,
+    "supplement_task_snapshot_ms": 3421,
+    "supplement_package_ms": 32,
+    "generated_governance_ms": 29,
+    "backlog_handoff_ms": 29,
+    "production_material_pack_ms": 22,
+    "domain_pack_ms": 17,
+    "domain_pack_expansion_ms": 16,
+    "knowledge_writeback_ms": 3984,
+    "production_portfolio_ms": 15344,
+    "external_evidence_sync_health_ms": 2336,
+    "supplement_backlog_ms": 3978,
+    "project_projection_list_repository_call_count": 1,
+    "project_projection_list_cache_hit_count": 2,
+    "project_projection_current_state_repository_call_count": 0,
+    "project_projection_current_state_cache_hit_count": 4102,
+    "project_projection_current_state_seeded_count": 2051,
+    "project_projection_current_state_seed_rejected_count": 0,
+    "project_projection_readable_project_count": 2051,
+    "project_projection_failed_project_count": 0
+  },
+  "store_fingerprint": {
+    "before_sha256": "55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827",
+    "after_sha256": "55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827",
+    "unchanged": true,
+    "roots": [
+      "web/generated/projects",
+      "web/generated/ai-comic-series-projects",
+      "web/generated/stories",
+      "data/provinces"
+    ]
+  },
+  "source_fingerprints": {
+    "web/server/package.json": "f59c7d58976f7eb5b99abc2986abf07e706cf06d03e67a8d77cb475c56345468",
+    "web/server/scripts/story-agent-mvp-read-only-projection-diagnostic.mts": "6fcfb95e70aeb20696830d926c372f0e65bc06aa40aca345cded21ff298e3137",
+    "web/server/src/services/generated-health-service.ts": "30fd73d2686a77902e6d984b106143044af55fcfac8803ff71d193dcc22a5638",
+    "web/server/src/services/project-external-evidence-sync-health-portfolio-service.ts": "19b1f1594e494aff299719e8082b80f46ea6503738872442f561251338e87344",
+    "web/server/src/services/project-read-only-request-projection-service.ts": "c43f072ffe4d2392094a9afff1e6fc4a8b9413cdbe5001592cd048412cf05416",
+    "web/server/src/services/project-service.ts": "a0dc647377efe803d85f0b9fc4518444ce4a003fababcfcfa7ab9535d194b9ae",
+    "web/server/src/services/story-agent-mvp-status-service.ts": "e1163d5de7053fc2ff86f7ab38436738dc3b2c3d204f4a67f1496cd0a0e059bc",
+    "web/shared/types.ts": "aa5c727c1b94e919e1dcbc787bebd4c2cd9ecf6e7045b8f978871142f0540da0"
+  },
+  "checks": [
+    {
+      "check_id": "project_store_fingerprint_unchanged",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "check_id": "list_repository_single_call",
+      "passed": true,
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "check_id": "list_cache_reused_by_later_consumers",
+      "passed": true,
+      "observed": 2,
+      "expected": ">=2"
+    },
+    {
+      "check_id": "validated_current_state_seed_present",
+      "passed": true,
+      "observed": 2051,
+      "expected": ">0"
+    },
+    {
+      "check_id": "current_state_cache_reuse_equation",
+      "passed": true,
+      "observed": 4102,
+      "expected": 4102
+    },
+    {
+      "check_id": "current_state_resolution_equation",
+      "passed": true,
+      "observed": 2051,
+      "expected": 2051
+    },
+    {
+      "check_id": "sync_health_full_project_scan",
+      "passed": true,
+      "observed": 2051,
+      "expected": 2051
+    },
+    {
+      "check_id": "sync_health_machine_read_only",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "check_id": "external_evidence_credit_not_granted",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "check_id": "production_portfolio_observed_independently",
+      "passed": true,
+      "observed": 15344,
+      "expected": "finite milliseconds"
+    }
+  ],
+  "boundaries": {
+    "request_scoped_projection": true,
+    "cross_request_cache_allowed": false,
+    "production_portfolio_projection_shared": false,
+    "production_portfolio_history_and_series_semantics_preserved": true,
+    "generated_health_full_version_scan_preserved": true,
+    "real_external_provider_invoked": false,
+    "human_review_credit_granted": false,
+    "production_credit_granted": false
+  },
+  "notes": [
+    "Wall-clock values are one local observation and are not an SLA, regression verdict, or speedup claim.",
+    "Deterministic completion is based on repository-call equations, full sync-health coverage, source hashes, and before/after store fingerprints.",
+    "Production portfolio remains an independent historical/series scan and is not forced into the current-state projection.",
+    "No external provider, human review, production traffic, or province Markdown writeback is performed."
+  ],
+  "report_sha256": "a04c5b112bd3361574de707ec916d10932211046c5d8bc41e8bcd21f65827b46"
+}
