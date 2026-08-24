@@ -2788,6 +2788,10 @@ export const StoryKnowledgePromptShadowComparisonV1Schema = z.object({
 
 export const StoryKnowledgeMigrationDecisionV1Schema = z.object({
   schema_version: z.literal('story-knowledge-migration-decision/v1'),
+  binding: z.object({
+    generation_shadow_sha256: StoryKnowledgeSha256Schema,
+    prompt_shadow_comparison_sha256: StoryKnowledgeSha256Schema,
+  }).strict(),
   decision: z.enum(['eligible_for_operator_review', 'remain_shadow']),
   formal_consumption_blockers: StoryKnowledgeUniqueTextArraySchema.refine(
     values => values.length > 0,
@@ -3267,6 +3271,13 @@ export const StoryKnowledgePromptShadowCanaryV1Schema = z.object({
   schema_version: z.literal('story-knowledge-prompt-shadow-canary/v1'),
   canary_status: z.literal('evaluated'),
   request_sha256: StoryKnowledgeSha256Schema,
+  binding: z.object({
+    generation_request_sha256: StoryKnowledgeSha256Schema,
+    evidence_overlay_sha256: StoryKnowledgeSha256Schema.optional(),
+    generation_shadow_sha256: StoryKnowledgeSha256Schema,
+    prompt_shadow_comparison_sha256: StoryKnowledgeSha256Schema,
+    migration_decision_sha256: StoryKnowledgeSha256Schema,
+  }).strict(),
   entry_name: StoryKnowledgeNonEmptyTextSchema,
   generation_shadow: StoryKnowledgeGenerationShadowV1Schema,
   prompt_shadow_comparison: StoryKnowledgePromptShadowComparisonV1Schema,

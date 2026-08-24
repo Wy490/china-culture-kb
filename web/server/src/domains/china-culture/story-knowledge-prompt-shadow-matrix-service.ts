@@ -12,7 +12,7 @@ import { buildStoryKnowledgeGenerationShadow } from './story-knowledge-generatio
 import { hashStoryKnowledgeShadowArtifact } from './story-knowledge-prompt-shadow-service.js';
 
 const REVIEWED_AT = '2026-08-24T09:00:00+08:00';
-const MATRIX_REQUEST: StoryGenerateRequest = {
+export const STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST: StoryGenerateRequest = {
   video_type: 'ai_comic_drama',
   presentation_style: 'ai_comic',
   creation_use_case: 'original_ai_comic',
@@ -21,7 +21,7 @@ const MATRIX_REQUEST: StoryGenerateRequest = {
   original_user_query: '以岳阳楼的建筑变迁与忧乐精神为依据，创作一则守护文化记忆的故事。',
 };
 
-type MatrixCaseId =
+export type MatrixCaseId =
   | 'approved_multi_source'
   | 'approved_machine_only'
   | 'approved_mixed_certainty'
@@ -82,33 +82,17 @@ export interface StoryKnowledgePromptShadowMatrixReportV1 {
   };
 }
 
-export async function buildStoryKnowledgePromptShadowMatrixReport(): Promise<StoryKnowledgePromptShadowMatrixReportV1> {
-  const baselinePreparation = await prepareChinaCultureStoryGeneration(MATRIX_REQUEST);
-  if (!baselinePreparation.ok) throw new Error(baselinePreparation.message);
-  const baselineExecution = await executeChinaCultureStoryGeneration({
-    request: MATRIX_REQUEST,
-    preparation: baselinePreparation,
-  });
-  if (!baselineExecution.ok) throw new Error(baselineExecution.message);
-  const baselinePromptSha256 = hashStoryKnowledgeShadowArtifact(
-    baselineExecution.promptPackage,
-  );
-  const baselineStorySha256 = hashStoryKnowledgeShadowArtifact(
-    baselineExecution.storyResult,
-  );
-  const contract = adaptLegacyChinaCultureEntryToStoryKnowledgeContract(
-    baselinePreparation.entry,
-  ).contract;
-  if (contract.sources.length < 2 || contract.claims.length === 0) {
-    throw new Error('Prompt shadow matrix fixture requires at least two sources and one claim');
-  }
+export interface StoryKnowledgePromptShadowMatrixFixtureDefinition {
+  case_id: MatrixCaseId;
+  expected_status: StoryKnowledgePromptShadowComparisonV1['status'];
+  overlay: unknown;
+  entry_credibility_override?: string;
+}
 
-  const definitions: Array<{
-    case_id: MatrixCaseId;
-    expected_status: StoryKnowledgePromptShadowComparisonV1['status'];
-    overlay: unknown;
-    entry_credibility_override?: string;
-  }> = [
+export function buildStoryKnowledgePromptShadowMatrixFixtureDefinitions(
+  contract: StoryKnowledgeContractV1,
+): StoryKnowledgePromptShadowMatrixFixtureDefinition[] {
+  return [
     {
       case_id: 'approved_multi_source',
       expected_status: 'candidate_ready',
@@ -154,16 +138,45 @@ export async function buildStoryKnowledgePromptShadowMatrixReport(): Promise<Sto
       },
     },
   ];
+}
+
+export async function buildStoryKnowledgePromptShadowMatrixReport(): Promise<StoryKnowledgePromptShadowMatrixReportV1> {
+  const baselinePreparation = await prepareChinaCultureStoryGeneration(
+    STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST,
+  );
+  if (!baselinePreparation.ok) throw new Error(baselinePreparation.message);
+  const baselineExecution = await executeChinaCultureStoryGeneration({
+    request: STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST,
+    preparation: baselinePreparation,
+  });
+  if (!baselineExecution.ok) throw new Error(baselineExecution.message);
+  const baselinePromptSha256 = hashStoryKnowledgeShadowArtifact(
+    baselineExecution.promptPackage,
+  );
+  const baselineStorySha256 = hashStoryKnowledgeShadowArtifact(
+    baselineExecution.storyResult,
+  );
+  const contract = adaptLegacyChinaCultureEntryToStoryKnowledgeContract(
+    baselinePreparation.entry,
+  ).contract;
+  if (contract.sources.length < 2 || contract.claims.length === 0) {
+    throw new Error('Prompt shadow matrix fixture requires at least two sources and one claim');
+  }
+
+  const definitions = buildStoryKnowledgePromptShadowMatrixFixtureDefinitions(contract);
 
   const cases: StoryKnowledgePromptShadowMatrixReportV1['cases'] = [];
   for (const definition of definitions) {
-    const preparation = await prepareChinaCultureStoryGeneration(MATRIX_REQUEST, {
-      storyKnowledge: {
-        enabled: true,
-        generationShadow: true,
-        evidenceOverlay: definition.overlay,
+    const preparation = await prepareChinaCultureStoryGeneration(
+      STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST,
+      {
+        storyKnowledge: {
+          enabled: true,
+          generationShadow: true,
+          evidenceOverlay: definition.overlay,
+        },
       },
-    });
+    );
     if (!preparation.ok) throw new Error(preparation.message);
     if (!preparation.storyKnowledgePreparation || !preparation.storyKnowledgeGenerationShadow) {
       throw new Error(`Missing story knowledge shadow for ${definition.case_id}`);
@@ -180,7 +193,7 @@ export async function buildStoryKnowledgePromptShadowMatrixReport(): Promise<Sto
       storyKnowledgeGenerationShadow: generationShadow,
     };
     const execution = await executeChinaCultureStoryGeneration({
-      request: MATRIX_REQUEST,
+      request: STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST,
       preparation: preparedForExecution,
     });
     if (!execution.ok) throw new Error(execution.message);
@@ -245,7 +258,9 @@ export async function buildStoryKnowledgePromptShadowMatrixReport(): Promise<Sto
   return {
     schema_version: 'story-knowledge-prompt-shadow-matrix/v1',
     status: Object.values(gateChecks).every(Boolean) ? 'passed' : 'needs_action',
-    request_sha256: hashStoryKnowledgeShadowArtifact(MATRIX_REQUEST),
+    request_sha256: hashStoryKnowledgeShadowArtifact(
+      STORY_KNOWLEDGE_PROMPT_SHADOW_MATRIX_REQUEST,
+    ),
     summary,
     gate_checks: gateChecks,
     cases,

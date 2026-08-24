@@ -1,6 +1,7 @@
 import { ErrorCodes } from '@shared/types.js';
 import {
   StoryKnowledgeMigrationDecisionV1Schema,
+  StoryKnowledgePromptShadowCanaryRequestV1Schema,
   StoryKnowledgePromptShadowCanaryV1Schema,
 } from '@shared/schemas.js';
 import type {
@@ -84,14 +85,37 @@ export async function runStoryKnowledgePromptShadowCanary(
     };
   }
 
+  const artifactBinding = {
+    generation_shadow_sha256: hashStoryKnowledgeShadowArtifact(
+      preparation.storyKnowledgeGenerationShadow,
+    ),
+    prompt_shadow_comparison_sha256: hashStoryKnowledgeShadowArtifact(
+      promptShadow.comparison,
+    ),
+  };
   const migrationDecision = buildStoryKnowledgeMigrationDecision({
     generationShadow: preparation.storyKnowledgeGenerationShadow,
     promptShadow: promptShadow.comparison,
+    binding: artifactBinding,
   });
   const data = StoryKnowledgePromptShadowCanaryV1Schema.parse({
     schema_version: 'story-knowledge-prompt-shadow-canary/v1',
     canary_status: 'evaluated',
     request_sha256: hashStoryKnowledgeShadowArtifact(request),
+    binding: {
+      generation_request_sha256: hashStoryKnowledgeShadowArtifact(
+        request.generation_request,
+      ),
+      ...(request.evidence_overlay !== undefined
+        ? {
+          evidence_overlay_sha256: hashStoryKnowledgeShadowArtifact(
+            request.evidence_overlay,
+          ),
+        }
+        : {}),
+      ...artifactBinding,
+      migration_decision_sha256: hashStoryKnowledgeShadowArtifact(migrationDecision),
+    },
     entry_name: preparation.primaryEntryName,
     generation_shadow: preparation.storyKnowledgeGenerationShadow,
     prompt_shadow_comparison: promptShadow.comparison,
@@ -117,9 +141,73 @@ export async function runStoryKnowledgePromptShadowCanary(
   return { ok: true, data };
 }
 
+export function verifyStoryKnowledgePromptShadowCanaryReceipt(input: {
+  request: unknown;
+  receipt: unknown;
+}): { valid: boolean; issues: string[] } {
+  const requestResult = StoryKnowledgePromptShadowCanaryRequestV1Schema.safeParse(
+    input.request,
+  );
+  const receiptResult = StoryKnowledgePromptShadowCanaryV1Schema.safeParse(
+    input.receipt,
+  );
+  const issues = uniqueText([
+    ...(!requestResult.success ? ['request_contract_invalid'] : []),
+    ...(!receiptResult.success ? ['receipt_contract_invalid'] : []),
+  ]);
+  if (!requestResult.success || !receiptResult.success) {
+    return { valid: false, issues };
+  }
+
+  const request = requestResult.data;
+  const receipt = receiptResult.data;
+  const generationShadowSha256 = hashStoryKnowledgeShadowArtifact(
+    receipt.generation_shadow,
+  );
+  const promptShadowComparisonSha256 = hashStoryKnowledgeShadowArtifact(
+    receipt.prompt_shadow_comparison,
+  );
+  const expectedEvidenceOverlaySha256 = request.evidence_overlay !== undefined
+    ? hashStoryKnowledgeShadowArtifact(request.evidence_overlay)
+    : undefined;
+  issues.push(...uniqueText([
+    ...(receipt.request_sha256 !== hashStoryKnowledgeShadowArtifact(request)
+      ? ['request_sha256_mismatch']
+      : []),
+    ...(receipt.binding.generation_request_sha256
+      !== hashStoryKnowledgeShadowArtifact(request.generation_request)
+      ? ['generation_request_sha256_mismatch']
+      : []),
+    ...(receipt.binding.evidence_overlay_sha256 !== expectedEvidenceOverlaySha256
+      ? ['evidence_overlay_sha256_mismatch']
+      : []),
+    ...(receipt.binding.generation_shadow_sha256 !== generationShadowSha256
+      ? ['generation_shadow_sha256_mismatch']
+      : []),
+    ...(receipt.binding.prompt_shadow_comparison_sha256
+      !== promptShadowComparisonSha256
+      ? ['prompt_shadow_comparison_sha256_mismatch']
+      : []),
+    ...(receipt.binding.migration_decision_sha256
+      !== hashStoryKnowledgeShadowArtifact(receipt.migration_decision)
+      ? ['migration_decision_sha256_mismatch']
+      : []),
+    ...(receipt.migration_decision.binding.generation_shadow_sha256
+      !== generationShadowSha256
+      ? ['migration_decision_generation_shadow_binding_mismatch']
+      : []),
+    ...(receipt.migration_decision.binding.prompt_shadow_comparison_sha256
+      !== promptShadowComparisonSha256
+      ? ['migration_decision_prompt_shadow_binding_mismatch']
+      : []),
+  ]));
+  return { valid: issues.length === 0, issues };
+}
+
 function buildStoryKnowledgeMigrationDecision(input: {
   generationShadow: StoryKnowledgePromptShadowCanaryV1['generation_shadow'];
   promptShadow: StoryKnowledgePromptShadowCanaryV1['prompt_shadow_comparison'];
+  binding: StoryKnowledgeMigrationDecisionV1['binding'];
 }): StoryKnowledgeMigrationDecisionV1 {
   const candidateReady = input.promptShadow.status === 'candidate_ready';
   const blockers = uniqueText([
@@ -131,6 +219,7 @@ function buildStoryKnowledgeMigrationDecision(input: {
   ]);
   return StoryKnowledgeMigrationDecisionV1Schema.parse({
     schema_version: 'story-knowledge-migration-decision/v1',
+    binding: input.binding,
     decision: candidateReady ? 'eligible_for_operator_review' : 'remain_shadow',
     formal_consumption_blockers: blockers,
     summary: {

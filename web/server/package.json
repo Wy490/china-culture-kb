@@ -41,6 +41,7 @@
     "audit:story-rag-retrieval": "tsx scripts/story-rag-retrieval-evaluation-audit.mts",
     "audit:story-knowledge-generation-shadow": "tsx scripts/story-knowledge-generation-shadow-audit.mts",
     "audit:story-knowledge-prompt-shadow-matrix": "tsx scripts/story-knowledge-prompt-shadow-matrix.mts",
+    "audit:story-knowledge-prompt-shadow-canary-decision": "tsx scripts/story-knowledge-prompt-shadow-canary-decision-audit.mts",
     "audit:story-knowledge-overlay-fixtures": "tsx scripts/story-knowledge-overlay-fixture-audit.mts",
     "audit:writing-capability-routing": "tsx scripts/writing-capability-routing-audit.mts",
     "audit:writing-capability-shadow-plan": "tsx scripts/writing-capability-shadow-plan-audit.mts",

@@ -10544,6 +10544,10 @@ export interface StoryKnowledgePromptShadowComparisonV1 {
 
 export interface StoryKnowledgeMigrationDecisionV1 {
   schema_version: 'story-knowledge-migration-decision/v1';
+  binding: {
+    generation_shadow_sha256: string;
+    prompt_shadow_comparison_sha256: string;
+  };
   decision: 'eligible_for_operator_review' | 'remain_shadow';
   formal_consumption_blockers: string[];
   summary: {
@@ -10574,6 +10578,13 @@ export interface StoryKnowledgePromptShadowCanaryV1 {
   schema_version: 'story-knowledge-prompt-shadow-canary/v1';
   canary_status: 'evaluated';
   request_sha256: string;
+  binding: {
+    generation_request_sha256: string;
+    evidence_overlay_sha256?: string;
+    generation_shadow_sha256: string;
+    prompt_shadow_comparison_sha256: string;
+    migration_decision_sha256: string;
+  };
   entry_name: string;
   generation_shadow: StoryKnowledgeGenerationShadowV1;
   prompt_shadow_comparison: StoryKnowledgePromptShadowComparisonV1;

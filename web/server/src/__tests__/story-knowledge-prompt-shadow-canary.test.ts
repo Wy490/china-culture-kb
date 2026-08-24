@@ -12,6 +12,9 @@ import { systemRouter } from '../routes/system.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { prepareChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-preparation-service.js';
 import { adaptLegacyChinaCultureEntryToStoryKnowledgeContract } from '../domains/china-culture/story-knowledge-contract-service.js';
+import {
+  verifyStoryKnowledgePromptShadowCanaryReceipt,
+} from '../domains/china-culture/story-knowledge-prompt-shadow-canary-service.js';
 
 process.env.KB_ROOT ??= resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
 const ORIGINAL_ACCESS_MODE = process.env.STORY_AGENT_ACCESS_MODE;
@@ -232,6 +235,36 @@ describe('story knowledge prompt shadow canary API', () => {
     });
     expect(response.body.data.migration_decision.formal_consumption_blockers)
       .toContain('prompt_shadow_candidate_not_ready');
+  });
+
+  it('fails receipt verification when a bound shadow artifact is tampered', async () => {
+    const request = {
+      schema_version: 'story-knowledge-prompt-shadow-canary-request/v1' as const,
+      operator_intent: 'read_only_shadow_canary' as const,
+      generation_request: GENERATION_REQUEST,
+      evidence_overlay: await approvedFixtureOverlay(),
+    };
+    const response = await supertest(app())
+      .post('/api/system/story-knowledge-prompt-shadow-canary')
+      .send(request);
+    expect(response.status).toBe(200);
+    expect(verifyStoryKnowledgePromptShadowCanaryReceipt({
+      request,
+      receipt: response.body.data,
+    })).toEqual({ valid: true, issues: [] });
+
+    const tampered = structuredClone(response.body.data);
+    tampered.prompt_shadow_comparison.changed_prompt_package_paths.push('forged.path');
+    expect(verifyStoryKnowledgePromptShadowCanaryReceipt({
+      request,
+      receipt: tampered,
+    })).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([
+        'prompt_shadow_comparison_sha256_mismatch',
+        'migration_decision_prompt_shadow_binding_mismatch',
+      ]),
+    });
   });
 
   it('keeps the route behind the system operation gate and the service free of execution writes', async () => {

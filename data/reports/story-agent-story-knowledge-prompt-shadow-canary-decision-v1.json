@@ -1,0 +1,192 @@
+{
+  "schema_version": "story-knowledge-prompt-shadow-canary-decision-audit/v1",
+  "status": "passed",
+  "generation_request_sha256": "c1db89fb1ea5450f2e5acc259e25058643b8ad5333e79da54eaa3d9c647e35b3",
+  "summary": {
+    "case_count": 7,
+    "eligible_for_operator_review_count": 1,
+    "remain_shadow_count": 6,
+    "candidate_ready_count": 1,
+    "blocked_count": 1,
+    "safe_no_candidate_count": 5,
+    "valid_binding_count": 7,
+    "formal_consumption_allowed_count": 0,
+    "adapter_invoked_count": 0,
+    "persistence_performed_count": 0
+  },
+  "gate_checks": {
+    "expected_case_count": true,
+    "only_approved_authoritative_multi_source_is_operator_review_eligible": true,
+    "every_receipt_binding_is_valid": true,
+    "every_case_keeps_formal_consumption_closed": true,
+    "no_adapter_or_persistence_performed": true
+  },
+  "cases": [
+    {
+      "case_id": "base_contract_only",
+      "request_sha256": "84a922e4fac1b34c688f790d00101ba112acda16d0e6771a4b2158c1b6bd0c29",
+      "generation_shadow_sha256": "b3c93bcd216b41c172335be79cdc019715a29cadd21930e40913eded713aa945",
+      "prompt_shadow_comparison_sha256": "ab6934a9a1f88460e7020edb89d099dff318509b0b8962e05404fd72f4cf9fcc",
+      "migration_decision_sha256": "528649fc7218bcb80d9554635ea0870310abc0a6428892481a0639e8dc1f71e6",
+      "receipt_sha256": "1dfff576c4816236abdd3fb2a40529ee5d8ba282c70adf2025c9d984ab997a25",
+      "prompt_shadow_status": "safe_no_candidate",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "approved_multi_source",
+      "request_sha256": "facfd6688d31ab8ccb0aec05f365fa7f659f1d3de78686cc70cb2bd936f2e817",
+      "evidence_overlay_sha256": "47ac433e73a236fab6f603a95795a691dc437a4577fa55c9c1b72a7d441ca10e",
+      "generation_shadow_sha256": "901908439695c6f2aaf62027a2dc63a715b9c602fc212ade246bc97c60816ab1",
+      "prompt_shadow_comparison_sha256": "1c1b1d869df4f8e815ba421a0329623e06906aec19b7e1557b12ff3e299a19d9",
+      "migration_decision_sha256": "740d2c11e4d4c0be5f72a06d160f397d8552902993ed0409f85b86ded77c688c",
+      "receipt_sha256": "f9429c220c858705b322f6e43686bff5b56a9e0d35c3442e12562c8ff9c668c4",
+      "prompt_shadow_status": "candidate_ready",
+      "decision": "eligible_for_operator_review",
+      "formal_consumption_blockers": [
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "approved_machine_only",
+      "request_sha256": "2b904de16e1b7cec62adaa70937a5d0d886816d995357ad5e5e5106b819bf8d1",
+      "evidence_overlay_sha256": "3099df4d853ac967d654a7c9579afcea62b0a44651e0d8980707d0c121d6636f",
+      "generation_shadow_sha256": "b017806895d4a9db050f32fffc1e349ceddb0499c992956a5fb4eb847b36bf7d",
+      "prompt_shadow_comparison_sha256": "15e068920ed88cc008850e5e5f28a56ac201316a1ece02347fe1d53e49890abc",
+      "migration_decision_sha256": "abcf7d0f2601a95e0b2c3881132b34da0c33de1d1bef8bd5705ade9227dd5b86",
+      "receipt_sha256": "25c39076f0328454e6131b2e9b342e752359c761521bf4a1b64f390b84dc28a2",
+      "prompt_shadow_status": "blocked",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "prompt_shadow:machine_only_source_promoted_to_fact",
+        "prompt_shadow:non_authoritative_source_promoted_to_fact",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "approved_mixed_certainty",
+      "request_sha256": "eca0a28c0380d291cc925c5caf8fec09914a6ee6968a25a075667116f0b1601c",
+      "evidence_overlay_sha256": "1e257d623703172d889129bcfce4edc0055c6d1b17f663d479aad58ce7bbcffc",
+      "generation_shadow_sha256": "ef1ac8974c6f76cfd7c49542b8cdd6529fe220133d16bbc959993900bb8a379e",
+      "prompt_shadow_comparison_sha256": "dd50a5b1c321e36e217231e340a06e0eb96522bd046386050809b203768fe991",
+      "migration_decision_sha256": "a654439464f91643b67a70b6f66f31e41e141a8228d880dae2347b9e4a51cf9a",
+      "receipt_sha256": "a02918ce66de04c3ca78ee4fbea78888a943625a3f232397c486fd93a7002ccd",
+      "prompt_shadow_status": "safe_no_candidate",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "pending_machine_context",
+      "request_sha256": "884aa262fd76234004c0e22300bc0435d5dae440b568e5e38f372d86efa1ef9b",
+      "evidence_overlay_sha256": "a3ea3c31e4d706eaf818bded9c4947975738d64f563c1d93436917e0a1f2db61",
+      "generation_shadow_sha256": "5bda0e5134a5808bc505917b3ec08d4e32071102a5f7e37e7d6deb10da6ff0dd",
+      "prompt_shadow_comparison_sha256": "2ed2c5d2904b690390b3c7406106f955098a458a6f011a14e514f4db8d575cea",
+      "migration_decision_sha256": "ae28163fbdb47623ca492d244c4bff29dd5903f1e48e60d14f2d0026aa3ed818",
+      "receipt_sha256": "e8f7bb888aff77b621a7abd768cab28fe1a3ece1113e0c6c06d7723988ee0eeb",
+      "prompt_shadow_status": "safe_no_candidate",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "rejected_overlay",
+      "request_sha256": "53cbcdebd85b4114c30975bfb7348ed480b8624f3a4f79422d80abb7a6cd34fc",
+      "evidence_overlay_sha256": "17fef21d140b5e6bb7ddee8d2c4ca3c1814b94548ef752ee4e6b9e64c422ba8d",
+      "generation_shadow_sha256": "a4f328008daf4d3e7ce3d322b3cdb55c9a8a43323e19b315f4ca07ec771faf61",
+      "prompt_shadow_comparison_sha256": "2bd0b279ca4d937badb0c416683d268166d8839898f9bd01b191ab40c2c7e09f",
+      "migration_decision_sha256": "5c919459e4658eaf87dc2de5b356dddb33d43ff675e6e082c3499562a7cc3df4",
+      "receipt_sha256": "3b8e08761f9813faa5ef199ab3c0054d8b54046c1307f4d0398fb671d80b888f",
+      "prompt_shadow_status": "safe_no_candidate",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    },
+    {
+      "case_id": "incompatible_revoked_overlay",
+      "request_sha256": "863369e51c9107dd0c616294d847f3d0a75b30c8f6a3333b334efa3a33f20bdf",
+      "evidence_overlay_sha256": "bc7f682fb0460d5c8ccf1bec36d3c573ed6747de90515ee860967acaf9d7e71f",
+      "generation_shadow_sha256": "ef1ac8974c6f76cfd7c49542b8cdd6529fe220133d16bbc959993900bb8a379e",
+      "prompt_shadow_comparison_sha256": "dd50a5b1c321e36e217231e340a06e0eb96522bd046386050809b203768fe991",
+      "migration_decision_sha256": "a654439464f91643b67a70b6f66f31e41e141a8228d880dae2347b9e4a51cf9a",
+      "receipt_sha256": "1704fd4a34240c824098873235c043845d8e6ab5bbd2c9013b250a8fa294922a",
+      "prompt_shadow_status": "safe_no_candidate",
+      "decision": "remain_shadow",
+      "formal_consumption_blockers": [
+        "prompt_shadow_candidate_not_ready",
+        "real_human_review_attestation_unavailable",
+        "independent_migration_approval_unavailable",
+        "production_canary_not_executed"
+      ],
+      "binding_valid": true,
+      "binding_issues": [],
+      "formal_consumption_allowed": false,
+      "adapter_invoked": false,
+      "persistence_performed": false
+    }
+  ],
+  "boundary": {
+    "synthetic_fixture_audit": true,
+    "read_only_canary_only": true,
+    "prompt_text_returned": false,
+    "story_result_returned": false,
+    "source_markdown_written": false,
+    "external_model_called": false,
+    "human_review_complete": false,
+    "real_human_review_credit_granted": false,
+    "production_canary_executed": false,
+    "production_credit_granted": false
+  }
+}
