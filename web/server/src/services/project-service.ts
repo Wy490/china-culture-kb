@@ -2159,6 +2159,28 @@ export async function listProjects(sourceDomain?: string): Promise<ApiResponse<S
   return success(projects);
 }
 
+/**
+ * Enumerate the same readable project targets as listProjects without hydrating
+ * list-only fields from version snapshots. Portfolio readiness immediately reads
+ * each full project detail, so doing that hydration here would duplicate I/O.
+ */
+export async function listProjectProductionReadinessTargetIds(): Promise<ApiResponse<string[]>> {
+  await ensureProjectsFromStories();
+
+  let projectIds: string[];
+  try {
+    projectIds = await projectRepository().listProjectIds();
+  } catch {
+    return success([]);
+  }
+
+  const readableProjectIds: string[] = [];
+  for (const projectId of projectIds) {
+    if (await readProjectMeta(projectId)) readableProjectIds.push(projectId);
+  }
+  return success(readableProjectIds);
+}
+
 async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {
   await ensureProjectsFromStories();
   let projectIds: string[];

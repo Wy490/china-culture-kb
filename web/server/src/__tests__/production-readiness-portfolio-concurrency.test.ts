@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  listProjects: vi.fn(),
+  listProjectProductionReadinessTargetIds: vi.fn(),
   getProjectProductionReadiness: vi.fn(),
-  listAiComicSeriesProjects: vi.fn(),
+  listAiComicSeriesProductionReadinessTargetIds: vi.fn(),
   getAiComicSeriesProductionReadiness: vi.fn(),
 }));
 
@@ -12,14 +12,16 @@ vi.mock('../services/project-service.js', () => ({
   getProject: vi.fn(),
   getProjectProductionReadiness: mocks.getProjectProductionReadiness,
   importProjectGearsExternalCallbacks: vi.fn(),
-  listProjects: mocks.listProjects,
+  listProjectProductionReadinessTargetIds: mocks.listProjectProductionReadinessTargetIds,
+  listProjects: vi.fn(),
   preflightProjectGearsExternalCallbacks: vi.fn(),
   runProjectProductionReadinessAutomation: vi.fn(),
 }));
 
 vi.mock('../services/ai-comic-series-service.js', () => ({
   getAiComicSeriesProductionReadiness: mocks.getAiComicSeriesProductionReadiness,
-  listAiComicSeriesProjects: mocks.listAiComicSeriesProjects,
+  listAiComicSeriesProductionReadinessTargetIds: mocks.listAiComicSeriesProductionReadinessTargetIds,
+  listAiComicSeriesProjects: vi.fn(),
   runAiComicSeriesProductionReadinessAutomation: vi.fn(),
 }));
 
@@ -62,16 +64,17 @@ function readiness(projectId: string): any {
 describe('production readiness portfolio concurrency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.listAiComicSeriesProjects.mockResolvedValue({ ok: true, data: [] });
+    mocks.listAiComicSeriesProductionReadinessTargetIds.mockResolvedValue({ ok: true, data: [] });
   });
 
   it('scans every target with bounded concurrency while preserving the item limit', async () => {
-    const projects = Array.from({ length: 20 }, (_, index) => ({
-      project_id: `project-${String(index + 1).padStart(2, '0')}`,
-    }));
+    const projects = Array.from(
+      { length: 20 },
+      (_, index) => `project-${String(index + 1).padStart(2, '0')}`,
+    );
     let active = 0;
     let maxActive = 0;
-    mocks.listProjects.mockResolvedValue({ ok: true, data: projects });
+    mocks.listProjectProductionReadinessTargetIds.mockResolvedValue({ ok: true, data: projects });
     mocks.getProjectProductionReadiness.mockImplementation(async (projectId: string) => {
       active += 1;
       maxActive = Math.max(maxActive, active);

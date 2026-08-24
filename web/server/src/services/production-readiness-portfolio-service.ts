@@ -27,6 +27,7 @@ import {
   getProject,
   getProjectProductionReadiness,
   importProjectGearsExternalCallbacks,
+  listProjectProductionReadinessTargetIds,
   listProjects,
   preflightProjectGearsExternalCallbacks,
   runProjectProductionReadinessAutomation,
@@ -39,6 +40,7 @@ import {
 } from './gears-execution-service.js';
 import {
   getAiComicSeriesProductionReadiness,
+  listAiComicSeriesProductionReadinessTargetIds,
   listAiComicSeriesProjects,
   runAiComicSeriesProductionReadinessAutomation,
 } from './ai-comic-series-service.js';
@@ -506,19 +508,21 @@ export async function getProductionReadinessPortfolio(
   const reports: ReadinessReport[] = [];
   const errors: ProductionReadinessPortfolioReport['errors'] = [];
 
-  const [storyListRes, seriesListRes] = await Promise.all([
-    listProjects(),
-    listAiComicSeriesProjects({ includeArchived: options.includeArchivedSeries }),
+  const [storyTargetRes, seriesTargetRes] = await Promise.all([
+    listProjectProductionReadinessTargetIds(),
+    listAiComicSeriesProductionReadinessTargetIds({
+      includeArchived: options.includeArchivedSeries,
+    }),
   ]);
 
   const targets: PortfolioReadinessTarget[] = [
-    ...(storyListRes.data ?? []).map(project => ({
+    ...(storyTargetRes.data ?? []).map(projectId => ({
       scope: 'story_project' as const,
-      project_id: project.project_id,
+      project_id: projectId,
     })),
-    ...(seriesListRes.data ?? []).map(project => ({
+    ...(seriesTargetRes.data ?? []).map(seriesProjectId => ({
       scope: 'ai_comic_series' as const,
-      project_id: project.series_project_id,
+      project_id: seriesProjectId,
     })),
   ];
   const scanResults = await mapWithConcurrency(

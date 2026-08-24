@@ -46,6 +46,7 @@ import {
   importProjectSeedanceProviderCallback,
   importProjectSeedanceShotCallbacks,
   listProjectSeedanceGlobalAssetLibrary,
+  listProjectProductionReadinessTargetIds,
   listProjects,
   listProjectSupplementTasks,
   pollProjectSeedanceProviderQueue,
@@ -571,6 +572,7 @@ describe('project-service', () => {
     const enriched = await createProjectFromGeneratedStory(story, '2026-06-09T10:01:00.000Z');
     const detail = await getProject(enriched.project_id!);
     const list = await listProjects();
+    const readinessTargets = await listProjectProductionReadinessTargetIds();
     const customDomainList = await listProjects('second_domain');
     const chinaCultureList = await listProjects('china_culture');
 
@@ -581,6 +583,7 @@ describe('project-service', () => {
       .toBe('second_domain');
     expect(customDomainList.data?.map(project => project.project_id)).toEqual([enriched.project_id]);
     expect(chinaCultureList.data).toEqual([]);
+    expect(readinessTargets.data).toEqual([enriched.project_id]);
   });
 
   it('hydrates creation fields for legacy project metadata at read time', async () => {

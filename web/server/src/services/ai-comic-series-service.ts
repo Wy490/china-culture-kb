@@ -4898,6 +4898,27 @@ export async function listAiComicSeriesProjects(
   return success(projects);
 }
 
+/**
+ * Enumerate the same readable, archive-filtered series targets as the rich list
+ * endpoint without building list-only episode issue metadata. Readiness rebuilds
+ * those diagnostics from its own normalized project snapshot.
+ */
+export async function listAiComicSeriesProductionReadinessTargetIds(
+  options: { includeArchived?: boolean } = {},
+): Promise<ApiResponse<string[]>> {
+  const projectIds = await seriesProjectRepository().listProjectIds();
+  if (!projectIds.length) return success([]);
+
+  const readableProjectIds: string[] = [];
+  for (const projectId of projectIds) {
+    const detail = await seriesProjectRepository().read(projectId);
+    if (detail && (options.includeArchived || !detail.project.archived_at)) {
+      readableProjectIds.push(projectId);
+    }
+  }
+  return success(readableProjectIds);
+}
+
 async function buildAiComicSeriesProjectListMeta(
   detail: AiComicSeriesProjectDetail,
 ): Promise<AiComicSeriesProjectMeta> {
@@ -6587,8 +6608,11 @@ export async function updateAiComicSeriesSeedanceAudioLibrary(
 
 export async function exportAiComicSeriesSeedanceCutPackage(
   seriesProjectId: string,
+  options: { projectSnapshot?: AiComicSeriesProjectDetail } = {},
 ): Promise<ApiResponse<AiComicSeriesSeedanceCutPackage>> {
-  const detail = await readSeriesProject(seriesProjectId);
+  const detail = options.projectSnapshot?.project.series_project_id === seriesProjectId
+    ? options.projectSnapshot
+    : await readSeriesProject(seriesProjectId);
   if (!detail) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
   }
@@ -10819,13 +10843,18 @@ export async function exportAiComicSeriesSeedanceEditingPlatformPackage(
 
 export async function getAiComicSeriesSeedanceProductionDashboard(
   seriesProjectId: string,
+  options: { projectSnapshot?: AiComicSeriesProjectDetail } = {},
 ): Promise<ApiResponse<AiComicSeriesSeedanceDashboard>> {
-  const detail = await readSeriesProject(seriesProjectId);
+  const detail = options.projectSnapshot?.project.series_project_id === seriesProjectId
+    ? options.projectSnapshot
+    : await readSeriesProject(seriesProjectId);
   if (!detail) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
   }
 
-  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId);
+  const cutPackageRes = await exportAiComicSeriesSeedanceCutPackage(seriesProjectId, {
+    projectSnapshot: detail,
+  });
   if (!cutPackageRes.ok || !cutPackageRes.data) {
     return fail(
       normalizeErrorCode(cutPackageRes.error?.code),
@@ -10848,7 +10877,9 @@ export async function getAiComicSeriesProductionReadiness(
     return fail(ErrorCodes.STORY_NOT_FOUND, `AI comic series project "${seriesProjectId}" not found`);
   }
 
-  const dashboardRes = await getAiComicSeriesSeedanceProductionDashboard(seriesProjectId);
+  const dashboardRes = await getAiComicSeriesSeedanceProductionDashboard(seriesProjectId, {
+    projectSnapshot: detail,
+  });
   if (!dashboardRes.ok || !dashboardRes.data) {
     return fail(
       normalizeErrorCode(dashboardRes.error?.code),

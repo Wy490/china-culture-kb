@@ -19,9 +19,11 @@ const SOURCE_PATHS = [
   'web/shared/types.ts',
   'web/server/package.json',
   'web/server/src/services/generated-health-service.ts',
+  'web/server/src/services/ai-comic-series-service.ts',
   'web/server/src/services/project-read-only-request-projection-service.ts',
   'web/server/src/services/project-service.ts',
   'web/server/src/services/project-external-evidence-sync-health-portfolio-service.ts',
+  'web/server/src/services/production-readiness-portfolio-service.ts',
   'web/server/src/services/story-agent-mvp-status-service.ts',
   'web/server/scripts/story-agent-mvp-read-only-projection-diagnostic.mts',
 ] as const;

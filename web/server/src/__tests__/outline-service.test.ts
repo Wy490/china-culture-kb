@@ -7,6 +7,7 @@ import { GEARS_CALLBACK_BATCH_ITEM_LIMIT } from '@shared/types.js';
 import { analyzeOutline, multiMatchEntries } from '../services/outline-service.js';
 import { getStory } from '../services/story-service.js';
 import { getProject } from '../services/project-service.js';
+import { FileSeriesProjectRepository } from '../repositories/series-project-repository.js';
 import { SHADOW_PUPPETRY_KEEPER_SERIES_FIXTURE } from './fixtures/shadow-puppetry-keeper-series-fixture.js';
 import {
   addAiComicSeriesSeedanceReview,
@@ -41,6 +42,7 @@ import {
   getAiComicSeriesProductionReadiness,
   getAiComicSeriesProject,
   getAiComicSeriesSeedanceProductionDashboard,
+  listAiComicSeriesProductionReadinessTargetIds,
   listAiComicSeriesProjects,
   mixAiComicSeriesSeedanceAudio,
   previewAiComicEpisodeContext,
@@ -1644,11 +1646,15 @@ describe('outline-service', () => {
     });
     expect(submitRes.ok).toBe(true);
 
+    const seriesReadSpy = vi.spyOn(FileSeriesProjectRepository.prototype, 'read');
     const readiness = await getAiComicSeriesProductionReadiness(seriesProjectId);
+    const readinessProjectReadCount = seriesReadSpy.mock.calls.length;
+    seriesReadSpy.mockRestore();
     const gearsLane = readiness.data?.lanes.find(lane => lane.key === 'gears_execution');
     const visualAssetLane = readiness.data?.lanes.find(lane => lane.key === 'visual_asset_readiness');
 
     expect(readiness.ok).toBe(true);
+    expect(readinessProjectReadCount).toBe(1);
     expect(readiness.data?.schema_version).toBe('ai-comic-series-production-readiness/v1');
     expect(readiness.data?.scope).toBe('ai_comic_series');
     expect(readiness.data?.summary.generated_episode_count).toBe(1);
@@ -3605,12 +3611,16 @@ describe('outline-service', () => {
     expect(archiveRes.data?.project.archived_at).toBeTruthy();
 
     const activeListRes = await listAiComicSeriesProjects();
+    const activeReadinessTargets = await listAiComicSeriesProductionReadinessTargetIds();
     expect(activeListRes.ok).toBe(true);
     expect(activeListRes.data?.some(project => project.series_project_id === copyRes.data!.project.series_project_id)).toBe(false);
+    expect(activeReadinessTargets.data).not.toContain(copyRes.data!.project.series_project_id);
 
     const fullListRes = await listAiComicSeriesProjects({ includeArchived: true });
+    const fullReadinessTargets = await listAiComicSeriesProductionReadinessTargetIds({ includeArchived: true });
     expect(fullListRes.ok).toBe(true);
     expect(fullListRes.data?.some(project => project.series_project_id === copyRes.data!.project.series_project_id)).toBe(true);
+    expect(fullReadinessTargets.data).toContain(copyRes.data!.project.series_project_id);
 
     const restoreRes = await archiveAiComicSeriesProject(copyRes.data!.project.series_project_id, {
       archived: false,
