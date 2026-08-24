@@ -48,9 +48,10 @@
 - 第五十五切片实现提交：`5e2f0e6a`（`perf(story-agent): seed shared project projection`）
 - 第五十六切片实现提交：`39b79f6b`（`test(story-agent): snapshot mvp projection health`）
 - 第五十七切片实现提交：`d285322a`（`perf(story-agent): streamline portfolio readiness scans`）
+- 第五十八切片实现提交：`2c0c5ce9`（`diag(story-agent): profile portfolio readiness phases`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第五十七切片均已完成；第五十七切片实现提交为 `d285322a`
+- B4 与 M4 第一至第五十八切片均已完成；第五十八切片实现提交为 `2c0c5ce9`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -78,6 +79,8 @@ M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段�
 第五十六切片已固化真实大仓库只读诊断快照：2051 个普通项目全部预热成功，项目列表仓储读取 1 次/缓存命中 2 次，current-state 仓储回退 0、后续缓存命中 4102，可读 2051、失败 0；963 个系列项目仍保留在独立健康/portfolio 语义。最终单次观测总墙钟约 24.8 秒，其中 production portfolio 约 15.3 秒，是当前最大独立成本；该数字只用于定位，不是 SLA 或稳定提速声明。运行前后项目、系列、故事与省级 Markdown 内容指纹完全一致，报告自哈希、源码哈希和当前仓储指纹均可用 `--check` 严格复核。
 
 第五十七切片完成 production portfolio 内部重复读取收减：普通项目与系列项目只为 readiness 枚举轻量可读目标，不再先构建富列表；系列单项 readiness 在同一调用内只读取一次归一化项目快照，并传给 dashboard 与 cut package，替代此前三次仓储读取。历史版本读取、系列归档过滤、8 路全量扫描、top-limit、summary、排序和逐目标失败语义保持不变。最终真实只读单次观测总墙钟约 22.4 秒、portfolio 约 12.8 秒；这仍只是当前机器观测，不声明稳定加速或 SLA。报告继续固定 2051 seeded、4102 cache hit、0 current-state 仓储回退/失败，业务仓储指纹不变。
+
+第五十八切片把 production portfolio 的剩余成本拆成请求内只读诊断：目标发现、readiness 扫描、summary、Markdown 与总墙钟分别计时，并记录普通项目/系列项目的累计 worker 工作量；累计量明确可能因 8 路并发大于扫描墙钟。真实单次观测中 portfolio 总计 13.60 秒，其中目标发现 5.86 秒、readiness 扫描 7.73 秒、summary 7 毫秒；普通项目累计 worker 50.88 秒、系列 10.64 秒。下一优化方向因此收敛为目标发现的顺序 I/O 与普通项目 readiness，排序汇总不是瓶颈。所有数字仍是本地单次观测，不是 SLA 或稳定提速声明。
 
 第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。第五十二切片已提供 `system:operate + internal_story_tools` 受限 POST canary：只返回 active/shadow hash、字段 diff 和迁移决策，不返回提示词或故事，不调用 adapter、不持久化；即使安全候选达到 `eligible_for_operator_review`，正式消费仍被真实人工证明、独立审批和生产 canary 三项证据阻断。第五十三切片进一步让 receipt 分别绑定 generation request、overlay、generation shadow、prompt comparison 和 migration decision；7 路确定性审计为 1 eligible/6 remain-shadow、7/7 绑定有效、正式消费/adapter/持久化均为 0。blueprint、正式 prompt、fallback、adapter、持久化及输出继续不消费 shadow。
 
@@ -1503,6 +1506,14 @@ M4 第五十七切片完成时：
 - 真实 2051 普通项目 + 963 系列项目诊断最终观测总墙钟 22383ms，generated health 3803ms、supplement snapshot 3362ms、production portfolio 12842ms、sync-health 2321ms；报告 SHA-256 为 `f7ea6c1b2fadad756cba582bf7a371b337e7afa67dbfb2833777f408c78d7043`，业务仓储指纹继续为 `55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827`。相对上一快照的墙钟差异只作观测，不声明稳定提速。
 - 诊断源码绑定新增系列 service 与 production portfolio service，最终 `--check` 已验证报告自哈希、源码哈希、确定性投影方程和当前仓储指纹。本切片不写业务仓储或省级 Markdown，不调用外部 provider，不授予人工、专业或生产信用。下一有界切片可为 portfolio 增加普通/系列阶段的请求内耗时诊断，再判断剩余成本是否存在可证明的重复读取；不得将其强行并入只含 current-state 的 MVP 投影。
 
+M4 第五十八切片完成时：
+
+- `production-readiness-portfolio/v1` 新增 `performance` 合同，记录 `target_discovery_ms`、`readiness_scan_ms`、`summary_assembly_ms`、`markdown_render_ms`、`total_ms`、固定读取并发、普通/系列目标数及两类累计 readiness worker 工作量；Markdown 同步展示主要阶段和累计工作量。
+- 诊断不拆分、不重排原有扫描，也不改变目标发现、8 路并发、全量 summary、top limit、排序、归档或失败语义。所有字段固定 `wall_clock_observation_not_sla=true`，并注明累计 worker 时间在并发下可大于 readiness 扫描墙钟。
+- MVP 真实诊断新增普通/系列目标守恒、固定并发和阶段耗时非负门禁，并把 portfolio 诊断完整写入受源码哈希与报告自哈希保护的机器报告。真实 2051 普通项目 + 963 系列单次观测：portfolio 13597ms，其中目标发现 5859ms、readiness 扫描 7730ms、summary 7ms、Markdown 0ms；普通项目累计 readiness 50880ms、系列累计 10636ms。MVP 总墙钟 23783ms；这些数字只用于定位，不是 SLA、回归判定或稳定提速证明。
+- API/并发/诊断定向 3 项通过，Server lint/build 与 `git diff --check` 通过；沙箱外最终 Server 全量 222 文件/1821 项通过、1 文件/2 项既有跳过、0 失败。报告 SHA-256 为 `b28e21ee3475766b16c9820f3540b198c64648a972452ee7af5d46a6584d39a4`，业务仓储指纹继续为 `55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827`。实现提交为 `2c0c5ce9`。
+- 本切片只增加观测，不写业务仓储或省级 Markdown，不调用外部 provider，不授予人工、专业或生产信用。下一有界切片优先为目标发现的 3014 次顺序 metadata/raw-project 读取建立保序、有界并发合同；若实施，必须维持可读目标、归档过滤和失败行为，并以真实诊断复核，不能用 limit 或 current-state 投影跳过历史 readiness。
+
 环境限制：
 
 - `mcp-server/__tests__/run-production-readiness-automation.test.ts` 的 3 项测试需要监听 `127.0.0.1`，当前沙箱报 `listen EPERM` 并超时。
@@ -1527,6 +1538,7 @@ M4 第五十七切片完成时：
 - 第五十五切片的两条 API 定向与完整 Server/Supertest 同样在沙箱外运行，以避开已知监听 `EPERM`；新增测试只使用本地临时项目和既有机器数据，未运行真实大仓库墙钟基准，也不代表外部生产验收。
 - 第五十六切片的真实诊断 `tsx`、完整 Server/Supertest 与最终 `--check` 在沙箱外运行，以避开已知 IPC/监听 `EPERM`。首次完整门禁的单项 401 无法在单测、完整 API 文件或第二次全量中复现，记录为测试状态污染观察，不转述为产品失败；若后续再次复现，应二分前置测试文件而不是修改无鉴权的地点检索产品逻辑。
 - 第五十七切片的诊断 `--write` 首次在沙箱内命中已知 `tsx` IPC `listen EPERM`，随后沙箱外完成两次最终刷新和 `--check`；两轮最终 Server 全量均在沙箱外为 222 文件/1821 项通过、1 文件/2 项跳过。墙钟数字仅代表本地文件系统单次观测，不是生产流量或外部 provider 证据。
+- 第五十八切片的真实诊断与最终 Server 全量继续在沙箱外运行，以避开已知 `tsx` IPC/Supertest 监听限制；新增时间字段基于本地 `Date.now()` 请求观测，未调用网络、外部模型或真实 provider，不能外推为生产延迟。
 - 隔离四种子全功能 smoke 在沙箱内受 `tsx` IPC 阻断，沙箱外申请又被自动审批基础设施拒绝；最后有效证明为本轮服务层端到端组合与全量测试，不得转述为该脚本已通过。
 - 当前报告是在 `kb:production-audit` 成功运行时生成的；后续若修改审计逻辑，必须重新生成报告，不能沿用旧数字。
 
@@ -1573,7 +1585,7 @@ git diff --check
    - 建筑空间与陈设（已完成首包）；
    - 语言语体与地域表达（已完成首包）；
    - 自然环境、季节、天气和声景（已完成首包）。
-3. 跨包检索、readiness、quality、repair、片型预期包映射、生成前反事实对照与生成后 readiness 重算已完成；原始字段 B1—B4 已全部清零；15 类型 × 3 样本的稳定性、诊断聚类、幂等和创作/生产分层指标已固化，故事可发布、GEARS 与创作质量均已 45/45，pattern 弱信号已清零。场景短片、历史剧情、传说故事、人物故事、文化宣传、城市品牌、纪录短片与山水意境的可生成结构已收口。当前 12 个 production material 阻断全部只认真实外部证据；项目级、全局只读恢复健康审计及 MVP 状态 lane/next-actions 已完成。MVP generated health 保留全版本/系列/归档语义并预热经验证 current-state，补录快照与同步健康复用同一请求投影；2051 普通项目的真实只读调用不变量和仓储无写指纹已固化。production portfolio 已消除富列表目标构建及系列 readiness 内部重复读取，最终单次观测约占 12.8/22.4 秒；下一步只在保留历史/系列语义时补普通/系列阶段诊断。不得把 prompt 差异、调用消减或专业候选机器分转述为成片质量提升。
+3. 跨包检索、readiness、quality、repair、片型预期包映射、生成前反事实对照与生成后 readiness 重算已完成；原始字段 B1—B4 已全部清零；15 类型 × 3 样本的稳定性、诊断聚类、幂等和创作/生产分层指标已固化，故事可发布、GEARS 与创作质量均已 45/45，pattern 弱信号已清零。场景短片、历史剧情、传说故事、人物故事、文化宣传、城市品牌、纪录短片与山水意境的可生成结构已收口。当前 12 个 production material 阻断全部只认真实外部证据；项目级、全局只读恢复健康审计及 MVP 状态 lane/next-actions 已完成。MVP generated health 保留全版本/系列/归档语义并预热经验证 current-state，补录快照与同步健康复用同一请求投影；2051 普通项目的真实只读调用不变量和仓储无写指纹已固化。production portfolio 已消除富列表目标构建及系列 readiness 内部重复读取，并完成阶段诊断；最终单次观测 13.60 秒中 discovery 5.86 秒、readiness 7.73 秒、summary 7 毫秒。下一步只在保留历史/系列语义时优化目标发现的顺序 I/O 或普通项目 readiness。不得把 prompt 差异、调用消减或专业候选机器分转述为成片质量提升。
 4. 若新增或修订条目，必须有来源、地点、核验方法、待核点、机器元数据与 `asset_split`；不得自动授予人工通过。
 
 ### P1：M3 源素材治理
@@ -1592,11 +1604,11 @@ git diff --check
 3. 修复后继续比较事实/文化边界、类型完成度、结构、场景可拍性、实际 repair trace 和稳定性，保持同一 45 案例口径。
 4. 按当前用户指令，人工盲评不作为工程启动前置，但机器报告不得冒充真人反馈。
 
-#### 已入库的剩余开发 backlog（第五十七切片后；15×3 正式快照为 v34）
+#### 已入库的剩余开发 backlog（第五十八切片后；15×3 正式快照为 v34）
 
 1. 当前 15×3 矩阵已经没有可由生成器或派生结构继续解除的 production material 缺口；`character_story` 改编压力例的 `life_stage_window` 已由完整知识证据行严格派生。
 2. RAG 检索与证据链：19 案例机器基线已覆盖主体意图、地域歧义、同类工艺负例和离域拒绝，主体 Top-1 与可用相关覆盖均为 15/15。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow；全库 289 条当前为 0 事实候选、0 放大、0 正式消费，7 案例 overlay 矩阵为 1 candidate/2 blocked/4 safe-no，且 7/7 active prompt 与故事结果不变。受限 system canary、receipt 制品绑定、篡改验证器和 7 路迁移决策基线均已完成；7/7 绑定有效，正式消费/adapter/持久化为 0。没有真实核验、独立审批与生产 canary 证据前保持 `consumed_by_generation=false`，不再用更多合成 fixture 冒充迁移进度。继续补真人相关性标签与更难负例，只有词法基线出现可复现瓶颈时再引入 embedding/混合召回/重排。
-3. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；真实诊断进一步证明 2051/2051 current-state 由 generated health 预热、0 仓储回退、4102 后续缓存命中，运行前后业务仓储指纹不变。production portfolio 已消除富列表目标构建和系列 readiness 内部 3→1 仓储读取，最终单次观测约 12.8 秒；它仍需完整普通项目历史版本和系列语义，下一步只做普通/系列阶段耗时诊断或可证明的请求内去重，不强行并入 current-state 投影。真实外部证据仍须坚持 reviewer、hash、范围和账本链要求，不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
+3. 外部证据接入与校验：自动草拟、九类候选导入、受控 multipart 制品上传、项目制品路径/hash/范围验证、HTTPS DNS 钉扎安全抓取与项目缓存、验收/拒绝/撤销状态机、追加式 hash 审计、候选状态 CAS、项目—源故事跨存储崩溃恢复、项目级/全局只读同步健康审计及 MVP 状态 lane/next-actions 均已完成。2051 普通项目 + 963 系列规模的精确故事查找、固定并发、组件耗时诊断、supplement/writeback 单次任务快照与重型磁盘扫描错峰均已完成；真实诊断进一步证明 2051/2051 current-state 由 generated health 预热、0 仓储回退、4102 后续缓存命中，运行前后业务仓储指纹不变。production portfolio 已消除富列表目标构建和系列 readiness 内部 3→1 仓储读取，并新增阶段/范围累计工作诊断；最新单次观测 13.60 秒中 discovery 5.86 秒、readiness 7.73 秒、summary 7 毫秒，普通项目累计 readiness 50.88 秒、系列 10.64 秒。下一步优先把 3014 次顺序目标 metadata/raw-project 读取改为保序有界并发，或继续审计普通项目 readiness；不得强行并入 current-state 投影。真实外部证据仍须坚持 reviewer、hash、范围和账本链要求，不得用请求自报、生成正文、机器计划或“待确认”措辞伪造证据。
 4. 只认真实源素材：`documentary_short` 的采访选段 3 例、`culture_promo` 的权利与署名 3 例、`heritage_promo` 的官方目录/资源链接 3 例、`city_brand_promo` 的场地许可 3 例，以及其他授权、参考图和采访同意。
 5. pattern 质量优化：改编类、历史制度压力、传说古今连接及 AI 漫剧行动/关系共 11 个开放目标已全部清零；正式 45 案例当前无弱 pattern 信号。后续把 0 作为回归门禁，不为追分继续堆标签或放宽阈值。
 6. 新组合创作能力：8 类文化题材源与 16 类新增原创机制已进入外部模型 prompt、蓝图、质量/repair、持久化和本地 fallback；主/副机制分工、四类语义张力化解、容量冲突 fail-closed 和副机制独立中段兑现均已完成。正式本地矩阵 v2 覆盖 8/8 题材源、16/16 主机制、16/16 副机制、8 个混合题材案例，以及 AI 漫剧/人物故事/历史剧情/传说故事 × 30 秒/1 分钟/3 分钟的 12/12 兼容网格。外部 adapter 的完整性校验合同、双机制集成证明及独立回放矩阵 v1 均已完成；v34 的 15×3 报告仍不能作为新组合能力的外部模型评测证据。
@@ -1624,17 +1636,17 @@ git diff --check
 
 继续开发 Story Agent“创作增强与知识库 2.0”专项。
 
-B4 与 M4 第一至第五十七切片均已完成；第五十七切片实现提交为 `d285322a`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
+B4 与 M4 第一至第五十八切片均已完成；第五十八切片实现提交为 `2c0c5ce9`。先核对分支、HEAD、git status、staged 状态和 M4 机器基线，确认交接文档提交与上游状态；不要假设交接数字仍然有效，也不要重复实现已完成能力。
 
 当前优先级是把功能做全、把能力做好；人工评审、真人流程和用户注册不作为工程前置，但不得虚构人工信用。生成故事和机器派生生产指导不得写回 data/provinces/*.md。
 
-全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。受限 system canary、五段 receipt 绑定、篡改验证器与 7 路决策基线已完成：7/7 绑定有效，只返回 hash/diff/decision，不调用 adapter、不返回 prompt/故事、不持久化，正式消费仍由真实核验、独立审批和生产 canary 三项证据阻断。MVP 真实只读快照现固定 2051 seeded、0 current-state 仓储回退、4102 后续缓存命中、0 失败，运行前后业务仓储内容指纹不变；963 系列与 production portfolio 仍保留独立语义。portfolio 已消除富列表扫描和系列 readiness 的重复项目读取，最终单次观测为 12.8 秒。下一优先级仅在保留完整历史/系列语义时继续做阶段诊断，或等待真实证据；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
+全国基础覆盖机器目标已经完成：289 条、1043 个来源、34/34 地区至少 5 条。Domain Pack 与生成后 readiness 主链已完成，原始字段 B1—B4 已全部清零。M4 15×3 v34 当前正式快照：legacy 综合 33/45、创作质量 45/45、故事可发布 45/45、生产素材 33/45、全生产就绪 0/45；repair attempted 0、applied 0、开放动作 12，GEARS 45/45，平均 pattern 95.69，pattern 弱信号 0。RAG 证据分层与 19 案例确定性检索基线均已完成：Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，离域/禁返误报为 0。`story-knowledge-contract/v1` 已进入生成准备和 prompt-package 的只读 fail-closed shadow：289 条当前语料仍为 0 事实候选/0 放大，7 案例 overlay 矩阵 7/7 正式 prompt 与故事结果不变、shadow prompt 执行 0。受限 system canary、五段 receipt 绑定、篡改验证器与 7 路决策基线已完成：7/7 绑定有效，只返回 hash/diff/decision，不调用 adapter、不返回 prompt/故事、不持久化，正式消费仍由真实核验、独立审批和生产 canary 三项证据阻断。MVP 真实只读快照现固定 2051 seeded、0 current-state 仓储回退、4102 后续缓存命中、0 失败，运行前后业务仓储内容指纹不变；963 系列与 production portfolio 仍保留独立语义。portfolio 已消除富列表扫描和系列 readiness 的重复项目读取，并完成 discovery/readiness/summary 与普通/系列累计工作诊断。最新单次观测 13.60 秒中 discovery 5.86 秒、readiness 7.73 秒。下一优先级是目标发现保序有界并发或普通项目 readiness 审计；不得提前开启正式消费、把机器相关性当作事实核验，或以生成内容伪造剩余 12 项真实生产素材。
 
 每次汇报必须分别说明：当前阶段进度、专项总进度、既有 Story Agent MVP 进度、真实测试/运行健康与外部环境限制。
 ```
 
 ## 12. 交接边界
 
-- B4 与 M4 第一至第五十七切片均已完成；第五十七切片实现提交为 `d285322a`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 94%、检索层 85%、生成层 94%、综合约 91%。19 案例检索基线、289 条生成准备 shadow、7 案例不可消费 prompt hash/diff 矩阵、受限只读 canary、receipt 绑定验证和 7 路迁移决策报告均已完成。MVP 真实只读诊断已固化 2051 普通项目、963 系列、2051 seeded、4102 cache hit、0 current-state repository call/失败及业务仓储无写指纹；知识 shadow 仍受真实证据约束，production portfolio 已收减富列表与系列内部重复读取但继续保持独立历史/系列合同。
+- B4 与 M4 第一至第五十八切片均已完成；第五十八切片实现提交为 `2c0c5ce9`，交接文档提交与上游状态以最新 `git log` 与 `git status -sb` 为准。v34 正式快照的 pattern 开放目标与弱信号均为 0；RAG 当前工程成熟度评估为代码层 94%、检索层 85%、生成层 94%、综合约 91%。19 案例检索基线、289 条生成准备 shadow、7 案例不可消费 prompt hash/diff 矩阵、受限只读 canary、receipt 绑定验证和 7 路迁移决策报告均已完成。MVP 真实只读诊断已固化 2051 普通项目、963 系列、2051 seeded、4102 cache hit、0 current-state repository call/失败及业务仓储无写指纹；知识 shadow 仍受真实证据约束，production portfolio 已收减重复读取并固化阶段诊断，但继续保持独立历史/系列合同。
 - 本文件只总结真实实现和已运行验证，不授予人工审核、真实生产、外部 worker 或公开发布信用。
 - 新对话接手后如修改了行为代码，必须更新相应测试与机器报告；仅修改文档时无需重复完整 CI。
