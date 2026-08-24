@@ -1,0 +1,159 @@
+{
+  "schema_version": "story-knowledge-prompt-shadow-matrix/v1",
+  "status": "passed",
+  "request_sha256": "bc44a2e61e3dc9c35dda2ceebeaa61240ca486c34ee894822d9deb17d6f97343",
+  "summary": {
+    "case_count": 7,
+    "candidate_ready_count": 1,
+    "blocked_count": 2,
+    "safe_no_candidate_count": 4,
+    "active_prompt_match_count": 7,
+    "generation_story_match_count": 7,
+    "shadow_prompt_created_count": 1,
+    "shadow_prompt_executed_count": 0
+  },
+  "gate_checks": {
+    "expected_case_count": true,
+    "only_approved_authoritative_multi_source_case_ready": true,
+    "machine_only_and_doubtful_cases_blocked": true,
+    "mixed_certainty_pending_rejected_and_incompatible_have_no_candidate": true,
+    "active_prompt_unchanged_for_every_case": true,
+    "generation_story_unchanged_for_every_case": true,
+    "no_shadow_prompt_executed_or_persisted": true
+  },
+  "cases": [
+    {
+      "case_id": "approved_multi_source",
+      "expected_status": "candidate_ready",
+      "preparation_status": "overlay_approved_read_only",
+      "generation_shadow_status": "safe_fact_candidates",
+      "comparison_status": "candidate_ready",
+      "fact_candidate_count": 1,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "shadow_prompt_package_sha256": "d3bf7cb8b16927f7c328a0f2aeb3a99446802da7bda336285d216467796c235d",
+      "changed_generation_input_paths": [
+        "material_pack.verified_facts"
+      ],
+      "changed_prompt_package_paths": [
+        "material_pack.verified_facts",
+        "user_prompt"
+      ],
+      "preparation_issues": [],
+      "issues": []
+    },
+    {
+      "case_id": "approved_machine_only",
+      "expected_status": "blocked",
+      "preparation_status": "overlay_approved_read_only",
+      "generation_shadow_status": "blocked",
+      "comparison_status": "blocked",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [],
+      "issues": [
+        "machine_only_source_promoted_to_fact",
+        "non_authoritative_source_promoted_to_fact"
+      ]
+    },
+    {
+      "case_id": "approved_mixed_certainty",
+      "expected_status": "safe_no_candidate",
+      "preparation_status": "overlay_incompatible",
+      "generation_shadow_status": "safe_no_fact_candidates",
+      "comparison_status": "safe_no_candidate",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [
+        "claim_mappings.0.certainty: fact usage requires verified certainty"
+      ],
+      "issues": []
+    },
+    {
+      "case_id": "approved_doubtful_entry",
+      "expected_status": "blocked",
+      "preparation_status": "overlay_approved_read_only",
+      "generation_shadow_status": "blocked",
+      "comparison_status": "blocked",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [],
+      "issues": [
+        "doubtful_entry_promoted_to_fact"
+      ]
+    },
+    {
+      "case_id": "pending_machine_context",
+      "expected_status": "safe_no_candidate",
+      "preparation_status": "overlay_pending",
+      "generation_shadow_status": "safe_no_fact_candidates",
+      "comparison_status": "safe_no_candidate",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [],
+      "issues": []
+    },
+    {
+      "case_id": "rejected_overlay",
+      "expected_status": "safe_no_candidate",
+      "preparation_status": "overlay_rejected",
+      "generation_shadow_status": "safe_no_fact_candidates",
+      "comparison_status": "safe_no_candidate",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [
+        "合成拒绝案例。"
+      ],
+      "issues": []
+    },
+    {
+      "case_id": "incompatible_revoked_overlay",
+      "expected_status": "safe_no_candidate",
+      "preparation_status": "overlay_incompatible",
+      "generation_shadow_status": "safe_no_fact_candidates",
+      "comparison_status": "safe_no_candidate",
+      "fact_candidate_count": 0,
+      "active_prompt_matches_baseline": true,
+      "generation_story_matches_baseline": true,
+      "active_prompt_package_sha256": "681219cf0912fa7009238bbf2a28762ac1dd61652b05482f3a6a00274e5f3b04",
+      "changed_generation_input_paths": [],
+      "changed_prompt_package_paths": [],
+      "preparation_issues": [
+        "signoff.status: Invalid discriminator value. Expected 'pending' | 'approved' | 'rejected'"
+      ],
+      "issues": []
+    }
+  ],
+  "boundary": {
+    "synthetic_overlay_matrix": true,
+    "active_prompt_sent_to_adapter_only": true,
+    "shadow_prompt_execution_allowed": false,
+    "shadow_prompt_persistence_allowed": false,
+    "source_markdown_written": false,
+    "external_model_called": false,
+    "human_review_complete": false,
+    "real_human_review_credit_granted": false,
+    "production_credit_granted": false
+  }
+}

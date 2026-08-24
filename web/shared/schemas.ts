@@ -2695,6 +2695,97 @@ export const StoryKnowledgeGenerationShadowV1Schema = z.object({
   }
 });
 
+const StoryKnowledgeSha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
+
+export const StoryKnowledgePromptShadowComparisonV1Schema = z.object({
+  schema_version: z.literal('story-knowledge-prompt-shadow-comparison/v1'),
+  status: z.enum(['safe_no_candidate', 'candidate_ready', 'blocked']),
+  preparation_status: z.enum([
+    'base_contract_only',
+    'overlay_pending',
+    'overlay_approved_read_only',
+    'overlay_rejected',
+    'overlay_incompatible',
+  ]),
+  fact_candidate_claim_ids: StoryKnowledgeUniqueTextArraySchema,
+  active_generation_inputs_sha256: StoryKnowledgeSha256Schema,
+  shadow_generation_inputs_sha256: StoryKnowledgeSha256Schema.optional(),
+  active_prompt_package_sha256: StoryKnowledgeSha256Schema,
+  shadow_prompt_package_sha256: StoryKnowledgeSha256Schema.optional(),
+  execution_prompt_package_sha256: StoryKnowledgeSha256Schema,
+  changed_generation_input_paths: StoryKnowledgeUniqueTextArraySchema,
+  changed_prompt_package_paths: StoryKnowledgeUniqueTextArraySchema,
+  issues: StoryKnowledgeUniqueTextArraySchema,
+  boundary: z.object({
+    comparison_only: z.literal(true),
+    active_prompt_preserved_for_execution: z.literal(true),
+    shadow_prompt_executed: z.literal(false),
+    shadow_prompt_persisted: z.literal(false),
+    generation_output_changed: z.literal(false),
+    source_markdown_writeback_allowed: z.literal(false),
+    machine_validation_only: z.literal(true),
+    real_human_review_credit_granted: z.literal(false),
+    production_credit_granted: z.literal(false),
+  }).strict(),
+}).strict().superRefine((comparison, context) => {
+  if (comparison.execution_prompt_package_sha256 !== comparison.active_prompt_package_sha256) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['execution_prompt_package_sha256'],
+      message: 'execution must remain bound to the active prompt package',
+    });
+  }
+  const hasShadowArtifacts = Boolean(
+    comparison.shadow_generation_inputs_sha256
+    && comparison.shadow_prompt_package_sha256,
+  );
+  if (comparison.status === 'candidate_ready') {
+    if (comparison.fact_candidate_claim_ids.length === 0 || !hasShadowArtifacts) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'candidate_ready requires fact candidates and both shadow hashes',
+      });
+    }
+    if (
+      comparison.changed_generation_input_paths.length === 0
+      || comparison.changed_prompt_package_paths.length === 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['changed_prompt_package_paths'],
+        message: 'candidate_ready requires observable generation-input and prompt-package diffs',
+      });
+    }
+  }
+  if (comparison.status === 'safe_no_candidate' && (
+    comparison.fact_candidate_claim_ids.length > 0
+    || hasShadowArtifacts
+    || comparison.changed_generation_input_paths.length > 0
+    || comparison.changed_prompt_package_paths.length > 0
+  )) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['status'],
+      message: 'safe_no_candidate cannot carry candidate artifacts or diffs',
+    });
+  }
+  if (comparison.status === 'blocked' && comparison.issues.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issues'],
+      message: 'blocked prompt shadow comparisons require at least one issue',
+    });
+  }
+  if (comparison.status !== 'blocked' && comparison.issues.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['issues'],
+      message: 'safe prompt shadow comparisons cannot carry issues',
+    });
+  }
+});
+
 export const MaterialPurposeSchema = z.enum([
   'fact_basis',
   'character_source',

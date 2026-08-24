@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type {
   StoryGenerateRequest,
@@ -11,16 +12,26 @@ import {
   prepareChinaCultureStoryGeneration,
 } from '../domains/china-culture/story-generation-preparation-service.js';
 import {
+  executeChinaCultureStoryGeneration,
+} from '../domains/china-culture/story-generation-execution-service.js';
+import {
   buildStoryKnowledgeGenerationShadow,
 } from '../domains/china-culture/story-knowledge-generation-shadow-service.js';
 
 const REVIEWED_AT = '2026-07-31T13:00:00+08:00';
+process.env.KB_ROOT ??= resolve(import.meta.dirname, '..', '..', '..', '..', 'data');
 const REQUEST: StoryGenerateRequest = {
   video_type: 'ai_comic_drama',
   presentation_style: 'ai_comic',
   creation_use_case: 'original_ai_comic',
   truth_mode: 'fictional_original',
   original_user_query: '标题：知识合同测试故事。少年发现古桥即将被洪水冲毁，决定召集伙伴守桥。',
+};
+
+const MULTI_SOURCE_REQUEST: StoryGenerateRequest = {
+  ...REQUEST,
+  entry_name: '岳阳楼——先忧后乐的精神地标',
+  original_user_query: '以岳阳楼的建筑变迁与忧乐精神为依据，创作一则守护文化记忆的故事。',
 };
 
 async function preparationBase() {
@@ -312,6 +323,97 @@ describe('story knowledge preparation read-only boundary', () => {
     expect(result.preliminaryStoryBlueprint).toEqual(baseline.preliminaryStoryBlueprint);
   });
 
+  it('builds a multi-source prompt shadow receipt without executing or replacing the active prompt', async () => {
+    const baseline = await prepareChinaCultureStoryGeneration(MULTI_SOURCE_REQUEST);
+    expect(baseline.ok).toBe(true);
+    if (!baseline.ok) return;
+    const contract = adaptLegacyChinaCultureEntryToStoryKnowledgeContract(
+      baseline.entry,
+    ).contract;
+    expect(contract.sources.length).toBeGreaterThanOrEqual(2);
+    const approvedOverlay: StoryKnowledgeEvidenceOverlayV1 = {
+      schema_version: 'story-knowledge-evidence-overlay/v1',
+      overlay_id: 'fixture-multi-source-prompt-shadow-20260824',
+      entry_name: contract.source_entry.name,
+      source_reviews: contract.sources.slice(0, 2).map((source, index) => ({
+        source_ref_id: source.source_ref_id,
+        grade: index === 0 ? 'A' : 'B',
+        verification_status: 'human_verified',
+        verified_at: REVIEWED_AT,
+        note: '合成多来源 fixture，仅验证 shadow 合同，不授予真实审核信用。',
+      })),
+      claim_mappings: [{
+        claim_id: contract.claims[0]!.claim_id,
+        source_ref_ids: contract.sources.slice(0, 2).map(source => source.source_ref_id),
+        claim_type: 'critical_fact',
+        certainty: 'verified',
+        usage: 'fact',
+        scope: '合成 fixture 事实候选，仅进入未执行 shadow prompt。',
+      }],
+      signoff: {
+        status: 'approved',
+        reviewed_by: 'fixture-reviewer-not-real',
+        reviewer_role: 'fact_culture_reviewer',
+        reviewed_at: REVIEWED_AT,
+        confirmation: 'human_reviewed_story_knowledge_evidence_overlay',
+      },
+      boundary: {
+        read_only_overlay: true,
+        source_markdown_writeback_allowed: false,
+        generation_consumption_allowed: false,
+        existing_supplement_tasks_mutable: false,
+      },
+    };
+    const shadowPreparation = await prepareChinaCultureStoryGeneration(
+      MULTI_SOURCE_REQUEST,
+      {
+        storyKnowledge: {
+          enabled: true,
+          generationShadow: true,
+          evidenceOverlay: approvedOverlay,
+        },
+      },
+    );
+    expect(shadowPreparation.ok).toBe(true);
+    if (!shadowPreparation.ok) return;
+
+    const baselineExecution = await executeChinaCultureStoryGeneration({
+      request: MULTI_SOURCE_REQUEST,
+      preparation: baseline,
+    });
+    const shadowExecution = await executeChinaCultureStoryGeneration({
+      request: MULTI_SOURCE_REQUEST,
+      preparation: shadowPreparation,
+    });
+    expect(baselineExecution.ok).toBe(true);
+    expect(shadowExecution.ok).toBe(true);
+    if (!baselineExecution.ok || !shadowExecution.ok) return;
+
+    expect(shadowExecution.storyKnowledgePromptShadowComparison).toMatchObject({
+      schema_version: 'story-knowledge-prompt-shadow-comparison/v1',
+      status: 'candidate_ready',
+      fact_candidate_claim_ids: [contract.claims[0]!.claim_id],
+      changed_generation_input_paths: ['material_pack.verified_facts'],
+      changed_prompt_package_paths: [
+        'material_pack.verified_facts',
+        'user_prompt',
+      ],
+      boundary: {
+        active_prompt_preserved_for_execution: true,
+        shadow_prompt_executed: false,
+        shadow_prompt_persisted: false,
+        generation_output_changed: false,
+        real_human_review_credit_granted: false,
+      },
+    });
+    expect(shadowExecution.storyKnowledgePromptShadowComparison?.active_prompt_package_sha256)
+      .toBe(shadowExecution.storyKnowledgePromptShadowComparison?.execution_prompt_package_sha256);
+    expect(shadowExecution.storyKnowledgePromptShadowComparison?.shadow_prompt_package_sha256)
+      .not.toBe(shadowExecution.storyKnowledgePromptShadowComparison?.active_prompt_package_sha256);
+    expect(shadowExecution.promptPackage).toEqual(baselineExecution.promptPackage);
+    expect(shadowExecution.storyResult).toEqual(baselineExecution.storyResult);
+  });
+
   it('degrades rejected and incompatible overlays to the untouched base contract', async () => {
     const { preparation: baseline, contract } = await preparationBase();
     const rejected = await prepareChinaCultureStoryGeneration(REQUEST, {
@@ -381,12 +483,22 @@ describe('story knowledge preparation read-only boundary', () => {
   });
 
   it('keeps knowledge preparation out of prompt, fallback, blueprint builder and persistence', async () => {
-    const [prompt, fallback, blueprint, document, preparation] = await Promise.all([
+    const [
+      prompt,
+      fallback,
+      blueprint,
+      document,
+      preparation,
+      execution,
+      generation,
+    ] = await Promise.all([
       readFile(new URL('../services/story-generation-prompt.ts', import.meta.url), 'utf8'),
       readFile(new URL('../services/dramatic-story.ts', import.meta.url), 'utf8'),
       readFile(new URL('../services/story-blueprint-service.ts', import.meta.url), 'utf8'),
       readFile(new URL('../domains/china-culture/story-document-service.ts', import.meta.url), 'utf8'),
       readFile(new URL('../domains/china-culture/story-generation-preparation-service.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../domains/china-culture/story-generation-execution-service.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../domains/china-culture/story-generation-service.ts', import.meta.url), 'utf8'),
     ]);
 
     expect(preparation).toContain('resolveStoryKnowledgePreparation(');
@@ -399,6 +511,10 @@ describe('story knowledge preparation read-only boundary', () => {
     expect(blueprint).not.toContain('StoryKnowledgeGenerationShadowV1');
     expect(document).not.toContain('storyKnowledgePreparation');
     expect(document).not.toContain('storyKnowledgeGenerationShadow');
+    expect(execution).toContain('pkg: promptPackage');
+    expect(execution).not.toContain('pkg: shadowPromptPackage');
+    expect(generation).not.toContain('storyKnowledgePromptShadowComparison');
+    expect(document).not.toContain('storyKnowledgePromptShadowComparison');
   });
 
   it('keeps the reproducible fixture report synthetic and grants zero real review credit', async () => {

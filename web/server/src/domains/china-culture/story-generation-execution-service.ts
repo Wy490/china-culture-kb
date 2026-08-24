@@ -4,6 +4,10 @@ import { generateStoryWithAdapter } from '../../services/story-generation-model.
 import { buildStoryGenerationPromptPackage } from '../../services/story-generation-prompt.js';
 import { buildReferenceGenerationTrace } from '../../services/reference-generation-bridge-service.js';
 import type { PreparedChinaCultureStoryGeneration } from './story-generation-preparation-service.js';
+import {
+  buildStoryKnowledgePromptShadowComparison,
+  projectStoryKnowledgeFactCandidatesToMaterialPack,
+} from './story-knowledge-prompt-shadow-service.js';
 import { generateChinaCultureLocalStoryAssembly } from './story-local-generation-service.js';
 
 export async function executeChinaCultureStoryGeneration(input: {
@@ -36,31 +40,60 @@ export async function executeChinaCultureStoryGeneration(input: {
     };
   }
 
-  const promptPackage = buildStoryGenerationPromptPackage({
-    entry: preparation.entry,
-    request: {
-      ...request,
-      narrative_pattern_ids: preparation.narrativePatternIds,
-    },
-    videoType: preparation.videoType,
-    presentationStyle: preparation.presentationStyle,
-    storyStructure: preparation.storyStructure,
-    targetDuration: preparation.targetDuration,
-    tone: preparation.toneWithPriority,
-    selectedEvent: preparation.centralEvent,
-    knowledgePack: preparation.knowledgePackToUse,
-    materialPack: preparation.materialPackToUse,
-    materialSufficiency: preparation.materialSufficiency,
-    productionMaterialPack: preparation.productionMaterialPack,
-    productionMaterialReadiness: preparation.productionMaterialReadiness,
-    creationContract: preparation.creationContract,
-    genreMatrix: preparation.genreMatrix,
-    memoryMosaicSeed: localGeneration.memoryMosaicSeed,
-    storyBlueprint: preparation.preliminaryStoryBlueprint,
-    adaptationAnalysis: preparation.adaptationAnalysis,
-    referenceGenerationRecipe: preparation.referenceGenerationRecipe,
-    referenceGenerationContext: preparation.referenceGenerationContext,
-  });
+  const buildPromptPackage = (materialPack: typeof preparation.materialPackToUse) => (
+    buildStoryGenerationPromptPackage({
+      entry: preparation.entry,
+      request: {
+        ...request,
+        narrative_pattern_ids: preparation.narrativePatternIds,
+      },
+      videoType: preparation.videoType,
+      presentationStyle: preparation.presentationStyle,
+      storyStructure: preparation.storyStructure,
+      targetDuration: preparation.targetDuration,
+      tone: preparation.toneWithPriority,
+      selectedEvent: preparation.centralEvent,
+      knowledgePack: preparation.knowledgePackToUse,
+      materialPack,
+      materialSufficiency: preparation.materialSufficiency,
+      productionMaterialPack: preparation.productionMaterialPack,
+      productionMaterialReadiness: preparation.productionMaterialReadiness,
+      creationContract: preparation.creationContract,
+      genreMatrix: preparation.genreMatrix,
+      memoryMosaicSeed: localGeneration.memoryMosaicSeed,
+      storyBlueprint: preparation.preliminaryStoryBlueprint,
+      adaptationAnalysis: preparation.adaptationAnalysis,
+      referenceGenerationRecipe: preparation.referenceGenerationRecipe,
+      referenceGenerationContext: preparation.referenceGenerationContext,
+    })
+  );
+  const promptPackage = buildPromptPackage(preparation.materialPackToUse);
+  const shadowMaterialPack = preparation.storyKnowledgeGenerationShadow
+    && preparation.storyKnowledgePreparation
+    ? projectStoryKnowledgeFactCandidatesToMaterialPack({
+      preparation: preparation.storyKnowledgePreparation,
+      generationShadow: preparation.storyKnowledgeGenerationShadow,
+      activeMaterialPack: preparation.materialPackToUse,
+    })
+    : undefined;
+  const shadowPromptPackage = shadowMaterialPack
+    ? buildPromptPackage(shadowMaterialPack)
+    : undefined;
+  const storyKnowledgePromptShadowComparison = preparation.storyKnowledgeGenerationShadow
+    && preparation.storyKnowledgePreparation
+    ? buildStoryKnowledgePromptShadowComparison({
+      preparation: preparation.storyKnowledgePreparation,
+      generationShadow: preparation.storyKnowledgeGenerationShadow,
+      activeGenerationInputs: {
+        knowledge_pack: preparation.knowledgePackToUse,
+        material_pack: preparation.materialPackToUse,
+        story_blueprint: preparation.preliminaryStoryBlueprint,
+      },
+      activePromptPackage: promptPackage,
+      shadowMaterialPack,
+      shadowPromptPackage,
+    })
+    : undefined;
   const adapterResult = await generateStoryWithAdapter({
     pkg: promptPackage,
     modelProfileId: preparation.selectedModelProfile.id,
@@ -128,6 +161,9 @@ export async function executeChinaCultureStoryGeneration(input: {
     memoryMosaicSeed: localGeneration.memoryMosaicSeed,
     referenceTrace,
     promptPackage,
+    ...(storyKnowledgePromptShadowComparison
+      ? { storyKnowledgePromptShadowComparison }
+      : {}),
     adapterResult,
     generationMode: generationResolution.generationMode,
     generationUsedFallback: generationResolution.generationUsedFallback,

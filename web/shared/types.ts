@@ -10516,6 +10516,32 @@ export interface StoryKnowledgeGenerationShadowV1 {
   };
 }
 
+export interface StoryKnowledgePromptShadowComparisonV1 {
+  schema_version: 'story-knowledge-prompt-shadow-comparison/v1';
+  status: 'safe_no_candidate' | 'candidate_ready' | 'blocked';
+  preparation_status: StoryKnowledgePreparationStatusV1;
+  fact_candidate_claim_ids: string[];
+  active_generation_inputs_sha256: string;
+  shadow_generation_inputs_sha256?: string;
+  active_prompt_package_sha256: string;
+  shadow_prompt_package_sha256?: string;
+  execution_prompt_package_sha256: string;
+  changed_generation_input_paths: string[];
+  changed_prompt_package_paths: string[];
+  issues: string[];
+  boundary: {
+    comparison_only: true;
+    active_prompt_preserved_for_execution: true;
+    shadow_prompt_executed: false;
+    shadow_prompt_persisted: false;
+    generation_output_changed: false;
+    source_markdown_writeback_allowed: false;
+    machine_validation_only: true;
+    real_human_review_credit_granted: false;
+    production_credit_granted: false;
+  };
+}
+
 export interface LegacyEntryStoryKnowledgeContractAdapterResultV1 {
   schema_version: 'legacy-entry-story-knowledge-contract-adapter/v1';
   contract: StoryKnowledgeContractV1;
