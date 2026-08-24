@@ -3974,6 +3974,20 @@ export interface ProductionReadinessPortfolioActionBucket {
   scopes: ProductionReadinessScope[];
 }
 
+export interface ProductionReadinessPortfolioPerformanceDiagnostics {
+  wall_clock_observation_not_sla: true;
+  configured_read_concurrency: number;
+  target_discovery_ms: number;
+  readiness_scan_ms: number;
+  summary_assembly_ms: number;
+  markdown_render_ms: number;
+  total_ms: number;
+  story_project_target_count: number;
+  ai_comic_series_target_count: number;
+  story_project_cumulative_readiness_work_ms: number;
+  ai_comic_series_cumulative_readiness_work_ms: number;
+}
+
 export interface ProductionReadinessPortfolioReport {
   schema_version: 'production-readiness-portfolio/v1';
   generated_at: string;
@@ -4003,6 +4017,7 @@ export interface ProductionReadinessPortfolioReport {
   action_buckets: ProductionReadinessPortfolioActionBucket[];
   portfolio_automation_ledger?: ProductionReadinessPortfolioRunLedger;
   latest_portfolio_automation_run?: ProductionReadinessPortfolioRunLedgerItem;
+  performance: ProductionReadinessPortfolioPerformanceDiagnostics;
   errors: Array<{
     scope: ProductionReadinessScope;
     project_id: string;

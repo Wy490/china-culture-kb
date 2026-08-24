@@ -48,6 +48,27 @@ function mvpStatus(overrides: Record<string, number> = {}): StoryAgentMvpStatusR
         scanned_project_count: 3,
       },
     },
+    production_portfolio: {
+      summary: {
+        total_target_count: 5,
+        story_project_count: 3,
+        ai_comic_series_count: 2,
+      },
+      errors: [],
+      performance: {
+        wall_clock_observation_not_sla: true,
+        configured_read_concurrency: 8,
+        target_discovery_ms: 5,
+        readiness_scan_ms: 50,
+        summary_assembly_ms: 2,
+        markdown_render_ms: 1,
+        total_ms: 58,
+        story_project_target_count: 3,
+        ai_comic_series_target_count: 2,
+        story_project_cumulative_readiness_work_ms: 100,
+        ai_comic_series_cumulative_readiness_work_ms: 80,
+      },
+    },
   } as unknown as StoryAgentMvpStatusReport;
 }
 
@@ -84,6 +105,11 @@ describe('Story Agent MVP read-only projection diagnostic', () => {
         current_state_cache_hit_count: 5,
         readable_project_count: 3,
         failed_project_count: 0,
+      },
+      production_portfolio_observations: {
+        configured_read_concurrency: 8,
+        story_project_target_count: 3,
+        ai_comic_series_target_count: 2,
       },
     });
     expect(report.checks.every(check => check.passed)).toBe(true);

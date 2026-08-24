@@ -3,6 +3,7 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type {
+  ProductionReadinessPortfolioPerformanceDiagnostics,
   StoryAgentMvpPerformanceDiagnostics,
   StoryAgentMvpStatusReport,
 } from '../../shared/types.js';
@@ -62,6 +63,7 @@ export interface StoryAgentMvpReadOnlyProjectionDiagnosticReport {
     failed_project_count: number;
   };
   component_observations_ms: StoryAgentMvpPerformanceDiagnostics;
+  production_portfolio_observations: ProductionReadinessPortfolioPerformanceDiagnostics;
   store_fingerprint: {
     before_sha256: string;
     after_sha256: string;
@@ -110,6 +112,14 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
   const expectedCacheHitCount = projection.current_state_seeded_count * 2
     + projection.current_state_repository_call_count;
   const syncHealth = input.mvpStatus.external_evidence_sync_health;
+  const productionPortfolio = input.mvpStatus.production_portfolio;
+  const portfolioPerformance = productionPortfolio.performance;
+  const portfolioStoryErrorCount = productionPortfolio.errors.filter(
+    item => item.scope === 'story_project',
+  ).length;
+  const portfolioSeriesErrorCount = productionPortfolio.errors.filter(
+    item => item.scope === 'ai_comic_series',
+  ).length;
   const storeUnchanged = input.storeFingerprintBefore === input.storeFingerprintAfter;
   const checks: StoryAgentMvpReadOnlyProjectionDiagnosticCheck[] = [
     check('project_store_fingerprint_unchanged', storeUnchanged, storeUnchanged, true),
@@ -171,6 +181,39 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
       performance.production_portfolio_ms,
       'finite milliseconds',
     ),
+    check(
+      'production_portfolio_story_target_accounting',
+      portfolioPerformance.story_project_target_count
+        === productionPortfolio.summary.story_project_count + portfolioStoryErrorCount,
+      portfolioPerformance.story_project_target_count,
+      productionPortfolio.summary.story_project_count + portfolioStoryErrorCount,
+    ),
+    check(
+      'production_portfolio_series_target_accounting',
+      portfolioPerformance.ai_comic_series_target_count
+        === productionPortfolio.summary.ai_comic_series_count + portfolioSeriesErrorCount,
+      portfolioPerformance.ai_comic_series_target_count,
+      productionPortfolio.summary.ai_comic_series_count + portfolioSeriesErrorCount,
+    ),
+    check(
+      'production_portfolio_bounded_concurrency_observed',
+      portfolioPerformance.configured_read_concurrency === 8,
+      portfolioPerformance.configured_read_concurrency,
+      8,
+    ),
+    check(
+      'production_portfolio_phase_observations_valid',
+      portfolioPerformance.wall_clock_observation_not_sla
+        && portfolioPerformance.target_discovery_ms >= 0
+        && portfolioPerformance.readiness_scan_ms >= 0
+        && portfolioPerformance.summary_assembly_ms >= 0
+        && portfolioPerformance.markdown_render_ms >= 0
+        && portfolioPerformance.total_ms >= portfolioPerformance.readiness_scan_ms
+        && portfolioPerformance.story_project_cumulative_readiness_work_ms >= 0
+        && portfolioPerformance.ai_comic_series_cumulative_readiness_work_ms >= 0,
+      portfolioPerformance.wall_clock_observation_not_sla,
+      true,
+    ),
   ];
   const machineReadOnly = Boolean(syncHealth.machine_read_only && storeUnchanged);
   const base = {
@@ -191,6 +234,7 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
     },
     projection,
     component_observations_ms: performance,
+    production_portfolio_observations: portfolioPerformance,
     store_fingerprint: {
       before_sha256: input.storeFingerprintBefore,
       after_sha256: input.storeFingerprintAfter,
@@ -213,6 +257,7 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
       'Wall-clock values are one local observation and are not an SLA, regression verdict, or speedup claim.',
       'Deterministic completion is based on repository-call equations, full sync-health coverage, source hashes, and before/after store fingerprints.',
       'Production portfolio remains an independent historical/series scan and is not forced into the current-state projection.',
+      'Portfolio scope work is cumulative across concurrent workers and can exceed readiness scan wall clock.',
       'No external provider, human review, production traffic, or province Markdown writeback is performed.',
     ],
   };
@@ -231,6 +276,7 @@ export function validateStoryAgentMvpReadOnlyProjectionDiagnosticReport(
 ): string[] {
   const { report_sha256: reportSha256, ...payload } = report;
   const projection = report.projection;
+  const portfolioPerformance = report.production_portfolio_observations;
   const expectedCacheHitCount = projection.current_state_seeded_count * 2
     + projection.current_state_repository_call_count;
   const resolvedProjectCount = projection.readable_project_count + projection.failed_project_count;
@@ -255,6 +301,19 @@ export function validateStoryAgentMvpReadOnlyProjectionDiagnosticReport(
   }
   if (report.inventory.sync_health_scanned_project_count !== resolvedProjectCount) {
     failures.push('sync_health_project_scan_mismatch');
+  }
+  if (
+    !portfolioPerformance.wall_clock_observation_not_sla
+    || portfolioPerformance.configured_read_concurrency !== 8
+    || portfolioPerformance.target_discovery_ms < 0
+    || portfolioPerformance.readiness_scan_ms < 0
+    || portfolioPerformance.summary_assembly_ms < 0
+    || portfolioPerformance.markdown_render_ms < 0
+    || portfolioPerformance.total_ms < portfolioPerformance.readiness_scan_ms
+    || portfolioPerformance.story_project_cumulative_readiness_work_ms < 0
+    || portfolioPerformance.ai_comic_series_cumulative_readiness_work_ms < 0
+  ) {
+    failures.push('production_portfolio_observation_mismatch');
   }
   if (
     !report.store_fingerprint.unchanged
@@ -435,6 +494,7 @@ async function main(): Promise<void> {
     wall_clock_ms: report.wall_clock_ms,
     projection: report.projection,
     component_observations_ms: report.component_observations_ms,
+    production_portfolio_observations: report.production_portfolio_observations,
   }, null, 2) + '\n');
   if (report.status !== 'passed') process.exitCode = 1;
 }

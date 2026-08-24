@@ -91,5 +91,16 @@ describe('production readiness portfolio concurrency', () => {
     expect(report.summary.total_target_count).toBe(20);
     expect(report.summary.story_project_count).toBe(20);
     expect(report.items).toHaveLength(5);
+    expect(report.performance).toMatchObject({
+      wall_clock_observation_not_sla: true,
+      configured_read_concurrency: 8,
+      story_project_target_count: 20,
+      ai_comic_series_target_count: 0,
+    });
+    expect(report.performance.target_discovery_ms).toBeGreaterThanOrEqual(0);
+    expect(report.performance.readiness_scan_ms).toBeGreaterThan(0);
+    expect(report.performance.story_project_cumulative_readiness_work_ms).toBeGreaterThan(0);
+    expect(report.performance.ai_comic_series_cumulative_readiness_work_ms).toBe(0);
+    expect(report.performance.total_ms).toBeGreaterThanOrEqual(report.performance.readiness_scan_ms);
   });
 });

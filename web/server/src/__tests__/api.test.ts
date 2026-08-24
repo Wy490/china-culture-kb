@@ -1738,6 +1738,19 @@ describe('System API', () => {
           seedance_placeholder_asset_count: expect.any(Number),
           seedance_production_asset_ready_count: expect.any(Number),
         },
+        performance: {
+          wall_clock_observation_not_sla: true,
+          configured_read_concurrency: 8,
+          target_discovery_ms: expect.any(Number),
+          readiness_scan_ms: expect.any(Number),
+          summary_assembly_ms: expect.any(Number),
+          markdown_render_ms: expect.any(Number),
+          total_ms: expect.any(Number),
+          story_project_target_count: expect.any(Number),
+          ai_comic_series_target_count: expect.any(Number),
+          story_project_cumulative_readiness_work_ms: expect.any(Number),
+          ai_comic_series_cumulative_readiness_work_ms: expect.any(Number),
+        },
       });
       expect(res.body.data.summary.total_target_count).toBeGreaterThanOrEqual(2);
       expect(res.body.data.items.map((item: any) => item.project_id)).toEqual(expect.arrayContaining([

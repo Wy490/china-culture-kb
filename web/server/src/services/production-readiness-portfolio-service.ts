@@ -474,6 +474,8 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
     `- Seedance placeholder assets: ${report.summary.seedance_placeholder_asset_count}`,
     `- Seedance production assets ready: ${report.summary.seedance_production_asset_ready_count}`,
     `- portfolio automation runs: ${report.summary.portfolio_automation_run_count}`,
+    `- read phases: discovery ${report.performance.target_discovery_ms}ms · readiness scan ${report.performance.readiness_scan_ms}ms · summary ${report.performance.summary_assembly_ms}ms`,
+    `- cumulative readiness work: story ${report.performance.story_project_cumulative_readiness_work_ms}ms · series ${report.performance.ai_comic_series_cumulative_readiness_work_ms}ms · concurrency ${report.performance.configured_read_concurrency}`,
     ...(latestRun
       ? [`- latest portfolio run: ${latestRun.completed_at} · executed ${latestRun.executed_target_count} · failed ${latestRun.failed_target_count}`]
       : []),
@@ -503,11 +505,13 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
 export async function getProductionReadinessPortfolio(
   options: ProductionReadinessPortfolioOptions = {},
 ): Promise<ProductionReadinessPortfolioReport> {
+  const portfolioStartedAt = Date.now();
   const generatedAt = new Date().toISOString();
   const limit = boundedLimit(options.limit);
   const reports: ReadinessReport[] = [];
   const errors: ProductionReadinessPortfolioReport['errors'] = [];
 
+  const targetDiscoveryStartedAt = Date.now();
   const [storyTargetRes, seriesTargetRes] = await Promise.all([
     listProjectProductionReadinessTargetIds(),
     listAiComicSeriesProductionReadinessTargetIds({
@@ -525,13 +529,26 @@ export async function getProductionReadinessPortfolio(
       project_id: seriesProjectId,
     })),
   ];
+  const targetDiscoveryMs = Date.now() - targetDiscoveryStartedAt;
+  const storyProjectTargetCount = storyTargetRes.data?.length ?? 0;
+  const aiComicSeriesTargetCount = seriesTargetRes.data?.length ?? 0;
+  let storyProjectCumulativeReadinessWorkMs = 0;
+  let aiComicSeriesCumulativeReadinessWorkMs = 0;
+  const readinessScanStartedAt = Date.now();
   const scanResults = await mapWithConcurrency(
     targets,
     portfolioReadConcurrency,
     async (target): Promise<PortfolioReadinessScanResult> => {
+      const targetStartedAt = Date.now();
       const readiness = target.scope === 'story_project'
         ? await getProjectProductionReadiness(target.project_id)
         : await getAiComicSeriesProductionReadiness(target.project_id);
+      const targetElapsedMs = Date.now() - targetStartedAt;
+      if (target.scope === 'story_project') {
+        storyProjectCumulativeReadinessWorkMs += targetElapsedMs;
+      } else {
+        aiComicSeriesCumulativeReadinessWorkMs += targetElapsedMs;
+      }
       if (readiness.ok && readiness.data) return { report: readiness.data };
       return {
         error: {
@@ -546,11 +563,13 @@ export async function getProductionReadinessPortfolio(
       };
     },
   );
+  const readinessScanMs = Date.now() - readinessScanStartedAt;
   for (const result of scanResults) {
     if (result.report) reports.push(result.report);
     else errors.push(result.error);
   }
 
+  const summaryAssemblyStartedAt = Date.now();
   const allItems = reports
     .map(portfolioItem)
     .sort((a, b) => {
@@ -582,6 +601,19 @@ export async function getProductionReadinessPortfolio(
   };
   const portfolioAutomationLedger = await readPortfolioAutomationLedger();
   summary.portfolio_automation_run_count = portfolioAutomationLedger?.total_run_count ?? 0;
+  const performance = {
+    wall_clock_observation_not_sla: true as const,
+    configured_read_concurrency: portfolioReadConcurrency,
+    target_discovery_ms: targetDiscoveryMs,
+    readiness_scan_ms: readinessScanMs,
+    summary_assembly_ms: 0,
+    markdown_render_ms: 0,
+    total_ms: 0,
+    story_project_target_count: storyProjectTargetCount,
+    ai_comic_series_target_count: aiComicSeriesTargetCount,
+    story_project_cumulative_readiness_work_ms: storyProjectCumulativeReadinessWorkMs,
+    ai_comic_series_cumulative_readiness_work_ms: aiComicSeriesCumulativeReadinessWorkMs,
+  };
 
   const base: Omit<ProductionReadinessPortfolioReport, 'markdown'> = {
     schema_version: 'production-readiness-portfolio/v1',
@@ -591,6 +623,7 @@ export async function getProductionReadinessPortfolio(
     action_buckets: actionBuckets(reports),
     portfolio_automation_ledger: portfolioAutomationLedger,
     latest_portfolio_automation_run: portfolioAutomationLedger?.latest_run,
+    performance,
     errors,
     notes: [
       'Portfolio is read-only and aggregates existing single-story and AI comic series readiness reports.',
@@ -599,11 +632,17 @@ export async function getProductionReadinessPortfolio(
         ? `Latest portfolio automation run completed at ${portfolioAutomationLedger.latest_run.completed_at}.`
         : 'No persisted portfolio automation run yet; dry-run does not write this ledger.',
       `Returned top ${items.length} of ${allItems.length} targets by production priority.`,
+      'Performance values are request-local observations, not an SLA or speedup claim; cumulative scope work can exceed scan wall clock under concurrency.',
     ],
   };
+  performance.summary_assembly_ms = Date.now() - summaryAssemblyStartedAt;
+  const markdownRenderStartedAt = Date.now();
+  const markdown = buildMarkdown(base);
+  performance.markdown_render_ms = Date.now() - markdownRenderStartedAt;
+  performance.total_ms = Date.now() - portfolioStartedAt;
   return {
     ...base,
-    markdown: buildMarkdown(base),
+    markdown,
   };
 }
 
