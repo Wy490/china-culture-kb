@@ -5,6 +5,9 @@ import type {
 } from '@shared/types.js';
 import type { ProjectRepository } from '../repositories/project-repository.js';
 import { parseProjectId, projectRepository } from './project-core-service.js';
+import type {
+  ProjectReadOnlyRequestProjection,
+} from './project-read-only-request-projection-service.js';
 import {
   inspectProjectExternalEvidenceSourceStorySync,
 } from './project-source-story-sync-service.js';
@@ -23,6 +26,7 @@ interface SyncHealthPortfolioOptions {
   limit?: number;
   generatedAt?: string;
   repository?: ReadOnlyProjectRepository;
+  readOnlyProjection?: ProjectReadOnlyRequestProjection;
   inspect?: SyncHealthInspector;
 }
 
@@ -108,10 +112,28 @@ export async function getProjectExternalEvidenceSourceStorySyncHealthPortfolio(
 ): Promise<ProjectExternalEvidenceSourceStorySyncHealthPortfolioReport> {
   const repository = options.repository ?? projectRepository();
   const inspect = options.inspect ?? inspectProjectExternalEvidenceSourceStorySync;
-  const projectIds = await repository.listProjectIds();
+  const projectIds = options.readOnlyProjection
+    ? await options.readOnlyProjection.listProjectIds()
+    : await repository.listProjectIds();
   let readableCurrentProjectCount = 0;
 
   const inspected = await mapWithConcurrency(projectIds, READ_CONCURRENCY, async projectId => {
+    if (options.readOnlyProjection) {
+      const projected = await options.readOnlyProjection.inspectCurrentState(projectId);
+      if (projected.status === 'current_version_unreadable') {
+        return unreadableProjectHealth({
+          projectId,
+          storyId: projected.meta?.current_story_id,
+          reason: 'project_current_version_unreadable',
+        });
+      }
+      if (projected.status !== 'readable' || !projected.snapshot?.story) {
+        return unreadableProjectHealth({ projectId, reason: 'project_metadata_unreadable' });
+      }
+      readableCurrentProjectCount += 1;
+      return inspect({ projectId, projectStory: projected.snapshot.story });
+    }
+
     let currentState;
     try {
       currentState = await repository.inspectCurrentStateReadOnly(projectId);

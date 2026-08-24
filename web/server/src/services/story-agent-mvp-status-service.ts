@@ -36,6 +36,7 @@ import {
   listProjectSupplementTasks,
 } from './project-service.js';
 import { getKnowledgeWritebackQueueExportPackage } from './knowledge-writeback-queue-service.js';
+import { createProjectReadOnlyRequestProjection } from './project-read-only-request-projection-service.js';
 
 interface StoryAgentMvpStatusOptions {
   generatedLimit?: number;
@@ -1566,7 +1567,7 @@ function renderMarkdown(report: Omit<StoryAgentMvpStatusReport, 'markdown'>): st
     '',
     '## Summary',
     '',
-    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement snapshot ${report.performance.supplement_task_snapshot_ms}ms; supplement package ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms`,
+    `- aggregation performance: total ${report.performance.total_ms}ms; generated ${report.performance.generated_health_ms}ms; supplement snapshot ${report.performance.supplement_task_snapshot_ms}ms; supplement package ${report.performance.supplement_package_ms}ms; readiness ${report.performance.production_portfolio_ms}ms; writeback ${report.performance.knowledge_writeback_ms}ms; sync health ${report.performance.external_evidence_sync_health_ms}ms; project projection list repository/cache ${report.performance.project_projection_list_repository_call_count}/${report.performance.project_projection_list_cache_hit_count}; current state repository/cache ${report.performance.project_projection_current_state_repository_call_count}/${report.performance.project_projection_current_state_cache_hit_count}; readable/failed ${report.performance.project_projection_readable_project_count}/${report.performance.project_projection_failed_project_count}`,
     `- generated targets: ${report.summary.generated_target_count}`,
     `- generated ready: ${report.summary.generated_ready_count}`,
     `- generated production_gap: ${report.summary.generated_production_gap_count}`,
@@ -1735,6 +1736,7 @@ export async function getStoryAgentMvpStatus(
   options: StoryAgentMvpStatusOptions = {},
 ): Promise<StoryAgentMvpStatusReport> {
   const totalStartedAt = Date.now();
+  const projectReadOnlyProjection = createProjectReadOnlyRequestProjection();
   const performanceDiagnostics: StoryAgentMvpPerformanceDiagnostics = {
     total_ms: 0,
     generated_health_ms: 0,
@@ -1749,9 +1751,19 @@ export async function getStoryAgentMvpStatus(
     production_portfolio_ms: 0,
     external_evidence_sync_health_ms: 0,
     supplement_backlog_ms: 0,
+    project_projection_list_repository_call_count: 0,
+    project_projection_list_cache_hit_count: 0,
+    project_projection_current_state_repository_call_count: 0,
+    project_projection_current_state_cache_hit_count: 0,
+    project_projection_readable_project_count: 0,
+    project_projection_failed_project_count: 0,
   };
+  type PerformanceTimingKey = Exclude<
+    Extract<keyof StoryAgentMvpPerformanceDiagnostics, `${string}_ms`>,
+    'total_ms'
+  >;
   const measure = async <T>(
-    key: Exclude<keyof StoryAgentMvpPerformanceDiagnostics, 'total_ms'>,
+    key: PerformanceTimingKey,
     operation: () => T | Promise<T>,
   ): Promise<T> => {
     const startedAt = Date.now();
@@ -1767,7 +1779,9 @@ export async function getStoryAgentMvpStatus(
   );
   const supplementTaskSnapshotResult = await measure(
     'supplement_task_snapshot_ms',
-    () => listProjectSupplementTasks(),
+    () => listProjectSupplementTasks({}, {
+      readOnlyProjection: projectReadOnlyProjection,
+    }),
   );
   const supplementTaskItems = supplementTaskSnapshotResult.ok && supplementTaskSnapshotResult.data
     ? supplementTaskSnapshotResult.data
@@ -1810,8 +1824,22 @@ export async function getStoryAgentMvpStatus(
     'external_evidence_sync_health_ms',
     () => getProjectExternalEvidenceSourceStorySyncHealthPortfolio({
       limit: options.syncHealthLimit ?? 100,
+      readOnlyProjection: projectReadOnlyProjection,
     }),
   );
+  const projectionDiagnostics = projectReadOnlyProjection.diagnostics();
+  performanceDiagnostics.project_projection_list_repository_call_count =
+    projectionDiagnostics.project_id_list_repository_call_count;
+  performanceDiagnostics.project_projection_list_cache_hit_count =
+    projectionDiagnostics.project_id_list_cache_hit_count;
+  performanceDiagnostics.project_projection_current_state_repository_call_count =
+    projectionDiagnostics.current_state_repository_call_count;
+  performanceDiagnostics.project_projection_current_state_cache_hit_count =
+    projectionDiagnostics.current_state_cache_hit_count;
+  performanceDiagnostics.project_projection_readable_project_count =
+    projectionDiagnostics.readable_project_count;
+  performanceDiagnostics.project_projection_failed_project_count =
+    projectionDiagnostics.failed_project_count;
   performanceDiagnostics.total_ms = Date.now() - totalStartedAt;
   const lanes = [
     generatedArtifactsLane(generatedHealth),

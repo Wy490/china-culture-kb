@@ -2,6 +2,9 @@ import { dirname, relative, resolve } from 'node:path';
 import { mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
+import type {
+  ProjectReadOnlyRequestProjection,
+} from './project-read-only-request-projection-service.js';
 import {
   fail,
   success,
@@ -6663,49 +6666,53 @@ async function mapProjectSupplementTaskProjectsWithConcurrency<T, R>(
 
 export async function listProjectSupplementTasks(
   filtersOrStatus: ProjectSupplementTaskListFilters | KnowledgeSupplementTaskStatus = {},
+  options: { readOnlyProjection?: ProjectReadOnlyRequestProjection } = {},
 ): Promise<ApiResponse<ProjectSupplementTaskListItem[]>> {
   const filters: ProjectSupplementTaskListFilters = typeof filtersOrStatus === 'string'
     ? { status: filtersOrStatus }
     : filtersOrStatus;
-  const projectsResult = await listProjects();
-  if (!projectsResult.ok || !projectsResult.data) {
-    return fail(
-      ErrorCodes.INTERNAL_ERROR,
-      projectsResult.error?.message ?? 'Failed to list projects',
+  let itemGroups: ProjectSupplementTaskListItem[][];
+  if (options.readOnlyProjection) {
+    const projectIds = await options.readOnlyProjection.listProjectIds();
+    itemGroups = await mapProjectSupplementTaskProjectsWithConcurrency(
+      projectIds,
+      8,
+      async projectId => {
+        if (filters.project_id && projectId !== filters.project_id) return [];
+        const projected = await options.readOnlyProjection!.inspectCurrentState(projectId);
+        if (projected.status !== 'readable' || !projected.meta || !projected.snapshot?.story) {
+          return [];
+        }
+        const currentStory = normalizeStoryGenerationFields(projected.snapshot.story);
+        const project = hydrateProjectMetaForStory(projected.meta, currentStory);
+        return projectSupplementTaskItems(project, currentStory, filters);
+      },
+    );
+  } else {
+    const projectsResult = await listProjects();
+    if (!projectsResult.ok || !projectsResult.data) {
+      return fail(
+        ErrorCodes.INTERNAL_ERROR,
+        projectsResult.error?.message ?? 'Failed to list projects',
+      );
+    }
+
+    itemGroups = await mapProjectSupplementTaskProjectsWithConcurrency(
+      projectsResult.data,
+      8,
+      async project => {
+        if (filters.project_id && project.project_id !== filters.project_id) return [];
+        if (filters.video_type && project.video_type !== filters.video_type) return [];
+        const detailResult = await getProject(project.project_id);
+        if (!detailResult.ok || !detailResult.data) return [];
+        return projectSupplementTaskItems(
+          project,
+          detailResult.data.current_story,
+          filters,
+        );
+      },
     );
   }
-
-  const itemGroups = await mapProjectSupplementTaskProjectsWithConcurrency(
-    projectsResult.data,
-    8,
-    async project => {
-      if (filters.project_id && project.project_id !== filters.project_id) return [];
-      if (filters.video_type && project.video_type !== filters.video_type) return [];
-      const detailResult = await getProject(project.project_id);
-      if (!detailResult.ok || !detailResult.data) return [];
-      const writebackTarget = await planStoryDomainKnowledgeWriteback(detailResult.data.current_story);
-      if (filters.province && writebackTarget.target_region !== filters.province) return [];
-      const items: ProjectSupplementTaskListItem[] = [];
-      for (const task of detailResult.data.current_story.supplement_tasks ?? []) {
-        items.push({
-          project_id: project.project_id,
-          current_story_id: project.current_story_id,
-          project_title: project.title,
-          source_domain: writebackTarget.domain_id,
-          source_entry: project.source_entry,
-          video_type: project.video_type,
-          knowledge_writeback_eligible: writebackTarget.eligible,
-          knowledge_writeback_blockers: [...writebackTarget.blockers],
-          target_province: writebackTarget.target_region,
-          suggested_file_path: writebackTarget.suggested_file_path,
-          suggested_section_heading: writebackTarget.suggested_section_heading,
-          updated_at: project.updated_at,
-          task,
-        });
-      }
-      return items;
-    },
-  );
   const items = filterProjectSupplementTaskSnapshot(itemGroups.flat(), filters);
 
   items.sort((a, b) => {
@@ -6719,6 +6726,31 @@ export async function listProjectSupplementTasks(
     return bTime.localeCompare(aTime);
   });
   return success(items);
+}
+
+async function projectSupplementTaskItems(
+  project: StoryProjectMeta | StoryProjectListItem,
+  currentStory: StoryGenerateResult,
+  filters: ProjectSupplementTaskListFilters,
+): Promise<ProjectSupplementTaskListItem[]> {
+  if (filters.video_type && project.video_type !== filters.video_type) return [];
+  const writebackTarget = await planStoryDomainKnowledgeWriteback(currentStory);
+  if (filters.province && writebackTarget.target_region !== filters.province) return [];
+  return (currentStory.supplement_tasks ?? []).map(task => ({
+    project_id: project.project_id,
+    current_story_id: project.current_story_id,
+    project_title: project.title,
+    source_domain: writebackTarget.domain_id,
+    source_entry: project.source_entry,
+    video_type: project.video_type,
+    knowledge_writeback_eligible: writebackTarget.eligible,
+    knowledge_writeback_blockers: [...writebackTarget.blockers],
+    target_province: writebackTarget.target_region,
+    suggested_file_path: writebackTarget.suggested_file_path,
+    suggested_section_heading: writebackTarget.suggested_section_heading,
+    updated_at: project.updated_at,
+    task,
+  }));
 }
 
 export function filterProjectSupplementTaskSnapshot(

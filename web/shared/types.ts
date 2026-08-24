@@ -4829,6 +4829,12 @@ export interface StoryAgentMvpPerformanceDiagnostics {
   production_portfolio_ms: number;
   external_evidence_sync_health_ms: number;
   supplement_backlog_ms: number;
+  project_projection_list_repository_call_count: number;
+  project_projection_list_cache_hit_count: number;
+  project_projection_current_state_repository_call_count: number;
+  project_projection_current_state_cache_hit_count: number;
+  project_projection_readable_project_count: number;
+  project_projection_failed_project_count: number;
 }
 
 export interface StoryAgentMvpStatusReport {

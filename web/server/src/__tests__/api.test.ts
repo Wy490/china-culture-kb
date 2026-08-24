@@ -3802,6 +3802,12 @@ describe('System API', () => {
           production_portfolio_ms: expect.any(Number),
           external_evidence_sync_health_ms: expect.any(Number),
           supplement_backlog_ms: expect.any(Number),
+          project_projection_list_repository_call_count: 1,
+          project_projection_list_cache_hit_count: expect.any(Number),
+          project_projection_current_state_repository_call_count: expect.any(Number),
+          project_projection_current_state_cache_hit_count: expect.any(Number),
+          project_projection_readable_project_count: expect.any(Number),
+          project_projection_failed_project_count: expect.any(Number),
         },
         summary: expect.objectContaining({
           generated_target_count: expect.any(Number),
@@ -4016,6 +4022,15 @@ describe('System API', () => {
           },
         },
       });
+      expect(res.body.data.performance.project_projection_list_cache_hit_count).toBeGreaterThanOrEqual(1);
+      expect(res.body.data.performance.project_projection_current_state_repository_call_count).toBeGreaterThan(0);
+      expect(res.body.data.performance.project_projection_current_state_cache_hit_count).toBe(
+        res.body.data.performance.project_projection_current_state_repository_call_count,
+      );
+      expect(
+        res.body.data.performance.project_projection_readable_project_count
+          + res.body.data.performance.project_projection_failed_project_count,
+      ).toBe(res.body.data.performance.project_projection_current_state_repository_call_count);
       expect(res.body.data.summary.generated_target_count).toBeGreaterThanOrEqual(1);
       expect(res.body.data.lanes).toContainEqual(expect.objectContaining({
         key: 'external_evidence_sync_health',
