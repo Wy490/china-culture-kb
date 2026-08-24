@@ -45,6 +45,10 @@ import {
   runAiComicSeriesProductionReadinessAutomation,
 } from './ai-comic-series-service.js';
 import { storyGeneratedRoot } from '../platform/story-storage-root.js';
+import {
+  DEFAULT_READ_ONLY_STORAGE_CONCURRENCY,
+  mapWithBoundedConcurrencyPreservingOrder,
+} from './bounded-concurrency.js';
 
 export interface ProductionReadinessPortfolioOptions {
   includeArchivedSeries?: boolean;
@@ -65,27 +69,7 @@ type PortfolioReadinessScanResult =
   | { report?: never; error: ProductionReadinessPortfolioReport['errors'][number] };
 
 const portfolioAutomationLedgerLimit = 20;
-const portfolioReadConcurrency = 8;
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let nextIndex = 0;
-  await Promise.all(Array.from(
-    { length: Math.min(concurrency, items.length) },
-    async () => {
-      while (nextIndex < items.length) {
-        const index = nextIndex;
-        nextIndex += 1;
-        results[index] = await worker(items[index]);
-      }
-    },
-  ));
-  return results;
-}
+const portfolioReadConcurrency = DEFAULT_READ_ONLY_STORAGE_CONCURRENCY;
 
 function generatedRoot(): string {
   return storyGeneratedRoot();
@@ -535,7 +519,7 @@ export async function getProductionReadinessPortfolio(
   let storyProjectCumulativeReadinessWorkMs = 0;
   let aiComicSeriesCumulativeReadinessWorkMs = 0;
   const readinessScanStartedAt = Date.now();
-  const scanResults = await mapWithConcurrency(
+  const scanResults = await mapWithBoundedConcurrencyPreservingOrder(
     targets,
     portfolioReadConcurrency,
     async (target): Promise<PortfolioReadinessScanResult> => {

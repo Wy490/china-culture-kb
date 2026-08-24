@@ -240,6 +240,10 @@ import {
   projectRepository,
 } from './project-core-service.js';
 import {
+  DEFAULT_READ_ONLY_STORAGE_CONCURRENCY,
+  mapWithBoundedConcurrencyPreservingOrder,
+} from './bounded-concurrency.js';
+import {
   appendSeedanceProviderQueueBatch,
   seedanceProviderPollTargets,
   seedanceShotWaitingMinutes,
@@ -2174,11 +2178,12 @@ export async function listProjectProductionReadinessTargetIds(): Promise<ApiResp
     return success([]);
   }
 
-  const readableProjectIds: string[] = [];
-  for (const projectId of projectIds) {
-    if (await readProjectMeta(projectId)) readableProjectIds.push(projectId);
-  }
-  return success(readableProjectIds);
+  const readable = await mapWithBoundedConcurrencyPreservingOrder(
+    projectIds,
+    DEFAULT_READ_ONLY_STORAGE_CONCURRENCY,
+    async projectId => Boolean(await readProjectMeta(projectId)),
+  );
+  return success(projectIds.filter((_, index) => readable[index]));
 }
 
 async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {

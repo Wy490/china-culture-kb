@@ -14,6 +14,10 @@ import {
 } from '../repositories/series-project-repository.js';
 import { FileArtifactStore, type ArtifactWriteResult } from '../repositories/artifact-store.js';
 import { storyGeneratedRoot, storyKbRoot } from '../platform/story-storage-root.js';
+import {
+  DEFAULT_READ_ONLY_STORAGE_CONCURRENCY,
+  mapWithBoundedConcurrencyPreservingOrder,
+} from './bounded-concurrency.js';
 import type {
   AiComicContinuityLedger,
   AiComicContinuityLedgerEpisode,
@@ -4909,14 +4913,15 @@ export async function listAiComicSeriesProductionReadinessTargetIds(
   const projectIds = await seriesProjectRepository().listProjectIds();
   if (!projectIds.length) return success([]);
 
-  const readableProjectIds: string[] = [];
-  for (const projectId of projectIds) {
-    const detail = await seriesProjectRepository().read(projectId);
-    if (detail && (options.includeArchived || !detail.project.archived_at)) {
-      readableProjectIds.push(projectId);
-    }
-  }
-  return success(readableProjectIds);
+  const readable = await mapWithBoundedConcurrencyPreservingOrder(
+    projectIds,
+    DEFAULT_READ_ONLY_STORAGE_CONCURRENCY,
+    async projectId => {
+      const detail = await seriesProjectRepository().read(projectId);
+      return Boolean(detail && (options.includeArchived || !detail.project.archived_at));
+    },
+  );
+  return success(projectIds.filter((_, index) => readable[index]));
 }
 
 async function buildAiComicSeriesProjectListMeta(
