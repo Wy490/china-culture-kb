@@ -84,6 +84,11 @@ export interface ProjectCurrentStateInspection {
   snapshot: StoryProjectVersionSnapshot | null;
 }
 
+export interface ProjectHistoryRead {
+  meta: StoryProjectMeta | null;
+  versions: StoryProjectVersionSnapshot[];
+}
+
 export interface ProjectRepositoryLogicalState {
   meta: StoryProjectMeta[];
   versions: StoryProjectVersionSnapshot[];
@@ -118,6 +123,7 @@ export function projectRepositoryLogicalSha256(state: ProjectRepositoryLogicalSt
 export interface ProjectRepository {
   listProjectIds(): Promise<string[]>;
   inspectCurrentStateReadOnly(projectId: string): Promise<ProjectCurrentStateInspection>;
+  readProjectHistory(projectId: string): Promise<ProjectHistoryRead>;
   readMeta(projectId: string): Promise<StoryProjectMeta | null>;
   readVersion(projectId: string, versionId: string): Promise<StoryProjectVersionSnapshot | null>;
   readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]>;
@@ -201,6 +207,17 @@ export class FileProjectRepository implements ProjectRepository {
     return { meta, snapshot };
   }
 
+  async readProjectHistory(projectId: string): Promise<ProjectHistoryRead> {
+    if (!validProjectId(projectId)) return { meta: null, versions: [] };
+    await this.recoverPendingTransactions(projectId);
+    const meta = await this.readJson<StoryProjectMeta>(this.metaPath(projectId));
+    if (!meta) return { meta: null, versions: [] };
+    return {
+      meta,
+      versions: await this.readVersionSnapshotsAfterRecovery(projectId),
+    };
+  }
+
   async inspectLogicalStateReadOnly(): Promise<ProjectRepositoryLogicalStateInspection> {
     const state: ProjectRepositoryLogicalState = { meta: [], versions: [] };
     for (const projectId of await this.listProjectIds()) {
@@ -282,6 +299,12 @@ export class FileProjectRepository implements ProjectRepository {
   async readVersionSnapshots(projectId: string): Promise<StoryProjectVersionSnapshot[]> {
     if (!validProjectId(projectId)) return [];
     await this.recoverPendingTransactions(projectId);
+    return this.readVersionSnapshotsAfterRecovery(projectId);
+  }
+
+  private async readVersionSnapshotsAfterRecovery(
+    projectId: string,
+  ): Promise<StoryProjectVersionSnapshot[]> {
     let entries: Dirent[];
     try {
       const directory = this.versionsDirectory(projectId);

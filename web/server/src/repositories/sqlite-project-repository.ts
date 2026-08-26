@@ -14,6 +14,7 @@ import {
   projectRepositoryLogicalSha256,
   ProjectRepositoryConflictError,
   type ProjectMetaExpectation,
+  type ProjectHistoryRead,
   type ProjectRepository,
   type ProjectRepositoryLogicalState,
 } from './project-repository.js';
@@ -178,6 +179,35 @@ export class SqliteProjectRepository implements ProjectRepository {
       );
       this.assertSnapshotIdentity(projectId, meta.current_version_id, versionRow, snapshot);
       return { meta, snapshot };
+    });
+  }
+
+  async readProjectHistory(projectId: string): Promise<ProjectHistoryRead> {
+    if (!validProjectId(projectId)) return { meta: null, versions: [] };
+    return this.withDatabase(database => {
+      const metaRow = asMetaRow(database.prepare(`
+        SELECT project_id, current_version_id, version_count, updated_at, body, body_sha256
+        FROM project_meta
+        WHERE project_id = ?
+      `).get(projectId));
+      if (!metaRow) return { meta: null, versions: [] };
+      const meta = parseStoredJson<StoryProjectMeta>(metaRow, `Project metadata "${projectId}"`);
+      this.assertMetaIdentity(metaRow, meta);
+      const rows = database.prepare(`
+        SELECT project_id, version_id, created_at, body, body_sha256
+        FROM project_versions
+        WHERE project_id = ?
+        ORDER BY created_at DESC, version_id ASC
+      `).all(projectId) as unknown as StoredProjectVersionRow[];
+      const versions = rows.map(row => {
+        const snapshot = parseStoredJson<StoryProjectVersionSnapshot>(
+          row,
+          `Project version "${row.version_id}"`,
+        );
+        this.assertSnapshotIdentity(projectId, row.version_id, row, snapshot);
+        return snapshot;
+      });
+      return { meta, versions };
     });
   }
 

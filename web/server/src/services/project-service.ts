@@ -2203,12 +2203,17 @@ async function readAllProjectMetas(): Promise<StoryProjectMeta[]> {
 }
 
 export async function getProject(projectId: string): Promise<ApiResponse<StoryProjectDetail>> {
-  const project = await ensureProjectExists(projectId);
+  let history = await projectRepository().readProjectHistory(projectId);
+  let project = history.meta;
+  if (!project) {
+    project = await ensureProjectExists(projectId);
+    if (project) history = await projectRepository().readProjectHistory(projectId);
+  }
   if (!project) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" not found`);
   }
 
-  const versions = await readVersionSnapshots(projectId);
+  const versions = history.versions;
   if (!versions.length) {
     return fail(ErrorCodes.STORY_NOT_FOUND, `Project "${projectId}" has no version snapshots`);
   }

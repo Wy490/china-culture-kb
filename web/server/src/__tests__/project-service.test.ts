@@ -15,6 +15,9 @@ import {
 } from '@shared/schemas.js';
 
 import {
+  FileProjectRepository,
+} from '../repositories/project-repository.js';
+import {
   acceptProjectLocalGearsArtifacts,
   addProjectMaterialPackMaterial,
   autoSelectProjectSeedanceShotVersions,
@@ -777,6 +780,25 @@ describe('project-service', () => {
       expect(result.error?.message).toContain(`current version "${enriched.project_id}-v9" is unavailable`);
     }
     expect((JSON.parse(await readFile(projectPath, 'utf-8')) as StoryProjectMeta).status).toBe('draft');
+  });
+
+  it('builds readiness from one combined metadata and full-history repository read', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'china-culture-kb-project-readiness-history-'));
+    TEMP_DIRS.push(root);
+    process.env.KB_ROOT = resolve(root, 'data');
+
+    const enriched = await createProjectFromGeneratedStory(makeStory(), '2026-06-09T10:00:00.000Z');
+    const historySpy = vi.spyOn(FileProjectRepository.prototype, 'readProjectHistory');
+    const metaSpy = vi.spyOn(FileProjectRepository.prototype, 'readMeta');
+    const versionsSpy = vi.spyOn(FileProjectRepository.prototype, 'readVersionSnapshots');
+
+    const readiness = await getProjectProductionReadiness(enriched.project_id!);
+
+    expect(readiness.ok).toBe(true);
+    expect(historySpy).toHaveBeenCalledTimes(1);
+    expect(metaSpy).not.toHaveBeenCalled();
+    expect(versionsSpy).not.toHaveBeenCalled();
+    expect(readiness.data?.project.version_count).toBe(1);
   });
 
   it('builds a production board from the current project version', async () => {

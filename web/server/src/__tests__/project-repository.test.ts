@@ -70,6 +70,10 @@ describe('FileProjectRepository', () => {
       expect(await repository.listProjectIds()).toEqual([meta.project_id]);
       expect(await repository.readMeta(meta.project_id)).toEqual(meta);
       expect(await repository.readVersionSnapshots(meta.project_id)).toEqual([snapshot(meta)]);
+      expect(await repository.readProjectHistory(meta.project_id)).toEqual({
+        meta,
+        versions: [snapshot(meta)],
+      });
 
       const replacement = { ...meta, title: 'must not overwrite' };
       expect(await repository.createInitial(replacement, snapshot(replacement))).toBe('exists');
@@ -128,6 +132,8 @@ describe('FileProjectRepository', () => {
       await expect(repository.readVersion(meta.project_id, meta.current_version_id))
         .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
       await expect(repository.readVersionSnapshots(meta.project_id))
+        .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
+      await expect(repository.readProjectHistory(meta.project_id))
         .rejects.toBeInstanceOf(InvalidProjectRepositoryIdentifierError);
 
       const wrongStoryVersion = snapshot(meta);

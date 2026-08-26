@@ -19,6 +19,8 @@ const REPORT_PATH = resolve(
 const SOURCE_PATHS = [
   'web/shared/types.ts',
   'web/server/package.json',
+  'web/server/src/repositories/project-repository.ts',
+  'web/server/src/repositories/sqlite-project-repository.ts',
   'web/server/src/services/bounded-concurrency.ts',
   'web/server/src/services/generated-health-service.ts',
   'web/server/src/services/ai-comic-series-service.ts',

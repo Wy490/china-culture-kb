@@ -119,6 +119,10 @@ describe('SqliteProjectRepository', () => {
       .toBe('exists');
     expect(await repository.listProjectIds()).toEqual([initial.project_id]);
     expect(await repository.readMeta(initial.project_id)).toEqual(initial);
+    expect(await repository.readProjectHistory(initial.project_id)).toEqual({
+      meta: initial,
+      versions: [snapshot(initial)],
+    });
 
     const winner = projectMeta(initial.project_id, `${initial.project_id}-v2-winner`, 2);
     const stale = projectMeta(initial.project_id, `${initial.project_id}-v2-stale`, 2);
@@ -168,6 +172,8 @@ describe('SqliteProjectRepository', () => {
     database.close();
 
     await expect(repository.readMeta(initial.project_id))
+      .rejects.toBeInstanceOf(ProjectRepositoryConflictError);
+    await expect(repository.readProjectHistory(initial.project_id))
       .rejects.toBeInstanceOf(ProjectRepositoryConflictError);
   });
 
