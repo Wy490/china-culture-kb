@@ -2,7 +2,7 @@
 
 ## 1. 本文件用途
 
-这是新对话的首要交接入口，记录截至 2026-08-24 的真实工程状态、验证证据和下一步顺序。文件名保留首次交接日期，正文持续更新。
+这是新对话的首要交接入口，记录截至 2026-08-26 的真实工程状态、验证证据和下一步顺序。文件名保留首次交接日期，正文持续更新。
 
 完整规划与历史切片保留在：
 
@@ -50,9 +50,10 @@
 - 第五十七切片实现提交：`d285322a`（`perf(story-agent): streamline portfolio readiness scans`）
 - 第五十八切片实现提交：`2c0c5ce9`（`diag(story-agent): profile portfolio readiness phases`）
 - 第五十九切片实现提交：`dfdce333`（`perf(story-agent): parallelize portfolio target discovery`）
+- 第六十切片实现提交：`195a4cd1`（`perf(story-agent): combine project history reads`）
 - staged 文件：0
 - 本轮起点上游同步：HEAD 与上游分支 `0/0`
-- B4 与 M4 第一至第五十九切片均已完成；第五十九切片实现提交为 `dfdce333`
+- B4 与 M4 第一至第六十切片均已完成；第六十切片实现提交为 `195a4cd1`
 - 处理原则：保留全部现有变更，不得执行 `git reset --hard`、`git checkout --` 或批量清理
 
 前序 M0–M3 累积实现已提交并推送到当前分支；本轮变更仍不得 reset、checkout 或批量清理。新对话必须先运行 `git status --short`，在当前工作区上续做。
@@ -84,6 +85,8 @@ M2 剩余 1% 是机器报告固化，不是产品主链缺失。M3 原始字段�
 第五十八切片把 production portfolio 的剩余成本拆成请求内只读诊断：目标发现、readiness 扫描、summary、Markdown 与总墙钟分别计时，并记录普通项目/系列项目的累计 worker 工作量；累计量明确可能因 8 路并发大于扫描墙钟。真实单次观测中 portfolio 总计 13.60 秒，其中目标发现 5.86 秒、readiness 扫描 7.73 秒、summary 7 毫秒；普通项目累计 worker 50.88 秒、系列 10.64 秒。下一优化方向因此收敛为目标发现的顺序 I/O 与普通项目 readiness，排序汇总不是瓶颈。所有数字仍是本地单次观测，不是 SLA 或稳定提速声明。
 
 第五十九切片已把普通项目 metadata 与系列 raw-project 的目标发现从逐项顺序读取改为固定 8 路有界并发，并通过按输入索引回填保持原始 project ID 顺序；可读目标过滤、系列归档过滤、读取异常 fail closed、后续完整历史 readiness、全量 summary 和 top limit 均未改变。portfolio readiness 扫描同步复用同一个保序并发 helper，避免两套调度语义漂移。真实 2051 普通项目 + 963 系列单次观测中目标发现 5.57 秒、readiness 7.75 秒、portfolio 13.33 秒、MVP 总墙钟 23.36 秒；相对上一快照仅作观测，不声明稳定提速。下一独立优化点回到普通项目 readiness 的累计 worker 成本，不得用 current-state 投影跳过历史版本语义。
+
+第六十切片把普通项目 `getProject()` 的 metadata 与全历史版本读取收敛为仓储级单次 `readProjectHistory()`：文件仓储只执行一次 pending transaction 恢复检查后读取 metadata 和全部版本，SQLite 在同一个数据库读取上下文内完成 metadata 与版本查询。现有项目的 readiness 不再分别调用 `readMeta()` 与 `readVersionSnapshots()`；缺失项目的源故事懒迁移、current version 缺失时 fail closed、损坏 JSON/版本身份拒绝和全历史 summary 均保持不变。真实单次观测中普通项目累计 worker 50.95 秒、readiness 扫描 7.74 秒、portfolio 13.54 秒、MVP 总墙钟 23.60 秒，仍处同一波动区间，因此只声明确定性仓储调用收减，不声明墙钟提速。下一片应先拆分普通项目 readiness 的 history read、board build 与 report assembly 成本，再决定是否有新的安全优化点。
 
 第四十八切片建立了首个可复现 RAG 检索评测基线；第四十九切片进一步把数据集扩为 19 个机器编制案例（15 个可回答、4 个不可回答），新增主体意图链、地域歧义和同类工艺负例，并将“最高相关主体 Top-1”和“可答案例可用相关覆盖”升级为硬门禁。检索现在保留原始词法分作为候选准入，再用查询覆盖、条目关键词概念与强字段多样性校准排序；`usable_for_story` 则同时检查校准分、覆盖和可信度层级，不再简单降低统一阈值。当前 Recall@3/5=1、MRR@10=1、NDCG@5=0.998141、最高相关主体 Top-1=15/15、可用相关覆盖=15/15，禁止条目、不可回答候选和不可回答可用误报均为 0。第五十切片已让 `story-knowledge-contract/v1` 通过显式开关进入 generation preparation 的只读 fail-closed shadow：当前 289 条、1043 个未分级来源全部得到 `safe_no_fact_candidates`，结构化事实候选和七类事实放大均为 0。第五十一切片进一步建立 7 案例 approved overlay/prompt-package shadow 矩阵：只有合成的真人核验 A/B 多来源案例形成 1 个未执行候选包；机器来源和存疑案例 2 个 blocked，mixed certainty、pending、rejected、模拟 revoked/incompatible 共 4 个安全无候选；7/7 正式 prompt hash 与故事结果均和 baseline 一致。第五十二切片已提供 `system:operate + internal_story_tools` 受限 POST canary：只返回 active/shadow hash、字段 diff 和迁移决策，不返回提示词或故事，不调用 adapter、不持久化；即使安全候选达到 `eligible_for_operator_review`，正式消费仍被真实人工证明、独立审批和生产 canary 三项证据阻断。第五十三切片进一步让 receipt 分别绑定 generation request、overlay、generation shadow、prompt comparison 和 migration decision；7 路确定性审计为 1 eligible/6 remain-shadow、7/7 绑定有效、正式消费/adapter/持久化均为 0。blueprint、正式 prompt、fallback、adapter、持久化及输出继续不消费 shadow。
 
@@ -1524,6 +1527,14 @@ M4 第五十九切片完成时：
 - 新 helper 已纳入只读诊断源码指纹。定向 4 文件/120 项、Server lint/build 与 `git diff --check` 通过；Server 全量 223 文件/1824 项通过、1 文件/2 项既有跳过、0 失败。
 - 真实只读诊断通过：普通项目 2051、系列项目 963；目标发现 5570ms、readiness 扫描 7754ms、portfolio 13333ms、MVP 总墙钟 23360ms。报告 SHA-256 为 `e01882d414d99377be196a98f0c4d0fa47eed9fc944fa525d9bac5b88de4823b`，业务仓储指纹继续为 `55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827`，最终 `--check` 通过。该单次墙钟不是 SLA、回归判定或稳定提速证明。
 - 本切片不写业务仓储或省级 Markdown，不调用外部 provider，不授予人工、专业或生产信用。下一有界切片优先审计普通项目 readiness 的累计 worker 成本，在保留全历史版本与失败语义的前提下寻找重复读取；不得使用 limit 或 current-state 投影削减全量扫描。
+
+M4 第六十切片完成时：
+
+- `ProjectRepository` 新增 `readProjectHistory()` 合同，组合返回 metadata 与全部版本快照。文件 provider 复用一次恢复检查后的版本扫描，SQLite provider 复用同一个数据库读取上下文；既有 `readMeta()`、`readVersion()` 和 `readVersionSnapshots()` 接口继续保留给其他消费者。
+- `getProject()` 对已有项目只调用一次 `readProjectHistory()`，readiness 因此不再为同一项目分别执行 metadata 与全历史仓储读取。项目不存在时仍执行既有源故事懒迁移，并在创建后重新读取完整历史；current version 缺失、版本为空、故事快照缺失和身份损坏继续 fail closed。
+- 回归覆盖文件/SQLite 合并读取、损坏状态拒绝、readiness 单次合并调用及既有项目服务合同。定向 3 文件/96 项、Server lint/build 与 `git diff --check` 通过；Server 全量 223 文件/1825 项通过、1 文件/2 项既有跳过、0 失败。
+- 两种仓储实现已纳入只读诊断源码指纹。真实 2051 普通项目 + 963 系列诊断通过：目标发现 5789ms、readiness 7739ms、普通项目累计 worker 50950ms、portfolio 13540ms、MVP 总墙钟 23595ms；报告 SHA-256 为 `1b64185b470d3670f27fcf549094344c12811c26a38033b60a78190954a42027`，业务仓储指纹继续为 `55ceef81363b12a8387b289e9e2edb9652e69a3f2b5a9d205d82c9b012066827`，最终 `--check` 通过。墙钟仍只作本地单次观测，不构成稳定提速或回归结论。
+- 本切片不写业务仓储或省级 Markdown，不调用外部 provider，不授予人工、专业或生产信用。下一有界切片优先增加普通项目 readiness 内部 phase 诊断，拆分全历史读取、Production Board 构建和报告汇总成本；在得到证据前不继续猜测优化。
 
 环境限制：
 
