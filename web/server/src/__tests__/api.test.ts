@@ -1749,6 +1749,10 @@ describe('System API', () => {
           story_project_target_count: expect.any(Number),
           ai_comic_series_target_count: expect.any(Number),
           story_project_cumulative_readiness_work_ms: expect.any(Number),
+          story_project_cumulative_project_detail_read_ms: expect.any(Number),
+          story_project_cumulative_production_board_build_ms: expect.any(Number),
+          story_project_cumulative_report_assembly_ms: expect.any(Number),
+          story_project_cumulative_markdown_render_ms: expect.any(Number),
           ai_comic_series_cumulative_readiness_work_ms: expect.any(Number),
         },
       });
@@ -9351,6 +9355,14 @@ describe('Projects API', () => {
         project: {
           project_id: enriched.project_id,
           current_story_id: story.storyId,
+        },
+        performance: {
+          wall_clock_observation_not_sla: true,
+          project_detail_read_ms: expect.any(Number),
+          production_board_build_ms: expect.any(Number),
+          report_assembly_ms: expect.any(Number),
+          markdown_render_ms: expect.any(Number),
+          total_ms: expect.any(Number),
         },
       });
       expect(res.body.data.summary).toMatchObject({

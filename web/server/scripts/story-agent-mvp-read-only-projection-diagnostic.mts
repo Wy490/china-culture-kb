@@ -123,6 +123,11 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
   const portfolioSeriesErrorCount = productionPortfolio.errors.filter(
     item => item.scope === 'ai_comic_series',
   ).length;
+  const storyProjectCumulativePhaseMs =
+    portfolioPerformance.story_project_cumulative_project_detail_read_ms
+    + portfolioPerformance.story_project_cumulative_production_board_build_ms
+    + portfolioPerformance.story_project_cumulative_report_assembly_ms
+    + portfolioPerformance.story_project_cumulative_markdown_render_ms;
   const storeUnchanged = input.storeFingerprintBefore === input.storeFingerprintAfter;
   const checks: StoryAgentMvpReadOnlyProjectionDiagnosticCheck[] = [
     check('project_store_fingerprint_unchanged', storeUnchanged, storeUnchanged, true),
@@ -213,6 +218,12 @@ export function buildStoryAgentMvpReadOnlyProjectionDiagnostic(input: {
         && portfolioPerformance.markdown_render_ms >= 0
         && portfolioPerformance.total_ms >= portfolioPerformance.readiness_scan_ms
         && portfolioPerformance.story_project_cumulative_readiness_work_ms >= 0
+        && portfolioPerformance.story_project_cumulative_project_detail_read_ms >= 0
+        && portfolioPerformance.story_project_cumulative_production_board_build_ms >= 0
+        && portfolioPerformance.story_project_cumulative_report_assembly_ms >= 0
+        && portfolioPerformance.story_project_cumulative_markdown_render_ms >= 0
+        && storyProjectCumulativePhaseMs
+          <= portfolioPerformance.story_project_cumulative_readiness_work_ms
         && portfolioPerformance.ai_comic_series_cumulative_readiness_work_ms >= 0,
       portfolioPerformance.wall_clock_observation_not_sla,
       true,
@@ -280,6 +291,11 @@ export function validateStoryAgentMvpReadOnlyProjectionDiagnosticReport(
   const { report_sha256: reportSha256, ...payload } = report;
   const projection = report.projection;
   const portfolioPerformance = report.production_portfolio_observations;
+  const storyProjectCumulativePhaseMs =
+    portfolioPerformance.story_project_cumulative_project_detail_read_ms
+    + portfolioPerformance.story_project_cumulative_production_board_build_ms
+    + portfolioPerformance.story_project_cumulative_report_assembly_ms
+    + portfolioPerformance.story_project_cumulative_markdown_render_ms;
   const expectedCacheHitCount = projection.current_state_seeded_count * 2
     + projection.current_state_repository_call_count;
   const resolvedProjectCount = projection.readable_project_count + projection.failed_project_count;
@@ -314,6 +330,11 @@ export function validateStoryAgentMvpReadOnlyProjectionDiagnosticReport(
     || portfolioPerformance.markdown_render_ms < 0
     || portfolioPerformance.total_ms < portfolioPerformance.readiness_scan_ms
     || portfolioPerformance.story_project_cumulative_readiness_work_ms < 0
+    || portfolioPerformance.story_project_cumulative_project_detail_read_ms < 0
+    || portfolioPerformance.story_project_cumulative_production_board_build_ms < 0
+    || portfolioPerformance.story_project_cumulative_report_assembly_ms < 0
+    || portfolioPerformance.story_project_cumulative_markdown_render_ms < 0
+    || storyProjectCumulativePhaseMs > portfolioPerformance.story_project_cumulative_readiness_work_ms
     || portfolioPerformance.ai_comic_series_cumulative_readiness_work_ms < 0
   ) {
     failures.push('production_portfolio_observation_mismatch');

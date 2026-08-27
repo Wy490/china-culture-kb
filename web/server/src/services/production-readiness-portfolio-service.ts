@@ -460,6 +460,7 @@ function buildMarkdown(report: Omit<ProductionReadinessPortfolioReport, 'markdow
     `- portfolio automation runs: ${report.summary.portfolio_automation_run_count}`,
     `- read phases: discovery ${report.performance.target_discovery_ms}ms · readiness scan ${report.performance.readiness_scan_ms}ms · summary ${report.performance.summary_assembly_ms}ms`,
     `- cumulative readiness work: story ${report.performance.story_project_cumulative_readiness_work_ms}ms · series ${report.performance.ai_comic_series_cumulative_readiness_work_ms}ms · concurrency ${report.performance.configured_read_concurrency}`,
+    `- story readiness phases: detail ${report.performance.story_project_cumulative_project_detail_read_ms}ms · board ${report.performance.story_project_cumulative_production_board_build_ms}ms · report ${report.performance.story_project_cumulative_report_assembly_ms}ms · markdown ${report.performance.story_project_cumulative_markdown_render_ms}ms`,
     ...(latestRun
       ? [`- latest portfolio run: ${latestRun.completed_at} · executed ${latestRun.executed_target_count} · failed ${latestRun.failed_target_count}`]
       : []),
@@ -517,6 +518,10 @@ export async function getProductionReadinessPortfolio(
   const storyProjectTargetCount = storyTargetRes.data?.length ?? 0;
   const aiComicSeriesTargetCount = seriesTargetRes.data?.length ?? 0;
   let storyProjectCumulativeReadinessWorkMs = 0;
+  let storyProjectCumulativeProjectDetailReadMs = 0;
+  let storyProjectCumulativeProductionBoardBuildMs = 0;
+  let storyProjectCumulativeReportAssemblyMs = 0;
+  let storyProjectCumulativeMarkdownRenderMs = 0;
   let aiComicSeriesCumulativeReadinessWorkMs = 0;
   const readinessScanStartedAt = Date.now();
   const scanResults = await mapWithBoundedConcurrencyPreservingOrder(
@@ -530,6 +535,12 @@ export async function getProductionReadinessPortfolio(
       const targetElapsedMs = Date.now() - targetStartedAt;
       if (target.scope === 'story_project') {
         storyProjectCumulativeReadinessWorkMs += targetElapsedMs;
+        if (readiness.ok && readiness.data?.scope === 'story_project') {
+          storyProjectCumulativeProjectDetailReadMs += readiness.data.performance.project_detail_read_ms;
+          storyProjectCumulativeProductionBoardBuildMs += readiness.data.performance.production_board_build_ms;
+          storyProjectCumulativeReportAssemblyMs += readiness.data.performance.report_assembly_ms;
+          storyProjectCumulativeMarkdownRenderMs += readiness.data.performance.markdown_render_ms;
+        }
       } else {
         aiComicSeriesCumulativeReadinessWorkMs += targetElapsedMs;
       }
@@ -596,6 +607,10 @@ export async function getProductionReadinessPortfolio(
     story_project_target_count: storyProjectTargetCount,
     ai_comic_series_target_count: aiComicSeriesTargetCount,
     story_project_cumulative_readiness_work_ms: storyProjectCumulativeReadinessWorkMs,
+    story_project_cumulative_project_detail_read_ms: storyProjectCumulativeProjectDetailReadMs,
+    story_project_cumulative_production_board_build_ms: storyProjectCumulativeProductionBoardBuildMs,
+    story_project_cumulative_report_assembly_ms: storyProjectCumulativeReportAssemblyMs,
+    story_project_cumulative_markdown_render_ms: storyProjectCumulativeMarkdownRenderMs,
     ai_comic_series_cumulative_readiness_work_ms: aiComicSeriesCumulativeReadinessWorkMs,
   };
 

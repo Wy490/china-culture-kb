@@ -58,6 +58,14 @@ function readiness(projectId: string): any {
     },
     issues: [],
     next_actions: [],
+    performance: {
+      wall_clock_observation_not_sla: true,
+      project_detail_read_ms: 1,
+      production_board_build_ms: 1,
+      report_assembly_ms: 1,
+      markdown_render_ms: 1,
+      total_ms: 4,
+    },
   };
 }
 
@@ -100,6 +108,10 @@ describe('production readiness portfolio concurrency', () => {
     expect(report.performance.target_discovery_ms).toBeGreaterThanOrEqual(0);
     expect(report.performance.readiness_scan_ms).toBeGreaterThan(0);
     expect(report.performance.story_project_cumulative_readiness_work_ms).toBeGreaterThan(0);
+    expect(report.performance.story_project_cumulative_project_detail_read_ms).toBe(20);
+    expect(report.performance.story_project_cumulative_production_board_build_ms).toBe(20);
+    expect(report.performance.story_project_cumulative_report_assembly_ms).toBe(20);
+    expect(report.performance.story_project_cumulative_markdown_render_ms).toBe(20);
     expect(report.performance.ai_comic_series_cumulative_readiness_work_ms).toBe(0);
     expect(report.performance.total_ms).toBeGreaterThanOrEqual(report.performance.readiness_scan_ms);
   });

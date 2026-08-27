@@ -5014,7 +5014,10 @@ export async function getProjectProductionBoard(projectId: string): Promise<ApiR
 export async function getProjectProductionReadiness(
   projectId: string,
 ): Promise<ApiResponse<StoryProjectProductionReadinessReport>> {
+  const readinessStartedAt = Date.now();
+  const projectDetailReadStartedAt = Date.now();
   const detailRes = await getProject(projectId);
+  const projectDetailReadMs = Date.now() - projectDetailReadStartedAt;
   if (!detailRes.ok || !detailRes.data) {
     return fail(
       ErrorCodes.STORY_NOT_FOUND,
@@ -5023,10 +5026,13 @@ export async function getProjectProductionReadiness(
   }
 
   const detail = detailRes.data;
+  const productionBoardBuildStartedAt = Date.now();
   const board = buildStoryProductionBoard(detail.current_story, {
     seedanceAssetLibrary: detail.project.seedance_asset_library,
     seedanceShotLedger: detail.project.seedance_shot_ledger,
   });
+  const productionBoardBuildMs = Date.now() - productionBoardBuildStartedAt;
+  const reportAssemblyStartedAt = Date.now();
   const quality = detail.current_story.quality_report;
   const qualityScore = typeof quality?.genre_score === 'number'
     ? quality.genre_score
@@ -5545,6 +5551,14 @@ export async function getProjectProductionReadiness(
     seedanceProductionAssetReadyCount: mediaProductionCreditCount,
     gearsSummary,
   });
+  const performance = {
+    wall_clock_observation_not_sla: true as const,
+    project_detail_read_ms: projectDetailReadMs,
+    production_board_build_ms: productionBoardBuildMs,
+    report_assembly_ms: 0,
+    markdown_render_ms: 0,
+    total_ms: 0,
+  };
   const base: Omit<StoryProjectProductionReadinessReport, 'markdown'> = {
     schema_version: 'story-project-production-readiness/v1',
     scope: 'story_project',
@@ -5576,11 +5590,16 @@ export async function getProjectProductionReadiness(
     }),
     automation_ledger: detail.project.production_readiness_automation_ledger,
     latest_automation_run: detail.project.production_readiness_automation_ledger?.latest_run,
+    performance,
   };
-
+  performance.report_assembly_ms = Date.now() - reportAssemblyStartedAt;
+  const markdownRenderStartedAt = Date.now();
+  const markdown = buildStoryProjectProductionReadinessMarkdown(base);
+  performance.markdown_render_ms = Date.now() - markdownRenderStartedAt;
+  performance.total_ms = Date.now() - readinessStartedAt;
   return success({
     ...base,
-    markdown: buildStoryProjectProductionReadinessMarkdown(base),
+    markdown,
   });
 }
 

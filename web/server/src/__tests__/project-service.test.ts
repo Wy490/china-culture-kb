@@ -799,6 +799,25 @@ describe('project-service', () => {
     expect(metaSpy).not.toHaveBeenCalled();
     expect(versionsSpy).not.toHaveBeenCalled();
     expect(readiness.data?.project.version_count).toBe(1);
+    expect(readiness.data?.performance).toMatchObject({
+      wall_clock_observation_not_sla: true,
+      project_detail_read_ms: expect.any(Number),
+      production_board_build_ms: expect.any(Number),
+      report_assembly_ms: expect.any(Number),
+      markdown_render_ms: expect.any(Number),
+      total_ms: expect.any(Number),
+    });
+    const performance = readiness.data!.performance;
+    expect(performance.project_detail_read_ms).toBeGreaterThanOrEqual(0);
+    expect(performance.production_board_build_ms).toBeGreaterThanOrEqual(0);
+    expect(performance.report_assembly_ms).toBeGreaterThanOrEqual(0);
+    expect(performance.markdown_render_ms).toBeGreaterThanOrEqual(0);
+    expect(performance.total_ms).toBeGreaterThanOrEqual(
+      performance.project_detail_read_ms
+      + performance.production_board_build_ms
+      + performance.report_assembly_ms
+      + performance.markdown_render_ms,
+    );
   });
 
   it('builds a production board from the current project version', async () => {

@@ -3899,6 +3899,15 @@ export interface ProductionReadinessEpisode {
   blocker_count: number;
 }
 
+export interface StoryProjectProductionReadinessPerformanceDiagnostics {
+  wall_clock_observation_not_sla: true;
+  project_detail_read_ms: number;
+  production_board_build_ms: number;
+  report_assembly_ms: number;
+  markdown_render_ms: number;
+  total_ms: number;
+}
+
 export interface StoryProjectProductionReadinessReport {
   schema_version: 'story-project-production-readiness/v1';
   scope: 'story_project';
@@ -3915,6 +3924,7 @@ export interface StoryProjectProductionReadinessReport {
   automation_plan: ProductionReadinessAutomationPlan;
   automation_ledger?: ProductionReadinessAutomationRunLedger;
   latest_automation_run?: ProductionReadinessAutomationRunLedgerItem;
+  performance: StoryProjectProductionReadinessPerformanceDiagnostics;
   markdown: string;
 }
 
@@ -3985,6 +3995,10 @@ export interface ProductionReadinessPortfolioPerformanceDiagnostics {
   story_project_target_count: number;
   ai_comic_series_target_count: number;
   story_project_cumulative_readiness_work_ms: number;
+  story_project_cumulative_project_detail_read_ms: number;
+  story_project_cumulative_production_board_build_ms: number;
+  story_project_cumulative_report_assembly_ms: number;
+  story_project_cumulative_markdown_render_ms: number;
   ai_comic_series_cumulative_readiness_work_ms: number;
 }
 
