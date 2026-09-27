@@ -428,3 +428,17 @@ describe('story-regenerate-service', () => {
     })).toBe('自定义修改：把桌上的文书拍清楚');
   });
 });
+
+it('invalidates the old action plan only for the regenerated scene', async () => {
+  delete process.env.SCENE_REGEN_COMMAND;
+  process.env.SCENE_REGEN_PROVIDER = 'local_fallback';
+  const story = makeDramaticStory();
+  const beat = { beat_id: 'old-plan', visible_action: '停笔', speech_text: '旧旁白', required_actions: ['停笔'], start_state: '持笔', end_state: '放笔' };
+  story.scene_breakdown[0].production_beats = [beat];
+  story.scene_breakdown[1].production_beats = [beat];
+  const updated = await regenerateSceneInStory(story, {
+    scene_id: 1, intent: 'tighten_conflict', user_note: '重新设计这一场行动',
+  });
+  expect(updated.scene_breakdown[0].production_beats).toBeUndefined();
+  expect(updated.scene_breakdown[1].production_beats).toEqual([beat]);
+});

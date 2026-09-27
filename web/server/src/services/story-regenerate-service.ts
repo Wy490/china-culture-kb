@@ -372,6 +372,8 @@ export async function regenerateSceneInStory(
   const finalScene = modelResult.patch
     ? applyScenePatch(rewrittenScene, modelResult.patch)
     : rewrittenScene;
+  // Prose was rewritten; a previous action plan cannot describe this new scene.
+  finalScene.production_beats = undefined;
 
   const updatedScenes = story.scene_breakdown.map(scene =>
     scene.scene_id === request.scene_id ? finalScene : scene,

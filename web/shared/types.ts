@@ -2077,6 +2077,15 @@ export interface StoryAdaptationAnalysis {
   compressible_parts: string[];
   visual_setpieces: string[];
   adaptation_risks: string[];
+  // Optional for legacy snapshots. This is a material trace, not fact verification.
+  source_trace?: StoryAdaptationSourceTrace;
+}
+
+export interface StoryAdaptationSourceTrace {
+  status: 'comparable' | 'requirements_only' | 'empty' | 'unknown_source';
+  source_text: string;
+  source_refs: string[];
+  production_requirements: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -2122,6 +2131,38 @@ export interface StoryScene extends BaseStoryScene {
   source_entries?: string[];
   factual_basis?: string;
   fictionalized_elements?: string[];
+  /** Authored shot beats; missing states remain unassessed rather than invented. */
+  production_beats?: StoryProductionBeat[];
+}
+
+export interface StoryProductionBeat {
+  beat_id: string;
+  visible_action: string;
+  speech_text: string;
+  required_actions: string[];
+  start_state?: string;
+  end_state?: string;
+  duration_weight?: number;
+}
+
+export interface ShotProductionContract {
+  schema_version: 'shot-production-contract/v1';
+  source_scene_id: number;
+  source_unit_id: string;
+  source_beat_id?: string;
+  speech_text: string;
+  visible_action: string;
+  required_actions: string[];
+  start_state: string | null;
+  end_state: string | null;
+  state_status: 'specified' | 'needs_input';
+  timing: {
+    fps: 24;
+    scene_frames: number;
+    start_frame: number;
+    end_frame: number;
+    clip_frames: number;
+  };
 }
 
 export interface StoryListItem {
@@ -3181,6 +3222,7 @@ export interface GearsDeliveryUnit {
   camera_suggestion?: string;
   segment_prompt_hint?: string;
   constraint_note?: string[];
+  production_contract?: ShotProductionContract;
 }
 
 export type GearsDeliveryStatus = 'ready' | 'needs_input';
@@ -7368,6 +7410,7 @@ export interface SeedancePackageMaterialValidation {
 
 export interface SeedancePromptShotUnit {
   shot_id: string;
+  production_contract?: ShotProductionContract;
   source_scene_id: number;
   source_unit_id?: string;
   duration_sec: number;
@@ -9963,6 +10006,7 @@ export interface StoryProductionBoardShotUnit {
   cultural_boundary: string;
   negative_constraints: string[];
   qa_flags: string[];
+  production_contract?: ShotProductionContract;
 }
 
 export interface StoryProductionBoardDirectorPlan {
@@ -15561,6 +15605,11 @@ export interface GenreQualityReport extends StoryQualityReport {
   forbidden_patterns_found: string[];
   repair_actions: string[];
   writing_capability_quality?: WritingCapabilityQualityReportV1;
+  adaptation_comparison?: {
+    status: 'checked' | 'needs_source_material' | 'needs_source_clarification';
+    source_status: StoryAdaptationSourceTrace['status'];
+    source_refs: string[];
+  };
 }
 
 export interface StoryRepairTrace {

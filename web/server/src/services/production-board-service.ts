@@ -155,7 +155,7 @@ function buildShotUnits(
     const segment = sceneSegments[sceneUnitIndex]
       ?? (sceneDeliveryUnits.length === 1 ? sceneSegments[0] : undefined);
     const seedanceUnit = seedanceByShotId.get(shot.shot_id);
-    const scriptText = cleanDeliveryScriptText(segment?.script_text || deliveryUnit?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot);
+    const scriptText = cleanDeliveryScriptText(deliveryUnit?.script_text || segment?.script_text || scene.dialogue_or_narration || scene.key_action || scene.plot);
     const originalVisualPrompt = deliveryUnit?.visual_prompt || scene.visual_prompt;
     const visualPrompt = cleanPrompt(originalVisualPrompt);
     const cameraSuggestion = cleanPrompt(scene.camera_suggestion);
@@ -186,6 +186,7 @@ function buildShotUnits(
       characters: scene.characters ?? [],
       visualPrompt,
       cameraSuggestion,
+      visibleAction: deliveryUnit?.production_contract?.visible_action,
       segmentPromptHint: deliveryUnit?.segment_prompt_hint ? cleanPrompt(deliveryUnit.segment_prompt_hint) : segment?.segment_prompt_hint ? cleanPrompt(segment.segment_prompt_hint) : undefined,
     });
     const qaFlags = [
@@ -203,6 +204,7 @@ function buildShotUnits(
       ...seedanceMaterialValidation.warnings.map(warning => `Seedance 素材校验：${warning}`),
     ];
     return {
+      production_contract: deliveryUnit?.production_contract,
       shot_id: shot.shot_id,
       source_scene_id: scene.scene_id,
       source_unit_id: shot.source_unit_id,
@@ -1327,12 +1329,14 @@ function buildProductionPrompt(input: {
   visualPrompt: string;
   cameraSuggestion: string;
   segmentPromptHint?: string;
+  visibleAction?: string;
 }): string {
   return [
     `场景：${input.location || '未指定场景'}`,
     `角色：${input.characters.join('、') || '未指定角色'}`,
     `画面：${input.visualPrompt || '按场景动作补足可见画面'}`,
     `镜头：${input.cameraSuggestion || '稳定镜头，动作清楚'}`,
+    input.visibleAction ? `可见动作：${input.visibleAction}` : '',
     input.segmentPromptHint ? `生产提示：${input.segmentPromptHint}` : '',
   ].filter(Boolean).join('\n');
 }
@@ -1612,6 +1616,13 @@ function renderProductionBoardMarkdown(pkg: Omit<StoryProductionBoard, 'markdown
       `- 角色: ${unit.characters.join('、') || '未指定'}`,
       `- 时长/格数: ${unit.duration_sec} 秒 / ${unit.panel_count} 格`,
       `- Script: ${unit.script_text}`,
+      ...(unit.production_contract ? [
+        `- 旁白/对白: ${unit.production_contract.speech_text || '无'}`,
+        `- 可见动作: ${unit.production_contract.visible_action}`,
+        `- 必须兑现: ${unit.production_contract.required_actions.join('；')}`,
+        `- 起始/结束状态: ${unit.production_contract.start_state ?? '待填写'} → ${unit.production_contract.end_state ?? '待填写'}`,
+        `- 帧区间: [${unit.production_contract.timing.start_frame}, ${unit.production_contract.timing.end_frame}) @24fps`,
+      ] : []),
       `- Visual: ${unit.visual_prompt}`,
       `- Camera: ${unit.camera_suggestion}`,
       `- Production Prompt:\n${unit.production_prompt}`,

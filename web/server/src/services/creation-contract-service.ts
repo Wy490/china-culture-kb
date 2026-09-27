@@ -18,6 +18,7 @@ import type {
   VideoType,
   NarrativePatternId,
 } from '@shared/types.js';
+import { buildAdaptationAnalysis } from './adaptation-analysis-service.js';
 
 function stableId(prefix: string, value: string, index: number): string {
   const slug = value
@@ -154,16 +155,18 @@ export function materialPackFromKnowledgePack(
     ...knowledgePack.missing_needs.map(item => `${item.label}：${normalizeMaterialMessage(item.message)}`),
   ];
   const referenceMaterials: MaterialPackEntry[] = [];
-  const sourceText = request.original_user_query ?? request.outline;
-  if (sourceText && request.source_material_mode === 'adapt_user_novel') {
+  const sourceTrace = request.source_material_mode === 'adapt_user_novel'
+    ? buildAdaptationAnalysis(request.original_user_query, { outline: request.outline }).source_trace
+    : undefined;
+  if (sourceTrace?.status === 'comparable') {
     referenceMaterials.push({
       material_id: 'user-source-work',
       title: '用户原作/改编素材',
-      summary: sourceText.slice(0, 500),
+      summary: sourceTrace.source_text.slice(0, 500),
       source_type: 'user_source_text',
       purpose: ['source_work'],
       confidence: 0.8,
-      provenance: '用户输入',
+      provenance: `用户输入：${sourceTrace.source_refs.join('、')}（原作文本摘录）`,
     });
   }
   return {

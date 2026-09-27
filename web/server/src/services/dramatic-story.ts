@@ -1,3 +1,4 @@
+import { allocateProductionFrames, PRODUCTION_FPS } from './shot-production-contract-service.js';
 // web/server/src/services/dramatic-story.ts — Dramatic story generation engine
 // The CORE FIX: produces dramatic narrative stories, not biographical summaries
 // Replaces the old template-concatenation buildSceneBreakdown/buildGearsSegments
@@ -605,9 +606,10 @@ export function generateDramaticContent(input: DramaticContentInput): {
     const requestedSceneDuration = Math.round(totalSeconds / requestedGrowthArc.length);
     for (const scene of requestedGrowthArc) scene.duration_sec = requestedSceneDuration;
   }
-  const requestedAdaptationArc = !requestedGrowthArc && adaptationAnalysis && originalUserQuery
+  const adaptationSource = adaptationAnalysis?.source_trace?.source_text ?? originalUserQuery;
+  const requestedAdaptationArc = !requestedGrowthArc && adaptationAnalysis && adaptationSource
     ? buildLocalAdaptationArc({
-        source: originalUserQuery,
+        source: adaptationSource,
         analysis: adaptationAnalysis,
         templates,
         entry,
@@ -708,6 +710,9 @@ export function generateDramaticContent(input: DramaticContentInput): {
       fullTextParts.splice(0, fullTextParts.length, ...historicalArc.map(scene => scene.plot));
     }
   }
+
+  const sceneFrames = allocateProductionFrames(totalSeconds * PRODUCTION_FPS, scenes.map(scene => scene.duration_sec));
+  scenes.forEach((scene, index) => { scene.duration_sec = sceneFrames[index] / PRODUCTION_FPS; });
 
   // Generate full_text from scene plots with transitions
   const fullText = buildFullText(fullTextParts, scenes, protagonist, centralEvent, entry, videoType);
@@ -1982,6 +1987,7 @@ function generateSceneContent(
     eventParagraphs,
     videoType,
     entry,
+    idx,
   );
 
   // Build key action
@@ -3162,6 +3168,7 @@ function buildDialogueOrNarration(
   paragraphs: string[],
   videoType: VideoType,
   entry: EntryDetail,
+  sceneIndex = 0,
 ): string {
   // For dramatic video types, extract actual dialogue
   if (['character_story', 'historical_drama', 'ai_comic_drama'].includes(videoType)) {
@@ -3255,6 +3262,12 @@ function buildDialogueOrNarration(
     if (template.function_label === '工艺全程') return `旁白：${profile.process_narration}`;
     if (template.function_label === '传承之路') return `旁白：${profile.inheritance_narration}`;
     return `旁白：${profile.default_narration}`;
+  }
+
+  if (videoType === 'social_short') {
+    const sourceLines = [...new Set(cleanSourceSentences(paragraphs.join('\n')))];
+    // A sparse source leaves a silent beat instead of repeating its only sentence.
+    return sourceLines[sceneIndex] ? `旁白：${sourceLines[sceneIndex]}` : '';
   }
 
   // Default: narration

@@ -19,6 +19,7 @@ import type {
 } from '@shared/types.js';
 import { resolveStorySourceDomain } from '../platform/story-source-domain.js';
 import { canonicalShotIdForUnit } from './production-shot-plan-service.js';
+import { allocateProductionFrames, buildShotProductionContract, productionFramesForSeconds, PRODUCTION_FPS } from './shot-production-contract-service.js';
 
 const VALID_PANEL_COUNTS: PanelCount[] = [4, 6, 8, 9, 10, 12];
 
@@ -77,6 +78,7 @@ export function ensureGearsDeliveryPackage(story: StoryGenerateResult): GearsDel
     validation_notes: validationNotes,
   };
   const shouldKeepMarkdown = Boolean(current.markdown?.includes('# 人物性别统计'))
+    && JSON.stringify(current.units) === JSON.stringify(units)
     && current.markdown?.includes(`> sourceDomain: ${pkgWithoutMarkdown.sourceDomain}`) === true
     && areGenderSummariesEqual(current.character_gender_summary, pkgWithoutMarkdown.character_gender_summary)
     && areStringArraysEqual(current.validation_notes, pkgWithoutMarkdown.validation_notes);
@@ -734,18 +736,27 @@ function buildDeliveryUnits(
   const units: GearsDeliveryUnit[] = [];
   const validCharacterNames = new Set(characterAssets.map(character => character.name));
   for (const scene of story.scene_breakdown) {
-    const chunks = splitSceneIntoChunks(scene);
+    const beats = scene.production_beats;
+    const chunks = beats?.length
+      ? beats.map(beat => [beat.visible_action, beat.speech_text].filter(Boolean).join('\n'))
+      : splitSceneIntoChunks(scene);
+    const frames = allocateProductionFrames(productionFramesForSeconds(scene.duration_sec),
+      chunks.map((_, index) => beats?.[index]?.duration_weight ?? 1));
+    let startFrame = 0;
     const sceneSegments = story.gears_segments.filter(
       segment => segment.source_scene_id === scene.scene_id,
     );
     chunks.forEach((chunk, index) => {
-      const segment = sceneSegments[index] ?? sceneSegments[0];
+      const segment = sceneSegments[index] ?? (chunks.length === 1 ? sceneSegments[0] : undefined);
       const segmentConstraintNote = segment && 'constraint_note' in segment
         && Array.isArray(segment.constraint_note)
         ? segment.constraint_note.filter((item): item is string => typeof item === 'string')
         : segment?.cultural_constraints ?? [];
-      const targetDuration = Math.max(5, Math.min(15, Math.ceil(scene.duration_sec / chunks.length)));
-      const unitDuration = chooseSuggestedDuration(targetDuration, chunk);
+      const unitDuration = frames[index] / PRODUCTION_FPS;
+      const unitId = chunks.length > 1 ? `${scene.scene_id}.${index + 1}` : `${scene.scene_id}`;
+      const contract = buildShotProductionContract({ scene, unitId, chunk,
+        startFrame, clipFrames: frames[index], beat: beats?.[index] });
+      startFrame += frames[index];
       units.push({
         unit_id: chunks.length > 1 ? `${scene.scene_id}.${index + 1}` : `${scene.scene_id}`,
         shot_id: canonicalShotIdForUnit(chunks.length > 1 ? `${scene.scene_id}.${index + 1}` : `${scene.scene_id}`),
@@ -759,6 +770,7 @@ function buildDeliveryUnits(
         time_of_day: normalizeTimeOfDay(scene.time_of_day),
         beat_count: estimateBeatCount(chunk),
         script_text: chunk,
+        production_contract: contract,
         visual_prompt: scene.visual_prompt?.trim() || undefined,
         camera_suggestion: scene.camera_suggestion?.trim() || undefined,
         segment_prompt_hint: segment?.segment_prompt_hint?.trim() || undefined,
@@ -873,14 +885,6 @@ function expandThinScriptText(scene: StoryScene, currentText: string): string {
   ]);
   if (lines.length > 0) return lines.join('\n');
   return `【文本待补】场景 ${scene.scene_id} 缺少可供 GEARS 分镜使用的剧本正文。`;
-}
-
-function chooseSuggestedDuration(targetDuration: number, scriptText: string): number {
-  const contentLength = countCjkAndWordChars(scriptText);
-  if (scriptText.includes('【文本待补】')) return 5;
-  if (contentLength < 12) return 5;
-  if (contentLength < 24) return Math.min(targetDuration, 8);
-  return targetDuration;
 }
 
 function choosePanelCount(durationSec: number, scriptText: string): PanelCount {
@@ -1061,6 +1065,13 @@ function renderDeliveryMarkdown(pkg: Omit<GearsDeliveryPackage, 'markdown'>): st
     if (unit.camera_suggestion) lines.push(`- 运镜建议: ${unit.camera_suggestion}`);
     if (unit.segment_prompt_hint) lines.push(`- 段落生成提示: ${unit.segment_prompt_hint}`);
     if (unit.constraint_note?.length) lines.push(`- 约束: ${unit.constraint_note.join('；')}`);
+    if (unit.production_contract) {
+      const contract = unit.production_contract;
+      lines.push(`- 旁白/对白: ${contract.speech_text || '无'}`,
+        `- 可见动作: ${contract.visible_action}`, `- 必须兑现: ${contract.required_actions.join('；')}`,
+        `- 起始状态: ${contract.start_state ?? '待填写'}`, `- 结束状态: ${contract.end_state ?? '待填写'}`,
+        `- 帧区间: [${contract.timing.start_frame}, ${contract.timing.end_frame}) / ${contract.timing.scene_frames} 帧 @24fps`);
+    }
     lines.push('', '正文：', unit.script_text);
   }
 

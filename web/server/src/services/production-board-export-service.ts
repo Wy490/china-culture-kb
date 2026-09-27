@@ -24,6 +24,8 @@ export function buildProductionBoardSeedanceExport(board: StoryProductionBoard) 
     shot_units: board.shot_units.map(unit => ({
       shot_id: unit.shot_id,
       source_scene_id: unit.source_scene_id,
+      source_unit_id: unit.source_unit_id,
+      production_contract: unit.production_contract,
       duration_sec: unit.seedance_duration_sec,
       characters: unit.characters,
       location: unit.location,

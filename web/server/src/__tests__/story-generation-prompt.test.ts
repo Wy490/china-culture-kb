@@ -771,4 +771,17 @@ describe('story-generation-prompt', () => {
     expect(pkg.user_prompt).toContain('必须保留');
     expect(pkg.output_contract.should_respect.some(item => item.includes('执行原作保留项'))).toBe(true);
   });
+
+  it('labels a production brief as a request and exposes the pending original-work comparison', () => {
+    const query = '《了凡四训》约3分钟国风水墨AI视频，中文旁白，横屏16:9';
+    const pkg = buildStoryGenerationPromptPackage({
+      entry: makeEntry(), request: { source_material_mode: 'adapt_user_novel', original_user_query: query },
+      videoType: 'explainer_video', presentationStyle: 'ink_style', storyStructure: 'lecture_argument',
+      targetDuration: '3分钟', tone: '', adaptationAnalysis: buildAdaptationAnalysis(query),
+    });
+    expect(pkg.user_prompt).toContain(`用户原始诉求：${query}`);
+    expect(pkg.user_prompt).not.toContain(`用户原作/改编素材：${query}`);
+    expect(pkg.user_prompt).toContain('原作对照状态：requirements_only');
+    expect(pkg.user_prompt).toContain('不得从制作要求推断原作人物、主线或事实');
+  });
 });

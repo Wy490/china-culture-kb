@@ -161,6 +161,7 @@ export interface StoryGenerationModelOutput {
     camera_suggestion?: string;
     characters?: string[];
     cultural_note?: string;
+    production_beats?: import('@shared/types.js').StoryProductionBeat[];
   }>;
   cultural_constraints: string[];
   credibility_note: string;
@@ -312,7 +313,10 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     lines.push(`中心事件：${pkg.context.selected_event}`);
   }
   if (pkg.context.original_user_query) {
-    lines.push(`${pkg.context.source_material_mode === 'adapt_user_novel' ? '用户原作/改编素材' : '用户原始诉求'}：${pkg.context.original_user_query}`);
+    const queryIsSource = pkg.context.source_material_mode === 'adapt_user_novel'
+      && (!pkg.adaptation_analysis?.source_trace
+        || pkg.adaptation_analysis.source_trace.source_refs.includes('original_user_query'));
+    lines.push(`${queryIsSource ? '用户原作/改编素材' : '用户原始诉求'}：${pkg.context.original_user_query}`);
   }
   if (pkg.creation_contract) {
     lines.push(
@@ -542,6 +546,17 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
   }
   if (pkg.adaptation_analysis) {
     lines.push('', '=== 原作改编前置分析 ===');
+    const trace = pkg.adaptation_analysis.source_trace;
+    if (trace) {
+      lines.push(`原作对照状态：${trace.status}；这仅表示素材可比较性，不代表事实核验或人工签收。`);
+      if (trace.source_refs.length) lines.push(`素材定位：${trace.source_refs.join('、')}`);
+      if (trace.production_requirements.length) {
+        lines.push(`独立制作要求（不得作为原作人物或情节）：${trace.production_requirements.join('；')}`);
+      }
+      if (trace.status !== 'comparable') {
+        lines.push('未提供可对照原作文本，需补充素材；不得从制作要求推断原作人物、主线或事实。');
+      }
+    }
     lines.push(`原作长度：${pkg.adaptation_analysis.source_length} 字`);
     lines.push(`原作概括：${pkg.adaptation_analysis.source_summary}`);
     if (pkg.adaptation_analysis.core_characters.length > 0) {
@@ -647,7 +662,8 @@ function buildUserPrompt(pkg: Omit<StoryGenerationPromptPackage, 'system_prompt'
     getGenreReturnJsonFields(pkg.context.video_type).join(', '),
     '',
     'scene_breakdown 中每场必须包含：scene_id, title, plot, key_action',
-    '可选字段：conflict, dialogue_or_narration, visual_prompt, camera_suggestion, characters, cultural_note',
+    '可选字段：conflict, dialogue_or_narration, visual_prompt, camera_suggestion, characters, cultural_note, production_beats',
+    '每镜制作节拍 production_beats 使用 beat_id、visible_action、speech_text、required_actions、start_state、end_state、duration_weight；可见动作与旁白/对白分开，保留必需动作及其起止状态。未知状态不编造，不以静止画面代替关键动作。',
     '',
     'full_text 必须是完整叙事文本（不是摘要），长度与目标时长匹配。',
     'scene_breakdown 场次数量应与目标时长匹配（1分钟约2-4场，3分钟约3-6场，5分钟约5-7场）。',

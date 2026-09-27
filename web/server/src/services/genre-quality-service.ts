@@ -5,9 +5,12 @@ import type {
   GenreQualityReport,
   NarrativePatternId,
   StoryBlueprint,
+  StoryAdaptationSourceTrace,
+  StoryAdaptationAnalysis,
   StoryGenerateResult,
   StoryQualityReport,
 } from '@shared/types.js';
+import { buildAdaptationAnalysis } from './adaptation-analysis-service.js';
 import { getGenreSampleGuidance, getGenreStoryProfile } from './genre-story-profiles.js';
 import { getNarrativePatternQualitySignals, getNarrativePatternRepairActions } from './narrative-pattern-library.js';
 import {
@@ -34,7 +37,26 @@ export function validateGenreStoryQuality(input: {
   const weakBeats = findWeakBeats(input.story, input.blueprint);
   const missingNarrativePatternSignals = findMissingNarrativePatternSignals(input.story, narrativePatternSignals);
   const outlineDriftIssues = findOutlineDriftIssues(input.story);
-  const adaptationIssues = findAdaptationIssues(input.story);
+  const adaptationAnalysis = input.story.adaptation_analysis
+    ?? (input.story.truth_mode === 'source_adaptation' ? buildAdaptationAnalysis(
+      input.story.original_user_query, { materialPack: input.story.material_pack },
+    ) : undefined);
+  const adaptationSource = adaptationAnalysis
+    ? adaptationAnalysis.source_trace ?? buildAdaptationAnalysis(
+        input.story.original_user_query,
+        { materialPack: input.story.material_pack },
+      ).source_trace
+    : undefined;
+  const adaptationIssues = findAdaptationIssues(input.story, adaptationAnalysis, adaptationSource);
+  const adaptationComparison: GenreQualityReport['adaptation_comparison'] = adaptationSource
+    ? {
+        status: adaptationSource.status === 'comparable' ? 'checked'
+          : adaptationSource.status === 'unknown_source' ? 'needs_source_clarification'
+          : 'needs_source_material',
+        source_status: adaptationSource.status,
+        source_refs: adaptationSource.source_refs,
+      }
+    : undefined;
   const forbiddenPatternsFound = profile.avoid.filter(pattern => storyText(input.story).includes(pattern));
   const writingCapabilityContext = input.blueprint?.writing_capability_context;
   const writingCapabilityQuality = evaluateWritingCapabilityQuality({
@@ -103,40 +125,53 @@ export function validateGenreStoryQuality(input: {
     weak_beats: weakBeats,
     forbidden_patterns_found: forbiddenPatternsFound,
     repair_actions: repairActions,
+    ...(adaptationComparison ? { adaptation_comparison: adaptationComparison } : {}),
     ...(writingCapabilityQuality ? { writing_capability_quality: writingCapabilityQuality } : {}),
     ...(domainPackQuality ? { domain_pack_quality: domainPackQuality } : {}),
     passed: input.baseReport.passed
       && genreScore >= 70
       && missingRequiredElements.length === 0
+      && (!adaptationComparison || adaptationComparison.status === 'checked')
       && (writingCapabilityQuality?.passed ?? true)
       && (domainPackQuality?.passed ?? true),
     issues: [...input.baseReport.issues, ...genreIssues],
   };
 }
 
-function findAdaptationIssues(story: StoryGenerateResult): string[] {
-  if (!story.adaptation_analysis) return [];
-  const source = story.original_user_query ?? '';
-  if (!source.trim()) return ['缺少可对照的用户原作/改编素材。'];
+function findAdaptationIssues(
+  story: StoryGenerateResult,
+  analysis?: StoryAdaptationAnalysis,
+  trace?: StoryAdaptationSourceTrace,
+): string[] {
+  if (!analysis) return [];
+  if (!trace || trace.status !== 'comparable' || !trace.source_text.trim()) {
+    return [trace?.status === 'unknown_source'
+      ? '原作素材来源或正文边界不明，待补充可追踪文本后再对照人物与节拍。'
+      : '缺少可对照的原作文本，待补充素材；时长、画幅、声音和风格要求不作为原作人物或节拍。'];
+  }
+  const source = trace.source_text;
 
-  const analysis = story.adaptation_analysis;
-  const sourceNames = analysis?.core_characters?.length ? analysis.core_characters : extractLikelyNames(source);
+  const parsed = buildAdaptationAnalysis(undefined, { outline: source, materialPack: story.material_pack });
+  const sourceNames = [...new Set([...analysis.core_characters, ...parsed.core_characters])]
+    .filter(name => name.trim() && source.includes(name));
   const text = storyText(story);
   const issues: string[] = [];
   const missingNames = sourceNames.filter(name => !text.includes(name)).slice(0, 3);
   if (missingNames.length > 0) {
     issues.push(`原作关键人物/称谓未进入改编方案：${missingNames.join('、')}。`);
   }
-  if (analysis?.plot_beats?.length) {
-    const missingBeats = analysis.plot_beats
+  const plotBeats = [...new Set([...analysis.plot_beats, ...parsed.plot_beats])];
+  if (plotBeats.length) {
+    const missingBeats = plotBeats
       .filter(beat => !hasEnoughOverlap(text, beat))
       .slice(0, 2);
     if (missingBeats.length > 0) {
       issues.push(`原作主线节拍未被改编承接：${missingBeats.join('；')}。`);
     }
   }
-  if (analysis?.must_keep?.length) {
-    const missingMustKeep = analysis.must_keep
+  const mustKeep = [...new Set([...analysis.must_keep, ...parsed.must_keep])];
+  if (mustKeep.length) {
+    const missingMustKeep = mustKeep
       .filter(item => !hasEnoughOverlap(text, item))
       .slice(0, 2);
     if (missingMustKeep.length > 0) {
@@ -166,12 +201,6 @@ function extractMatchChunks(text: string): string[] {
   const chunks = normalized.match(/[\u4e00-\u9fa5]{2,6}/g) ?? [];
   const blocked = ['保留', '核心', '人物', '称谓', '主线', '事件', '顺序', '原作', '选择', '场景'];
   return chunks.filter(chunk => !blocked.includes(chunk)).slice(0, 8);
-}
-
-function extractLikelyNames(text: string): string[] {
-  const matches = text.match(/[\u4e00-\u9fa5]{2,4}/g) ?? [];
-  const blocked = ['一个', '这是', '故事', '小说', '改编', '时候', '他们', '我们', '人物', '场景', '后来', '突然', '已经', '因为', '所以'];
-  return [...new Set(matches.filter(item => !blocked.includes(item)).slice(0, 8))];
 }
 
 function buildSignalRepairActions(signal: string, story: StoryGenerateResult): string[] {

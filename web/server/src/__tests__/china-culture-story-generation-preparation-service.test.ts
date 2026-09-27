@@ -4,6 +4,34 @@ import type { StoryGenerateRequest } from '@shared/types.js';
 import { prepareChinaCultureStoryGeneration } from '../domains/china-culture/story-generation-preparation-service.js';
 
 describe('china_culture story generation preparation service', () => {
+  it('separates real original text in outline from the Liaofan production brief', async () => {
+    const query = '《了凡四训》约3分钟国风水墨AI视频，中文旁白，横屏16:9';
+    const outline = '袁了凡在书院看见孔先生留下的纸。袁了凡决定改变日常行为。';
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'explainer_video', source_material_mode: 'adapt_user_novel',
+      original_user_query: query, outline,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.adaptationAnalysis?.source_trace).toMatchObject({
+      status: 'comparable', source_refs: ['outline'], production_requirements: [query],
+    });
+    expect(result.adaptationAnalysis?.core_characters).toContain('袁了凡');
+    expect(result.materialPackToUse.reference_materials[0]?.summary).toContain('袁了凡在书院');
+    expect(result.materialPackToUse.reference_materials[0]?.summary).not.toContain('3分钟');
+  });
+
+  it('leaves a production-only adaptation pending without manufacturing source-work material', async () => {
+    const result = await prepareChinaCultureStoryGeneration({
+      video_type: 'explainer_video', source_material_mode: 'adapt_user_novel',
+      original_user_query: '《了凡四训》约3分钟国风水墨AI视频，中文旁白，横屏16:9',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.adaptationAnalysis?.source_trace?.status).toBe('requirements_only');
+    expect(result.materialPackToUse.reference_materials).toEqual([]);
+  });
+
   it('prepares source, material, policy, genre, readiness, model and blueprint as one domain-owned contract', async () => {
     const result = await prepareChinaCultureStoryGeneration({
       video_type: 'ai_comic_drama',

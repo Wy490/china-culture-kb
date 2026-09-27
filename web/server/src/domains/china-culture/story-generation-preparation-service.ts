@@ -229,7 +229,7 @@ export async function prepareChinaCultureStoryGeneration(
     narrativePatternIds,
   });
   const adaptationAnalysis = request.source_material_mode === 'adapt_user_novel'
-    ? buildAdaptationAnalysis(original_user_query ?? outline)
+    ? buildAdaptationAnalysis(original_user_query, { outline, materialPack: materialPackToUse })
     : undefined;
   const domainPackContext = buildStoryDomainPackContext(knowledgePackToUse);
   const productionMaterialReadiness = buildProductionMaterialReadinessReport({

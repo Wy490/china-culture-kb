@@ -1303,7 +1303,7 @@ function inspectAdaptationEvidence(
   story: StoryGenerateResult,
 ): AdaptationStructuralEvidence | undefined {
   const analysis = story.adaptation_analysis;
-  const source = story.original_user_query?.trim();
+  const source = (analysis?.source_trace?.source_text ?? story.original_user_query)?.trim();
   if (!analysis || analysis.source_mode !== 'user_novel' || !source) return undefined;
 
   const scenes = story.scene_breakdown;

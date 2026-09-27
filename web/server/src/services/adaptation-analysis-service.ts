@@ -1,4 +1,4 @@
-import type { StoryAdaptationAnalysis } from '@shared/types.js';
+import type { MaterialPack, StoryAdaptationAnalysis, StoryAdaptationSourceTrace } from '@shared/types.js';
 
 const NAME_BLOCKLIST = new Set([
   '故事', '小说', '原文', '改编', '用户', '人物', '场景', '时候', '他们', '我们', '后来',
@@ -17,16 +17,26 @@ const EVENT_MARKERS = /离开|进入|发现|决定|选择|冲突|误会|追问|�
 const VISUAL_MARKERS = /门口|院子|街|巷|河|桥|山|雨|雪|夜|灯|火|船|书|信|屋|房|窗|桌|井|祠|寺|庙|战场|书院|村|城|路|田|集市|码头/;
 const COMPRESSIBLE_MARKERS = /回忆|说明|解释|背景|多年后|与此同时|旁枝|插叙|铺垫|心理活动|内心独白|设定/;
 
-export function buildAdaptationAnalysis(source: string | undefined): StoryAdaptationAnalysis | undefined {
-  const normalized = normalizeSource(source);
-  if (!normalized) return undefined;
+export function buildAdaptationAnalysis(
+  source: string | undefined,
+  options: { outline?: string; materialPack?: MaterialPack } = {},
+): StoryAdaptationAnalysis {
+  const sourceTrace = resolveAdaptationSource(source, options);
+  const normalized = sourceTrace.source_text;
 
   const units = splitSourceUnits(normalized);
   const plotBeats = extractPlotBeats(units);
-  const coreCharacters = extractLikelyNames(normalized, units);
+  const coreCharacters = unique([
+    ...extractLikelyNames(normalized, units),
+    ...(options.materialPack?.source_work_profile?.core_characters ?? [])
+      .filter(name => Boolean(name.trim()) && normalized.includes(name)),
+  ]);
   const visualSetpieces = extractVisualSetpieces(units);
   const compressibleParts = extractCompressibleParts(units);
-  const mustKeep = buildMustKeep(coreCharacters, plotBeats, normalized);
+  const mustKeep = unique([
+    ...buildMustKeep(coreCharacters, plotBeats, normalized),
+    ...(normalized ? options.materialPack?.source_work_profile?.must_keep ?? [] : []),
+  ]);
   const adaptationRisks = buildAdaptationRisks(normalized, coreCharacters, plotBeats, visualSetpieces);
 
   return {
@@ -38,8 +48,95 @@ export function buildAdaptationAnalysis(source: string | undefined): StoryAdapta
     must_keep: mustKeep,
     compressible_parts: compressibleParts,
     visual_setpieces: visualSetpieces,
-    adaptation_risks: adaptationRisks,
+    adaptation_risks: sourceTrace.status === 'comparable'
+      ? adaptationRisks
+      : [sourceTrace.status === 'unknown_source'
+          ? '素材来源或正文边界不明，需补充可追踪原作文本后再做改编对照。'
+          : '未提供可对照原作文本；制作要求不能替代原作人物与情节，需补充素材。'],
+    source_trace: sourceTrace,
   };
+}
+
+// Classify complete clauses by their role; never guess names from arbitrary CJK chunks.
+// Typed source-work excerpts are comparable only within the supplied excerpt.
+function resolveAdaptationSource(
+  query: string | undefined,
+  options: { outline?: string; materialPack?: MaterialPack },
+): StoryAdaptationSourceTrace {
+  const inputs = [
+    { text: options.outline, ref: 'outline', explicit: true },
+    { text: query, ref: 'original_user_query', explicit: false },
+    ...(options.materialPack
+      ? [...options.materialPack.primary_materials, ...options.materialPack.reference_materials]
+          .filter(material => (
+            ['user_source_text', 'user_outline'].includes(material.source_type)
+            && material.purpose.includes('source_work')
+          ))
+          .map(material => ({
+            text: material.summary,
+            ref: `material_pack:${material.material_id}`,
+            explicit: true,
+          }))
+      : []),
+  ];
+  const requirements: string[] = [];
+  let hasUnknownText = false;
+  let selectedSource: { text: string; ref: string } | undefined;
+  for (const input of inputs) {
+    const units = normalizeSource(input.text)
+      .split(/\n+|(?<=[。！？!?；;])\s*/)
+      .map(unit => unit.trim())
+      .filter(Boolean);
+    const content = units.filter(unit => {
+      if (isProductionRequirement(unit)) {
+        requirements.push(unit);
+        return false;
+      }
+      return true;
+    });
+    const text = content.join('\n');
+    if (!text) continue;
+    const locatorOnly = content.every(unit => (
+      /^(?:《[^》]+》\s*)?(?:(?:来源|原文|地址|链接|核对地址)[：:]?\s*)?https?:\/\/\S+$/i.test(unit)
+      || /^《[^》]+》[。.]?$/.test(unit)
+    ));
+    if (locatorOnly || /^(?:来源未知|未知来源|材料待补|素材待补|原作待补|待提供|暂无原文|未提供原文)/.test(text)) {
+      hasUnknownText = true;
+      continue;
+    }
+    const hasNarrative = EVENT_MARKERS.test(text)
+      || extractLikelyNames(text, content).length > 0;
+    if (input.explicit || hasNarrative) {
+      selectedSource ??= { text, ref: input.ref };
+      continue;
+    }
+    hasUnknownText = true;
+  }
+  if (selectedSource) {
+    return {
+      status: 'comparable',
+      source_text: selectedSource.text,
+      source_refs: [selectedSource.ref],
+      production_requirements: unique(requirements),
+    };
+  }
+  return {
+    status: hasUnknownText ? 'unknown_source' : requirements.length ? 'requirements_only' : 'empty',
+    source_text: '',
+    source_refs: [],
+    production_requirements: unique(requirements),
+  };
+}
+
+function isProductionRequirement(unit: string): boolean {
+  if (/^(?:制作要求|视频要求|交付要求|时长|画幅|分辨率|画风|风格|配音|音色|字幕|BGM|背景音乐|横屏|竖屏|中文旁白)\s*[：:，,]?/i.test(unit)) return true;
+  if (/^(?:请|需要|希望|要求|制作|生成|输出|保留).*(?:视频|旁白|画幅|镜头|字幕|配音|水墨|横屏|竖屏|BGM)/i.test(unit)) return true;
+  // A title plus technical specifications is a brief, not an original-work excerpt.
+  const technicalSpec = /\d+(?:\.\d+)?\s*(?:分钟|秒|fps)|\d+\s*[:：]\s*\d+|\d+\s*[x×]\s*\d+/i.test(unit);
+  const mediaSpec = /视频|动画|旁白|配音|字幕|国风|水墨|横屏|竖屏|分辨率/.test(unit);
+  return technicalSpec && mediaSpec
+    && !EVENT_MARKERS.test(unit)
+    && extractLikelyNames(unit, [unit]).length === 0;
 }
 
 function normalizeSource(source: string | undefined): string {

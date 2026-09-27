@@ -64,11 +64,13 @@ export function mergeModelOutputOntoLocalSkeleton(
       plot: modelScene.plot || localScene.plot,
       key_action: modelScene.key_action || localScene.key_action,
       conflict: modelScene.conflict || localScene.conflict,
-      dialogue_or_narration: modelScene.dialogue_or_narration || localScene.dialogue_or_narration,
+      dialogue_or_narration: modelScene.dialogue_or_narration ?? localScene.dialogue_or_narration,
       visual_prompt: modelScene.visual_prompt || localScene.visual_prompt,
       camera_suggestion: modelScene.camera_suggestion || localScene.camera_suggestion,
       characters: modelScene.characters?.length ? modelScene.characters : localScene.characters,
       cultural_note: modelScene.cultural_note || localScene.cultural_note,
+      // Changed prose cannot inherit an old action plan silently.
+      production_beats: modelScene.production_beats,
     };
   });
   const mergedGearsSegments = buildPlatformGearsSegmentsFromScenes(

@@ -29,6 +29,12 @@ const StorySceneOutputSchema = z.object({
   camera_suggestion: z.string().optional(),
   characters: z.array(z.string()).optional(),
   cultural_note: z.string().optional(),
+  production_beats: z.array(z.object({
+    beat_id: z.string().trim().min(1), visible_action: z.string().trim().min(1), speech_text: z.string(),
+    required_actions: z.array(z.string().trim().min(1)).min(1),
+    start_state: z.string().trim().min(1).optional(), end_state: z.string().trim().min(1).optional(),
+    duration_weight: z.number().positive().optional(),
+  }).strict()).min(1).optional(),
 });
 
 const StoryGenerationOutputSchema = z.object({
@@ -137,6 +143,11 @@ function sanitizeOutput(raw: StoryGenerationModelOutput): StoryGenerationModelOu
       camera_suggestion: scene.camera_suggestion?.trim() || undefined,
       characters: scene.characters || [],
       cultural_note: scene.cultural_note?.trim() || undefined,
+      production_beats: scene.production_beats?.map(beat => ({
+        ...beat, visible_action: beat.visible_action.trim(), speech_text: beat.speech_text.trim(),
+        required_actions: beat.required_actions.map(action => action.trim()),
+        start_state: beat.start_state?.trim(), end_state: beat.end_state?.trim(),
+      })),
     })),
     cultural_constraints: raw.cultural_constraints,
     credibility_note: raw.credibility_note.trim(),

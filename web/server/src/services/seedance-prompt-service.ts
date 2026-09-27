@@ -111,7 +111,7 @@ function buildShotUnit(input: {
   assetReferences: SeedanceAssetReference[];
 }): SeedancePromptShotUnit {
   const { unit, shot, scene } = input;
-  const durationSec = clampDuration(unit.suggested_duration_sec);
+  const durationSec = unit.suggested_duration_sec;
   const location = scene?.location?.trim() || unit.scene_name || '未指定场景';
   const characters = unit.character_names.length > 0
     ? unit.character_names
@@ -145,6 +145,7 @@ function buildShotUnit(input: {
     shot_id: shot.shot_id,
     source_scene_id: unit.source_scene_id,
     source_unit_id: unit.unit_id,
+    production_contract: unit.production_contract,
     duration_sec: durationSec,
     characters,
     location,
@@ -160,6 +161,7 @@ function buildShotUnit(input: {
       location,
       characters,
       scriptText,
+      productionContract: unit.production_contract,
       visualPrompt,
       cameraSuggestion,
       continuityNotes,
@@ -174,12 +176,29 @@ function buildSeedancePrompt(input: {
   location: string;
   characters: string[];
   scriptText: string;
+  productionContract?: GearsDeliveryUnit['production_contract'];
   visualPrompt: string;
   cameraSuggestion: string;
   continuityNotes: string[];
   negativeConstraints: string[];
   assetSlots: SeedanceShotAssetSlot[];
 }): string {
+  if (input.productionContract) {
+    const contract = input.productionContract;
+    return [
+      `生成 ${input.durationSec} 秒视频（${contract.timing.clip_frames} 帧 / ${contract.timing.fps}fps）。`,
+      buildShotAssetUsageLine(input.assetSlots),
+      `0-${Math.min(3, input.durationSec)}秒：${input.visualPrompt}${contract.start_state ? `；起始状态：${contract.start_state}` : ''}。`,
+      `可见动作（全段持续）：${input.scriptText}`,
+      `必须兑现：${contract.required_actions.map(cleanScript).join('；')}。`,
+      contract.end_state ? `结束状态：${contract.end_state}。` : '',
+      `镜头：${input.cameraSuggestion}。`,
+      '风格：AI漫剧/影视分镜，人物动作可拍，时代与服饰保持一致。',
+      contract.speech_text ? `旁白/对白（与动作分开）：${contract.speech_text}` : '',
+      input.continuityNotes.length ? `连续性：${input.continuityNotes.join('；')}。` : '',
+      input.negativeConstraints.length ? `禁止：${input.negativeConstraints.join('；')}。` : '',
+    ].filter(Boolean).join('\n');
+  }
   const subject = input.characters.length > 0 ? input.characters.join('、') : '主要人物';
   const midPoint = input.durationSec <= 8 ? Math.max(4, input.durationSec - 2) : 7;
   const endPoint = input.durationSec;
@@ -735,41 +754,8 @@ function defaultCamera(unit: GearsDeliveryUnit, scene?: StoryScene): string {
   return '中景固定镜头，动作清楚';
 }
 
-function buildConciseSeedanceScript(unit: GearsDeliveryUnit, scene?: StoryScene): string {
-  const actionText = cleanScript(compactStrings([
-    scene?.key_action,
-    conciseDialogue(scene?.dialogue_or_narration),
-  ]).join(' '));
-  return summarizeSeedanceText(actionText || cleanScript(unit.script_text), 120);
-}
-
-function conciseDialogue(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  return value
-    .split(/[。；;\n]/)
-    .map(item => item.trim())
-    .find(item => item.length > 0);
-}
-
-function summarizeSeedanceText(value: string, maxLength: number): string {
-  const text = value.replace(/\s+/g, ' ').trim();
-  if (text.length <= maxLength) return text;
-  const parts = text
-    .split(/[。；;]/)
-    .map(part => part.trim())
-    .filter(Boolean);
-  const summary: string[] = [];
-  for (const part of parts) {
-    const next = [...summary, part].join('。');
-    if (next.length > maxLength) break;
-    summary.push(part);
-  }
-  const compacted = summary.join('。').trim();
-  return compacted || `${text.slice(0, maxLength - 1).trim()}…`;
-}
-
-function clampDuration(value: number): number {
-  return Math.max(4, Math.min(15, Math.round(value || 8)));
+function buildConciseSeedanceScript(unit: GearsDeliveryUnit, _scene?: StoryScene): string {
+  return cleanScript(unit.production_contract?.visible_action ?? unit.script_text);
 }
 
 function cleanScript(value: string): string {

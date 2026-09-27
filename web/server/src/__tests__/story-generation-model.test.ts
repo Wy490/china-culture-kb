@@ -395,6 +395,12 @@ describe('generateStoryWithAdapter', () => {
       credibility_note: '基本可靠',
     };
 
+    for (const scene of validOutput.scene_breakdown) {
+      Object.assign(scene, { production_beats: [{ beat_id: `beat-${scene.scene_id}`,
+        visible_action: scene.key_action, speech_text: '测试旁白', required_actions: [scene.key_action],
+        start_state: '行动前', end_state: '行动后', duration_weight: 1 }] });
+    }
+
     // Use a simple Node.js script that discards stdin and writes the valid output
     process.env.STORY_GEN_COMMAND = process.execPath;
     process.env.STORY_GEN_COMMAND_ARGS = JSON.stringify([
@@ -411,6 +417,7 @@ describe('generateStoryWithAdapter', () => {
     expect(result.provider).toBe('command_json');
     expect(result.output!.title).toBe('拒签冤案');
     expect(result.output!.scene_breakdown.length).toBe(3);
+    expect(result.output!.scene_breakdown.map(scene => scene.production_beats?.[0].beat_id)).toEqual(['beat-1', 'beat-2', 'beat-3']);
   });
 });
 

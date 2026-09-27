@@ -119,6 +119,9 @@ import {
 } from '../services/project-service.js';
 import { importProjectToGearsWorkbench } from '../services/gears-workbench-connector.js';
 import { getGearsWorkbenchImportAudit } from '../services/gears-workbench-audit-service.js';
+import { buildGearsSpeechContract, parseGearsPostproductionReceipt, recordGearsPostproductionReceipt,
+  readGearsPostproductionReceipts } from '../services/gears-postproduction-service.js';
+import { buildGearsDeliveryPackage } from '../services/gears-delivery-service.js';
 import { filterProductResourcesForRequest } from '../services/product-resource-access-service.js';
 import { storyAgentDomainRegistry } from '../platform/domain-registry.js';
 import { readProjectMediaAssetPreview } from '../services/media-asset-preview-service.js';
@@ -862,6 +865,35 @@ projectsRouter.post(
     }
   },
 );
+
+projectsRouter.get('/:projectId/gears-speech-contract', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try {
+    const detail = await getProject(req.params.projectId as string);
+    if (!detail.ok || !detail.data) { res.status(404).json(detail); return; }
+    res.json(success(buildGearsSpeechContract(buildGearsDeliveryPackage(detail.data.current_story))));
+  } catch (err) { next(err); }
+});
+
+projectsRouter.get('/:projectId/gears-postproduction-receipts', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  try { res.json(success(await readGearsPostproductionReceipts(req.params.projectId as string))); }
+  catch (err) { next(err); }
+});
+
+projectsRouter.post('/:projectId/gears-postproduction-receipts', validateParams(ProjectIdParamSchema), async (req, res, next) => {
+  let receipt;
+  try { receipt = parseGearsPostproductionReceipt(req.body); }
+  catch { res.status(400).json(fail(ErrorCodes.VALIDATION_ERROR, '后期回执格式或帧数、质量信用边界无效')); return; }
+  try {
+    const detail = await getProject(req.params.projectId as string);
+    if (!detail.ok || !detail.data) { res.status(404).json(detail); return; }
+    if (receipt.source?.project_id !== detail.data.project.project_id
+      || receipt.source?.story_id !== detail.data.current_story.storyId
+      || !detail.data.versions.some(version => version.version_id === receipt.source?.version_id)) {
+      res.status(409).json(fail(ErrorCodes.VALIDATION_ERROR, '回执来源不属于此项目的已保存版本')); return;
+    }
+    res.json(success(await recordGearsPostproductionReceipt(req.params.projectId as string, receipt)));
+  } catch (err) { next(err); }
+});
 
 projectsRouter.post(
   '/:projectId/gears-workbench-import/dry-run',
